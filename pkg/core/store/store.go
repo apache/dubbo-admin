@@ -78,8 +78,7 @@ func ErrorResourceNotFound(rt, name, mesh string) error {
 }
 
 var (
-	ErrorInvalidOffset        = errors.New("invalid offset")
-	ErrResourceStoreTransient = errors.New("resource store transient error")
+	ErrorInvalidOffset = errors.New("invalid offset")
 )
 
 func IsResourceNotFound(err error) bool {

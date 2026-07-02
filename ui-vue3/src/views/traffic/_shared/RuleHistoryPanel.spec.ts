@@ -18,8 +18,10 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
+import { message } from 'ant-design-vue'
 import { HTTP_STATUS } from '@/base/http/constants'
 import type { RuleVersion } from '@/api/service/traffic'
+import type RuleHistoryDrawerType from './RuleHistoryDrawer.vue'
 import type RuleHistoryPanelType from './RuleHistoryPanel.vue'
 
 const mocks = vi.hoisted(() => {
@@ -75,7 +77,12 @@ vi.mock('./RuleDiffEditor.vue', () => ({
   }
 }))
 
-const version = (id: string, versionNo: number, isLatestRecorded: boolean): RuleVersion => ({
+const version = (
+  id: string,
+  versionNo: number,
+  isLatestRecorded: boolean,
+  overrides: Partial<RuleVersion> = {}
+): RuleVersion => ({
   id,
   ruleKind: 'ConditionRoute',
   mesh: '',
@@ -88,7 +95,8 @@ const version = (id: string, versionNo: number, isLatestRecorded: boolean): Rule
   operation: 'UPDATE',
   author: 'admin',
   createdAt: '2026-06-19T00:00:00Z',
-  isLatestRecorded
+  isLatestRecorded,
+  ...overrides
 })
 
 const drawerStub = defineComponent({
@@ -177,10 +185,12 @@ const mountPanel = (props: Partial<InstanceType<typeof RuleHistoryPanelType>['$p
   })
 
 let i18n: typeof import('@/base/i18n').i18n
+let RuleHistoryDrawer: typeof RuleHistoryDrawerType
 let RuleHistoryPanel: typeof RuleHistoryPanelType
 
 beforeAll(async () => {
   i18n = (await import('@/base/i18n')).i18n
+  RuleHistoryDrawer = (await import('./RuleHistoryDrawer.vue')).default
   RuleHistoryPanel = (await import('./RuleHistoryPanel.vue')).default
 })
 
@@ -188,9 +198,88 @@ beforeEach(() => {
   mocks.listRuleVersionsAPI.mockReset()
   mocks.rollbackRuleVersionAPI.mockReset()
   mocks.diffRuleVersionAPI.mockReset()
+  vi.mocked(message.error).mockClear()
+  vi.mocked(message.success).mockClear()
+  vi.mocked(message.warning).mockClear()
 })
 
+const mountDrawer = (items: RuleVersion[]) =>
+  mount(RuleHistoryDrawer, {
+    props: {
+      open: true,
+      title: 'History',
+      items
+    },
+    global: {
+      plugins: [i18n],
+      stubs: {
+        ADrawer: {
+          props: ['open'],
+          template: '<div v-if="open"><slot name="title" /><slot /></div>'
+        },
+        'a-drawer': {
+          props: ['open'],
+          template: '<div v-if="open"><slot name="title" /><slot /></div>'
+        },
+        ASpin: { template: '<div><slot /></div>' },
+        'a-spin': { template: '<div><slot /></div>' },
+        AEmpty: { template: '<div data-test="empty" />' },
+        'a-empty': { template: '<div data-test="empty" />' },
+        ASpace: { template: '<div><slot /></div>' },
+        'a-space': { template: '<div><slot /></div>' },
+        ATag: { template: '<span><slot /></span>' },
+        'a-tag': { template: '<span><slot /></span>' },
+        ATooltip: { template: '<div><slot /></div>' },
+        'a-tooltip': { template: '<div><slot /></div>' },
+        AButton: {
+          props: {
+            disabled: {
+              type: Boolean,
+              default: false
+            }
+          },
+          emits: ['click'],
+          template:
+            '<button :disabled="disabled" @click="$emit(\'click\', $event)"><slot /></button>'
+        },
+        'a-button': {
+          props: {
+            disabled: {
+              type: Boolean,
+              default: false
+            }
+          },
+          emits: ['click'],
+          template:
+            '<button :disabled="disabled" @click="$emit(\'click\', $event)"><slot /></button>'
+        },
+        ATypographyText: { template: '<span><slot /></span>' },
+        'a-typography-text': { template: '<span><slot /></span>' }
+      }
+    }
+  })
+
+const rollbackButton = (wrapper: ReturnType<typeof mountDrawer>) => wrapper.findAll('button').at(-1)
+
 describe('RuleHistoryPanel', () => {
+  it('allows rollback for latest recorded non-delete versions', () => {
+    const wrapper = mountDrawer([version('latest-update', 3, true)])
+
+    rollbackButton(wrapper)?.trigger('click')
+
+    expect(wrapper.emitted('rollback')?.[0][0]).toMatchObject({ id: 'latest-update' })
+  })
+
+  it('disables rollback for delete markers', () => {
+    const wrapper = mountDrawer([
+      version('delete-marker', 4, true, { operation: 'DELETE', specJson: '<deleted>' })
+    ])
+
+    rollbackButton(wrapper)?.trigger('click')
+
+    expect(wrapper.emitted('rollback')).toBeUndefined()
+  })
+
   it('ignores stale history responses after ruleName changes', async () => {
     let resolveFirst: (value: unknown) => void = () => undefined
     mocks.listRuleVersionsAPI
@@ -283,5 +372,32 @@ describe('RuleHistoryPanel', () => {
     expect(wrapper.text()).toContain('rollback-new-target')
     expect(wrapper.find('[data-test="modal"]').exists()).toBe(true)
     expect(mocks.listRuleVersionsAPI).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows backend rollback rejection errors', async () => {
+    mocks.listRuleVersionsAPI.mockResolvedValue({
+      code: HTTP_STATUS.SUCCESS,
+      data: {
+        items: [version('already-current', 1, true)],
+        total: 1,
+        latestRecordedVersionId: 'already-current',
+        latestRecordedVersionNo: 1,
+        latestRecordedDeleted: false
+      }
+    })
+    mocks.rollbackRuleVersionAPI.mockRejectedValue({
+      code: 'InvalidArgument',
+      message: 'cannot roll back to a version identical to current'
+    })
+
+    const wrapper = mountPanel()
+    await flushPromises()
+    await wrapper.get('[data-test="rollback-already-current"]').trigger('click')
+    await nextTick()
+    await wrapper.get('[data-test="rollback-reason"]').setValue('same content')
+    await wrapper.get('[data-test="modal-ok"]').trigger('click')
+    await flushPromises()
+
+    expect(message.error).toHaveBeenCalledWith('cannot roll back to a version identical to current')
   })
 })

@@ -26,9 +26,11 @@
     <template #title>
       <div class="drawer-title">
         <a-typography-text strong>{{ title }}</a-typography-text>
-        <a-tag v-if="latestRecordedVersionNo !== undefined" color="blue"
-          >{{ t('ruleVersionDomain.latestRecorded') }} v{{ latestRecordedVersionNo }}</a-tag
-        >
+        <a-tag v-if="latestRecordedVersionNo !== undefined" color="blue">{{
+          t('ruleVersionDomain.latestRecordedVersionBadge', {
+            versionNo: latestRecordedVersionNo
+          })
+        }}</a-tag>
       </div>
     </template>
 
@@ -107,13 +109,9 @@ const authorLabel = (author: string) => author.replace(/^system:/, '')
 
 const createdAtLabel = (createdAt: string) => dayjs(createdAt).format('YYYY/M/D HH:mm:ss')
 
-// The backend rejects these cases as well; the UI disables them to avoid
-// offering a misleading rollback action.
-const isRollbackDisabled = (item: RuleVersion) =>
-  item.isLatestRecorded || item.operation === 'DELETE'
+const isRollbackDisabled = (item: RuleVersion) => item.operation === 'DELETE'
 
 const rollbackDisabledReason = (item: RuleVersion) => {
-  if (item.isLatestRecorded) return t('ruleVersionDomain.rollbackLatestRecordedDisabled')
   if (item.operation === 'DELETE') return t('ruleVersionDomain.rollbackDeleteDisabled')
   return ''
 }

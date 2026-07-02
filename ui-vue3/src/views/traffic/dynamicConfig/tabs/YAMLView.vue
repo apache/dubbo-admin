@@ -25,7 +25,11 @@
               <a-col v-if="!viewData.isAdd">
                 <a-space>
                   <a-tag v-if="latestRecordedVersionNo !== undefined" color="blue">
-                    latest recorded v{{ latestRecordedVersionNo }}
+                    {{
+                      $t('ruleVersionDomain.latestRecordedVersionBadge', {
+                        versionNo: latestRecordedVersionNo
+                      })
+                    }}
                   </a-tag>
                   <a-button type="text" style="color: #0a90d5" @click="isHistoryOpen = true">
                     {{ $t('flowControlDomain.versionRecords') }}
@@ -103,10 +107,10 @@ const isDrawerOpened = ref(false)
 const isHistoryOpen = ref(false)
 const loading = ref(false)
 const sliderSpan = ref(8)
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 
-const YAMLValue = ref()
-const initValue = ref()
+const YAMLValue = ref('')
+const initValue = ref('')
 const ruleName = ref('')
 const latestRecordedVersionNo = ref<number | undefined>(undefined)
 
@@ -133,9 +137,9 @@ async function initConfig() {
       data: viewData
     })
   }
-  const toApiInput = viewData.toApiInput()
+  const toApiInput = viewData.toApiInput() as Record<string, any>
   ruleName.value = toApiInput.ruleName
-  toApiInput.ruleName = undefined
+  delete toApiInput.ruleName
   const json = yaml.dump(toApiInput) // 输出为 json 格式
   initValue.value = JSON.stringify(json)
   YAMLValue.value = json
@@ -186,8 +190,8 @@ async function saveConfig() {
   }
 }
 
-function changeEditor(val) {
-  viewData.fromApiOutput(yaml.load(YAMLValue.value))
+function changeEditor(val: string) {
+  viewData.fromApiOutput(yaml.load(val) as any)
 }
 </script>
 

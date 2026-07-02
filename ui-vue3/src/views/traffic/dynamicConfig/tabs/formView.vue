@@ -62,7 +62,11 @@
           >
             <a-space>
               <a-tag v-if="latestRecordedVersionNo !== undefined" color="blue">
-                latest recorded v{{ latestRecordedVersionNo }}
+                {{
+                  $t('ruleVersionDomain.latestRecordedVersionBadge', {
+                    versionNo: latestRecordedVersionNo
+                  })
+                }}
               </a-tag>
               <a-button type="text" style="color: #0a90d5" @click="isHistoryOpen = true">
                 {{ $t('flowControlDomain.versionRecords') }}
@@ -428,7 +432,7 @@ import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { ConfigModel, ViewDataModel } from '@/views/traffic/dynamicConfig/model/ConfigModel'
 import RuleHistoryPanel from '../../_shared/RuleHistoryPanel.vue'
 
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 
 const route = useRoute()
 const router = useRouter()
@@ -502,10 +506,10 @@ const paramRelation = [
 ]
 
 const descMatchesComputed = computed(() => {
-  return (config) => config.descMatches()
+  return (config: ConfigModel) => config.descMatches()
 })
 const descParametersComputed = computed(() => {
-  return (config) => config.descParameters()
+  return (config: ConfigModel) => config.descParameters()
 })
 
 const addConfig = () => {
@@ -521,7 +525,7 @@ const addConfig = () => {
 }
 
 const handleChange = (index: number, name: string, keys: string) => {
-  const config: ConfigModel = formViewData.config[index]
+  const config = formViewData.config[index] as any
   config[name] = config[name].filter((item: any) => {
     return config[keys].find((i: any) => {
       return i === item.key
@@ -551,7 +555,7 @@ function transApiData(data: any) {
 onMounted(async () => {
   await initConfig()
 })
-const delConfig = (idx) => {
+const delConfig = (idx: number) => {
   Modal.confirm({
     title: '确认删除该配置么？',
     onOk() {

@@ -119,42 +119,6 @@ func (rs *resourceStore) Update(obj interface{}) error {
 	return nil
 }
 
-func (rs *resourceStore) UpdateIfUnchanged(expected coremodel.Resource, updated coremodel.Resource) (bool, error) {
-	if expected == nil || updated == nil {
-		return false, fmt.Errorf("expected and updated resources are required")
-	}
-	if expected.ResourceKind() != rs.rk || updated.ResourceKind() != rs.rk {
-		return false, fmt.Errorf("resource kind mismatch: expected store kind %s, got expected=%s updated=%s", rs.rk, expected.ResourceKind(), updated.ResourceKind())
-	}
-	if expected.ResourceKey() != updated.ResourceKey() {
-		return false, fmt.Errorf("conditional update resource key mismatch: expected %s, updated %s", expected.ResourceKey(), updated.ResourceKey())
-	}
-
-	rs.mu.Lock()
-	defer rs.mu.Unlock()
-
-	currentObj, exists, err := rs.storeProxy.GetByKey(expected.ResourceKey())
-	if err != nil {
-		return false, err
-	}
-	if !exists {
-		return false, nil
-	}
-	current, ok := currentObj.(coremodel.Resource)
-	if !ok {
-		return false, bizerror.NewAssertionError("Resource", reflect.TypeOf(currentObj).Name())
-	}
-	if !reflect.DeepEqual(current, expected) {
-		return false, nil
-	}
-	if err := rs.storeProxy.Update(updated); err != nil {
-		return false, err
-	}
-	rs.removeFromTrees(current)
-	rs.addToTrees(updated)
-	return true, nil
-}
-
 func (rs *resourceStore) Delete(obj interface{}) error {
 	rs.mu.Lock()
 	defer rs.mu.Unlock()

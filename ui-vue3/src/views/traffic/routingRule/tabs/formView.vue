@@ -24,7 +24,11 @@
             <a-typography-title :level="3"> 基础信息</a-typography-title>
             <a-space>
               <a-tag v-if="latestRecordedVersionNo !== undefined" color="blue">
-                latest recorded v{{ latestRecordedVersionNo }}
+                {{
+                  $t('ruleVersionDomain.latestRecordedVersionBadge', {
+                    versionNo: latestRecordedVersionNo
+                  })
+                }}
               </a-tag>
               <a-button type="text" style="color: #0a90d5" @click="isHistoryOpen = true">
                 {{ $t('flowControlDomain.versionRecords') }}
@@ -210,6 +214,17 @@ import { useRoute } from 'vue-router'
 import { HTTP_STATUS } from '@/base/http/constants'
 import RuleHistoryPanel from '../../_shared/RuleHistoryPanel.vue'
 
+interface ConditionRuleDetail {
+  key: string
+  scope: string
+  version: string
+  group: string
+  force?: boolean
+  enabled?: boolean
+  runtime?: boolean
+  conditions: string[]
+}
+
 const {
   appContext: {
     config: { globalProperties }
@@ -229,7 +244,13 @@ function copyIt(v: string) {
 }
 
 // Condition routing details
-const conditionRuleDetail = reactive({})
+const conditionRuleDetail = reactive<ConditionRuleDetail>({
+  key: '',
+  scope: '',
+  version: '',
+  group: '',
+  conditions: []
+})
 
 const actionObj = computed(() => {
   const key = conditionRuleDetail.key || ''

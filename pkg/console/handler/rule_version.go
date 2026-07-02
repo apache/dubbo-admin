@@ -32,6 +32,7 @@ import (
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/service"
+	"github.com/apache/dubbo-admin/pkg/console/util"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/versioning"
 )
@@ -115,7 +116,7 @@ func mutationOptions(c *gin.Context) service.RuleMutationOptions {
 }
 
 func parseVersionID(c *gin.Context) (int64, bool) {
-	id, err := parseProtocolInt64(c.Param("versionId"), false)
+	id, err := parseProtocolInt64(c.Param("versionId"))
 	if err != nil {
 		writeVersioningInvalidArgument(c, "versionId must be a positive decimal string")
 		return 0, false
@@ -123,7 +124,7 @@ func parseVersionID(c *gin.Context) (int64, bool) {
 	return id, true
 }
 
-func parseProtocolInt64(raw string, allowZero bool) (int64, error) {
+func parseProtocolInt64(raw string) (int64, error) {
 	if raw == "" {
 		return 0, fmt.Errorf("empty id")
 	}
@@ -138,9 +139,6 @@ func parseProtocolInt64(raw string, allowZero bool) (int64, error) {
 	id, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
 		return 0, err
-	}
-	if id == 0 && allowZero {
-		return id, nil
 	}
 	if id <= 0 {
 		return 0, fmt.Errorf("id must be positive")
@@ -160,10 +158,7 @@ func ensureVersioningAvailable(c *gin.Context, cs consolectx.Context) bool {
 	if cs.RuleVersioning() != nil {
 		return true
 	}
-	c.JSON(http.StatusServiceUnavailable, &model.CommonResp{
-		Code:    "RULE_HISTORY_UNAVAILABLE",
-		Message: "rule history service is unavailable",
-	})
+	util.HandleServiceError(c, bizerror.New(bizerror.InternalError, "rule history service is unavailable"))
 	return false
 }
 
@@ -172,18 +167,20 @@ func writeVersioningResp(c *gin.Context, data any, err error) {
 		c.JSON(http.StatusOK, model.NewSuccessResp(versioningAPIData(data)))
 		return
 	}
+	util.HandleServiceError(c, versioningServiceError(err))
+}
+
+func versioningServiceError(err error) error {
 	var bizErr bizerror.Error
 	switch {
 	case errors.Is(err, versioning.ErrVersionNotFound):
-		c.JSON(http.StatusNotFound, model.NewBizErrorResp(bizerror.New(bizerror.NotFoundError, err.Error())))
+		return bizerror.New(bizerror.NotFoundError, err.Error())
 	case errors.Is(err, versioning.ErrRollbackToDelete), errors.Is(err, versioning.ErrRollbackToCurrent):
-		c.JSON(http.StatusBadRequest, model.NewBizErrorResp(bizerror.New(bizerror.InvalidArgument, err.Error())))
-	case errors.As(err, &bizErr) && bizErr.Code() == bizerror.InvalidArgument:
-		c.JSON(http.StatusBadRequest, model.NewBizErrorResp(bizErr))
-	case errors.As(err, &bizErr) && bizErr.Code() == bizerror.NotFoundError:
-		c.JSON(http.StatusNotFound, model.NewBizErrorResp(bizErr))
+		return bizerror.New(bizerror.InvalidArgument, err.Error())
+	case errors.As(err, &bizErr):
+		return bizErr
 	default:
-		c.JSON(http.StatusInternalServerError, model.NewBizErrorResp(bizerror.New(bizerror.UnknownError, err.Error())))
+		return err
 	}
 }
 

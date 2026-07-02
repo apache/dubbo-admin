@@ -22,7 +22,10 @@ import (
 	"strings"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
+	"github.com/apache/dubbo-admin/pkg/core/lock"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/versioning"
 )
@@ -106,52 +109,82 @@ func ensureBaselineHistory(ctx consolectx.Context, res coremodel.Resource) error
 	return nil
 }
 
+func withRuleLock(ctx consolectx.Context, kindName RuleKindName, fn func() error) error {
+	lockMgr := ctx.LockManager()
+	if lockMgr == nil {
+		return fn()
+	}
+	lockKey := ruleLockKey(kindName)
+	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, fn)
+}
+
+func ruleLockKey(kindName RuleKindName) string {
+	switch kindName.Kind {
+	case meshresource.ConditionRouteKind:
+		return lock.BuildConditionRuleLockKey(kindName.Mesh, kindName.Name)
+	case meshresource.TagRouteKind:
+		return lock.BuildTagRouteLockKey(kindName.Mesh, kindName.Name)
+	case meshresource.DynamicConfigKind:
+		return lock.BuildConfiguratorRuleLockKey(kindName.Mesh, kindName.Name)
+	default:
+		return lock.BuildLockKey(kindName.Kind.ToString(), kindName.Mesh, kindName.Name)
+	}
+}
+
 func createRule(ctx consolectx.Context, res coremodel.Resource, opts RuleMutationOptions) error {
-	if _, err := appendRuleHistory(ctx, res, versioning.OperationCreate, versioning.SourceAdmin, opts.Author, "", nil); err != nil {
-		return err
-	}
-	if err := ctx.ResourceManager().Add(res); err != nil {
-		return err
-	}
-	return nil
+	kindName := RuleKindName{Kind: res.ResourceKind(), Mesh: res.ResourceMesh(), Name: res.ResourceMeta().Name}
+	return withRuleLock(ctx, kindName, func() error {
+		if _, err := appendRuleHistory(ctx, res, versioning.OperationCreate, versioning.SourceAdmin, opts.Author, "", nil); err != nil {
+			return err
+		}
+		if err := ctx.ResourceManager().Add(res); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func updateRule(ctx consolectx.Context, res coremodel.Resource, opts RuleMutationOptions) error {
-	existing, err := getExistingRule(ctx, RuleKindName{Kind: res.ResourceKind(), Mesh: res.ResourceMesh(), Name: res.ResourceMeta().Name})
-	if err != nil {
-		return err
-	}
-	if err := ensureBaselineHistory(ctx, existing); err != nil {
-		return err
-	}
-	if _, err := appendRuleHistory(ctx, res, versioning.OperationUpdate, versioning.SourceAdmin, opts.Author, "", nil); err != nil {
-		return err
-	}
-	if err := ctx.ResourceManager().Update(res); err != nil {
-		return err
-	}
-	return nil
+	kindName := RuleKindName{Kind: res.ResourceKind(), Mesh: res.ResourceMesh(), Name: res.ResourceMeta().Name}
+	return withRuleLock(ctx, kindName, func() error {
+		existing, err := getExistingRule(ctx, kindName)
+		if err != nil {
+			return err
+		}
+		if err := ensureBaselineHistory(ctx, existing); err != nil {
+			return err
+		}
+		if _, err := appendRuleHistory(ctx, res, versioning.OperationUpdate, versioning.SourceAdmin, opts.Author, "", nil); err != nil {
+			return err
+		}
+		if err := ctx.ResourceManager().Update(res); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func deleteRule(ctx consolectx.Context, kindName RuleKindName, opts RuleMutationOptions) error {
-	resourceKey := coremodel.BuildResourceKey(kindName.Mesh, kindName.Name)
-	snapshot, exists, err := ctx.ResourceManager().GetByKey(kindName.Kind, resourceKey)
-	if err != nil {
-		return err
-	}
-	if !exists || snapshot == nil {
+	return withRuleLock(ctx, kindName, func() error {
+		resourceKey := coremodel.BuildResourceKey(kindName.Mesh, kindName.Name)
+		snapshot, exists, err := ctx.ResourceManager().GetByKey(kindName.Kind, resourceKey)
+		if err != nil {
+			return err
+		}
+		if !exists || snapshot == nil {
+			return nil
+		}
+		if err := ensureBaselineHistory(ctx, snapshot); err != nil {
+			return err
+		}
+		if _, err := appendRuleHistory(ctx, snapshot, versioning.OperationDelete, versioning.SourceAdmin, opts.Author, "", nil); err != nil {
+			return err
+		}
+		if err := ctx.ResourceManager().DeleteByKey(kindName.Kind, kindName.Mesh, resourceKey); err != nil {
+			return err
+		}
 		return nil
-	}
-	if err := ensureBaselineHistory(ctx, snapshot); err != nil {
-		return err
-	}
-	if _, err := appendRuleHistory(ctx, snapshot, versioning.OperationDelete, versioning.SourceAdmin, opts.Author, "", nil); err != nil {
-		return err
-	}
-	if err := ctx.ResourceManager().DeleteByKey(kindName.Kind, kindName.Mesh, resourceKey); err != nil {
-		return err
-	}
-	return nil
+	})
 }
 
 func ListRuleVersions(ctx consolectx.Context, kindName RuleKindName) (*versioning.ListResult, error) {
@@ -217,53 +250,61 @@ func RollbackRuleVersion(ctx consolectx.Context, kindName RuleKindName, targetVe
 		return nil, bizerror.New(bizerror.InvalidArgument, "rollback reason is required")
 	}
 
-	target, err := svc.Get(kindName.Kind, kindName.Mesh, kindName.Name, targetVersionID)
-	if err != nil {
-		return nil, err
-	}
-	if target.Operation == versioning.OperationDelete {
-		return nil, versioning.ErrRollbackToDelete
-	}
-	if target.Operation != versioning.OperationCreate && target.Operation != versioning.OperationUpdate {
-		return nil, bizerror.New(bizerror.InvalidArgument, "only CREATE or UPDATE rule versions can be rolled back")
-	}
-
-	current, exists, err := getRuleIfExists(ctx, kindName)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		hash, _, err := versioning.NormalizeResource(current)
+	var result *RollbackResult
+	err := withRuleLock(ctx, kindName, func() error {
+		target, err := svc.Get(kindName.Kind, kindName.Mesh, kindName.Name, targetVersionID)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		if hash == target.ContentHash {
-			return nil, versioning.ErrRollbackToCurrent
+		if target.Operation == versioning.OperationDelete {
+			return versioning.ErrRollbackToDelete
 		}
-	}
+		if target.Operation != versioning.OperationCreate && target.Operation != versioning.OperationUpdate {
+			return bizerror.New(bizerror.InvalidArgument, "only CREATE or UPDATE rule versions can be rolled back")
+		}
 
-	res, err := versioning.ResourceFromSpecJSON(kindName.Kind, kindName.Mesh, kindName.Name, target.SpecJSON)
+		current, exists, err := getRuleIfExists(ctx, kindName)
+		if err != nil {
+			return err
+		}
+		if exists {
+			hash, _, err := versioning.NormalizeResource(current)
+			if err != nil {
+				return err
+			}
+			if hash == target.ContentHash {
+				return versioning.ErrRollbackToCurrent
+			}
+		}
+
+		res, err := versioning.ResourceFromSpecJSON(kindName.Kind, kindName.Mesh, kindName.Name, target.SpecJSON)
+		if err != nil {
+			return err
+		}
+
+		operation := versioning.OperationUpdate
+		if !exists {
+			operation = versioning.OperationCreate
+		}
+		fromID := target.ID
+		appended, err := appendRuleHistory(ctx, res, operation, versioning.SourceRollback, author, reason, &fromID)
+		if err != nil {
+			return err
+		}
+		if err := ctx.ResourceManager().Upsert(res); err != nil {
+			return err
+		}
+
+		result = &RollbackResult{
+			RolledBackFromID: fromID,
+			Source:           string(versioning.SourceRollback),
+			VersionID:        appended.ID,
+			VersionNo:        appended.VersionNo,
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	operation := versioning.OperationUpdate
-	if !exists {
-		operation = versioning.OperationCreate
-	}
-	fromID := target.ID
-	appended, err := appendRuleHistory(ctx, res, operation, versioning.SourceRollback, author, reason, &fromID)
-	if err != nil {
-		return nil, err
-	}
-	if err := ctx.ResourceManager().Upsert(res); err != nil {
-		return nil, err
-	}
-
-	return &RollbackResult{
-		RolledBackFromID: fromID,
-		Source:           string(versioning.SourceRollback),
-		VersionID:        appended.ID,
-		VersionNo:        appended.VersionNo,
-	}, nil
+	return result, nil
 }

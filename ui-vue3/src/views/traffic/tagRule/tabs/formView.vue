@@ -102,9 +102,11 @@
             :labelStyle="{ fontWeight: 'bold' }"
           >
             <a-space>
-              <a-tag v-if="latestRecordedVersionNo !== undefined" color="blue"
-                >latest recorded v{{ latestRecordedVersionNo }}</a-tag
-              >
+              <a-tag v-if="latestRecordedVersionNo !== undefined" color="blue">{{
+                $t('ruleVersionDomain.latestRecordedVersionBadge', {
+                  versionNo: latestRecordedVersionNo
+                })
+              }}</a-tag>
               <a-button type="text" style="color: #0a90d5" @click="isHistoryOpen = true">
                 {{ $t('flowControlDomain.versionRecords') }}
               </a-button>

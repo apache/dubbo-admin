@@ -20,7 +20,9 @@ package service
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -47,14 +49,72 @@ type testContext struct {
 	cfg           *appcfg.AdminConfig
 	stores        map[coremodel.ResourceKind]store.ResourceStore
 	gov           *noopGovernor
+	lockMgr       lock.Lock
 }
 
 func (c *testContext) ResourceManager() manager.ResourceManager { return c.rm }
 func (c *testContext) CounterManager() counter.CounterManager   { return nil }
 func (c *testContext) Config() appcfg.AdminConfig               { return *c.cfg }
 func (c *testContext) AppContext() context.Context              { return context.Background() }
-func (c *testContext) LockManager() lock.Lock                   { return nil }
+func (c *testContext) LockManager() lock.Lock                   { return c.lockMgr }
 func (c *testContext) RuleVersioning() *versioning.Service      { return c.versioningSvc }
+
+type recordingLock struct {
+	mu     sync.Mutex
+	held   bool
+	events []string
+}
+
+func (l *recordingLock) Lock(context.Context, string, time.Duration) error { return nil }
+
+func (l *recordingLock) TryLock(context.Context, string, time.Duration) (bool, error) {
+	return true, nil
+}
+
+func (l *recordingLock) Unlock(context.Context, string) error { return nil }
+
+func (l *recordingLock) Renew(context.Context, string, time.Duration) error { return nil }
+
+func (l *recordingLock) IsLocked(context.Context, string) (bool, error) { return false, nil }
+
+func (l *recordingLock) CleanupExpiredLocks(context.Context) error { return nil }
+
+func (l *recordingLock) WithLock(_ context.Context, key string, _ time.Duration, fn func() error) error {
+	l.mu.Lock()
+	l.events = append(l.events, "lock:"+key)
+	l.held = true
+	l.mu.Unlock()
+
+	err := fn()
+
+	l.mu.Lock()
+	l.held = false
+	l.events = append(l.events, "unlock:"+key)
+	l.mu.Unlock()
+	return err
+}
+
+func (l *recordingLock) record(event string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.held {
+		l.events = append(l.events, event+":locked")
+		return
+	}
+	l.events = append(l.events, event+":unlocked")
+}
+
+func (l *recordingLock) reset() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.events = nil
+}
+
+func (l *recordingLock) snapshot() []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return append([]string(nil), l.events...)
+}
 
 type testRouter struct {
 	stores map[coremodel.ResourceKind]store.ResourceStore
@@ -77,9 +137,13 @@ type noopGovernor struct {
 	failNextCreate error
 	failNextUpdate error
 	failNextDelete error
+	trace          *recordingLock
 }
 
 func (g *noopGovernor) CreateRule(res coremodel.Resource) error {
+	if g.trace != nil {
+		g.trace.record("registry:create")
+	}
 	if g.failNextCreate != nil {
 		err := g.failNextCreate
 		g.failNextCreate = nil
@@ -93,6 +157,9 @@ func (g *noopGovernor) CreateRule(res coremodel.Resource) error {
 }
 
 func (g *noopGovernor) UpdateRule(res coremodel.Resource) error {
+	if g.trace != nil {
+		g.trace.record("registry:update")
+	}
 	if g.failNextUpdate != nil {
 		err := g.failNextUpdate
 		g.failNextUpdate = nil
@@ -106,6 +173,9 @@ func (g *noopGovernor) UpdateRule(res coremodel.Resource) error {
 }
 
 func (g *noopGovernor) DeleteRule(res coremodel.Resource) error {
+	if g.trace != nil {
+		g.trace.record("registry:delete")
+	}
 	if g.failNextDelete != nil {
 		err := g.failNextDelete
 		g.failNextDelete = nil
@@ -136,6 +206,18 @@ type failingResourceStore struct {
 	err         error
 }
 
+type recordingVersionStore struct {
+	store.ResourceStore
+	trace *recordingLock
+}
+
+func (s *recordingVersionStore) Add(obj interface{}) error {
+	if s.trace != nil {
+		s.trace.record("history:add")
+	}
+	return s.ResourceStore.Add(obj)
+}
+
 func (s *failingResourceStore) Add(obj interface{}) error {
 	if s.failNextAdd {
 		s.failNextAdd = false
@@ -146,8 +228,10 @@ func (s *failingResourceStore) Add(obj interface{}) error {
 
 func setupRollbackTestEnv(t *testing.T, wrapVersionStore ...func(store.ResourceStore) store.ResourceStore) *testContext {
 	conditionStore := memoryst.NewMemoryResourceStore(meshresource.ConditionRouteKind)
+	dynamicConfigStore := memoryst.NewMemoryResourceStore(meshresource.DynamicConfigKind)
+	tagStore := memoryst.NewMemoryResourceStore(meshresource.TagRouteKind)
 	versionStore := memoryst.NewMemoryResourceStore(meshresource.RuleVersionKind)
-	for _, s := range []store.ManagedResourceStore{conditionStore, versionStore} {
+	for _, s := range []store.ManagedResourceStore{conditionStore, dynamicConfigStore, tagStore, versionStore} {
 		require.NoError(t, s.Init(nil))
 	}
 
@@ -157,6 +241,8 @@ func setupRollbackTestEnv(t *testing.T, wrapVersionStore ...func(store.ResourceS
 	}
 	stores := map[coremodel.ResourceKind]store.ResourceStore{
 		meshresource.ConditionRouteKind: conditionStore,
+		meshresource.DynamicConfigKind:  dynamicConfigStore,
+		meshresource.TagRouteKind:       tagStore,
 		meshresource.RuleVersionKind:    versioningVersionStore,
 	}
 
@@ -179,8 +265,127 @@ func conditionRule(name, payload string) *meshresource.ConditionRouteResource {
 	return res
 }
 
+func dynamicConfigRule(name, payload string) *meshresource.DynamicConfigResource {
+	res := meshresource.NewDynamicConfigResourceWithAttributes(name, "")
+	res.Spec = &meshproto.DynamicConfig{Enabled: true, Key: name, ConfigVersion: payload}
+	return res
+}
+
+func tagRule(name, payload string) *meshresource.TagRouteResource {
+	res := meshresource.NewTagRouteResourceWithAttributes(name, "")
+	res.Spec = &meshproto.TagRoute{Enabled: true, Key: name, ConfigVersion: payload}
+	return res
+}
+
 func kindName(name string) RuleKindName {
 	return RuleKindName{Kind: meshresource.ConditionRouteKind, Name: name}
+}
+
+func TestRuleMutationsUsePerRuleDistributedLock(t *testing.T) {
+	tests := []struct {
+		name    string
+		key     string
+		create  func(*testContext) error
+		update  func(*testContext) error
+		remove  func(*testContext) error
+		lockKey string
+	}{
+		{
+			name: "condition",
+			key:  "condition-rule",
+			create: func(ctx *testContext) error {
+				return CreateConditionRuleWithOptions(ctx, conditionRule("condition-rule", "v1"), RuleMutationOptions{Author: "admin"})
+			},
+			update: func(ctx *testContext) error {
+				return UpdateConditionRuleWithOptions(ctx, conditionRule("condition-rule", "v2"), RuleMutationOptions{Author: "admin"})
+			},
+			remove: func(ctx *testContext) error {
+				return DeleteConditionRuleWithOptions(ctx, "condition-rule", "", RuleMutationOptions{Author: "admin"})
+			},
+			lockKey: lock.BuildConditionRuleLockKey("", "condition-rule"),
+		},
+		{
+			name: "dynamic config",
+			key:  "dynamic-rule",
+			create: func(ctx *testContext) error {
+				return CreateConfiguratorWithOptions(ctx, dynamicConfigRule("dynamic-rule", "v1"), RuleMutationOptions{Author: "admin"})
+			},
+			update: func(ctx *testContext) error {
+				return UpdateConfiguratorWithOptions(ctx, dynamicConfigRule("dynamic-rule", "v2"), RuleMutationOptions{Author: "admin"})
+			},
+			remove: func(ctx *testContext) error {
+				return DeleteConfiguratorWithOptions(ctx, "dynamic-rule", "", RuleMutationOptions{Author: "admin"})
+			},
+			lockKey: lock.BuildConfiguratorRuleLockKey("", "dynamic-rule"),
+		},
+		{
+			name: "tag",
+			key:  "tag-rule",
+			create: func(ctx *testContext) error {
+				return CreateTagRuleWithOptions(ctx, tagRule("tag-rule", "v1"), RuleMutationOptions{Author: "admin"})
+			},
+			update: func(ctx *testContext) error {
+				return UpdateTagRuleWithOptions(ctx, tagRule("tag-rule", "v2"), RuleMutationOptions{Author: "admin"})
+			},
+			remove: func(ctx *testContext) error {
+				return DeleteTagRuleWithOptions(ctx, "tag-rule", "", RuleMutationOptions{Author: "admin"})
+			},
+			lockKey: lock.BuildTagRouteLockKey("", "tag-rule"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			trace := &recordingLock{}
+			ctx := setupRollbackTestEnv(t, func(base store.ResourceStore) store.ResourceStore {
+				return &recordingVersionStore{ResourceStore: base, trace: trace}
+			})
+			ctx.lockMgr = trace
+			ctx.gov.trace = trace
+
+			require.NoError(t, tt.create(ctx))
+			assert.Contains(t, trace.snapshot(), "lock:"+tt.lockKey)
+			assert.Contains(t, trace.snapshot(), "history:add:locked")
+			assert.Contains(t, trace.snapshot(), "registry:create:locked")
+
+			trace.reset()
+			require.NoError(t, tt.update(ctx))
+			assert.Contains(t, trace.snapshot(), "lock:"+tt.lockKey)
+			assert.Contains(t, trace.snapshot(), "history:add:locked")
+			assert.Contains(t, trace.snapshot(), "registry:update:locked")
+
+			trace.reset()
+			require.NoError(t, tt.remove(ctx))
+			assert.Contains(t, trace.snapshot(), "lock:"+tt.lockKey)
+			assert.Contains(t, trace.snapshot(), "history:add:locked")
+			assert.Contains(t, trace.snapshot(), "registry:delete:locked")
+		})
+	}
+}
+
+func TestRollbackRunsHistoryAppendAndRegistryMutationInsideRuleLock(t *testing.T) {
+	trace := &recordingLock{}
+	ctx := setupRollbackTestEnv(t, func(base store.ResourceStore) store.ResourceStore {
+		return &recordingVersionStore{ResourceStore: base, trace: trace}
+	})
+	ctx.lockMgr = trace
+	ctx.gov.trace = trace
+
+	require.NoError(t, CreateConditionRuleWithOptions(ctx, conditionRule("demo-rule", "v1"), RuleMutationOptions{Author: "admin"}))
+	versions, err := ListRuleVersions(ctx, kindName("demo-rule"))
+	require.NoError(t, err)
+	targetID := versions.Items[0].ID
+	require.NoError(t, UpdateConditionRuleWithOptions(ctx, conditionRule("demo-rule", "v2"), RuleMutationOptions{Author: "admin"}))
+
+	trace.reset()
+	result, err := RollbackRuleVersion(ctx, kindName("demo-rule"), targetID, "restore", "admin")
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	events := trace.snapshot()
+	assert.Contains(t, events, "lock:"+lock.BuildConditionRuleLockKey("", "demo-rule"))
+	assert.Contains(t, events, "history:add:locked")
+	assert.Contains(t, events, "registry:update:locked")
 }
 
 func TestUpdateAppendsBaselineBeforeFirstHistory(t *testing.T) {
