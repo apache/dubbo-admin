@@ -35,6 +35,8 @@ type Config struct {
 	Prometheus string `json:"prometheus" yaml:"prometheus"`
 	// Logs configures the log query provider.
 	Logs *LogsConfig `json:"logs,omitempty" yaml:"logs,omitempty"`
+	// Tracing configures trace query providers used by diagnostic tools.
+	Tracing *TracingConfig `json:"tracing,omitempty" yaml:"tracing,omitempty"`
 
 	GrafanaBaseURL    *url.URL `json:"-" yaml:"-"`
 	PrometheusBaseURL *url.URL `json:"-" yaml:"-"`
@@ -62,7 +64,19 @@ func (c *Config) Validate() error {
 			return err
 		}
 	}
+	if c.Tracing != nil {
+		if err := c.Tracing.Validate(); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+func (c *Config) Sanitize() {
+	if c == nil || c.Tracing == nil {
+		return
+	}
+	c.Tracing.Sanitize()
 }
 
 func DefaultObservabilityConfig() *Config {

@@ -34,6 +34,15 @@ Choose domain by question:
 - Dubbo topics -> Dubbo docs tools
 - General topics -> pick the most relevant domain first
 
+# Observability Diagnosis Rules
+- For live Dubbo incidents, prefer runtime evidence over documentation retrieval.
+- If observability availability is unknown, suggest `get_observability_capabilities` first.
+- For metric questions, use `query_prometheus` for the current state, then `query_prometheus_range` only when a trend or incident window is needed.
+- When the user supplies a TraceID, or a log result exposes one, suggest `get_trace_by_id` before guessing where the failure occurred.
+- Correlate evidence in this order when available: service metadata -> metrics -> logs -> trace spans.
+- Treat missing data, tool failure, and healthy data as different outcomes. Missing data is not evidence of health.
+- Prefer narrow application, instance, interface, and method filters. Never suggest an unbounded high-cardinality PromQL query.
+
 # Output Constraint
 Return JSON only. No markdown, no code fence, no extra text.
 

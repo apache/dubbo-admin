@@ -13,3 +13,15 @@ Tool selection policy
 Important: You must not answer anything in natural language. 
 Always call one of the provided tools if applicable. 
 If you cannot find a suitable tool, return an empty tool call.
+
+Observability tool policy
+- Call `get_observability_capabilities` before the first metrics or trace query when provider availability is unknown.
+- Use `query_prometheus` for a current snapshot and `query_prometheus_range` for trends. Range queries must stay within 24 hours and use a step of at least 15 seconds.
+- Use metric and label names that exist in Dubbo Admin dashboards. Important labels include `application_name`, `instance`, `pod`, `interface`, `method`, and `version`.
+- Common provider metrics include `dubbo_provider_qps_total`, `dubbo_provider_requests_total`, `dubbo_provider_requests_succeed_total`, `dubbo_provider_requests_failed_total`, `dubbo_provider_requests_timeout_total`, `dubbo_provider_requests_processing`, `dubbo_provider_rt_avg_milliseconds_aggregate`, `dubbo_provider_rt_milliseconds_p95`, and `dubbo_provider_rt_milliseconds_p99`.
+- Equivalent consumer metrics use the `dubbo_consumer_` prefix. Thread-pool signals include `dubbo_thread_pool_active_size`, `dubbo_thread_pool_core_size`, and `dubbo_thread_pool_queue_size`.
+- Counters must be evaluated with `rate` or `increase` over a bounded window. For success rate, divide successful requests by total requests and protect against an empty denominator.
+- Begin with an application-level aggregation, then narrow to `instance` or `pod`; narrow to `interface` and `method` only when service-level evidence requires it.
+- Do not repeat an identical query after a successful response. Change the dimension or time window only to test a stated hypothesis.
+- Call `get_trace_by_id` only with a TraceID supplied by the user or returned by another tool. Use parentSpanId, serviceName, durationMicros, and error status to locate propagation and bottlenecks.
+- Never invent metric names, label values, TraceIDs, provider names, or tool results.

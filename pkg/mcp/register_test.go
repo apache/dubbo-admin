@@ -55,3 +55,40 @@ func TestRegisterServiceDetailTools(t *testing.T) {
 		}
 	}
 }
+
+func TestRegisterObservabilityTools(t *testing.T) {
+	server := NewServer("test", "dev")
+	RegisterTools(server)
+
+	tests := []struct {
+		name     string
+		required []string
+	}{
+		{name: "query_prometheus", required: []string{"query"}},
+		{name: "query_prometheus_range", required: []string{"query", "startTime", "endTime", "step"}},
+		{name: "get_trace_by_id", required: []string{"traceId"}},
+		{name: "get_observability_capabilities"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tool, ok := server.tools[test.name]
+			if !ok {
+				t.Fatalf("tool %q is not registered", test.name)
+			}
+			if tool.Handler == nil {
+				t.Fatalf("tool %q has no handler", test.name)
+			}
+			if len(tool.InputSchema.Required) != len(test.required) {
+				t.Fatalf("tool %q required fields = %v, want %v", test.name, tool.InputSchema.Required, test.required)
+			}
+			for i, field := range test.required {
+				if tool.InputSchema.Required[i] != field {
+					t.Fatalf("tool %q required fields = %v, want %v", test.name, tool.InputSchema.Required, test.required)
+				}
+				if _, ok := tool.InputSchema.Properties[field]; !ok {
+					t.Fatalf("tool %q is missing schema property %q", test.name, field)
+				}
+			}
+		})
+	}
+}
