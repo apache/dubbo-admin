@@ -266,7 +266,7 @@ func parsePrometheusTime(field, value string) (time.Time, error) {
 		return parsed, nil
 	}
 	seconds, err := strconv.ParseFloat(value, 64)
-	if err != nil {
+	if err != nil || math.IsNaN(seconds) || math.IsInf(seconds, 0) || seconds > float64(math.MaxInt64) || seconds < float64(math.MinInt64) {
 		return time.Time{}, fmt.Errorf("%s must be RFC3339 or Unix seconds", field)
 	}
 	whole, fraction := math.Modf(seconds)
