@@ -174,8 +174,12 @@ func (c *prometheusClient) query(ctx context.Context, queryType, path string, va
 		if message == "" {
 			message = "unknown prometheus error"
 		}
-		logPrometheusFailure(queryType, query, startedAt, resp.StatusCode, upstream.ErrorType, nil)
-		return nil, fmt.Errorf("prometheus %s error: %s", upstream.ErrorType, message)
+		errorType := upstream.ErrorType
+		if errorType == "" {
+			errorType = "unknown"
+		}
+		logPrometheusFailure(queryType, query, startedAt, resp.StatusCode, errorType, nil)
+		return nil, fmt.Errorf("prometheus %s error: %s", errorType, message)
 	}
 	result, err := normalizePrometheusResult(queryType, &upstream)
 	if err != nil {
