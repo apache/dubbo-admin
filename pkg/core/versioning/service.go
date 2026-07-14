@@ -62,19 +62,17 @@ func (s *Service) List(kind coremodel.ResourceKind, mesh, ruleName string) (*Lis
 	}
 	result := &ListResult{Items: snapshot.Versions, Total: int64(len(snapshot.Versions)), LatestRecordedDeleted: snapshot.Deleted}
 	if snapshot.Head != nil {
-		latestID := snapshot.Head.ID
-		result.LatestRecordedVersionID = &latestID
 		result.LatestRecordedVersionNo = snapshot.Head.VersionNo
 	}
 	return result, nil
 }
 
-func (s *Service) Get(kind coremodel.ResourceKind, mesh, ruleName string, id int64) (*Version, error) {
+func (s *Service) Get(kind coremodel.ResourceKind, mesh, ruleName string, versionNo int64) (*Version, error) {
 	if err := s.ensureAvailable(); err != nil {
 		return nil, err
 	}
 	resourceKey := coremodel.BuildResourceKey(mesh, ruleName)
-	version, err := s.store.GetVersion(kind, resourceKey, id)
+	version, err := s.store.GetVersion(kind, resourceKey, versionNo)
 	if err != nil {
 		return nil, err
 	}
@@ -83,30 +81,30 @@ func (s *Service) Get(kind coremodel.ResourceKind, mesh, ruleName string, id int
 		return nil, err
 	}
 	if snapshot.Head != nil {
-		version.IsLatestRecorded = version.ID == snapshot.Head.ID
+		version.IsLatestRecorded = version.VersionNo == snapshot.Head.VersionNo
 	}
 	return version, nil
 }
 
-func (s *Service) DiffHistoryVersions(kind coremodel.ResourceKind, mesh, ruleName string, id int64, against string) (*DiffResult, error) {
+func (s *Service) DiffHistoryVersions(kind coremodel.ResourceKind, mesh, ruleName string, versionNo int64, against string) (*DiffResult, error) {
 	if err := s.ensureAvailable(); err != nil {
 		return nil, err
 	}
-	left, err := s.Get(kind, mesh, ruleName, id)
+	left, err := s.Get(kind, mesh, ruleName, versionNo)
 	if err != nil {
 		return nil, err
 	}
-	right, err := s.diffRight(kind, mesh, ruleName, id, against)
+	right, err := s.diffRight(kind, mesh, ruleName, versionNo, against)
 	if err != nil {
 		return nil, err
 	}
 	return &DiffResult{
-		Left:  DiffSide{ID: left.ID, VersionNo: left.VersionNo, SpecJSON: left.SpecJSON},
-		Right: DiffSide{ID: right.ID, VersionNo: right.VersionNo, SpecJSON: right.SpecJSON},
+		Left:  DiffSide{VersionNo: left.VersionNo, SpecJSON: left.SpecJSON},
+		Right: DiffSide{VersionNo: right.VersionNo, SpecJSON: right.SpecJSON},
 	}, nil
 }
 
-func (s *Service) diffRight(kind coremodel.ResourceKind, mesh, ruleName string, id int64, against string) (*Version, error) {
+func (s *Service) diffRight(kind coremodel.ResourceKind, mesh, ruleName string, versionNo int64, against string) (*Version, error) {
 	switch against {
 	case "previous":
 		list, err := s.store.ListVersions(kind, coremodel.BuildResourceKey(mesh, ruleName))
@@ -117,7 +115,7 @@ func (s *Service) diffRight(kind coremodel.ResourceKind, mesh, ruleName string, 
 			return list[i].VersionNo > list[j].VersionNo
 		})
 		for i := range list {
-			if list[i].ID != id {
+			if list[i].VersionNo != versionNo {
 				continue
 			}
 			if i+1 >= len(list) {
@@ -129,19 +127,19 @@ func (s *Service) diffRight(kind coremodel.ResourceKind, mesh, ruleName string, 
 	case "", "current":
 		return nil, bizerror.New(bizerror.InvalidArgument, "current diff requires live ResourceManager state and is implemented by the console service")
 	default:
-		againstID, err := strconv.ParseInt(against, 10, 64)
-		if err != nil {
-			return nil, bizerror.New(bizerror.InvalidArgument, "against must be 'current', 'previous', or a version ID")
+		againstVersionNo, err := strconv.ParseInt(against, 10, 64)
+		if err != nil || againstVersionNo <= 0 {
+			return nil, bizerror.New(bizerror.InvalidArgument, "against must be 'current', 'previous', or a version number")
 		}
-		return s.Get(kind, mesh, ruleName, againstID)
+		return s.Get(kind, mesh, ruleName, againstVersionNo)
 	}
 }
 
-func (s *Service) Append(ctx context.Context, res coremodel.Resource, op Operation, source Source, author, reason string, rolledBackFromID *int64) (*Version, error) {
+func (s *Service) Append(ctx context.Context, res coremodel.Resource, op Operation, source Source, author, reason string, rolledBackFromVersionNo *int64) (*Version, error) {
 	if err := s.ensureAvailable(); err != nil {
 		return nil, err
 	}
-	req, err := BuildInsertRequest(res, op, source, author, reason, rolledBackFromID, time.Now())
+	req, err := BuildInsertRequest(res, op, source, author, reason, rolledBackFromVersionNo, time.Now())
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +167,7 @@ func (s *Service) HasHistory(kind coremodel.ResourceKind, mesh, ruleName string)
 	return false, err
 }
 
-func BuildInsertRequest(res coremodel.Resource, op Operation, source Source, author, reason string, rolledBackFromID *int64, createdAt time.Time) (InsertRequest, error) {
+func BuildInsertRequest(res coremodel.Resource, op Operation, source Source, author, reason string, rolledBackFromVersionNo *int64, createdAt time.Time) (InsertRequest, error) {
 	if res == nil {
 		return InsertRequest{}, bizerror.New(bizerror.InvalidArgument, "rule resource is required")
 	}
@@ -190,17 +188,17 @@ func BuildInsertRequest(res coremodel.Resource, op Operation, source Source, aut
 		source = SourceAdmin
 	}
 	return InsertRequest{
-		RuleKind:         res.ResourceKind(),
-		Mesh:             res.ResourceMesh(),
-		ResourceKey:      res.ResourceKey(),
-		RuleName:         res.ResourceMeta().Name,
-		SpecJSON:         specJSON,
-		ContentHash:      hash,
-		Source:           source,
-		Operation:        op,
-		Author:           author,
-		Reason:           reason,
-		RolledBackFromID: rolledBackFromID,
-		CreatedAt:        createdAt,
+		RuleKind:                res.ResourceKind(),
+		Mesh:                    res.ResourceMesh(),
+		ResourceKey:             res.ResourceKey(),
+		RuleName:                res.ResourceMeta().Name,
+		SpecJSON:                specJSON,
+		ContentHash:             hash,
+		Source:                  source,
+		Operation:               op,
+		Author:                  author,
+		Reason:                  reason,
+		RolledBackFromVersionNo: rolledBackFromVersionNo,
+		CreatedAt:               createdAt,
 	}, nil
 }

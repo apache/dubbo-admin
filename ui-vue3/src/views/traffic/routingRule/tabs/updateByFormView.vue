@@ -168,6 +168,12 @@ const {
   parseConditionToStringToArray
 } = routingRuleLogic
 
+// Raw conditions as fetched. When configVersion is unsupported the form cannot
+// parse them into routeList, so we send these back untouched on save instead of
+// letting mergeConditions() overwrite the rule with an empty list.
+const originalConditions = ref<string[]>([])
+const conditionsEditable = ref(true)
+
 onMounted(async () => {
   if (!isNil(TAB_STATE.conditionRule)) {
     const {
@@ -190,7 +196,9 @@ onMounted(async () => {
 
     // Clear and rebuild routeList based on conditions
     if (conditions && conditions.length > 0) {
+      originalConditions.value = conditions
       if (configVersion !== 'v3.0') {
+        conditionsEditable.value = false
         console.warn(
           `skip condition route form parsing for unsupported configVersion: ${configVersion}`
         )
@@ -291,12 +299,15 @@ async function getRoutingRuleDetail() {
 
     //   format conditions data
     if (conditions && conditions.length > 0) {
+      originalConditions.value = conditions
       if (configVersion !== 'v3.0') {
+        conditionsEditable.value = false
         console.warn(
           `skip condition route form parsing for unsupported configVersion: ${configVersion}`
         )
         return
       }
+      conditionsEditable.value = true
       // Clear and rebuild routeList based on conditions
       routeList.value = []
       conditions.forEach((item: string, index: number) => {
@@ -340,7 +351,7 @@ const updateRoutingRule = async () => {
       enabled: enable,
       force: faultTolerantProtection,
       runtime,
-      conditions: mergeConditions()
+      conditions: conditionsEditable.value ? mergeConditions() : originalConditions.value
     }
     const res = await updateConditionRuleAPI(ruleName as string, data)
     if (res?.code === HTTP_STATUS.SUCCESS) {

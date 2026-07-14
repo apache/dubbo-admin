@@ -39,7 +39,7 @@
       <div v-else class="history-list">
         <div
           v-for="item in items"
-          :key="item.id"
+          :key="item.versionNo"
           class="history-item"
           :class="{ current: item.isLatestRecorded }"
         >

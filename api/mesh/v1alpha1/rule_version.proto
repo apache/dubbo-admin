@@ -45,10 +45,10 @@ message RuleVersion {
   string author = 9;                // User or system identifier
   string reason = 10;               // Change description
 
-  // rolled_back_from_id records the historical version whose snapshot was
+  // rolled_back_from_version_no records the historical version whose snapshot was
   // re-published to produce this version. It is audit metadata only and MUST NOT
   // be used as a live-state pointer.
-  int64 rolled_back_from_id = 11;
+  int64 rolled_back_from_version_no = 11;
 
   // Timestamps
   google.protobuf.Timestamp created_at = 12;

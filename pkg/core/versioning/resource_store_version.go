@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"strconv"
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -31,19 +30,18 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
-	"github.com/apache/dubbo-admin/pkg/core/store"
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
-func (a *ResourceStoreAdapter) GetVersion(kind coremodel.ResourceKind, resourceKey string, id int64) (*Version, error) {
+func (a *ResourceStoreAdapter) GetVersion(kind coremodel.ResourceKind, resourceKey string, versionNo int64) (*Version, error) {
 	if err := a.ensureStores(); err != nil {
 		return nil, err
 	}
-	rv, err := a.getVersionResourceForRule(kind, resourceKey, id)
+	rv, err := a.getVersionResourceForRule(kind, resourceKey, versionNo)
 	if err != nil {
 		return nil, err
 	}
-	return protoToVersion(rv.Spec, id)
+	return protoToVersion(rv.Spec)
 }
 
 func (a *ResourceStoreAdapter) ListVersions(kind coremodel.ResourceKind, resourceKey string) ([]Version, error) {
@@ -191,11 +189,7 @@ func versionFromObject(obj interface{}, kind coremodel.ResourceKind, resourceKey
 	if filterParent && !versionResourceMatchesParent(rv, kind, resourceKey) {
 		return Version{}, false, nil
 	}
-	id, err := versionIDFromResource(rv)
-	if err != nil {
-		return Version{}, false, fmt.Errorf("%w: %v", ErrVersionStoreError, err)
-	}
-	v, err := protoToVersion(rv.Spec, id)
+	v, err := protoToVersion(rv.Spec)
 	if err != nil {
 		return Version{}, false, err
 	}
@@ -203,12 +197,12 @@ func versionFromObject(obj interface{}, kind coremodel.ResourceKind, resourceKey
 }
 
 func validateAndSortVersions(kind coremodel.ResourceKind, resourceKey string, versions []Version) error {
-	seenVersionNo := make(map[int64]int64, len(versions))
+	seenVersionNo := make(map[int64]struct{}, len(versions))
 	for _, version := range versions {
-		if previousID, ok := seenVersionNo[version.VersionNo]; ok && previousID != version.ID {
-			return duplicateVersionNoError(kind, resourceKey, version.VersionNo, previousID, version.ID)
+		if _, ok := seenVersionNo[version.VersionNo]; ok {
+			return duplicateVersionNoError(kind, resourceKey, version.VersionNo)
 		}
-		seenVersionNo[version.VersionNo] = version.ID
+		seenVersionNo[version.VersionNo] = struct{}{}
 	}
 	sort.Slice(versions, func(i, j int) bool {
 		return versions[i].VersionNo > versions[j].VersionNo
@@ -249,28 +243,14 @@ func (a *ResourceStoreAdapter) insertVersionLocked(ctx context.Context, req Inse
 	}
 	recordedAt := time.Now()
 
-	var rv *meshresource.RuleVersionResource
-	var id int64
-
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
-	attempts := maxIDGenerateAttempts
+	var rv *meshresource.RuleVersionResource
 	var addErr error
-	for attempt := 0; attempt < attempts; attempt++ {
-		generated, err := a.idGenerator.Next()
-		if err != nil {
-			return nil, err
-		}
-		id = generated
-		if _, err := a.getVersionResourceByGlobalID(id); err == nil {
-			addErr = store.ErrorResourceAlreadyExists(meshresource.RuleVersionKind.ToString(), buildVersionName(req.RuleKind, req.ResourceKey, id), extractMesh(req.ResourceKey))
-			continue
-		} else if !errors.Is(err, ErrVersionNotFound) {
-			return nil, err
-		}
-		rv = newRuleVersionResource(req, id, versionNo, createdAt, recordedAt)
+	for attempt := 0; attempt < maxVersionAllocateAttempts; attempt++ {
+		rv = newRuleVersionResource(req, versionNo, createdAt, recordedAt)
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
@@ -278,8 +258,15 @@ func (a *ResourceStoreAdapter) insertVersionLocked(ctx context.Context, req Inse
 		if addErr == nil {
 			break
 		}
-		if !isAddConflict(addErr) {
-			return nil, fmt.Errorf("failed to add version resource id=%d: %w", id, addErr)
+
+		// A concurrent database writer can win the deterministic ResourceKey.
+		// Confirm that key now exists, then re-read the parent history before
+		// allocating the next monotonically increasing VersionNo.
+		if _, err := a.getVersionResourceForRule(req.RuleKind, req.ResourceKey, versionNo); err != nil {
+			if errors.Is(err, ErrVersionNotFound) {
+				return nil, fmt.Errorf("failed to add rule version %d: %w", versionNo, addErr)
+			}
+			return nil, err
 		}
 		if err := ctx.Err(); err != nil {
 			return nil, err
@@ -288,13 +275,14 @@ func (a *ResourceStoreAdapter) insertVersionLocked(ctx context.Context, req Inse
 		if err != nil {
 			return nil, err
 		}
-		if state.MaxVersionNo+1 <= versionNo {
+		nextVersionNo := state.MaxVersionNo + 1
+		if nextVersionNo <= versionNo {
 			return nil, fmt.Errorf("failed to allocate unique rule version number %d: %w", versionNo, addErr)
 		}
-		versionNo = state.MaxVersionNo + 1
+		versionNo = nextVersionNo
 	}
 	if addErr != nil {
-		return nil, fmt.Errorf("failed to allocate unique rule version id after %d attempts: %w", attempts, addErr)
+		return nil, fmt.Errorf("failed to allocate unique rule version number after %d attempts: %w", maxVersionAllocateAttempts, addErr)
 	}
 
 	if err := ctx.Err(); err != nil {
@@ -302,11 +290,11 @@ func (a *ResourceStoreAdapter) insertVersionLocked(ctx context.Context, req Inse
 	}
 	if maxVersions > 0 {
 		if err := a.trimVersionsLocked(ctx, req.RuleKind, req.ResourceKey, maxVersions); err != nil {
-			logger.Warnf("rule version retention cleanup failed for kind=%s resourceKey=%s recordedVersion=%d: %v", req.RuleKind, req.ResourceKey, id, err)
+			logger.Warnf("rule version retention cleanup failed for kind=%s resourceKey=%s recordedVersionNo=%d: %v", req.RuleKind, req.ResourceKey, versionNo, err)
 		}
 	}
 
-	return protoToVersion(rv.Spec, id)
+	return protoToVersion(rv.Spec)
 }
 
 func (a *ResourceStoreAdapter) trimVersionsLocked(ctx context.Context, kind coremodel.ResourceKind, resourceKey string, keep int64) error {
@@ -327,7 +315,7 @@ func (a *ResourceStoreAdapter) trimVersionsLocked(ctx context.Context, kind core
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		rv, err := a.getVersionResourceForRule(kind, resourceKey, v.ID)
+		rv, err := a.getVersionResourceForRule(kind, resourceKey, v.VersionNo)
 		if err != nil {
 			return err
 		}
@@ -339,41 +327,24 @@ func (a *ResourceStoreAdapter) trimVersionsLocked(ctx context.Context, kind core
 	return nil
 }
 
-func (a *ResourceStoreAdapter) getVersionResourceByGlobalID(id int64) (*meshresource.RuleVersionResource, error) {
-	objects, err := a.versionStore.ByIndex(index.ByRuleVersionIDIndexName, strconv.FormatInt(id, 10))
+func (a *ResourceStoreAdapter) getVersionResourceForRule(kind coremodel.ResourceKind, resourceKey string, versionNo int64) (*meshresource.RuleVersionResource, error) {
+	versionResourceKey := buildVersionResourceKey(kind, resourceKey, versionNo)
+	obj, exists, err := a.versionStore.GetByKey(versionResourceKey)
 	if err != nil {
 		return nil, err
 	}
-	if len(objects) == 0 {
+	if !exists {
 		return nil, ErrVersionNotFound
 	}
-	if len(objects) > 1 {
-		return nil, fmt.Errorf("%w: multiple RuleVersion resources indexed by id %d", ErrVersionStoreError, id)
-	}
-	rv, ok := objects[0].(*meshresource.RuleVersionResource)
+	rv, ok := obj.(*meshresource.RuleVersionResource)
 	if !ok {
-		return nil, fmt.Errorf("%w: expected RuleVersionResource, got %T", ErrVersionStoreError, objects[0])
+		return nil, fmt.Errorf("%w: expected RuleVersionResource, got %T", ErrVersionStoreError, obj)
 	}
 	if rv.Spec == nil {
-		return nil, fmt.Errorf("%w: RuleVersion spec is nil for id %d", ErrVersionStoreError, id)
+		return nil, fmt.Errorf("%w: RuleVersion spec is nil for key %s", ErrVersionStoreError, versionResourceKey)
 	}
-	indexedID, err := versionIDFromResource(rv)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrVersionStoreError, err)
-	}
-	if indexedID != id {
-		return nil, fmt.Errorf("%w: RuleVersion id index mismatch: requested %d, got %d", ErrVersionStoreError, id, indexedID)
-	}
-	return rv, nil
-}
-
-func (a *ResourceStoreAdapter) getVersionResourceForRule(kind coremodel.ResourceKind, resourceKey string, id int64) (*meshresource.RuleVersionResource, error) {
-	rv, err := a.getVersionResourceByGlobalID(id)
-	if err != nil {
-		return nil, err
-	}
-	if !versionResourceMatchesParent(rv, kind, resourceKey) {
-		return nil, ErrVersionNotFound
+	if !versionResourceMatchesParent(rv, kind, resourceKey) || rv.Spec.VersionNo != versionNo {
+		return nil, fmt.Errorf("%w: RuleVersion key %s does not match parent or version number", ErrVersionStoreError, versionResourceKey)
 	}
 	return rv, nil
 }
@@ -386,34 +357,12 @@ func versionResourceMatchesParent(rv *meshresource.RuleVersionResource, kind cor
 		rv.Spec.ParentRuleName == extractName(resourceKey)
 }
 
-func validateExistingVersionForRequest(existing *meshresource.RuleVersionResource, existingID int64, req InsertRequest) error {
-	spec := existing.Spec
-	if spec.ParentRuleKind != string(req.RuleKind) ||
-		spec.ParentRuleMesh != extractMesh(req.ResourceKey) ||
-		spec.ParentRuleName != extractName(req.ResourceKey) ||
-		spec.ContentHash != req.ContentHash ||
-		spec.SpecJson != req.SpecJSON ||
-		spec.Source != string(req.Source) ||
-		spec.Operation != string(req.Operation) ||
-		spec.Author != req.Author ||
-		spec.Reason != req.Reason ||
-		spec.RolledBackFromId != rolledBackFromIDValue(req.RolledBackFromID) {
-		return fmt.Errorf("%w: RuleVersion id %d already exists with different content", ErrVersionStoreError, existingID)
-	}
-	if !req.CreatedAt.IsZero() && !timestampAsTime(spec.CreatedAt).Equal(req.CreatedAt) {
-		return fmt.Errorf("%w: RuleVersion id %d already exists with different content", ErrVersionStoreError, existingID)
-	}
-	return nil
-}
-
-func newRuleVersionResource(req InsertRequest, id, versionNo int64, createdAt, recordedAt time.Time) *meshresource.RuleVersionResource {
+func newRuleVersionResource(req InsertRequest, versionNo int64, createdAt, recordedAt time.Time) *meshresource.RuleVersionResource {
+	_, name := coremodel.ParseResourceKey(buildVersionResourceKey(req.RuleKind, req.ResourceKey, versionNo))
 	rv := meshresource.NewRuleVersionResourceWithAttributes(
-		buildVersionNoName(req.RuleKind, req.ResourceKey, versionNo),
+		name,
 		extractMesh(req.ResourceKey),
 	)
-	rv.Annotations = map[string]string{
-		ruleVersionIDAnnotation: strconv.FormatInt(id, 10),
-	}
 	rv.Spec = &meshproto.RuleVersion{
 		ParentRuleKind: string(req.RuleKind),
 		ParentRuleMesh: extractMesh(req.ResourceKey),
@@ -428,20 +377,8 @@ func newRuleVersionResource(req InsertRequest, id, versionNo int64, createdAt, r
 		CreatedAt:      timestamppb.New(createdAt),
 		RecordedAt:     timestamppb.New(recordedAt),
 	}
-	if req.RolledBackFromID != nil {
-		rv.Spec.RolledBackFromId = *req.RolledBackFromID
+	if req.RolledBackFromVersionNo != nil {
+		rv.Spec.RolledBackFromVersionNo = *req.RolledBackFromVersionNo
 	}
 	return rv
-}
-
-func isAddConflict(err error) bool {
-	var conflict *store.ResourceConflictError
-	return errors.As(err, &conflict)
-}
-
-func rolledBackFromIDValue(id *int64) int64 {
-	if id == nil {
-		return 0
-	}
-	return *id
 }

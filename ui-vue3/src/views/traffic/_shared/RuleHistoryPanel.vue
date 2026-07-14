@@ -70,7 +70,6 @@
       <div>
         <strong>{{ t('ruleVersionDomain.latestRecordedVersion') }}:</strong>
         {{ latestRecordedVersionNo ? `v${latestRecordedVersionNo}` : t('ruleVersionDomain.none') }}
-        <span v-if="latestRecordedVersionId">({{ latestRecordedVersionId }})</span>
       </div>
       <div>
         <strong>{{ t('ruleVersionDomain.source') }}:</strong>
@@ -133,7 +132,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
-  (e: 'latest-recorded-version-change', value: string | undefined): void
   (e: 'latest-recorded-version-no-change', value: number | undefined): void
 }>()
 
@@ -145,7 +143,6 @@ const openProxy = computed({
 })
 
 const items = ref<RuleVersion[]>([])
-const latestRecordedVersionId = ref<string | undefined>(undefined)
 const latestRecordedVersionNo = ref<number | undefined>(undefined)
 const loading = ref(false)
 const versionJsonOpen = ref(false)
@@ -179,28 +176,31 @@ type OperationToken = {
   open: boolean
   kind: TrafficRuleKind
   ruleName: string
-  targetId?: string
+  targetVersionNo?: number
 }
 
-const nextOperationToken = (targetId?: string): OperationToken => ({
+const nextOperationToken = (targetVersionNo?: number): OperationToken => ({
   seq: ++operationSeq,
   open: props.open,
   kind: props.kind,
   ruleName: props.ruleName,
-  targetId
+  targetVersionNo
 })
 
 // Async drawer actions outlive loading flags when the drawer is closed or a
 // different rule is selected. The token keeps stale responses from reopening
 // modals or overwriting state for the next rule.
-const isLatestRecordedOperation = (token: OperationToken, targetId = token.targetId) =>
+const isLatestRecordedOperation = (
+  token: OperationToken,
+  targetVersionNo = token.targetVersionNo
+) =>
   !disposed &&
   token.seq === operationSeq &&
   token.open &&
   props.open &&
   token.kind === props.kind &&
   token.ruleName === props.ruleName &&
-  token.targetId === targetId
+  token.targetVersionNo === targetVersionNo
 
 async function loadHistory() {
   // Loading alone cannot distinguish an older request from a newer one. The
@@ -210,9 +210,7 @@ async function loadHistory() {
   const ruleName = props.ruleName
   if (!props.open || !ruleName || ruleName === '_tmp') {
     items.value = []
-    latestRecordedVersionId.value = undefined
     latestRecordedVersionNo.value = undefined
-    emit('latest-recorded-version-change', undefined)
     emit('latest-recorded-version-no-change', undefined)
     return
   }
@@ -226,9 +224,7 @@ async function loadHistory() {
     if (res?.code === HTTP_STATUS.SUCCESS) {
       items.value = res.data?.items || []
       const latestRecorded = latestRecordedStateFromList(res.data)
-      latestRecordedVersionId.value = latestRecorded.id
       latestRecordedVersionNo.value = latestRecorded.versionNo
-      emit('latest-recorded-version-change', latestRecordedVersionId.value)
       emit('latest-recorded-version-no-change', latestRecordedVersionNo.value)
     }
   } catch (e: any) {
@@ -249,10 +245,10 @@ const openVersionJson = (item: RuleVersion) => {
 }
 
 const openVersionDiff = async (item: RuleVersion) => {
-  const token = nextOperationToken(item.id)
+  const token = nextOperationToken(item.versionNo)
   try {
-    const res = await diffRuleVersionAPI(token.kind, token.ruleName, item.id)
-    if (!isLatestRecordedOperation(token, item.id)) {
+    const res = await diffRuleVersionAPI(token.kind, token.ruleName, item.versionNo)
+    if (!isLatestRecordedOperation(token, item.versionNo)) {
       return
     }
     if (res?.code === HTTP_STATUS.SUCCESS) {
@@ -269,7 +265,7 @@ const openVersionDiff = async (item: RuleVersion) => {
       versionDiffOpen.value = true
     }
   } catch (e: any) {
-    if (isLatestRecordedOperation(token, item.id)) {
+    if (isLatestRecordedOperation(token, item.versionNo)) {
       message.error(e?.message || t('ruleVersionDomain.diffFailed'))
     }
   }
@@ -289,16 +285,19 @@ const handleRollbackConfirm = async () => {
   }
 
   const target = rollbackTarget.value
-  const token = nextOperationToken(target.id)
+  const token = nextOperationToken(target.versionNo)
   rollbackLoading.value = true
   try {
     const res = await rollbackRuleVersionAPI(
       token.kind,
       token.ruleName,
-      target.id,
+      target.versionNo,
       rollbackReason.value
     )
-    if (!isLatestRecordedOperation(token, target.id) || rollbackTarget.value?.id !== target.id) {
+    if (
+      !isLatestRecordedOperation(token, target.versionNo) ||
+      rollbackTarget.value?.versionNo !== target.versionNo
+    ) {
       return
     }
     if (res?.code === HTTP_STATUS.SUCCESS) {
@@ -312,12 +311,15 @@ const handleRollbackConfirm = async () => {
       await loadHistory()
     }
   } catch (e: any) {
-    if (!isLatestRecordedOperation(token, target.id) || rollbackTarget.value?.id !== target.id) {
+    if (
+      !isLatestRecordedOperation(token, target.versionNo) ||
+      rollbackTarget.value?.versionNo !== target.versionNo
+    ) {
       return
     }
     message.error(e?.message || t('ruleVersionDomain.rollbackFailed'))
   } finally {
-    if (isLatestRecordedOperation(token, target.id)) {
+    if (isLatestRecordedOperation(token, target.versionNo)) {
       rollbackLoading.value = false
     }
   }

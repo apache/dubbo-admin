@@ -57,10 +57,10 @@ type RuleVersion struct {
 	Source    string `protobuf:"bytes,8,opt,name=source,proto3" json:"source,omitempty"`       // ADMIN, BOOTSTRAP, ROLLBACK
 	Author    string `protobuf:"bytes,9,opt,name=author,proto3" json:"author,omitempty"`       // User or system identifier
 	Reason    string `protobuf:"bytes,10,opt,name=reason,proto3" json:"reason,omitempty"`      // Change description
-	// rolled_back_from_id records the historical version whose snapshot was
+	// rolled_back_from_version_no records the historical version whose snapshot was
 	// re-published to produce this version. It is audit metadata only and MUST NOT
 	// be used as a live-state pointer.
-	RolledBackFromId int64 `protobuf:"varint,11,opt,name=rolled_back_from_id,json=rolledBackFromId,proto3" json:"rolled_back_from_id,omitempty"`
+	RolledBackFromVersionNo int64 `protobuf:"varint,11,opt,name=rolled_back_from_version_no,json=rolledBackFromVersionNo,proto3" json:"rolled_back_from_version_no,omitempty"`
 	// Timestamps
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	RecordedAt    *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=recorded_at,json=recordedAt,proto3" json:"recorded_at,omitempty"`
@@ -168,9 +168,9 @@ func (x *RuleVersion) GetReason() string {
 	return ""
 }
 
-func (x *RuleVersion) GetRolledBackFromId() int64 {
+func (x *RuleVersion) GetRolledBackFromVersionNo() int64 {
 	if x != nil {
-		return x.RolledBackFromId
+		return x.RolledBackFromVersionNo
 	}
 	return 0
 }
@@ -193,7 +193,7 @@ var File_api_mesh_v1alpha1_rule_version_proto protoreflect.FileDescriptor
 
 const file_api_mesh_v1alpha1_rule_version_proto_rawDesc = "" +
 	"\n" +
-	"$api/mesh/v1alpha1/rule_version.proto\x12\x13dubbo.mesh.v1alpha1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf7\x03\n" +
+	"$api/mesh/v1alpha1/rule_version.proto\x12\x13dubbo.mesh.v1alpha1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x86\x04\n" +
 	"\vRuleVersion\x12(\n" +
 	"\x10parent_rule_kind\x18\x01 \x01(\tR\x0eparentRuleKind\x12(\n" +
 	"\x10parent_rule_mesh\x18\x02 \x01(\tR\x0eparentRuleMesh\x12(\n" +
@@ -206,8 +206,8 @@ const file_api_mesh_v1alpha1_rule_version_proto_rawDesc = "" +
 	"\x06source\x18\b \x01(\tR\x06source\x12\x16\n" +
 	"\x06author\x18\t \x01(\tR\x06author\x12\x16\n" +
 	"\x06reason\x18\n" +
-	" \x01(\tR\x06reason\x12-\n" +
-	"\x13rolled_back_from_id\x18\v \x01(\x03R\x10rolledBackFromId\x129\n" +
+	" \x01(\tR\x06reason\x12<\n" +
+	"\x1brolled_back_from_version_no\x18\v \x01(\x03R\x17rolledBackFromVersionNo\x129\n" +
 	"\n" +
 	"created_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12;\n" +
 	"\vrecorded_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\n" +

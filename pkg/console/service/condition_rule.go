@@ -134,8 +134,8 @@ func DeleteConditionRule(ctx context.Context, name string, mesh string) error {
 }
 
 func DeleteConditionRuleWithOptions(ctx context.Context, name string, mesh string, opts RuleMutationOptions) error {
-	kindName := RuleKindName{Kind: meshresource.ConditionRouteKind, Mesh: mesh, Name: name}
-	if err := deleteRule(ctx, kindName, opts); err != nil {
+	ruleRef := RuleRef{Kind: meshresource.ConditionRouteKind, Mesh: mesh, Name: name}
+	if err := deleteRule(ctx, ruleRef, opts); err != nil {
 		logger.Warnf("delete %s condition failed with error: %s", name, err.Error())
 		return err
 	}

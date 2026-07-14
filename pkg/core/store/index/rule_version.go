@@ -19,7 +19,6 @@ package index
 
 import (
 	"fmt"
-	"strconv"
 
 	"k8s.io/client-go/tools/cache"
 
@@ -27,14 +26,12 @@ import (
 )
 
 const (
-	ByParentRuleIndexName    = "ByParentRule"
-	ByRuleVersionIDIndexName = "ByRuleVersionID"
+	ByParentRuleIndexName = "ByParentRule"
 )
 
 func init() {
 	RegisterIndexers(meshresource.RuleVersionKind, map[string]cache.IndexFunc{
-		ByParentRuleIndexName:    byParentRule,
-		ByRuleVersionIDIndexName: byRuleVersionID,
+		ByParentRuleIndexName: byParentRule,
 	})
 }
 
@@ -51,36 +48,4 @@ func byParentRule(obj interface{}) ([]string, error) {
 		rv.Spec.ParentRuleName,
 	)
 	return []string{key}, nil
-}
-
-func byRuleVersionID(obj interface{}) ([]string, error) {
-	rv, ok := obj.(*meshresource.RuleVersionResource)
-	if !ok || rv == nil {
-		return nil, nil
-	}
-	if id := rv.Annotations["dubbo.apache.org/rule-version-id"]; id != "" {
-		return []string{id}, nil
-	}
-	id, err := parseNumericSuffix(rv.Name)
-	if err != nil {
-		return nil, nil
-	}
-	return []string{id}, nil
-}
-
-func parseNumericSuffix(name string) (string, error) {
-	for i := len(name) - 1; i >= 0; i-- {
-		if name[i] != '-' {
-			continue
-		}
-		if i == len(name)-1 {
-			return "", fmt.Errorf("missing numeric suffix")
-		}
-		suffix := name[i+1:]
-		if _, err := strconv.ParseInt(suffix, 10, 64); err != nil {
-			return "", err
-		}
-		return suffix, nil
-	}
-	return "", fmt.Errorf("missing numeric suffix")
 }

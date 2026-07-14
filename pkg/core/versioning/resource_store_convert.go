@@ -19,26 +19,18 @@ package versioning
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
-	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
-const ruleVersionIDAnnotation = "dubbo.apache.org/rule-version-id"
-
-func buildVersionName(kind coremodel.ResourceKind, resourceKey string, id int64) string {
-	return fmt.Sprintf("%s-%s-%d", kind, extractName(resourceKey), id)
-}
-
-func buildVersionNoName(kind coremodel.ResourceKind, resourceKey string, versionNo int64) string {
-	return fmt.Sprintf("%s-%s-version-%d", kind, extractName(resourceKey), versionNo)
+func buildVersionResourceKey(kind coremodel.ResourceKind, parentResourceKey string, versionNo int64) string {
+	name := fmt.Sprintf("%s-%s-version-%d", kind, extractName(parentResourceKey), versionNo)
+	return coremodel.BuildResourceKey(extractMesh(parentResourceKey), name)
 }
 
 func buildParentIndexKey(kind coremodel.ResourceKind, resourceKey string) string {
@@ -57,43 +49,15 @@ func extractName(resourceKey string) string {
 	return name
 }
 
-func extractIDFromName(name string) (int64, error) {
-	idx := strings.LastIndex(name, "-")
-	if idx == -1 || idx == len(name)-1 {
-		return 0, fmt.Errorf("invalid version name format: %s", name)
-	}
-	id, err := strconv.ParseInt(name[idx+1:], 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("invalid version name format: %s", name)
-	}
-	return id, nil
-}
-
-func versionIDFromResource(rv *meshresource.RuleVersionResource) (int64, error) {
-	if rv == nil {
-		return 0, fmt.Errorf("RuleVersion resource is nil")
-	}
-	if rv.Annotations != nil {
-		if raw := rv.Annotations[ruleVersionIDAnnotation]; raw != "" {
-			id, err := strconv.ParseInt(raw, 10, 64)
-			if err != nil {
-				return 0, fmt.Errorf("invalid RuleVersion id annotation for %s: %w", rv.Name, err)
-			}
-			return id, nil
-		}
-	}
-	return extractIDFromName(rv.Name)
-}
-
-func protoToVersion(spec *meshproto.RuleVersion, id int64) (*Version, error) {
+func protoToVersion(spec *meshproto.RuleVersion) (*Version, error) {
 	if spec == nil {
 		return nil, bizerror.New(bizerror.InvalidArgument, "RuleVersion spec is nil")
 	}
 
-	var rolledBackFromID *int64
-	if spec.RolledBackFromId != 0 {
-		v := spec.RolledBackFromId
-		rolledBackFromID = &v
+	var rolledBackFromVersionNo *int64
+	if spec.RolledBackFromVersionNo != 0 {
+		v := spec.RolledBackFromVersionNo
+		rolledBackFromVersionNo = &v
 	}
 
 	createdAt := timestampAsTime(spec.CreatedAt)
@@ -103,22 +67,21 @@ func protoToVersion(spec *meshproto.RuleVersion, id int64) (*Version, error) {
 	}
 
 	return &Version{
-		ID:               id,
-		RuleKind:         coremodel.ResourceKind(spec.ParentRuleKind),
-		Mesh:             spec.ParentRuleMesh,
-		ResourceKey:      coremodel.BuildResourceKey(spec.ParentRuleMesh, spec.ParentRuleName),
-		RuleName:         spec.ParentRuleName,
-		VersionNo:        spec.VersionNo,
-		ContentHash:      spec.ContentHash,
-		SpecJSON:         spec.SpecJson,
-		Operation:        Operation(spec.Operation),
-		Source:           Source(spec.Source),
-		Author:           spec.Author,
-		Reason:           spec.Reason,
-		RolledBackFromID: rolledBackFromID,
-		CreatedAt:        createdAt,
-		RecordedAt:       recordedAt,
-		IsLatestRecorded: false,
+		RuleKind:                coremodel.ResourceKind(spec.ParentRuleKind),
+		Mesh:                    spec.ParentRuleMesh,
+		ResourceKey:             coremodel.BuildResourceKey(spec.ParentRuleMesh, spec.ParentRuleName),
+		RuleName:                spec.ParentRuleName,
+		VersionNo:               spec.VersionNo,
+		ContentHash:             spec.ContentHash,
+		SpecJSON:                spec.SpecJson,
+		Operation:               Operation(spec.Operation),
+		Source:                  Source(spec.Source),
+		Author:                  spec.Author,
+		Reason:                  spec.Reason,
+		RolledBackFromVersionNo: rolledBackFromVersionNo,
+		CreatedAt:               createdAt,
+		RecordedAt:              recordedAt,
+		IsLatestRecorded:        false,
 	}, nil
 }
 
@@ -135,21 +98,17 @@ func historySnapshotFromState(state *historyState) *HistorySnapshot {
 	head := snapshot.Versions[0]
 	snapshot.Head = &head
 	snapshot.Deleted = head.Operation == OperationDelete
-	for i := range snapshot.Versions {
-		snapshot.Versions[i].IsLatestRecorded = snapshot.Versions[i].ID == head.ID
-	}
+	snapshot.Versions[0].IsLatestRecorded = true
 	return snapshot
 }
 
-func duplicateVersionNoError(kind coremodel.ResourceKind, resourceKey string, versionNo, firstID, secondID int64) error {
-	return fmt.Errorf("%w: duplicate version number for kind=%s mesh=%s rule=%s versionNo=%d conflictingVersionIDs=%d,%d",
+func duplicateVersionNoError(kind coremodel.ResourceKind, resourceKey string, versionNo int64) error {
+	return fmt.Errorf("%w: duplicate version number for kind=%s mesh=%s rule=%s versionNo=%d",
 		ErrVersionStoreError,
 		kind,
 		extractMesh(resourceKey),
 		extractName(resourceKey),
 		versionNo,
-		firstID,
-		secondID,
 	)
 }
 

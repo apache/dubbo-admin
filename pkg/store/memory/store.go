@@ -40,7 +40,6 @@ type resourceStore struct {
 	rk          coremodel.ResourceKind
 	storeProxy  cache.Indexer
 	prefixTrees map[string]*radix.Tree
-	mu          sync.Mutex
 	treesMu     sync.RWMutex
 }
 
@@ -75,15 +74,6 @@ func (rs *resourceStore) Start(_ runtime.Runtime, _ <-chan struct{}) error {
 }
 
 func (rs *resourceStore) Add(obj interface{}) error {
-	rs.mu.Lock()
-	defer rs.mu.Unlock()
-	if r, ok := obj.(coremodel.Resource); ok {
-		if _, exists, err := rs.storeProxy.GetByKey(r.ResourceKey()); err != nil {
-			return err
-		} else if exists {
-			return store.ErrorResourceAlreadyExists(r.ResourceKind().ToString(), r.ResourceMeta().Name, r.ResourceMesh())
-		}
-	}
 	if err := rs.storeProxy.Add(obj); err != nil {
 		return err
 	}
@@ -95,8 +85,6 @@ func (rs *resourceStore) Add(obj interface{}) error {
 }
 
 func (rs *resourceStore) Update(obj interface{}) error {
-	rs.mu.Lock()
-	defer rs.mu.Unlock()
 	r, ok := obj.(coremodel.Resource)
 	var oldRes coremodel.Resource
 	if ok {
@@ -120,8 +108,6 @@ func (rs *resourceStore) Update(obj interface{}) error {
 }
 
 func (rs *resourceStore) Delete(obj interface{}) error {
-	rs.mu.Lock()
-	defer rs.mu.Unlock()
 	if err := rs.storeProxy.Delete(obj); err != nil {
 		return err
 	}
@@ -148,8 +134,6 @@ func (rs *resourceStore) GetByKey(key string) (item interface{}, exists bool, er
 }
 
 func (rs *resourceStore) Replace(i []interface{}, s string) error {
-	rs.mu.Lock()
-	defer rs.mu.Unlock()
 	// Clear all trees before replace
 	rs.treesMu.Lock()
 	for indexName := range rs.prefixTrees {

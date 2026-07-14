@@ -142,8 +142,8 @@ func DeleteConfigurator(ctx consolectx.Context, name string, mesh string) error 
 }
 
 func DeleteConfiguratorWithOptions(ctx consolectx.Context, name string, mesh string, opts RuleMutationOptions) error {
-	kindName := RuleKindName{Kind: meshresource.DynamicConfigKind, Mesh: mesh, Name: name}
-	if err := deleteRule(ctx, kindName, opts); err != nil {
+	ruleRef := RuleRef{Kind: meshresource.DynamicConfigKind, Mesh: mesh, Name: name}
+	if err := deleteRule(ctx, ruleRef, opts); err != nil {
 		logger.Warnf("delete %s configurator failed with error: %s", name, err.Error())
 		return err
 	}

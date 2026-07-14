@@ -140,8 +140,8 @@ func DeleteTagRule(ctx consolectx.Context, name string, mesh string) error {
 }
 
 func DeleteTagRuleWithOptions(ctx consolectx.Context, name string, mesh string, opts RuleMutationOptions) error {
-	kindName := RuleKindName{Kind: meshresource.TagRouteKind, Mesh: mesh, Name: name}
-	if err := deleteRule(ctx, kindName, opts); err != nil {
+	ruleRef := RuleRef{Kind: meshresource.TagRouteKind, Mesh: mesh, Name: name}
+	if err := deleteRule(ctx, ruleRef, opts); err != nil {
 		logger.Warnf("delete tag rule %s error: %v", name, err)
 		return err
 	}

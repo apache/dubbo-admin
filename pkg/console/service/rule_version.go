@@ -34,7 +34,7 @@ type RuleMutationOptions struct {
 	Author string
 }
 
-type RuleKindName struct {
+type RuleRef struct {
 	Kind coremodel.ResourceKind
 	Mesh string
 	Name string
@@ -56,9 +56,9 @@ func requiredRuleVersioning(ctx consolectx.Context) (*versioning.Service, error)
 }
 
 // getRuleIfExists reads the live ResourceManager state, not recorded history.
-func getRuleIfExists(ctx consolectx.Context, kindName RuleKindName) (coremodel.Resource, bool, error) {
-	key := coremodel.BuildResourceKey(kindName.Mesh, kindName.Name)
-	res, exists, err := ctx.ResourceManager().GetByKey(kindName.Kind, key)
+func getRuleIfExists(ctx consolectx.Context, ruleRef RuleRef) (coremodel.Resource, bool, error) {
+	key := coremodel.BuildResourceKey(ruleRef.Mesh, ruleRef.Name)
+	res, exists, err := ctx.ResourceManager().GetByKey(ruleRef.Kind, key)
 	if err != nil {
 		return nil, false, err
 	}
@@ -68,24 +68,24 @@ func getRuleIfExists(ctx consolectx.Context, kindName RuleKindName) (coremodel.R
 	return res, true, nil
 }
 
-func getExistingRule(ctx consolectx.Context, kindName RuleKindName) (coremodel.Resource, error) {
-	res, exists, err := getRuleIfExists(ctx, kindName)
+func getExistingRule(ctx consolectx.Context, ruleRef RuleRef) (coremodel.Resource, error) {
+	res, exists, err := getRuleIfExists(ctx, ruleRef)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		key := coremodel.BuildResourceKey(kindName.Mesh, kindName.Name)
-		return nil, fmt.Errorf("%s %s does not exist", kindName.Kind, key)
+		key := coremodel.BuildResourceKey(ruleRef.Mesh, ruleRef.Name)
+		return nil, fmt.Errorf("%s %s does not exist", ruleRef.Kind, key)
 	}
 	return res, nil
 }
 
-func appendRuleHistory(ctx consolectx.Context, res coremodel.Resource, op versioning.Operation, source versioning.Source, author, reason string, rolledBackFromID *int64) (*versioning.Version, error) {
+func appendRuleHistory(ctx consolectx.Context, res coremodel.Resource, op versioning.Operation, source versioning.Source, author, reason string, rolledBackFromVersionNo *int64) (*versioning.Version, error) {
 	svc, err := requiredRuleVersioning(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return svc.Append(ctx.AppContext(), res, op, source, author, reason, rolledBackFromID)
+	return svc.Append(ctx.AppContext(), res, op, source, author, reason, rolledBackFromVersionNo)
 }
 
 func ensureBaselineHistory(ctx consolectx.Context, res coremodel.Resource) error {
@@ -109,31 +109,31 @@ func ensureBaselineHistory(ctx consolectx.Context, res coremodel.Resource) error
 	return nil
 }
 
-func withRuleLock(ctx consolectx.Context, kindName RuleKindName, fn func() error) error {
+func withRuleLock(ctx consolectx.Context, ruleRef RuleRef, fn func() error) error {
 	lockMgr := ctx.LockManager()
 	if lockMgr == nil {
 		return fn()
 	}
-	lockKey := ruleLockKey(kindName)
+	lockKey := ruleLockKey(ruleRef)
 	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, fn)
 }
 
-func ruleLockKey(kindName RuleKindName) string {
-	switch kindName.Kind {
+func ruleLockKey(ruleRef RuleRef) string {
+	switch ruleRef.Kind {
 	case meshresource.ConditionRouteKind:
-		return lock.BuildConditionRuleLockKey(kindName.Mesh, kindName.Name)
+		return lock.BuildConditionRuleLockKey(ruleRef.Mesh, ruleRef.Name)
 	case meshresource.TagRouteKind:
-		return lock.BuildTagRouteLockKey(kindName.Mesh, kindName.Name)
+		return lock.BuildTagRouteLockKey(ruleRef.Mesh, ruleRef.Name)
 	case meshresource.DynamicConfigKind:
-		return lock.BuildConfiguratorRuleLockKey(kindName.Mesh, kindName.Name)
+		return lock.BuildConfiguratorRuleLockKey(ruleRef.Mesh, ruleRef.Name)
 	default:
-		return lock.BuildLockKey(kindName.Kind.ToString(), kindName.Mesh, kindName.Name)
+		return lock.BuildLockKey(ruleRef.Kind.ToString(), ruleRef.Mesh, ruleRef.Name)
 	}
 }
 
 func createRule(ctx consolectx.Context, res coremodel.Resource, opts RuleMutationOptions) error {
-	kindName := RuleKindName{Kind: res.ResourceKind(), Mesh: res.ResourceMesh(), Name: res.ResourceMeta().Name}
-	return withRuleLock(ctx, kindName, func() error {
+	ruleRef := RuleRef{Kind: res.ResourceKind(), Mesh: res.ResourceMesh(), Name: res.ResourceMeta().Name}
+	return withRuleLock(ctx, ruleRef, func() error {
 		if _, err := appendRuleHistory(ctx, res, versioning.OperationCreate, versioning.SourceAdmin, opts.Author, "", nil); err != nil {
 			return err
 		}
@@ -145,9 +145,9 @@ func createRule(ctx consolectx.Context, res coremodel.Resource, opts RuleMutatio
 }
 
 func updateRule(ctx consolectx.Context, res coremodel.Resource, opts RuleMutationOptions) error {
-	kindName := RuleKindName{Kind: res.ResourceKind(), Mesh: res.ResourceMesh(), Name: res.ResourceMeta().Name}
-	return withRuleLock(ctx, kindName, func() error {
-		existing, err := getExistingRule(ctx, kindName)
+	ruleRef := RuleRef{Kind: res.ResourceKind(), Mesh: res.ResourceMesh(), Name: res.ResourceMeta().Name}
+	return withRuleLock(ctx, ruleRef, func() error {
+		existing, err := getExistingRule(ctx, ruleRef)
 		if err != nil {
 			return err
 		}
@@ -164,10 +164,10 @@ func updateRule(ctx consolectx.Context, res coremodel.Resource, opts RuleMutatio
 	})
 }
 
-func deleteRule(ctx consolectx.Context, kindName RuleKindName, opts RuleMutationOptions) error {
-	return withRuleLock(ctx, kindName, func() error {
-		resourceKey := coremodel.BuildResourceKey(kindName.Mesh, kindName.Name)
-		snapshot, exists, err := ctx.ResourceManager().GetByKey(kindName.Kind, resourceKey)
+func deleteRule(ctx consolectx.Context, ruleRef RuleRef, opts RuleMutationOptions) error {
+	return withRuleLock(ctx, ruleRef, func() error {
+		resourceKey := coremodel.BuildResourceKey(ruleRef.Mesh, ruleRef.Name)
+		snapshot, exists, err := ctx.ResourceManager().GetByKey(ruleRef.Kind, resourceKey)
 		if err != nil {
 			return err
 		}
@@ -180,42 +180,42 @@ func deleteRule(ctx consolectx.Context, kindName RuleKindName, opts RuleMutation
 		if _, err := appendRuleHistory(ctx, snapshot, versioning.OperationDelete, versioning.SourceAdmin, opts.Author, "", nil); err != nil {
 			return err
 		}
-		if err := ctx.ResourceManager().DeleteByKey(kindName.Kind, kindName.Mesh, resourceKey); err != nil {
+		if err := ctx.ResourceManager().DeleteByKey(ruleRef.Kind, ruleRef.Mesh, resourceKey); err != nil {
 			return err
 		}
 		return nil
 	})
 }
 
-func ListRuleVersions(ctx consolectx.Context, kindName RuleKindName) (*versioning.ListResult, error) {
+func ListRuleVersions(ctx consolectx.Context, ruleRef RuleRef) (*versioning.ListResult, error) {
 	svc := ruleVersioning(ctx)
 	if svc == nil {
 		return nil, versioning.ErrVersionStoreError
 	}
-	return svc.List(kindName.Kind, kindName.Mesh, kindName.Name)
+	return svc.List(ruleRef.Kind, ruleRef.Mesh, ruleRef.Name)
 }
 
-func GetRuleVersion(ctx consolectx.Context, kindName RuleKindName, versionID int64) (*versioning.Version, error) {
+func GetRuleVersion(ctx consolectx.Context, ruleRef RuleRef, versionNo int64) (*versioning.Version, error) {
 	svc := ruleVersioning(ctx)
 	if svc == nil {
 		return nil, versioning.ErrVersionStoreError
 	}
-	return svc.Get(kindName.Kind, kindName.Mesh, kindName.Name, versionID)
+	return svc.Get(ruleRef.Kind, ruleRef.Mesh, ruleRef.Name, versionNo)
 }
 
-func DiffRuleVersion(ctx consolectx.Context, kindName RuleKindName, versionID int64, against string) (*versioning.DiffResult, error) {
+func DiffRuleVersion(ctx consolectx.Context, ruleRef RuleRef, versionNo int64, against string) (*versioning.DiffResult, error) {
 	svc := ruleVersioning(ctx)
 	if svc == nil {
 		return nil, versioning.ErrVersionStoreError
 	}
 	if against != "" && against != "current" {
-		return svc.DiffHistoryVersions(kindName.Kind, kindName.Mesh, kindName.Name, versionID, against)
+		return svc.DiffHistoryVersions(ruleRef.Kind, ruleRef.Mesh, ruleRef.Name, versionNo, against)
 	}
-	left, err := svc.Get(kindName.Kind, kindName.Mesh, kindName.Name, versionID)
+	left, err := svc.Get(ruleRef.Kind, ruleRef.Mesh, ruleRef.Name, versionNo)
 	if err != nil {
 		return nil, err
 	}
-	current, exists, err := getRuleIfExists(ctx, kindName)
+	current, exists, err := getRuleIfExists(ctx, ruleRef)
 	if err != nil {
 		return nil, err
 	}
@@ -227,20 +227,19 @@ func DiffRuleVersion(ctx consolectx.Context, kindName RuleKindName, versionID in
 		}
 	}
 	return &versioning.DiffResult{
-		Left:  versioning.DiffSide{ID: left.ID, VersionNo: left.VersionNo, SpecJSON: left.SpecJSON},
-		Right: versioning.DiffSide{ID: 0, VersionNo: 0, SpecJSON: specJSON},
+		Left:  versioning.DiffSide{VersionNo: left.VersionNo, SpecJSON: left.SpecJSON},
+		Right: versioning.DiffSide{VersionNo: 0, SpecJSON: specJSON},
 	}, nil
 }
 
 // RollbackResult summarizes a rollback write for the API response.
 type RollbackResult struct {
-	RolledBackFromID int64  `json:"rolledBackFromId"`
-	VersionID        int64  `json:"versionId"`
-	VersionNo        int64  `json:"versionNo"`
-	Source           string `json:"source"`
+	RolledBackFromVersionNo int64
+	VersionNo               int64
+	Source                  string
 }
 
-func RollbackRuleVersion(ctx consolectx.Context, kindName RuleKindName, targetVersionID int64, reason string, author string) (*RollbackResult, error) {
+func RollbackRuleVersion(ctx consolectx.Context, ruleRef RuleRef, targetVersionNo int64, reason string, author string) (*RollbackResult, error) {
 	svc := ruleVersioning(ctx)
 	if svc == nil {
 		return nil, versioning.ErrVersionStoreError
@@ -251,8 +250,8 @@ func RollbackRuleVersion(ctx consolectx.Context, kindName RuleKindName, targetVe
 	}
 
 	var result *RollbackResult
-	err := withRuleLock(ctx, kindName, func() error {
-		target, err := svc.Get(kindName.Kind, kindName.Mesh, kindName.Name, targetVersionID)
+	err := withRuleLock(ctx, ruleRef, func() error {
+		target, err := svc.Get(ruleRef.Kind, ruleRef.Mesh, ruleRef.Name, targetVersionNo)
 		if err != nil {
 			return err
 		}
@@ -263,7 +262,7 @@ func RollbackRuleVersion(ctx consolectx.Context, kindName RuleKindName, targetVe
 			return bizerror.New(bizerror.InvalidArgument, "only CREATE or UPDATE rule versions can be rolled back")
 		}
 
-		current, exists, err := getRuleIfExists(ctx, kindName)
+		current, exists, err := getRuleIfExists(ctx, ruleRef)
 		if err != nil {
 			return err
 		}
@@ -277,7 +276,7 @@ func RollbackRuleVersion(ctx consolectx.Context, kindName RuleKindName, targetVe
 			}
 		}
 
-		res, err := versioning.ResourceFromSpecJSON(kindName.Kind, kindName.Mesh, kindName.Name, target.SpecJSON)
+		res, err := versioning.ResourceFromSpecJSON(ruleRef.Kind, ruleRef.Mesh, ruleRef.Name, target.SpecJSON)
 		if err != nil {
 			return err
 		}
@@ -286,8 +285,8 @@ func RollbackRuleVersion(ctx consolectx.Context, kindName RuleKindName, targetVe
 		if !exists {
 			operation = versioning.OperationCreate
 		}
-		fromID := target.ID
-		appended, err := appendRuleHistory(ctx, res, operation, versioning.SourceRollback, author, reason, &fromID)
+		rolledBackFromVersionNo := target.VersionNo
+		appended, err := appendRuleHistory(ctx, res, operation, versioning.SourceRollback, author, reason, &rolledBackFromVersionNo)
 		if err != nil {
 			return err
 		}
@@ -296,10 +295,9 @@ func RollbackRuleVersion(ctx consolectx.Context, kindName RuleKindName, targetVe
 		}
 
 		result = &RollbackResult{
-			RolledBackFromID: fromID,
-			Source:           string(versioning.SourceRollback),
-			VersionID:        appended.ID,
-			VersionNo:        appended.VersionNo,
+			RolledBackFromVersionNo: rolledBackFromVersionNo,
+			Source:                  string(versioning.SourceRollback),
+			VersionNo:               appended.VersionNo,
 		}
 		return nil
 	})

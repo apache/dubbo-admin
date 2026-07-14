@@ -19,10 +19,7 @@ import request from '@/base/http/request'
 
 export type TrafficRuleKind = 'condition-rule' | 'tag-rule' | 'configurator'
 
-// Version IDs are int64 values serialized as decimal strings by the API. Keep
-// them as strings in the UI to avoid JavaScript number precision loss.
 export interface RuleVersion {
-  id: string
   ruleKind: string
   mesh: string
   resourceKey: string
@@ -34,7 +31,7 @@ export interface RuleVersion {
   operation: 'CREATE' | 'UPDATE' | 'DELETE' | string
   author: string
   reason?: string
-  rolledBackFromId?: string
+  rolledBackFromVersionNo?: number
   createdAt: string
   recordedAt?: string
   isLatestRecorded: boolean
@@ -43,13 +40,11 @@ export interface RuleVersion {
 export interface RuleVersionList {
   items: RuleVersion[]
   total: number
-  latestRecordedVersionId?: string
   latestRecordedVersionNo?: number
   latestRecordedDeleted?: boolean
 }
 
 export interface RuleVersionDiffSide {
-  id: string
   versionNo: number
   specJson: string
 }
@@ -60,8 +55,7 @@ export interface RuleVersionDiff {
 }
 
 export interface RollbackRuleVersionResult {
-  rolledBackFromId: string
-  versionId: string
+  rolledBackFromVersionNo: number
   versionNo: number
   source: 'ROLLBACK' | string
 }
@@ -83,10 +77,10 @@ export const listRuleVersionsAPI = (
 export const getRuleVersionAPI = (
   kind: TrafficRuleKind,
   ruleName: string,
-  versionId: string
+  versionNo: number
 ): Promise<{ code: string; data: RuleVersion }> => {
   return request({
-    url: `/${kind}/${ruleNameForPath(kind, ruleName)}/versions/${versionId}`,
+    url: `/${kind}/${ruleNameForPath(kind, ruleName)}/versions/${versionNo}`,
     method: 'get'
   })
 }
@@ -94,11 +88,11 @@ export const getRuleVersionAPI = (
 export const diffRuleVersionAPI = (
   kind: TrafficRuleKind,
   ruleName: string,
-  versionId: string,
-  against = 'current'
+  versionNo: number,
+  against: 'current' | 'previous' | number = 'current'
 ): Promise<{ code: string; data: RuleVersionDiff }> => {
   return request({
-    url: `/${kind}/${ruleNameForPath(kind, ruleName)}/versions/${versionId}/diff`,
+    url: `/${kind}/${ruleNameForPath(kind, ruleName)}/versions/${versionNo}/diff`,
     method: 'get',
     params: { against }
   })
@@ -107,11 +101,11 @@ export const diffRuleVersionAPI = (
 export const rollbackRuleVersionAPI = (
   kind: TrafficRuleKind,
   ruleName: string,
-  versionId: string,
+  versionNo: number,
   reason: string
 ): Promise<{ code: string; data: RollbackRuleVersionResult }> => {
   return request({
-    url: `/${kind}/${ruleNameForPath(kind, ruleName)}/versions/${versionId}/rollback`,
+    url: `/${kind}/${ruleNameForPath(kind, ruleName)}/versions/${versionNo}/rollback`,
     method: 'post',
     data: { reason }
   })

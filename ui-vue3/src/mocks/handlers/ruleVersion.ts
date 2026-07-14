@@ -46,14 +46,12 @@ const spec = (ruleName: string, marker: string) =>
 const version = (
   kind: TrafficRuleKind,
   ruleName: string,
-  id: string,
   versionNo: number,
   operation: RuleVersion['operation'],
   source: RuleVersion['source'],
   isLatestRecorded: boolean,
   marker = `v${versionNo}`
 ): RuleVersion => ({
-  id,
   ruleKind: kind,
   mesh: 'default',
   resourceKey: `/${ruleName}`,
@@ -75,22 +73,22 @@ const fixtureVersions = (kind: TrafficRuleKind, ruleName: string): RuleVersion[]
       return []
     case 'deleted':
       return [
-        version(kind, ruleName, '2003', 3, 'DELETE', 'ADMIN', false, 'deleted'),
-        version(kind, ruleName, '2002', 2, 'UPDATE', 'ADMIN', false),
-        version(kind, ruleName, '2001', 1, 'CREATE', 'BOOTSTRAP', false)
+        version(kind, ruleName, 3, 'DELETE', 'ADMIN', true, 'deleted'),
+        version(kind, ruleName, 2, 'UPDATE', 'ADMIN', false),
+        version(kind, ruleName, 1, 'CREATE', 'BOOTSTRAP', false)
       ]
     case 'diff':
       return [
-        version(kind, ruleName, '4002', 2, 'UPDATE', 'ADMIN', true, 'right'),
-        version(kind, ruleName, '4001', 1, 'CREATE', 'BOOTSTRAP', false, 'left')
+        version(kind, ruleName, 2, 'UPDATE', 'ADMIN', true, 'right'),
+        version(kind, ruleName, 1, 'CREATE', 'BOOTSTRAP', false, 'left')
       ]
     default:
       return [
-        version(kind, ruleName, '1005', 5, 'UPDATE', 'ADMIN', true),
-        version(kind, ruleName, '1004', 4, 'UPDATE', 'ADMIN', false),
-        version(kind, ruleName, '1003', 3, 'UPDATE', 'ADMIN', false),
-        version(kind, ruleName, '1002', 2, 'UPDATE', 'ADMIN', false),
-        version(kind, ruleName, '1001', 1, 'CREATE', 'BOOTSTRAP', false)
+        version(kind, ruleName, 5, 'UPDATE', 'ADMIN', true),
+        version(kind, ruleName, 4, 'UPDATE', 'ADMIN', false),
+        version(kind, ruleName, 3, 'UPDATE', 'ADMIN', false),
+        version(kind, ruleName, 2, 'UPDATE', 'ADMIN', false),
+        version(kind, ruleName, 1, 'CREATE', 'BOOTSTRAP', false)
       ]
   }
 }
@@ -104,7 +102,6 @@ const versionList = (versions: RuleVersion[]): RuleVersionList => {
   return {
     items: versions,
     total: versions.length,
-    latestRecordedVersionId: latestRecorded?.id,
     latestRecordedVersionNo: latestRecorded?.versionNo,
     latestRecordedDeleted: Boolean(head?.operation === 'DELETE')
   }
@@ -141,45 +138,47 @@ const buildVersionHandlersForKind = (kind: TrafficRuleKind): HttpHandler[] => [
     return success<RuleVersionList>(versionList(versions))
   }),
 
-  http.get(`${base}/${kind}/:ruleName/versions/:versionId`, ({ params }) => {
+  http.get(`${base}/${kind}/:ruleName/versions/:versionNo`, ({ params }) => {
     const ruleName = decodeName(params.ruleName as string)
-    const versionId = String(params.versionId || '').trim()
-    if (!versionId) return bizError('InvalidArgument', 'versionId must be an integer', 400)
-    const found = fixtureVersions(kind, ruleName).find((item) => item.id === versionId)
+    const versionNo = Number(params.versionNo)
+    if (!Number.isInteger(versionNo) || versionNo <= 0)
+      return bizError('InvalidArgument', 'versionNo must be a positive integer', 400)
+    const found = fixtureVersions(kind, ruleName).find((item) => item.versionNo === versionNo)
     return found ? success(found) : notFoundResp('rule version not found')
   }),
 
-  http.get(`${base}/${kind}/:ruleName/versions/:versionId/diff`, ({ params, request }) => {
+  http.get(`${base}/${kind}/:ruleName/versions/:versionNo/diff`, ({ params, request }) => {
     const ruleName = decodeName(params.ruleName as string)
-    const versionId = String(params.versionId || '').trim()
-    if (!versionId) return bizError('InvalidArgument', 'versionId must be an integer', 400)
+    const versionNo = Number(params.versionNo)
+    if (!Number.isInteger(versionNo) || versionNo <= 0)
+      return bizError('InvalidArgument', 'versionNo must be a positive integer', 400)
     const versions = fixtureVersions(kind, ruleName)
-    const left = versions.find((item) => item.id === versionId)
+    const left = versions.find((item) => item.versionNo === versionNo)
     if (!left) return notFoundResp('rule version not found')
     const against = new URL(request.url).searchParams.get('against') || 'current'
     if (against !== 'current' && against !== 'previous' && !/^\d+$/.test(against)) {
       return bizError(
         'InvalidArgument',
-        "against must be 'current', 'previous', or a version ID",
+        "against must be 'current', 'previous', or a version number",
         400
       )
     }
-    const leftIndex = versions.findIndex((item) => item.id === versionId)
+    const leftIndex = versions.findIndex((item) => item.versionNo === versionNo)
     const right =
       against === 'current'
         ? latestRecordedVersionOf(versions)
         : against === 'previous'
           ? versions[leftIndex + 1]
-          : versions.find((item) => item.id === against)
+          : versions.find((item) => item.versionNo === Number(against))
     if (!right) return notFoundResp('rule version not found')
     return success<RuleVersionDiff>({
-      left: { id: left.id, versionNo: left.versionNo, specJson: left.specJson },
-      right: { id: right.id, versionNo: right.versionNo, specJson: right.specJson }
+      left: { versionNo: left.versionNo, specJson: left.specJson },
+      right: { versionNo: right.versionNo, specJson: right.specJson }
     })
   }),
 
   http.post(
-    `${base}/${kind}/:ruleName/versions/:versionId/rollback`,
+    `${base}/${kind}/:ruleName/versions/:versionNo/rollback`,
     async ({ params, request }) => {
       const ruleName = decodeName(params.ruleName as string)
       const body = await readJsonBody(request)
@@ -187,15 +186,15 @@ const buildVersionHandlersForKind = (kind: TrafficRuleKind): HttpHandler[] => [
       if (reasonErr) return reasonErr
 
       const versions = fixtureVersions(kind, ruleName)
-      const target = versions.find((item) => item.id === String(params.versionId || '').trim())
+      const targetVersionNo = Number(params.versionNo)
+      const target = versions.find((item) => item.versionNo === targetVersionNo)
       if (!target) return notFoundResp('rule version not found')
       if (target.operation === 'DELETE')
         return bizError('InvalidArgument', 'cannot roll back to a DELETE marker', 400)
       const latestRecorded = latestRecordedVersionOf(versions)
 
       return success({
-        rolledBackFromId: target.id,
-        versionId: '9901',
+        rolledBackFromVersionNo: target.versionNo,
         versionNo: (latestRecorded?.versionNo ?? 0) + 1,
         source: 'ROLLBACK'
       })

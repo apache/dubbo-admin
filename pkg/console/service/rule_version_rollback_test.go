@@ -277,8 +277,8 @@ func tagRule(name, payload string) *meshresource.TagRouteResource {
 	return res
 }
 
-func kindName(name string) RuleKindName {
-	return RuleKindName{Kind: meshresource.ConditionRouteKind, Name: name}
+func ruleRef(name string) RuleRef {
+	return RuleRef{Kind: meshresource.ConditionRouteKind, Name: name}
 }
 
 func TestRuleMutationsUsePerRuleDistributedLock(t *testing.T) {
@@ -372,13 +372,13 @@ func TestRollbackRunsHistoryAppendAndRegistryMutationInsideRuleLock(t *testing.T
 	ctx.gov.trace = trace
 
 	require.NoError(t, CreateConditionRuleWithOptions(ctx, conditionRule("demo-rule", "v1"), RuleMutationOptions{Author: "admin"}))
-	versions, err := ListRuleVersions(ctx, kindName("demo-rule"))
+	versions, err := ListRuleVersions(ctx, ruleRef("demo-rule"))
 	require.NoError(t, err)
-	targetID := versions.Items[0].ID
+	targetVersionNo := versions.Items[0].VersionNo
 	require.NoError(t, UpdateConditionRuleWithOptions(ctx, conditionRule("demo-rule", "v2"), RuleMutationOptions{Author: "admin"}))
 
 	trace.reset()
-	result, err := RollbackRuleVersion(ctx, kindName("demo-rule"), targetID, "restore", "admin")
+	result, err := RollbackRuleVersion(ctx, ruleRef("demo-rule"), targetVersionNo, "restore", "admin")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -394,7 +394,7 @@ func TestUpdateAppendsBaselineBeforeFirstHistory(t *testing.T) {
 
 	require.NoError(t, UpdateConditionRuleWithOptions(ctx, conditionRule("demo-rule", "v2"), RuleMutationOptions{Author: "admin"}))
 
-	versions, err := ListRuleVersions(ctx, kindName("demo-rule"))
+	versions, err := ListRuleVersions(ctx, ruleRef("demo-rule"))
 	require.NoError(t, err)
 	require.Len(t, versions.Items, 2)
 	assert.Equal(t, versioning.OperationUpdate, versions.Items[0].Operation)
@@ -411,7 +411,7 @@ func TestCreateUpdateDeleteAppendHistory(t *testing.T) {
 	require.NoError(t, UpdateConditionRuleWithOptions(ctx, conditionRule("demo-rule", "v2"), RuleMutationOptions{Author: "admin"}))
 	require.NoError(t, DeleteConditionRuleWithOptions(ctx, "demo-rule", "", RuleMutationOptions{Author: "admin"}))
 
-	versions, err := ListRuleVersions(ctx, kindName("demo-rule"))
+	versions, err := ListRuleVersions(ctx, ruleRef("demo-rule"))
 	require.NoError(t, err)
 	require.Len(t, versions.Items, 3)
 	assert.Equal(t, versioning.OperationDelete, versions.Items[0].Operation)
@@ -436,7 +436,7 @@ func TestMutationFailsClosedWhenHistoryAppendFails(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, exists)
 
-	versions, err := ListRuleVersions(ctx, kindName("demo-rule"))
+	versions, err := ListRuleVersions(ctx, ruleRef("demo-rule"))
 	require.NoError(t, err)
 	assert.Empty(t, versions.Items)
 }
@@ -459,7 +459,7 @@ func TestZeroRetentionConfigStillRecordsVersions(t *testing.T) {
 
 	require.NoError(t, CreateConditionRuleWithOptions(ctx, conditionRule("demo-rule", "v1"), RuleMutationOptions{Author: "admin"}))
 
-	versions, err := ListRuleVersions(ctx, kindName("demo-rule"))
+	versions, err := ListRuleVersions(ctx, ruleRef("demo-rule"))
 	require.NoError(t, err)
 	require.Len(t, versions.Items, 1)
 	assert.Equal(t, versioning.OperationCreate, versions.Items[0].Operation)
@@ -474,7 +474,7 @@ func TestRegistryWriteFailureReturnsErrorAfterLedgerAppend(t *testing.T) {
 	_, exists, getErr := ctx.rm.GetByKey(meshresource.ConditionRouteKind, "/demo-rule")
 	require.NoError(t, getErr)
 	assert.False(t, exists)
-	versions, listErr := ListRuleVersions(ctx, kindName("demo-rule"))
+	versions, listErr := ListRuleVersions(ctx, ruleRef("demo-rule"))
 	require.NoError(t, listErr)
 	require.Len(t, versions.Items, 1)
 	assert.Equal(t, versioning.OperationCreate, versions.Items[0].Operation)
@@ -485,7 +485,7 @@ func TestDeleteMissingRuleDoesNotAppendHistory(t *testing.T) {
 
 	require.NoError(t, DeleteConditionRuleWithOptions(ctx, "missing-rule", "", RuleMutationOptions{Author: "admin"}))
 
-	versions, err := ListRuleVersions(ctx, kindName("missing-rule"))
+	versions, err := ListRuleVersions(ctx, ruleRef("missing-rule"))
 	require.NoError(t, err)
 	assert.Empty(t, versions.Items)
 }
@@ -493,27 +493,26 @@ func TestDeleteMissingRuleDoesNotAppendHistory(t *testing.T) {
 func TestRollbackUpsertsAndAppendsRollbackHistory(t *testing.T) {
 	ctx := setupRollbackTestEnv(t)
 	require.NoError(t, CreateConditionRuleWithOptions(ctx, conditionRule("demo-rule", "v1"), RuleMutationOptions{Author: "admin"}))
-	versions, err := ListRuleVersions(ctx, kindName("demo-rule"))
+	versions, err := ListRuleVersions(ctx, ruleRef("demo-rule"))
 	require.NoError(t, err)
-	targetID := versions.Items[0].ID
+	targetVersionNo := versions.Items[0].VersionNo
 	require.NoError(t, DeleteConditionRuleWithOptions(ctx, "demo-rule", "", RuleMutationOptions{Author: "admin"}))
 
-	result, err := RollbackRuleVersion(ctx, kindName("demo-rule"), targetID, "restore", "admin")
+	result, err := RollbackRuleVersion(ctx, ruleRef("demo-rule"), targetVersionNo, "restore", "admin")
 	require.NoError(t, err)
-	assert.Equal(t, targetID, result.RolledBackFromID)
-	assert.NotZero(t, result.VersionID)
+	assert.Equal(t, targetVersionNo, result.RolledBackFromVersionNo)
 	assert.NotZero(t, result.VersionNo)
 
 	current, exists, err := ctx.rm.GetByKey(meshresource.ConditionRouteKind, "/demo-rule")
 	require.NoError(t, err)
 	require.True(t, exists)
 	assert.Contains(t, current.String(), "v1")
-	versions, err = ListRuleVersions(ctx, kindName("demo-rule"))
+	versions, err = ListRuleVersions(ctx, ruleRef("demo-rule"))
 	require.NoError(t, err)
 	assert.Equal(t, versioning.SourceRollback, versions.Items[0].Source)
 	assert.Equal(t, versioning.OperationCreate, versions.Items[0].Operation)
-	require.NotNil(t, versions.Items[0].RolledBackFromID)
-	assert.Equal(t, targetID, *versions.Items[0].RolledBackFromID)
+	require.NotNil(t, versions.Items[0].RolledBackFromVersionNo)
+	assert.Equal(t, targetVersionNo, *versions.Items[0].RolledBackFromVersionNo)
 }
 
 func TestRollbackFailsClosedWhenHistoryAppendFails(t *testing.T) {
@@ -525,12 +524,12 @@ func TestRollbackFailsClosedWhenHistoryAppendFails(t *testing.T) {
 	})
 	require.NoError(t, CreateConditionRuleWithOptions(ctx, conditionRule("demo-rule", "v1"), RuleMutationOptions{Author: "admin"}))
 	require.NoError(t, UpdateConditionRuleWithOptions(ctx, conditionRule("demo-rule", "v2"), RuleMutationOptions{Author: "admin"}))
-	versions, err := ListRuleVersions(ctx, kindName("demo-rule"))
+	versions, err := ListRuleVersions(ctx, ruleRef("demo-rule"))
 	require.NoError(t, err)
-	targetID := versions.Items[1].ID
+	targetVersionNo := versions.Items[1].VersionNo
 	failingVersionStore.failNextAdd = true
 
-	_, err = RollbackRuleVersion(ctx, kindName("demo-rule"), targetID, "restore", "admin")
+	_, err = RollbackRuleVersion(ctx, ruleRef("demo-rule"), targetVersionNo, "restore", "admin")
 	require.Error(t, err)
 	current, exists, err := ctx.rm.GetByKey(meshresource.ConditionRouteKind, "/demo-rule")
 	require.NoError(t, err)
@@ -542,32 +541,32 @@ func TestRollbackRejectsDeleteMarker(t *testing.T) {
 	ctx := setupRollbackTestEnv(t)
 	require.NoError(t, CreateConditionRuleWithOptions(ctx, conditionRule("demo-rule", "v1"), RuleMutationOptions{Author: "admin"}))
 	require.NoError(t, DeleteConditionRuleWithOptions(ctx, "demo-rule", "", RuleMutationOptions{Author: "admin"}))
-	versions, err := ListRuleVersions(ctx, kindName("demo-rule"))
+	versions, err := ListRuleVersions(ctx, ruleRef("demo-rule"))
 	require.NoError(t, err)
 	require.Equal(t, versioning.OperationDelete, versions.Items[0].Operation)
 
-	_, err = RollbackRuleVersion(ctx, kindName("demo-rule"), versions.Items[0].ID, "restore delete marker", "admin")
+	_, err = RollbackRuleVersion(ctx, ruleRef("demo-rule"), versions.Items[0].VersionNo, "restore delete marker", "admin")
 	require.ErrorIs(t, err, versioning.ErrRollbackToDelete)
 }
 
 func TestRollbackNoOpRejectedAgainstActualCurrent(t *testing.T) {
 	ctx := setupRollbackTestEnv(t)
 	require.NoError(t, CreateConditionRuleWithOptions(ctx, conditionRule("demo-rule", "v1"), RuleMutationOptions{Author: "admin"}))
-	versions, err := ListRuleVersions(ctx, kindName("demo-rule"))
+	versions, err := ListRuleVersions(ctx, ruleRef("demo-rule"))
 	require.NoError(t, err)
 
-	_, err = RollbackRuleVersion(ctx, kindName("demo-rule"), versions.Items[0].ID, "same content", "admin")
+	_, err = RollbackRuleVersion(ctx, ruleRef("demo-rule"), versions.Items[0].VersionNo, "same content", "admin")
 	require.ErrorIs(t, err, versioning.ErrRollbackToCurrent)
 }
 
 func TestDiffAgainstCurrentReadsLiveResourceManagerState(t *testing.T) {
 	ctx := setupRollbackTestEnv(t)
 	require.NoError(t, CreateConditionRuleWithOptions(ctx, conditionRule("demo-rule", "v1"), RuleMutationOptions{Author: "admin"}))
-	versions, err := ListRuleVersions(ctx, kindName("demo-rule"))
+	versions, err := ListRuleVersions(ctx, ruleRef("demo-rule"))
 	require.NoError(t, err)
 	require.NoError(t, ctx.stores[meshresource.ConditionRouteKind].Update(conditionRule("demo-rule", "v2-outside-history")))
 
-	diff, err := DiffRuleVersion(ctx, kindName("demo-rule"), versions.Items[0].ID, "current")
+	diff, err := DiffRuleVersion(ctx, ruleRef("demo-rule"), versions.Items[0].VersionNo, "current")
 	require.NoError(t, err)
 	assert.Contains(t, diff.Left.SpecJSON, "v1")
 	assert.Contains(t, diff.Right.SpecJSON, "v2-outside-history")

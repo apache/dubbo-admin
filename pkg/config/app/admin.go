@@ -197,7 +197,7 @@ func (c *AdminConfig) Validate() error {
 }
 
 // FindDiscovery finds the DiscoveryConfig by id, returns nil if not found
-func (c AdminConfig) FindDiscovery(id string) *discovery.Config {
+func (c *AdminConfig) FindDiscovery(id string) *discovery.Config {
 	for _, d := range c.Discovery {
 		if d.ID == id {
 			return d
@@ -207,7 +207,7 @@ func (c AdminConfig) FindDiscovery(id string) *discovery.Config {
 }
 
 // Meshes return the mesh id list of discoveries
-func (c AdminConfig) Meshes() []string {
+func (c *AdminConfig) Meshes() []string {
 	return slice.Map(c.Discovery, func(index int, item *discovery.Config) string {
 		return item.ID
 	})

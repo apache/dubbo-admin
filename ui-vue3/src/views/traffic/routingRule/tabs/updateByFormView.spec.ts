@@ -163,7 +163,8 @@ describe('condition route form compatibility', () => {
         configVersion: 'v3.1',
         priority: 12,
         force: true,
-        runtime: false
+        runtime: false,
+        conditions: ['host=1.1.1.1 => host=2.2.2.2']
       })
     )
   })

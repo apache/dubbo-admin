@@ -27,7 +27,7 @@ import (
 )
 
 const parentLockStripes = 256
-const maxIDGenerateAttempts = 16
+const maxVersionAllocateAttempts = 16
 
 // ResourceStoreAdapter routes RuleVersion resources through the existing
 // resource store. The striped mutexes only keep a single adapter instance
@@ -35,14 +35,12 @@ const maxIDGenerateAttempts = 16
 // numbers for audit entries.
 type ResourceStoreAdapter struct {
 	versionStore store.ResourceStore
-	idGenerator  idGenerator
 	parentLocks  [parentLockStripes]sync.Mutex
 }
 
 func NewResourceStoreAdapter(versionStore store.ResourceStore) *ResourceStoreAdapter {
 	return &ResourceStoreAdapter{
 		versionStore: versionStore,
-		idGenerator:  NewIDGenerator(),
 	}
 }
 

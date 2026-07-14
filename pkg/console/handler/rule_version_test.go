@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -34,23 +35,46 @@ import (
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/apache/dubbo-admin/pkg/core/manager"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/versioning"
 )
 
-type ruleVersionHandlerTestContext struct{}
+type ruleVersionHandlerTestContext struct {
+	versioningSvc *versioning.Service
+}
 
 func (ruleVersionHandlerTestContext) ResourceManager() manager.ResourceManager { return nil }
 func (ruleVersionHandlerTestContext) CounterManager() counter.CounterManager   { return nil }
 func (ruleVersionHandlerTestContext) Config() appcfg.AdminConfig               { return appcfg.AdminConfig{} }
 func (ruleVersionHandlerTestContext) AppContext() context.Context              { return context.Background() }
 func (ruleVersionHandlerTestContext) LockManager() lock.Lock                   { return nil }
-func (ruleVersionHandlerTestContext) RuleVersioning() *versioning.Service      { return nil }
+func (c ruleVersionHandlerTestContext) RuleVersioning() *versioning.Service    { return c.versioningSvc }
 
 func testGinContext() (*gin.Context, *httptest.ResponseRecorder) {
 	gin.SetMode(gin.TestMode)
 	recorder := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(recorder)
 	return ctx, recorder
+}
+
+func TestRollbackRuleVersionRejectsMalformedJSONWithBadRequest(t *testing.T) {
+	ctx, recorder := testGinContext()
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/versions/1/rollback", strings.NewReader("{"))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+	ctx.Params = gin.Params{
+		{Key: "ruleName", Value: "demo-rule"},
+		{Key: "versionNo", Value: "1"},
+	}
+	handler := RollbackRuleVersion(
+		ruleVersionHandlerTestContext{versioningSvc: versioning.NewService(0, nil)},
+		coremodel.ResourceKind("ConditionRoute"),
+	)
+
+	handler(ctx)
+
+	assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	resp := decodeCommonResp(t, recorder)
+	assert.Equal(t, string(bizerror.InvalidArgument), resp.Code)
 }
 
 func decodeCommonResp(t *testing.T, recorder *httptest.ResponseRecorder) model.CommonResp {
@@ -94,7 +118,7 @@ func TestWriteVersioningRespMapsBusinessErrorsToCommonResp(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, recorder := testGinContext()
 
-			writeVersioningResp(ctx, nil, tt.err)
+			assert.True(t, writeVersioningError(ctx, tt.err))
 
 			assert.Equal(t, http.StatusOK, recorder.Code)
 			resp := decodeCommonResp(t, recorder)

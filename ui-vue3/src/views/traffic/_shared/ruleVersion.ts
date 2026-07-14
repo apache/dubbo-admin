@@ -24,7 +24,6 @@ import {
 import { HTTP_STATUS } from '@/base/http/constants'
 
 export interface LatestRecordedState {
-  id?: string
   versionNo?: number
   latestRecordedDeleted: boolean
 }
@@ -33,7 +32,6 @@ export const latestRecordedStateFromItems = (items: RuleVersion[]): LatestRecord
   const latestRecorded = items.find((item) => item.isLatestRecorded)
   const head = items[0]
   return {
-    id: latestRecorded?.id,
     versionNo: latestRecorded?.versionNo,
     latestRecordedDeleted: Boolean(head?.operation === 'DELETE')
   }
@@ -43,9 +41,8 @@ export const latestRecordedStateFromList = (list?: RuleVersionList): LatestRecor
   if (!list) {
     return { latestRecordedDeleted: false }
   }
-  if (list.latestRecordedVersionId !== undefined || list.latestRecordedDeleted !== undefined) {
+  if (list.latestRecordedVersionNo !== undefined || list.latestRecordedDeleted !== undefined) {
     return {
-      id: list.latestRecordedVersionId,
       versionNo: list.latestRecordedVersionNo,
       latestRecordedDeleted: Boolean(list.latestRecordedDeleted)
     }

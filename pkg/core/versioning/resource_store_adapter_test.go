@@ -19,6 +19,7 @@ package versioning
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -27,6 +28,7 @@ import (
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store"
 	memoryst "github.com/apache/dubbo-admin/pkg/store/memory"
 )
@@ -45,11 +47,88 @@ func TestResourceStoreAdapter_AppendsAndListsByParentRule(t *testing.T) {
 	snapshot, err := adapter.HistorySnapshot(meshresource.ConditionRouteKind, res.ResourceKey())
 	require.NoError(t, err)
 	require.Len(t, snapshot.Versions, 2)
-	assert.Equal(t, v2.ID, snapshot.Head.ID)
+	assert.Equal(t, v2.VersionNo, snapshot.Head.VersionNo)
 	assert.Equal(t, int64(2), snapshot.Head.VersionNo)
 	assert.True(t, snapshot.Versions[0].IsLatestRecorded)
 	assert.False(t, snapshot.Versions[1].IsLatestRecorded)
-	assert.NotEqual(t, v1.ID, v2.ID)
+	assert.Equal(t, int64(1), v1.VersionNo)
+	assert.Equal(t, int64(2), v2.VersionNo)
+}
+
+func TestResourceStoreAdapter_UsesDeterministicVersionResourceKey(t *testing.T) {
+	versionStore := newVersionStore(t)
+	adapter := NewResourceStoreAdapter(versionStore)
+	res := conditionRouteForVersionTest("demo-rule", "v1")
+
+	version, err := adapter.InsertVersion(t.Context(), insertRequestForTest(t, res, OperationCreate), 10)
+	require.NoError(t, err)
+
+	item, exists, err := versionStore.GetByKey(buildVersionResourceKey(res.ResourceKind(), res.ResourceKey(), version.VersionNo))
+	require.NoError(t, err)
+	require.True(t, exists)
+	ruleVersion := item.(*meshresource.RuleVersionResource)
+	assert.Empty(t, ruleVersion.Annotations)
+}
+
+func TestResourceStoreAdapter_GetVersionValidatesDeterministicKeyContents(t *testing.T) {
+	versionStore := newVersionStore(t)
+	adapter := NewResourceStoreAdapter(versionStore)
+	res := conditionRouteForVersionTest("demo-rule", "v1")
+	req := insertRequestForTest(t, res, OperationCreate)
+	ruleVersion := newRuleVersionResource(req, 1, time.Now(), time.Now())
+	ruleVersion.Spec.ParentRuleName = "different-parent"
+	require.NoError(t, versionStore.Add(ruleVersion))
+
+	_, err := adapter.GetVersion(res.ResourceKind(), res.ResourceKey(), 1)
+	require.ErrorIs(t, err, ErrVersionStoreError)
+}
+
+func TestResourceStoreAdapter_RetriesVersionNumberAfterDeterministicKeyConflict(t *testing.T) {
+	versionStore := newVersionStore(t)
+	conflictingStore := &addConflictOnceStore{ResourceStore: versionStore}
+	adapter := NewResourceStoreAdapter(conflictingStore)
+	res := conditionRouteForVersionTest("demo-rule", "v1")
+
+	version, err := adapter.InsertVersion(t.Context(), insertRequestForTest(t, res, OperationCreate), 10)
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), version.VersionNo)
+
+	versions, err := adapter.ListVersions(res.ResourceKind(), res.ResourceKey())
+	require.NoError(t, err)
+	require.Len(t, versions, 2)
+	assert.Equal(t, int64(2), versions[0].VersionNo)
+	assert.Equal(t, int64(1), versions[1].VersionNo)
+}
+
+func TestResourceStoreAdapter_RetentionDoesNotReuseVersionNumbers(t *testing.T) {
+	adapter := NewResourceStoreAdapter(newVersionStore(t))
+	res := conditionRouteForVersionTest("demo-rule", "v1")
+
+	for i := 0; i < 4; i++ {
+		res = conditionRouteForVersionTest("demo-rule", string(rune('a'+i)))
+		version, err := adapter.InsertVersion(t.Context(), insertRequestForTest(t, res, OperationUpdate), 2)
+		require.NoError(t, err)
+		assert.Equal(t, int64(i+1), version.VersionNo)
+	}
+
+	versions, err := adapter.ListVersions(res.ResourceKind(), res.ResourceKey())
+	require.NoError(t, err)
+	require.Len(t, versions, 2)
+	assert.Equal(t, []int64{4, 3}, []int64{versions[0].VersionNo, versions[1].VersionNo})
+}
+
+func TestResourceStoreAdapter_ZeroRetentionLimitStillRecordsHistory(t *testing.T) {
+	adapter := NewResourceStoreAdapter(newVersionStore(t))
+	res := conditionRouteForVersionTest("demo-rule", "v1")
+
+	for i := 0; i < 3; i++ {
+		_, err := adapter.InsertVersion(t.Context(), insertRequestForTest(t, res, OperationUpdate), 0)
+		require.NoError(t, err)
+	}
+
+	versions, err := adapter.ListVersions(res.ResourceKind(), res.ResourceKey())
+	require.NoError(t, err)
+	assert.Len(t, versions, 3)
 }
 
 func TestResourceStoreAdapter_DeleteVersionStoresAbsenceMarker(t *testing.T) {
@@ -118,4 +197,32 @@ func insertRequestForTest(t *testing.T, res *meshresource.ConditionRouteResource
 	req, err := BuildInsertRequest(res, op, SourceAdmin, "admin", "", nil, time.Now())
 	require.NoError(t, err)
 	return req
+}
+
+type addConflictOnceStore struct {
+	store.ResourceStore
+	once sync.Once
+}
+
+func (s *addConflictOnceStore) Add(obj interface{}) error {
+	var (
+		first    bool
+		addErr   error
+		conflict error
+	)
+	s.once.Do(func() {
+		first = true
+		res := obj.(coremodel.Resource)
+		addErr = s.ResourceStore.Add(obj)
+		if addErr == nil {
+			conflict = store.ErrorResourceAlreadyExists(res.ResourceKind().ToString(), res.ResourceMeta().Name, res.ResourceMesh())
+		}
+	})
+	if first {
+		if addErr != nil {
+			return addErr
+		}
+		return conflict
+	}
+	return s.ResourceStore.Add(obj)
 }

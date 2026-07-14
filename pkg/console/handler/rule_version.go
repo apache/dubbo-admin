@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -37,10 +36,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/versioning"
 )
 
-type rollbackReq struct {
-	Reason string `json:"reason"`
-}
-
 const maxRuleVersionReasonLength = 1024
 
 func ListRuleVersions(cs consolectx.Context, kind coremodel.ResourceKind) gin.HandlerFunc {
@@ -48,8 +43,11 @@ func ListRuleVersions(cs consolectx.Context, kind coremodel.ResourceKind) gin.Ha
 		if !ensureVersioningAvailable(c, cs) {
 			return
 		}
-		resp, err := service.ListRuleVersions(cs, service.RuleKindName{Kind: kind, Mesh: c.Query("mesh"), Name: c.Param("ruleName")})
-		writeVersioningResp(c, resp, err)
+		resp, err := service.ListRuleVersions(cs, ruleRef(c, kind))
+		if writeVersioningError(c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, model.NewSuccessResp(toRuleVersionListResp(resp)))
 	}
 }
 
@@ -58,12 +56,15 @@ func GetRuleVersion(cs consolectx.Context, kind coremodel.ResourceKind) gin.Hand
 		if !ensureVersioningAvailable(c, cs) {
 			return
 		}
-		id, ok := parseVersionID(c)
+		versionNo, ok := parseVersionNo(c)
 		if !ok {
 			return
 		}
-		resp, err := service.GetRuleVersion(cs, service.RuleKindName{Kind: kind, Mesh: c.Query("mesh"), Name: c.Param("ruleName")}, id)
-		writeVersioningResp(c, resp, err)
+		resp, err := service.GetRuleVersion(cs, ruleRef(c, kind), versionNo)
+		if writeVersioningError(c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, model.NewSuccessResp(toRuleVersionResp(resp)))
 	}
 }
 
@@ -72,12 +73,15 @@ func DiffRuleVersion(cs consolectx.Context, kind coremodel.ResourceKind) gin.Han
 		if !ensureVersioningAvailable(c, cs) {
 			return
 		}
-		id, ok := parseVersionID(c)
+		versionNo, ok := parseVersionNo(c)
 		if !ok {
 			return
 		}
-		resp, err := service.DiffRuleVersion(cs, service.RuleKindName{Kind: kind, Mesh: c.Query("mesh"), Name: c.Param("ruleName")}, id, c.Query("against"))
-		writeVersioningResp(c, resp, err)
+		resp, err := service.DiffRuleVersion(cs, ruleRef(c, kind), versionNo, c.Query("against"))
+		if writeVersioningError(c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, model.NewSuccessResp(toRuleVersionDiffResp(resp)))
 	}
 }
 
@@ -86,11 +90,11 @@ func RollbackRuleVersion(cs consolectx.Context, kind coremodel.ResourceKind) gin
 		if !ensureVersioningAvailable(c, cs) {
 			return
 		}
-		id, ok := parseVersionID(c)
+		versionNo, ok := parseVersionNo(c)
 		if !ok {
 			return
 		}
-		req := rollbackReq{}
+		req := model.RollbackRuleVersionReq{}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			writeVersioningInvalidArgument(c, err.Error())
 			return
@@ -98,8 +102,11 @@ func RollbackRuleVersion(cs consolectx.Context, kind coremodel.ResourceKind) gin
 		if !validateRuleVersionReasonLength(c, req.Reason) {
 			return
 		}
-		resp, err := service.RollbackRuleVersion(cs, service.RuleKindName{Kind: kind, Mesh: c.Query("mesh"), Name: c.Param("ruleName")}, id, req.Reason, currentUser(c))
-		writeVersioningResp(c, resp, err)
+		resp, err := service.RollbackRuleVersion(cs, ruleRef(c, kind), versionNo, req.Reason, currentUser(c))
+		if writeVersioningError(c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, model.NewSuccessResp(toRollbackRuleVersionResp(resp)))
 	}
 }
 
@@ -107,7 +114,7 @@ func validateRuleVersionReasonLength(c *gin.Context, reason string) bool {
 	if len(strings.TrimSpace(reason)) <= maxRuleVersionReasonLength {
 		return true
 	}
-	writeVersioningResp(c, nil, bizerror.New(bizerror.InvalidArgument, "reason must be at most 1024 characters"))
+	writeVersioningInvalidArgument(c, "reason must be at most 1024 characters")
 	return false
 }
 
@@ -115,35 +122,39 @@ func mutationOptions(c *gin.Context) service.RuleMutationOptions {
 	return service.RuleMutationOptions{Author: currentUser(c)}
 }
 
-func parseVersionID(c *gin.Context) (int64, bool) {
-	id, err := parseProtocolInt64(c.Param("versionId"))
-	if err != nil {
-		writeVersioningInvalidArgument(c, "versionId must be a positive decimal string")
-		return 0, false
-	}
-	return id, true
+func ruleRef(c *gin.Context, kind coremodel.ResourceKind) service.RuleRef {
+	return service.RuleRef{Kind: kind, Mesh: c.Query("mesh"), Name: c.Param("ruleName")}
 }
 
-func parseProtocolInt64(raw string) (int64, error) {
+func parseVersionNo(c *gin.Context) (int64, bool) {
+	versionNo, err := parsePositiveInt64(c.Param("versionNo"))
+	if err != nil {
+		writeVersioningInvalidArgument(c, "versionNo must be a positive decimal string")
+		return 0, false
+	}
+	return versionNo, true
+}
+
+func parsePositiveInt64(raw string) (int64, error) {
 	if raw == "" {
-		return 0, fmt.Errorf("empty id")
+		return 0, fmt.Errorf("empty value")
 	}
 	for i := range raw {
 		if raw[i] < '0' || raw[i] > '9' {
-			return 0, fmt.Errorf("invalid decimal id")
+			return 0, fmt.Errorf("invalid decimal value")
 		}
 	}
 	if len(raw) > 1 && raw[0] == '0' {
 		return 0, fmt.Errorf("invalid leading zero")
 	}
-	id, err := strconv.ParseInt(raw, 10, 64)
+	value, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
 		return 0, err
 	}
-	if id <= 0 {
-		return 0, fmt.Errorf("id must be positive")
+	if value <= 0 {
+		return 0, fmt.Errorf("value must be positive")
 	}
-	return id, nil
+	return value, nil
 }
 
 func currentUser(c *gin.Context) string {
@@ -162,12 +173,12 @@ func ensureVersioningAvailable(c *gin.Context, cs consolectx.Context) bool {
 	return false
 }
 
-func writeVersioningResp(c *gin.Context, data any, err error) {
+func writeVersioningError(c *gin.Context, err error) bool {
 	if err == nil {
-		c.JSON(http.StatusOK, model.NewSuccessResp(versioningAPIData(data)))
-		return
+		return false
 	}
 	util.HandleServiceError(c, versioningServiceError(err))
+	return true
 }
 
 func versioningServiceError(err error) error {
@@ -184,137 +195,61 @@ func versioningServiceError(err error) error {
 	}
 }
 
-type ruleVersionAPI struct {
-	ID               string                 `json:"id"`
-	RuleKind         coremodel.ResourceKind `json:"ruleKind"`
-	Mesh             string                 `json:"mesh"`
-	ResourceKey      string                 `json:"resourceKey"`
-	RuleName         string                 `json:"ruleName"`
-	VersionNo        int64                  `json:"versionNo"`
-	ContentHash      string                 `json:"contentHash"`
-	SpecJSON         string                 `json:"specJson"`
-	Source           versioning.Source      `json:"source"`
-	Operation        versioning.Operation   `json:"operation"`
-	Author           string                 `json:"author"`
-	Reason           string                 `json:"reason,omitempty"`
-	RolledBackFromID *string                `json:"rolledBackFromId,omitempty"`
-	CreatedAt        time.Time              `json:"createdAt"`
-	RecordedAt       time.Time              `json:"recordedAt"`
-	IsLatestRecorded bool                   `json:"isLatestRecorded"`
-}
-
-type ruleVersionListAPI struct {
-	Items                   []ruleVersionAPI `json:"items"`
-	Total                   int64            `json:"total"`
-	LatestRecordedVersionID *string          `json:"latestRecordedVersionId,omitempty"`
-	LatestRecordedVersionNo int64            `json:"latestRecordedVersionNo,omitempty"`
-	LatestRecordedDeleted   bool             `json:"latestRecordedDeleted"`
-}
-
-type ruleVersionDiffAPI struct {
-	Left  ruleVersionDiffSideAPI `json:"left"`
-	Right ruleVersionDiffSideAPI `json:"right"`
-}
-
-type ruleVersionDiffSideAPI struct {
-	ID        string `json:"id"`
-	VersionNo int64  `json:"versionNo"`
-	SpecJSON  string `json:"specJson"`
-}
-
-type rollbackRuleVersionAPI struct {
-	RolledBackFromID string `json:"rolledBackFromId"`
-	VersionID        string `json:"versionId"`
-	VersionNo        int64  `json:"versionNo"`
-	Source           string `json:"source"`
-}
-
-func versioningAPIData(data any) any {
-	switch v := data.(type) {
-	case *versioning.ListResult:
-		if v == nil {
-			return nil
-		}
-		items := make([]ruleVersionAPI, 0, len(v.Items))
-		for i := range v.Items {
-			items = append(items, toRuleVersionAPI(&v.Items[i]))
-		}
-		return &ruleVersionListAPI{
-			Items:                   items,
-			Total:                   v.Total,
-			LatestRecordedVersionID: formatOptionalInt64(v.LatestRecordedVersionID),
-			LatestRecordedVersionNo: v.LatestRecordedVersionNo,
-			LatestRecordedDeleted:   v.LatestRecordedDeleted,
-		}
-	case *versioning.Version:
-		if v == nil {
-			return nil
-		}
-		return toRuleVersionAPI(v)
-	case *versioning.DiffResult:
-		if v == nil {
-			return nil
-		}
-		return &ruleVersionDiffAPI{
-			Left:  toRuleVersionDiffSideAPI(v.Left),
-			Right: toRuleVersionDiffSideAPI(v.Right),
-		}
-	case *service.RollbackResult:
-		if v == nil {
-			return nil
-		}
-		return &rollbackRuleVersionAPI{
-			RolledBackFromID: formatInt64(v.RolledBackFromID),
-			VersionID:        formatInt64(v.VersionID),
-			VersionNo:        v.VersionNo,
-			Source:           v.Source,
-		}
-	default:
-		return data
+func toRuleVersionResp(version *versioning.Version) model.RuleVersionResp {
+	return model.RuleVersionResp{
+		RuleKind:                version.RuleKind,
+		Mesh:                    version.Mesh,
+		ResourceKey:             version.ResourceKey,
+		RuleName:                version.RuleName,
+		VersionNo:               version.VersionNo,
+		ContentHash:             version.ContentHash,
+		SpecJSON:                version.SpecJSON,
+		Source:                  version.Source,
+		Operation:               version.Operation,
+		Author:                  version.Author,
+		Reason:                  version.Reason,
+		RolledBackFromVersionNo: version.RolledBackFromVersionNo,
+		CreatedAt:               version.CreatedAt,
+		RecordedAt:              version.RecordedAt,
+		IsLatestRecorded:        version.IsLatestRecorded,
 	}
 }
 
-func toRuleVersionAPI(v *versioning.Version) ruleVersionAPI {
-	return ruleVersionAPI{
-		ID:               formatInt64(v.ID),
-		RuleKind:         v.RuleKind,
-		Mesh:             v.Mesh,
-		ResourceKey:      v.ResourceKey,
-		RuleName:         v.RuleName,
-		VersionNo:        v.VersionNo,
-		ContentHash:      v.ContentHash,
-		SpecJSON:         v.SpecJSON,
-		Source:           v.Source,
-		Operation:        v.Operation,
-		Author:           v.Author,
-		Reason:           v.Reason,
-		RolledBackFromID: formatOptionalInt64(v.RolledBackFromID),
-		CreatedAt:        v.CreatedAt,
-		RecordedAt:       v.RecordedAt,
-		IsLatestRecorded: v.IsLatestRecorded,
+func toRuleVersionListResp(result *versioning.ListResult) model.RuleVersionListResp {
+	items := make([]model.RuleVersionResp, 0, len(result.Items))
+	for i := range result.Items {
+		items = append(items, toRuleVersionResp(&result.Items[i]))
+	}
+	return model.RuleVersionListResp{
+		Items:                   items,
+		Total:                   result.Total,
+		LatestRecordedVersionNo: result.LatestRecordedVersionNo,
+		LatestRecordedDeleted:   result.LatestRecordedDeleted,
 	}
 }
 
-func toRuleVersionDiffSideAPI(side versioning.DiffSide) ruleVersionDiffSideAPI {
-	return ruleVersionDiffSideAPI{
-		ID:        formatInt64(side.ID),
+func toRuleVersionDiffResp(result *versioning.DiffResult) model.RuleVersionDiffResp {
+	return model.RuleVersionDiffResp{
+		Left:  toRuleVersionDiffSideResp(result.Left),
+		Right: toRuleVersionDiffSideResp(result.Right),
+	}
+}
+
+func toRuleVersionDiffSideResp(side versioning.DiffSide) model.RuleVersionDiffSideResp {
+	return model.RuleVersionDiffSideResp{
 		VersionNo: side.VersionNo,
 		SpecJSON:  side.SpecJSON,
 	}
 }
 
-func formatInt64(id int64) string {
-	return strconv.FormatInt(id, 10)
-}
-
-func formatOptionalInt64(id *int64) *string {
-	if id == nil {
-		return nil
+func toRollbackRuleVersionResp(result *service.RollbackResult) model.RollbackRuleVersionResp {
+	return model.RollbackRuleVersionResp{
+		RolledBackFromVersionNo: result.RolledBackFromVersionNo,
+		VersionNo:               result.VersionNo,
+		Source:                  result.Source,
 	}
-	value := formatInt64(*id)
-	return &value
 }
 
 func writeVersioningInvalidArgument(c *gin.Context, message string) {
-	writeVersioningResp(c, nil, bizerror.New(bizerror.InvalidArgument, message))
+	c.JSON(http.StatusBadRequest, model.NewBizErrorResp(bizerror.New(bizerror.InvalidArgument, message)))
 }

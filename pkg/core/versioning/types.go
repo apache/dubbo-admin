@@ -60,7 +60,6 @@ var (
 // retention may delete the oldest entries. IsLatestRecorded is derived from
 // history only; it is not proof that this snapshot equals the live rule.
 type Version struct {
-	ID          int64                  `json:"id"`
 	RuleKind    coremodel.ResourceKind `json:"ruleKind"`
 	Mesh        string                 `json:"mesh"`
 	ResourceKey string                 `json:"resourceKey"`
@@ -72,12 +71,12 @@ type Version struct {
 	Operation   Operation              `json:"operation"`
 	Author      string                 `json:"author"`
 	Reason      string                 `json:"reason,omitempty"`
-	// RolledBackFromID records the historical version whose snapshot was
+	// RolledBackFromVersionNo records the historical version whose snapshot was
 	// re-published to produce this version. It is audit metadata only.
-	RolledBackFromID *int64    `json:"rolledBackFromId,omitempty"`
-	CreatedAt        time.Time `json:"createdAt"`
-	RecordedAt       time.Time `json:"recordedAt"`
-	IsLatestRecorded bool      `json:"isLatestRecorded"`
+	RolledBackFromVersionNo *int64    `json:"rolledBackFromVersionNo,omitempty"`
+	CreatedAt               time.Time `json:"createdAt"`
+	RecordedAt              time.Time `json:"recordedAt"`
+	IsLatestRecorded        bool      `json:"isLatestRecorded"`
 }
 
 type historyState struct {
@@ -93,24 +92,23 @@ type HistorySnapshot struct {
 }
 
 type InsertRequest struct {
-	RuleKind         coremodel.ResourceKind
-	Mesh             string
-	ResourceKey      string
-	RuleName         string
-	SpecJSON         string
-	ContentHash      string
-	Source           Source
-	Operation        Operation
-	Author           string
-	Reason           string
-	RolledBackFromID *int64
-	CreatedAt        time.Time
+	RuleKind                coremodel.ResourceKind
+	Mesh                    string
+	ResourceKey             string
+	RuleName                string
+	SpecJSON                string
+	ContentHash             string
+	Source                  Source
+	Operation               Operation
+	Author                  string
+	Reason                  string
+	RolledBackFromVersionNo *int64
+	CreatedAt               time.Time
 }
 
 type ListResult struct {
 	Items                   []Version `json:"items"`
 	Total                   int64     `json:"total"`
-	LatestRecordedVersionID *int64    `json:"latestRecordedVersionId,omitempty"`
 	LatestRecordedVersionNo int64     `json:"latestRecordedVersionNo,omitempty"`
 	LatestRecordedDeleted   bool      `json:"latestRecordedDeleted"`
 }
@@ -121,7 +119,6 @@ type DiffResult struct {
 }
 
 type DiffSide struct {
-	ID        int64  `json:"id"`
 	VersionNo int64  `json:"versionNo"`
 	SpecJSON  string `json:"specJson"`
 }

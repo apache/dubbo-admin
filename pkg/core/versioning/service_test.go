@@ -36,16 +36,16 @@ func TestDiffHistoryVersionsPreviousUsesPriorRecordedVersion(t *testing.T) {
 	require.NoError(t, err)
 	v3, err := adapter.InsertVersion(t.Context(), insertRequestForTest(t, conditionRouteForVersionTest("demo-rule", "v3"), OperationUpdate), 10)
 	require.NoError(t, err)
-	require.NotEqual(t, v1.ID, v2.ID)
+	require.NotEqual(t, v1.VersionNo, v2.VersionNo)
 
-	diff, err := svc.DiffHistoryVersions(meshresource.ConditionRouteKind, "", "demo-rule", v3.ID, "previous")
+	diff, err := svc.DiffHistoryVersions(meshresource.ConditionRouteKind, "", "demo-rule", v3.VersionNo, "previous")
 	require.NoError(t, err)
-	assert.Equal(t, v3.ID, diff.Left.ID)
-	assert.Equal(t, v2.ID, diff.Right.ID)
+	assert.Equal(t, v3.VersionNo, diff.Left.VersionNo)
+	assert.Equal(t, v2.VersionNo, diff.Right.VersionNo)
 	assert.Contains(t, diff.Right.SpecJSON, "v2")
 }
 
-func TestDiffHistoryVersionsUsesExplicitVersionID(t *testing.T) {
+func TestDiffHistoryVersionsUsesExplicitVersionNo(t *testing.T) {
 	adapter := NewResourceStoreAdapter(newVersionStore(t))
 	svc := NewService(10, adapter)
 	v1, err := adapter.InsertVersion(t.Context(), insertRequestForTest(t, conditionRouteForVersionTest("demo-rule", "v1"), OperationCreate), 10)
@@ -53,8 +53,19 @@ func TestDiffHistoryVersionsUsesExplicitVersionID(t *testing.T) {
 	v2, err := adapter.InsertVersion(t.Context(), insertRequestForTest(t, conditionRouteForVersionTest("demo-rule", "v2"), OperationUpdate), 10)
 	require.NoError(t, err)
 
-	diff, err := svc.DiffHistoryVersions(meshresource.ConditionRouteKind, "", "demo-rule", v2.ID, strconv.FormatInt(v1.ID, 10))
+	diff, err := svc.DiffHistoryVersions(meshresource.ConditionRouteKind, "", "demo-rule", v2.VersionNo, strconv.FormatInt(v1.VersionNo, 10))
 	require.NoError(t, err)
-	assert.Equal(t, v2.ID, diff.Left.ID)
-	assert.Equal(t, v1.ID, diff.Right.ID)
+	assert.Equal(t, v2.VersionNo, diff.Left.VersionNo)
+	assert.Equal(t, v1.VersionNo, diff.Right.VersionNo)
+}
+
+func TestDiffHistoryVersionsRejectsNonPositiveAgainstVersionNo(t *testing.T) {
+	adapter := NewResourceStoreAdapter(newVersionStore(t))
+	svc := NewService(10, adapter)
+	version, err := adapter.InsertVersion(t.Context(), insertRequestForTest(t, conditionRouteForVersionTest("demo-rule", "v1"), OperationCreate), 10)
+	require.NoError(t, err)
+
+	_, err = svc.DiffHistoryVersions(meshresource.ConditionRouteKind, "", "demo-rule", version.VersionNo, "0")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "version number")
 }

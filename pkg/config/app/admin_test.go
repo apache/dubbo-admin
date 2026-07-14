@@ -15,35 +15,23 @@
  * limitations under the License.
  */
 
-package versioning
+package app
 
 import (
-	"crypto/rand"
-	"encoding/binary"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/apache/dubbo-admin/pkg/config/versioning"
 )
 
-type idGenerator interface {
-	Next() (int64, error)
-}
+func TestAdminConfigSanitizeRetainsDefaultRuleVersioning(t *testing.T) {
+	cfg := DefaultAdminConfig()
+	cfg.RuleVersioning = nil
 
-// IDGenerator creates positive int64 identifiers. VersionNo, not this ID,
-// defines history ordering, so randomness plus store-level conflict retry is
-// enough and avoids clock-coupled ID behavior.
-type IDGenerator struct{}
+	cfg.Sanitize()
 
-func NewIDGenerator() *IDGenerator {
-	return &IDGenerator{}
-}
-
-func (g *IDGenerator) Next() (int64, error) {
-	var buf [8]byte
-	if _, err := rand.Read(buf[:]); err != nil {
-		return 0, err
-	}
-
-	id := int64(binary.BigEndian.Uint64(buf[:]) & ((uint64(1) << 63) - 1))
-	if id == 0 {
-		id = 1
-	}
-	return id, nil
+	require.NotNil(t, cfg.RuleVersioning)
+	assert.Equal(t, versioning.DefaultMaxVersionsPerRule, cfg.RuleVersioning.MaxVersionsPerRule)
 }

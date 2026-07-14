@@ -78,18 +78,16 @@ vi.mock('./RuleDiffEditor.vue', () => ({
 }))
 
 const version = (
-  id: string,
   versionNo: number,
   isLatestRecorded: boolean,
   overrides: Partial<RuleVersion> = {}
 ): RuleVersion => ({
-  id,
   ruleKind: 'ConditionRoute',
   mesh: '',
   resourceKey: '/demo-rule',
   ruleName: 'demo-rule',
   versionNo,
-  contentHash: `hash-${id}`,
+  contentHash: `hash-${versionNo}`,
   specJson: '{"key":"demo-rule"}',
   source: 'ADMIN',
   operation: 'UPDATE',
@@ -112,10 +110,10 @@ const drawerStub = defineComponent({
             'button',
             {
               type: 'button',
-              'data-test': `rollback-${item.id}`,
+              'data-test': `rollback-${item.versionNo}`,
               onClick: () => emit('rollback', item)
             },
-            `rollback-${item.id}`
+            `rollback-${item.versionNo}`
           )
         )
       )
@@ -263,17 +261,15 @@ const rollbackButton = (wrapper: ReturnType<typeof mountDrawer>) => wrapper.find
 
 describe('RuleHistoryPanel', () => {
   it('allows rollback for latest recorded non-delete versions', () => {
-    const wrapper = mountDrawer([version('latest-update', 3, true)])
+    const wrapper = mountDrawer([version(3, true)])
 
     rollbackButton(wrapper)?.trigger('click')
 
-    expect(wrapper.emitted('rollback')?.[0][0]).toMatchObject({ id: 'latest-update' })
+    expect(wrapper.emitted('rollback')?.[0][0]).toMatchObject({ versionNo: 3 })
   })
 
   it('disables rollback for delete markers', () => {
-    const wrapper = mountDrawer([
-      version('delete-marker', 4, true, { operation: 'DELETE', specJson: '<deleted>' })
-    ])
+    const wrapper = mountDrawer([version(4, true, { operation: 'DELETE', specJson: '<deleted>' })])
 
     rollbackButton(wrapper)?.trigger('click')
 
@@ -287,9 +283,8 @@ describe('RuleHistoryPanel', () => {
       .mockResolvedValueOnce({
         code: HTTP_STATUS.SUCCESS,
         data: {
-          items: [version('new-latest-recorded', 7, true)],
+          items: [version(7, true)],
           total: 1,
-          latestRecordedVersionId: 'new-latest-recorded',
           latestRecordedVersionNo: 7,
           latestRecordedDeleted: false
         }
@@ -302,21 +297,17 @@ describe('RuleHistoryPanel', () => {
     resolveFirst({
       code: HTTP_STATUS.SUCCESS,
       data: {
-        items: [version('old-latest-recorded', 3, true)],
+        items: [version(3, true)],
         total: 1,
-        latestRecordedVersionId: 'old-latest-recorded',
         latestRecordedVersionNo: 3,
         latestRecordedDeleted: false
       }
     })
     await flushPromises()
 
-    expect(wrapper.emitted('latest-recorded-version-change')?.at(-1)).toEqual([
-      'new-latest-recorded'
-    ])
     expect(wrapper.emitted('latest-recorded-version-no-change')?.at(-1)).toEqual([7])
-    expect(wrapper.text()).toContain('rollback-new-latest-recorded')
-    expect(wrapper.text()).not.toContain('rollback-old-latest-recorded')
+    expect(wrapper.text()).toContain('rollback-7')
+    expect(wrapper.text()).not.toContain('rollback-3')
   })
 
   it('ignores stale rollback success after ruleName changes', async () => {
@@ -324,9 +315,8 @@ describe('RuleHistoryPanel', () => {
       .mockResolvedValueOnce({
         code: HTTP_STATUS.SUCCESS,
         data: {
-          items: [version('old-target', 1, false)],
+          items: [version(1, false)],
           total: 1,
-          latestRecordedVersionId: 'old-latest-recorded',
           latestRecordedVersionNo: 2,
           latestRecordedDeleted: false
         }
@@ -334,9 +324,8 @@ describe('RuleHistoryPanel', () => {
       .mockResolvedValueOnce({
         code: HTTP_STATUS.SUCCESS,
         data: {
-          items: [version('new-target', 3, false)],
+          items: [version(3, false)],
           total: 1,
-          latestRecordedVersionId: 'new-latest-recorded',
           latestRecordedVersionNo: 4,
           latestRecordedDeleted: false
         }
@@ -348,28 +337,27 @@ describe('RuleHistoryPanel', () => {
 
     const wrapper = mountPanel({ ruleName: 'old-rule' })
     await flushPromises()
-    await wrapper.get('[data-test="rollback-old-target"]').trigger('click')
+    await wrapper.get('[data-test="rollback-1"]').trigger('click')
     await nextTick()
     await wrapper.get('[data-test="rollback-reason"]').setValue('restore old')
     await wrapper.get('[data-test="modal-ok"]').trigger('click')
 
     await wrapper.setProps({ ruleName: 'new-rule' })
     await flushPromises()
-    await wrapper.get('[data-test="rollback-new-target"]').trigger('click')
+    await wrapper.get('[data-test="rollback-3"]').trigger('click')
     await nextTick()
 
     resolveRollback({
       code: HTTP_STATUS.SUCCESS,
       data: {
-        rolledBackFromId: 'old-target',
-        versionId: 'old-rollback',
+        rolledBackFromVersionNo: 1,
         versionNo: 5,
         source: 'ROLLBACK'
       }
     })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('rollback-new-target')
+    expect(wrapper.text()).toContain('rollback-3')
     expect(wrapper.find('[data-test="modal"]').exists()).toBe(true)
     expect(mocks.listRuleVersionsAPI).toHaveBeenCalledTimes(2)
   })
@@ -378,9 +366,8 @@ describe('RuleHistoryPanel', () => {
     mocks.listRuleVersionsAPI.mockResolvedValue({
       code: HTTP_STATUS.SUCCESS,
       data: {
-        items: [version('already-current', 1, true)],
+        items: [version(1, true)],
         total: 1,
-        latestRecordedVersionId: 'already-current',
         latestRecordedVersionNo: 1,
         latestRecordedDeleted: false
       }
@@ -392,7 +379,7 @@ describe('RuleHistoryPanel', () => {
 
     const wrapper = mountPanel()
     await flushPromises()
-    await wrapper.get('[data-test="rollback-already-current"]').trigger('click')
+    await wrapper.get('[data-test="rollback-1"]').trigger('click')
     await nextTick()
     await wrapper.get('[data-test="rollback-reason"]').setValue('same content')
     await wrapper.get('[data-test="modal-ok"]').trigger('click')
