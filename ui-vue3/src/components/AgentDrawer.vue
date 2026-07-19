@@ -315,6 +315,8 @@ async function sendMessage() {
 
   if (!inputMsg.trim() || isLoading.value) return
 
+  const pageContext = consumeSelectedContext()
+
   // 保存最后一条用户消息
   lastUserMessage.value = inputMsg
 
@@ -358,8 +360,6 @@ async function sendMessage() {
 
   // 发送消息后滚动到底部
   await scrollToBottom()
-
-  const pageContext = consumeSelectedContext()
 
   try {
     // 发送消息并获取流式响应
