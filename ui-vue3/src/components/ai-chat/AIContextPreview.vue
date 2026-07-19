@@ -23,7 +23,7 @@
           <div class="ai-context-header">
             <div>
               <div class="ai-context-title">{{ t('aiContext.title') }}</div>
-              <div class="ai-context-subtitle">{{ t('aiContext.preview') }}</div>
+              <div class="ai-context-subtitle">{{ t('aiContext.nextMessage') }}</div>
             </div>
             <a-switch
               size="small"

@@ -16,6 +16,7 @@
  */
 
 import axios from 'axios'
+import type { AIContextSnapshot } from '@/ai-context'
 
 const BASE_URL = '/api/v1'
 
@@ -69,7 +70,11 @@ export const aiService = {
   },
 
   // 发送聊天消息（流式响应）
-  async sendChatMessage(message: string, sessionId?: string): Promise<ReadableStream> {
+  async sendChatMessage(
+    message: string,
+    sessionId?: string,
+    context?: AIContextSnapshot
+  ): Promise<ReadableStream> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json'
     }
@@ -83,7 +88,8 @@ export const aiService = {
       headers,
       body: JSON.stringify({
         message,
-        sessionID: sessionId
+        sessionID: sessionId,
+        context
       }),
       mode: 'cors', // 允许跨域
       credentials: 'include' // 允许携带 cookie

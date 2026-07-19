@@ -18,7 +18,8 @@ type StreamChunk struct {
 }
 
 type UserInput struct {
-	Content string `json:"content,omitempty"`
+	Content string             `json:"content,omitempty"`
+	Context *AIContextSnapshot `json:"-"`
 }
 
 type ThinkInput struct {

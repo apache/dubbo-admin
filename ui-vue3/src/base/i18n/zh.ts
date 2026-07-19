@@ -34,7 +34,7 @@ const words: I18nType = {
   },
   aiContext: {
     title: '页面上下文',
-    preview: '上下文预览',
+    nextMessage: '下一条消息',
     include: '携带页面上下文',
     page: '页面',
     mesh: 'Mesh',

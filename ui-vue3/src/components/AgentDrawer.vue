@@ -90,7 +90,7 @@ import MessageList from './ai-chat/MessageList.vue'
 import ChatInput from './ai-chat/ChatInput.vue'
 import AIContextPreview from './ai-chat/AIContextPreview.vue'
 import SessionHistoryModal from './ai-chat/SessionHistoryModal.vue'
-import { aiContextManager } from '@/ai-context'
+import { aiContextManager, selectAIContextSnapshot } from '@/ai-context'
 import type { AIContextSnapshot } from '@/ai-context'
 
 // 初始化 markdown 解析器
@@ -150,6 +150,20 @@ const refreshContextSnapshot = () => {
     contextSnapshot.value = undefined
     console.warn('Failed to collect page context:', error)
   }
+}
+
+const consumeSelectedContext = (): AIContextSnapshot | undefined => {
+  refreshContextSnapshot()
+  const selected = contextSnapshot.value
+    ? selectAIContextSnapshot(contextSnapshot.value, {
+        enabled: contextEnabled.value,
+        excludedSectionIds: excludedContextSectionIds.value
+      })
+    : undefined
+
+  contextEnabled.value = true
+  excludedContextSectionIds.value = []
+  return selected
 }
 
 // 节流滚动函数，避免频繁滚动影响性能
@@ -345,9 +359,15 @@ async function sendMessage() {
   // 发送消息后滚动到底部
   await scrollToBottom()
 
+  const pageContext = consumeSelectedContext()
+
   try {
     // 发送消息并获取流式响应
-    const stream = await aiService.sendChatMessage(userMessage.content, currentSessionId.value)
+    const stream = await aiService.sendChatMessage(
+      userMessage.content,
+      currentSessionId.value,
+      pageContext
+    )
 
     // 处理SSE流
     const reader = stream.getReader()

@@ -26,7 +26,7 @@ const words: I18nType = {
   },
   aiContext: {
     title: 'Page context',
-    preview: 'Context preview',
+    nextMessage: 'Next message',
     include: 'Include page context',
     page: 'Page',
     mesh: 'Mesh',

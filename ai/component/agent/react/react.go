@@ -171,25 +171,30 @@ func (ra *ReActAgent) Interact(input *schema.UserInput, sessionID string) *agent
 			inputJson []byte
 			in        schema.ThinkInput
 		)
-		in.UserInput = input
+		in.UserInput = &schema.UserInput{Content: input.Content}
 		in.SessionID = sessionID
 
 		// Add user input to history
-		ra.memoryCtx = context.WithValue(ra.memoryCtx, memory.SessionIDKey, sessionID)
-		history, ok := ra.memoryCtx.Value(memory.ChatHistoryKey).(*memory.HistoryMemory)
+		interactionCtx := context.WithValue(ra.memoryCtx, memory.SessionIDKey, sessionID)
+		interactionCtx = withCurrentAIContext(interactionCtx, input.Context)
+		history, ok := interactionCtx.Value(memory.ChatHistoryKey).(*memory.HistoryMemory)
 		if !ok {
 			err = fmt.Errorf("failed to get history from context")
 			ra.channels.ErrorChan <- err
+			ra.channels.Close()
+			return
 		}
 
 		inputJson, err = json.Marshal(in)
 		if err != nil {
 			ra.channels.ErrorChan <- err
+			ra.channels.Close()
+			return
 		}
 		inputMsg := ai.NewUserMessage(ai.NewJSONPart(string(inputJson)))
 		history.AddHistory(sessionID, inputMsg)
 
-		err = ra.orchestrator.Run(ra.memoryCtx, in, ra.channels)
+		err = ra.orchestrator.Run(interactionCtx, in, ra.channels)
 		if err != nil {
 			ra.channels.ErrorChan <- err
 		}
@@ -257,8 +262,12 @@ func ThinkFlow(
 				return nil, fmt.Errorf("history is empty")
 			}
 
-			// Execute the thinking prompt with window memory context
-			resp, err := thinkPrompt.Execute(ctx, ai.WithMessages(history.WindowMemory(sessionID)...))
+			// Execute the thinking prompt with window memory and current-turn page context.
+			messages, err := injectCurrentAIContext(ctx, history.WindowMemory(sessionID))
+			if err != nil {
+				return nil, err
+			}
+			resp, err := thinkPrompt.Execute(ctx, ai.WithMessages(messages...))
 			if err != nil {
 				return nil, fmt.Errorf("failed to execute agentThink prompt: %w", err)
 			}
@@ -333,9 +342,11 @@ func ActFlow(g *genkit.Genkit, actPrompt ai.Prompt) agent.NormalFlow {
 			if history.IsEmpty(sessionID) {
 				return nil, fmt.Errorf("history is empty")
 			}
-			toolReqs, err := actPrompt.Execute(ctx,
-				ai.WithMessages(history.WindowMemory(sessionID)...),
-			)
+			messages, err := injectCurrentAIContext(ctx, history.WindowMemory(sessionID))
+			if err != nil {
+				return nil, err
+			}
+			toolReqs, err := actPrompt.Execute(ctx, ai.WithMessages(messages...))
 			if err != nil {
 				return nil, fmt.Errorf("failed to execute tool selection prompt: %w", err)
 			}
@@ -393,9 +404,11 @@ func observe(g *genkit.Genkit, observePrompt ai.Prompt) agent.StreamFlow {
 				return nil, fmt.Errorf("history is empty")
 			}
 
-			resp, err := observePrompt.Execute(ctx,
-				ai.WithMessages(history.WindowMemory(sessionID)...),
-			)
+			messages, err := injectCurrentAIContext(ctx, history.WindowMemory(sessionID))
+			if err != nil {
+				return nil, err
+			}
+			resp, err := observePrompt.Execute(ctx, ai.WithMessages(messages...))
 
 			if err != nil {
 				return nil, fmt.Errorf("failed to execute observe prompt: %w", err)
