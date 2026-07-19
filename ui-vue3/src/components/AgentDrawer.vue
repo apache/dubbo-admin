@@ -59,6 +59,13 @@
         </div>
       </div>
 
+      <AIContextPreview
+        v-model:enabled="contextEnabled"
+        v-model:excluded-section-ids="excludedContextSectionIds"
+        :snapshot="contextSnapshot"
+        @refresh="refreshContextSnapshot"
+      />
+
       <!-- 使用输入区域组件 -->
       <ChatInput ref="chatInputRef" :messages="messages" :is-loading="isLoading"
         @update:input-message="handleInputMessageUpdate" @send-message="sendMessage" @handle-new-chat="handleNewChat"
@@ -73,14 +80,6 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, nextTick } from 'vue'
-import {
-  ClockCircleOutlined,
-  DeleteOutlined,
-  PlusOutlined,
-  ArrowUpOutlined,
-  LoadingOutlined,
-  RedoOutlined
-} from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { aiService } from '@/api/service/ai'
 import type { ChatMessage, Session } from '@/api/service/ai'
@@ -89,7 +88,10 @@ import hljs from 'highlight.js'
 import 'highlight.js/styles/github.css' // 使用 GitHub 风格的代码高亮主题
 import MessageList from './ai-chat/MessageList.vue'
 import ChatInput from './ai-chat/ChatInput.vue'
+import AIContextPreview from './ai-chat/AIContextPreview.vue'
 import SessionHistoryModal from './ai-chat/SessionHistoryModal.vue'
+import { aiContextManager } from '@/ai-context'
+import type { AIContextSnapshot } from '@/ai-context'
 
 // 初始化 markdown 解析器
 const md: MarkdownIt = new MarkdownIt({
@@ -125,6 +127,9 @@ const isAiThinking = ref(false) // AI是否正在思考（用于显示思考中�
 const currentSessionId = ref('')
 const sessions = ref<Session[]>([])
 const historyModalVisible = ref(false)
+const contextSnapshot = ref<AIContextSnapshot>()
+const contextEnabled = ref(true)
+const excludedContextSectionIds = ref<string[]>([])
 
 const lastUserMessage = ref<string>('') // 保存最后一次用户消息用于重试
 const usageInfo = ref<any>(null) // 保存使用情况信息
@@ -132,6 +137,20 @@ const usageInfo = ref<any>(null) // 保存使用情况信息
 // 子组件引用
 const messageListRef = ref<InstanceType<typeof MessageList> | null>(null)
 const chatInputRef = ref<InstanceType<typeof ChatInput> | null>(null)
+
+const refreshContextSnapshot = () => {
+  try {
+    const snapshot = aiContextManager.snapshot()
+    const availableSectionIds = new Set(snapshot.evidence?.map((section) => section.id) || [])
+    excludedContextSectionIds.value = excludedContextSectionIds.value.filter((id) =>
+      availableSectionIds.has(id)
+    )
+    contextSnapshot.value = snapshot
+  } catch (error) {
+    contextSnapshot.value = undefined
+    console.warn('Failed to collect page context:', error)
+  }
+}
 
 // 节流滚动函数，避免频繁滚动影响性能
 let scrollTimeout: any | null = null
@@ -192,6 +211,7 @@ const addErrorMessage = (errorText: string) => {
 // 监听drawer打开状态，打开时滚动到底部
 watch(localDrawerOpen, async (newVal) => {
   if (newVal) {
+    refreshContextSnapshot()
     await scrollToBottom()
   }
 })

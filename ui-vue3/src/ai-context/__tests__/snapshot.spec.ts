@@ -16,6 +16,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
+import { selectAIContextSnapshot } from '../selection'
 import { createAIContextSnapshot, getSerializedSize } from '../snapshot'
 import type { AIContextBase } from '../types'
 
@@ -97,5 +98,28 @@ describe('createAIContextSnapshot', () => {
       omittedSections: ['optional']
     })
     expect(getSerializedSize(snapshot)).toBeLessThanOrEqual(700)
+  })
+
+  it('selects optional evidence without mutating the collected snapshot', () => {
+    const snapshot = createAIContextSnapshot(base, [
+      {
+        id: 'home',
+        priority: 10,
+        contribution: {
+          evidence: [
+            { id: 'overview', source: 'overview-api', data: { applications: 3 } },
+            { id: 'filters', source: 'page-state', data: { keyword: 'shop' } }
+          ]
+        }
+      }
+    ])
+
+    const selected = selectAIContextSnapshot(snapshot, {
+      excludedSectionIds: ['filters']
+    })
+
+    expect(selected?.evidence?.map((section) => section.id)).toEqual(['overview'])
+    expect(snapshot.evidence?.map((section) => section.id)).toEqual(['filters', 'overview'])
+    expect(selectAIContextSnapshot(snapshot, { enabled: false })).toBeUndefined()
   })
 })

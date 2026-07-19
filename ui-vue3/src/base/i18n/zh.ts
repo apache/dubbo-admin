@@ -32,6 +32,30 @@ const words: I18nType = {
     login: '登录',
     authFail: '认证失败'
   },
+  aiContext: {
+    title: '页面上下文',
+    preview: '上下文预览',
+    include: '携带页面上下文',
+    page: '页面',
+    mesh: 'Mesh',
+    locale: '语言',
+    notSet: '未设置',
+    resourceScope: '资源范围',
+    sections: '页面信息',
+    noSections: '当前页面暂无附加信息',
+    truncated: '部分信息已因大小限制省略',
+    unavailable: '当前页面无可用上下文',
+    disabled: '已关闭',
+    section: {
+      'cluster-overview': '集群概览'
+    },
+    scope: {
+      application: '应用',
+      service: '服务',
+      instance: '实例',
+      rule: '规则'
+    }
+  },
   dynamicConfigDomain: {
     addConfig: '增加配置',
     addByFormView: '新增动态配置',

@@ -15,17 +15,28 @@
  * limitations under the License.
  */
 
-import type { AIContextBase } from '../types'
-import { collectGlobalAIContext } from './global'
-import { collectRouteAIContext } from './route'
+import type { AIContextSnapshot } from './types'
 
-export * from './home'
+export interface AIContextSelectionOptions {
+  enabled?: boolean
+  excludedSectionIds?: Iterable<string>
+}
 
-export const collectBaseAIContext = (): AIContextBase => {
-  const globalContext = collectGlobalAIContext()
+export const selectAIContextSnapshot = (
+  snapshot: AIContextSnapshot,
+  options: AIContextSelectionOptions = {}
+): AIContextSnapshot | undefined => {
+  if (options.enabled === false) return undefined
 
-  return {
-    ...globalContext,
-    page: collectRouteAIContext()
+  const excludedSectionIds = new Set(options.excludedSectionIds)
+  if (!excludedSectionIds.size || !snapshot.evidence?.length) return snapshot
+
+  const evidence = snapshot.evidence.filter((section) => !excludedSectionIds.has(section.id))
+  const selected: AIContextSnapshot = {
+    ...snapshot,
+    evidence
   }
+
+  if (!evidence.length) delete selected.evidence
+  return selected
 }

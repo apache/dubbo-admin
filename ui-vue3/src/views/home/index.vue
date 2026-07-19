@@ -65,6 +65,7 @@
 import { Icon } from '@iconify/vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import { onMounted, reactive } from 'vue'
+import { createHomeOverviewContribution, useAIContextProvider } from '@/ai-context'
 import { getClusterInfo } from '@/api/service/clusterInfo'
 import { getMetricsMetadata } from '@/api/service/serverInfo'
 import { useRoute } from 'vue-router'
@@ -81,6 +82,12 @@ let clusterInfo = reactive({
 
 let metricsMetadata = reactive({
   info: <{ [key: string]: string }>{}
+})
+
+useAIContextProvider({
+  id: 'home-overview',
+  priority: 50,
+  collect: () => createHomeOverviewContribution(clusterInfo.info)
 })
 
 onMounted(() => {
