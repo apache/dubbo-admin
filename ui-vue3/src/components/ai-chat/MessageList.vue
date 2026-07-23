@@ -3,11 +3,11 @@
         ref="messagesScrollContainer" style="height: calc(100vh - 200px); max-height: 90%">
         <template v-if="messages.length === 0">
             <div class="flex flex-col items-center justify-center h-full gap-4">
-                <h1 class="text-2xl font-bold">Dubbo Admin AI</h1>
+                <h1 class="text-2xl font-bold">{{ labels.title }}</h1>
                 <p class="text-gray-500">
-                    我是Dubbo Admin的AI小助手，你可以问我任何关于kubernetes的问题，我尽量给你提供最准确的答案。
+                    {{ labels.welcomeMessage }}
                 </p>
-                <p class="text-lg text-amber-300 font-medium">✨ 奇思妙想和创新的火花</p>
+                <p class="text-lg text-amber-300 font-medium">{{ labels.welcomeTagline }}</p>
                 <div class="grid grid-cols-2 gap-4 w-full max-w-2xl mt-4">
                     <SuggestionCard v-for="(suggestion, index) in suggestions" :key="index" :suggestion="suggestion"
                         @click="handleSuggestionClick" />
@@ -17,14 +17,15 @@
 
         <template v-else>
             <MessageItem v-for="msg in messages" :key="msg.id" :message="msg" :is-ai-thinking="isAiThinking"
-                :is-loading="isLoading" :messages="messages" @retry-last-message="retryLastMessage" :md="md" />
+                :is-loading="isLoading" :messages="messages" :labels="labels"
+                @retry-last-message="retryLastMessage" :md="md" />
         </template>
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
-import type { ChatMessage } from '@/api/service/ai'
+import type { AIChatLabels, ChatMessage, ChatSuggestion } from './types'
 import MessageItem from './MessageItem.vue'
 import SuggestionCard from './SuggestionCard.vue'
 
@@ -35,6 +36,8 @@ const props = defineProps<{
     isLoading: boolean
     lastUserMessage: string
     md: any
+    labels: AIChatLabels
+    suggestions: ChatSuggestion[]
 }>()
 
 // 定义emits
@@ -45,34 +48,6 @@ const emit = defineEmits<{
 
 // 消息滚动容器的引用
 const messagesScrollContainer = ref<HTMLElement | null>(null)
-
-// 建议问题列表
-const suggestions = [
-    {
-        icon: '💡',
-        iconColor: 'text-yellow-500',
-        title: 'yaml编写',
-        content: '请给我一个基本的nginx 部署yaml如何配置?'
-    },
-    {
-        icon: 'ℹ️',
-        iconColor: 'text-blue-500',
-        title: '网络',
-        content: '请解释下Deploy中的HostNetwork如何配置?'
-    },
-    {
-        icon: '🔔',
-        iconColor: 'text-purple-500',
-        title: '自动应用',
-        content: '请给我一个基本的nginx 部署yaml, 并部署到集群中'
-    },
-    {
-        icon: '✅',
-        iconColor: 'text-green-500',
-        title: 'Yaml模板',
-        content: '请给我一个基本的nginx 部署yaml, 并保存为模板'
-    }
-]
 
 // 滚动到底部的函数
 const scrollToBottom = async () => {

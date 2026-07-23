@@ -17,35 +17,14 @@
 
 import axios from 'axios'
 import type { AIContextSnapshot } from '@/ai-context'
+import type { ChatResponse, ChatService, Session } from '@/components/ai-chat/types'
+
+export type { ChatMessage, ChatResponse, Session } from '@/components/ai-chat/types'
 
 const BASE_URL = '/api/v1'
 
-// 定义接口类型
-export interface Session {
-  session_id: string
-  created_at: string
-  updated_at: string
-  message_count: number
-  status: string
-}
-
-export interface ChatMessage {
-  id: string
-  content: string
-  role: 'user' | 'assistant'
-  timestamp: number
-  type?: 'normal' | 'error' | 'partial_error'
-}
-
-export interface ChatResponse {
-  data: {
-    session_id: string
-    messages: ChatMessage[]
-  }
-}
-
 // AI 服务接口
-export const aiService = {
+export const aiService: ChatService<AIContextSnapshot> = {
   // 创建新会话
   async createSession(): Promise<string> {
     const response = await axios.post(`${BASE_URL}/ai/sessions`)

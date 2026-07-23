@@ -87,6 +87,7 @@ vi.mock('@/components/ai-chat/ChatInput.vue', async () => {
   return {
     default: defineComponent({
       name: 'ChatInput',
+      props: ['messages', 'isLoading', 'labels', 'showHistory'],
       emits: ['sendMessage'],
       setup(_, { emit, expose }) {
         const inputMessage = ref('')
@@ -102,7 +103,7 @@ vi.mock('@/components/ai-chat/ChatInput.vue', async () => {
   }
 })
 
-vi.mock('@/components/ai-chat/AIContextPreview.vue', async () => {
+vi.mock('@/components/ai-context/AIContextPreview.vue', async () => {
   const { defineComponent, h } = await import('vue')
   return {
     default: defineComponent({

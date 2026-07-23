@@ -10,17 +10,11 @@
 </template>
 
 <script setup lang="ts">
-// 定义建议问题的类型
-interface Suggestion {
-    icon: string
-    iconColor: string
-    title: string
-    content: string
-}
+import type { ChatSuggestion } from './types'
 
 // 定义props
 const props = defineProps<{
-    suggestion: Suggestion
+    suggestion: ChatSuggestion
 }>()
 
 // 定义emits
