@@ -1,7 +1,7 @@
 type: agent
 spec:
   agent_type: "react"
-  model: "dashscope/qwen3.5-plus"
+  model: "dashscope/qwen3.7-max"
   prompt_base_path: "./prompts"
   max_iterations: 10
   stage_channel_buffer_size: 5
