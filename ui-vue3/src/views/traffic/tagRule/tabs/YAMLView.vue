@@ -62,6 +62,7 @@ import { getTagRuleDetailAPI } from '@/api/service/traffic'
 import yaml from 'js-yaml'
 import { useRoute } from 'vue-router'
 import { HTTP_STATUS } from '@/base/http/constants'
+import { createTrafficRuleContentContribution, useAIContextProvider } from '@/ai-context'
 
 const route = useRoute()
 
@@ -83,11 +84,19 @@ const YAMLValue = ref(
     '        value:\n' +
     '          exact: gray'
 )
+const ruleDetail = ref<Record<string, unknown>>()
+
+useAIContextProvider({
+  id: 'rule-content',
+  priority: 80,
+  collect: () => createTrafficRuleContentContribution('tag-rule', ruleDetail.value)
+})
 
 // Get label routing details
 const getTagRuleDetail = async () => {
   const res = await getTagRuleDetailAPI(<string>route.params?.ruleName)
   if (res.code === HTTP_STATUS.SUCCESS) {
+    ruleDetail.value = res.data
     YAMLValue.value = yaml.dump(res?.data)
   }
 }

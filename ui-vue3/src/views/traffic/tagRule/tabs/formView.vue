@@ -152,6 +152,7 @@ import { PRIMARY_COLOR } from '@/base/constants'
 import { getTagRuleDetailAPI } from '@/api/service/traffic'
 import { useRoute } from 'vue-router'
 import { HTTP_STATUS } from '@/base/http/constants'
+import { createTrafficRuleContentContribution, useAIContextProvider } from '@/ai-context'
 
 const route = useRoute()
 const {
@@ -193,6 +194,12 @@ const tagRuleDetail = reactive({
       ]
     }
   ]
+})
+
+useAIContextProvider({
+  id: 'rule-content',
+  priority: 80,
+  collect: () => createTrafficRuleContentContribution('tag-rule', tagRuleDetail)
 })
 
 // Get label routing details

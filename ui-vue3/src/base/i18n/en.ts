@@ -40,6 +40,16 @@ const words: I18nType = {
     disabled: 'Disabled',
     section: {
       'cluster-overview': 'Cluster overview',
+      'application-detail': 'Application details',
+      'configuration-state': 'Current configuration',
+      'dashboard-state': 'Dashboard state',
+      'event-list': 'Events',
+      'instance-detail': 'Instance details',
+      'rule-content': 'Rule content',
+      'search-results': 'Current list',
+      'service-debug': 'Service debug',
+      'service-detail': 'Service details',
+      'topology-state': 'Topology',
       'unsaved-changes': 'Unsaved rule draft'
     },
     scope: {

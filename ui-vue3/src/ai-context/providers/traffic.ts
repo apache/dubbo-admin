@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+import { sanitizeContextValue } from '../sanitize'
 import type { AIContextContribution, AIContextScope } from '../types'
 
 export type TrafficDraftKind = 'condition-rule' | 'tag-rule' | 'dynamic-config'
@@ -74,6 +75,105 @@ const getDraftData = (
   }
 }
 
+const selectFields = (
+  value: Record<string, unknown> | undefined,
+  fields: readonly string[]
+): Record<string, unknown> => {
+  const result: Record<string, unknown> = {}
+  if (!value) return result
+
+  for (const field of fields) {
+    const fieldValue = value[field]
+    if (fieldValue !== undefined && fieldValue !== null && fieldValue !== '') {
+      result[field] = fieldValue
+    }
+  }
+  return result
+}
+
+const createDynamicConfigContent = (draft: Record<string, unknown>): Record<string, unknown> => {
+  const basicInfo = selectFields(asRecord(draft.basicInfo), [
+    'configVersion',
+    'ruleName',
+    'scope',
+    'key',
+    'enabled'
+  ])
+  const config = Array.isArray(draft.config)
+    ? draft.config.slice(0, 10).map((item) => {
+        const record = asRecord(item)
+        const parametersValue = asRecord(record?.parametersValue)
+        const builtinParameters: Record<string, unknown> = {}
+        // Custom parameters are open-ended; only known diagnostic fields are eligible for context.
+        for (const key of ['retries', 'timeout', 'accesslog', 'weight']) {
+          const parameter = asRecord(parametersValue?.[key])
+          if (parameter?.value !== undefined && parameter.value !== '') {
+            builtinParameters[key] = parameter.value
+          }
+        }
+
+        return {
+          ...selectFields(record, ['enabled', 'side', 'matchesKeys', 'parametersKeys']),
+          matchesValue: record?.matchesValue,
+          builtinParameters
+        }
+      })
+    : []
+
+  return { basicInfo, config, truncated: Array.isArray(draft.config) && draft.config.length > 10 }
+}
+
+const createTrafficRuleContent = (
+  kind: TrafficDraftKind,
+  draft: unknown
+): Record<string, unknown> | undefined => {
+  const record = asRecord(draft)
+  if (!record) return undefined
+
+  // Each rule kind has its own allowlist. Recursive sanitization remains the final safety layer.
+  const content =
+    kind === 'condition-rule'
+      ? selectFields(record, [
+          'configVersion',
+          'scope',
+          'key',
+          'enabled',
+          'runtime',
+          'force',
+          'conditions'
+        ])
+      : kind === 'tag-rule'
+        ? selectFields(record, ['configVersion', 'scope', 'key', 'enabled', 'runtime', 'tags'])
+        : createDynamicConfigContent(record)
+
+  return Object.keys(content).length
+    ? (sanitizeContextValue(content, {
+        maxArrayItems: 10,
+        maxDepth: 6,
+        maxStringLength: 500
+      }) as Record<string, unknown>)
+    : undefined
+}
+
+export const createTrafficRuleContentContribution = (
+  kind: TrafficDraftKind,
+  draft: unknown
+): AIContextContribution | undefined => {
+  const content = createTrafficRuleContent(kind, draft)
+  if (!content) return undefined
+
+  return {
+    evidence: {
+      id: 'rule-content',
+      source: 'traffic-rule-page',
+      data: {
+        kind,
+        content
+      }
+    }
+  }
+}
+
 const createRuleName = (
   options: TrafficDraftOptions,
   data: Record<string, unknown> | undefined,
@@ -125,6 +225,7 @@ export const createTrafficDraftContribution = (
     ...(scopeName === 'application' && key ? { application: key } : {}),
     ...(scopeName === 'service' && key ? { service: key } : {})
   }
+  const content = createTrafficRuleContent(options.kind, options.draft)
 
   return {
     ...(Object.keys(scope).length ? { scope } : {}),
@@ -140,6 +241,15 @@ export const createTrafficDraftContribution = (
         ...(force !== undefined ? { force } : {}),
         ...(entryCount !== undefined ? { entryCount } : {})
       }
-    }
+    },
+    ...(content
+      ? {
+          evidence: {
+            id: 'rule-content',
+            source: 'traffic-rule-draft',
+            data: { kind: options.kind, content }
+          }
+        }
+      : {})
   }
 }

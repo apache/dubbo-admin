@@ -48,6 +48,16 @@ const words: I18nType = {
     disabled: '已关闭',
     section: {
       'cluster-overview': '集群概览',
+      'application-detail': '应用详情',
+      'configuration-state': '当前配置',
+      'dashboard-state': '仪表板状态',
+      'event-list': '事件列表',
+      'instance-detail': '实例详情',
+      'rule-content': '规则内容',
+      'search-results': '当前列表',
+      'service-debug': '服务调试',
+      'service-detail': '服务详情',
+      'topology-state': '拓扑信息',
       'unsaved-changes': '未保存的规则草稿'
     },
     scope: {

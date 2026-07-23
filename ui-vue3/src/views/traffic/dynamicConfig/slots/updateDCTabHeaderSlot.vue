@@ -37,6 +37,7 @@ import { inject } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   createTrafficDraftContribution,
+  createTrafficRuleContentContribution,
   createTrafficRuleResourceContribution,
   useAIContextProvider
 } from '@/ai-context'
@@ -50,7 +51,15 @@ useAIContextProvider({
   priority: 100,
   collect: () => {
     if (route.params?.isEdit !== '1') {
-      return createTrafficRuleResourceContribution(route.params?.pathId)
+      const resource = createTrafficRuleResourceContribution(route.params?.pathId)
+      const content = createTrafficRuleContentContribution(
+        'dynamic-config',
+        TAB_STATE?.dynamicConfigForm?.data
+      )
+      return {
+        ...(resource?.scope ? { scope: resource.scope } : {}),
+        ...(content?.evidence ? { evidence: content.evidence } : {})
+      }
     }
 
     return createTrafficDraftContribution({

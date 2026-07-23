@@ -60,6 +60,7 @@ import { getConditionRuleDetailAPI } from '@/api/service/traffic'
 import { useRoute } from 'vue-router'
 import yaml from 'js-yaml'
 import { HTTP_STATUS } from '@/base/http/constants'
+import { createTrafficRuleContentContribution, useAIContextProvider } from '@/ai-context'
 
 const route = useRoute()
 const isReadonly = ref(true)
@@ -69,11 +70,19 @@ const isDrawerOpened = ref(false)
 const sliderSpan = ref(8)
 
 const YAMLValue = ref('')
+const ruleDetail = ref<Record<string, unknown>>()
+
+useAIContextProvider({
+  id: 'rule-content',
+  priority: 80,
+  collect: () => createTrafficRuleContentContribution('condition-rule', ruleDetail.value)
+})
 
 // Get condition routing details
 async function getRoutingRuleDetail() {
   let res = await getConditionRuleDetailAPI(<string>route.params?.ruleName)
   if (res?.code === HTTP_STATUS.SUCCESS && res.data) {
+    ruleDetail.value = res.data
     YAMLValue.value = yaml.dump(res?.data)
   }
 }

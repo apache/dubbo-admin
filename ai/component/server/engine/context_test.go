@@ -48,6 +48,24 @@ func validContextJSON(t *testing.T) json.RawMessage {
 				"data": map[string]any{
 					"api_key":  "secret",
 					"endpoint": "https://user:pass@example.com/api?cookie=value",
+					"content": map[string]any{
+						"tags": []any{
+							map[string]any{
+								"name": "gray",
+								"match": []any{
+									map[string]any{
+										"key":   "env",
+										"value": map[string]any{"exact": "gray"},
+									},
+								},
+							},
+						},
+					},
+					"properties": []any{
+						map[string]any{"key": "access-token", "value": "token-value"},
+						map[string]any{"name": "DB_PASSWORD", "currentValue": "password-value"},
+						map[string]any{"key": "environment", "value": "production"},
+					},
 				},
 			},
 		},
@@ -81,6 +99,16 @@ func TestChatRequestParseContext(t *testing.T) {
 	endpoint, _ := context.Evidence[0].Data["endpoint"].(string)
 	if strings.Contains(endpoint, "user:pass") || strings.Contains(endpoint, "cookie=value") {
 		t.Fatalf("evidence URL credentials were not redacted: %s", endpoint)
+	}
+	evidenceJSON, _ := json.Marshal(context.Evidence[0].Data)
+	if strings.Contains(string(evidenceJSON), maxDepthContextValue) || !strings.Contains(string(evidenceJSON), `"exact":"gray"`) {
+		t.Fatalf("nested evidence was not preserved: %s", evidenceJSON)
+	}
+	if strings.Contains(string(evidenceJSON), "token-value") || strings.Contains(string(evidenceJSON), "password-value") {
+		t.Fatalf("semantic sensitive values were not redacted: %s", evidenceJSON)
+	}
+	if !strings.Contains(string(evidenceJSON), `"value":"production"`) {
+		t.Fatalf("non-sensitive semantic value was not preserved: %s", evidenceJSON)
 	}
 }
 

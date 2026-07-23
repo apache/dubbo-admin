@@ -59,6 +59,54 @@ describe('createAIContextSnapshot', () => {
     })
   })
 
+  it('preserves bounded structured evidence for page summaries', () => {
+    const snapshot = createAIContextSnapshot(base, [
+      {
+        id: 'table',
+        priority: 30,
+        contribution: {
+          evidence: {
+            id: 'search-results',
+            source: 'search-result-table',
+            data: {
+              rows: [{ appName: 'shop-user', clusters: ['nacos-a', 'nacos-b'] }]
+            }
+          }
+        }
+      }
+    ])
+
+    expect(snapshot.evidence?.[0].data.rows).toEqual([
+      { appName: 'shop-user', clusters: ['nacos-a', 'nacos-b'] }
+    ])
+  })
+
+  it('preserves nested traffic rule matches within the global depth limit', () => {
+    const snapshot = createAIContextSnapshot(base, [
+      {
+        id: 'rule',
+        priority: 80,
+        contribution: {
+          evidence: {
+            id: 'rule-content',
+            source: 'traffic-rule-page',
+            data: {
+              content: {
+                tags: [{ name: 'gray', match: [{ key: 'env', value: { exact: 'gray' } }] }]
+              }
+            }
+          }
+        }
+      }
+    ])
+
+    expect(snapshot.evidence?.[0].data).toEqual({
+      content: {
+        tags: [{ name: 'gray', match: [{ key: 'env', value: { exact: 'gray' } }] }]
+      }
+    })
+  })
+
   it('removes lower-priority evidence to satisfy the byte budget', () => {
     const snapshot = createAIContextSnapshot(
       base,

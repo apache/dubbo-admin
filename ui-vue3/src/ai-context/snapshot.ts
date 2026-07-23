@@ -63,6 +63,7 @@ const applyBudget = (snapshot: AIContextSnapshot, maxBytes: number): AIContextSn
     }
   }
 
+  // Evidence is ordered by descending priority, so remove optional low-priority sections first.
   while (result.evidence?.length && getSerializedSize(result) > maxBytes) {
     const omitted = result.evidence.pop()
     if (omitted) result.truncation?.omittedSections.push(omitted.id)
@@ -112,9 +113,7 @@ export const createAIContextSnapshot = (
     evidence.push(...normalizeEvidence(item, capturedAt))
   }
 
-  evidence.sort(
-    (a, b) => (b.priority || 0) - (a.priority || 0) || a.id.localeCompare(b.id)
-  )
+  evidence.sort((a, b) => (b.priority || 0) - (a.priority || 0) || a.id.localeCompare(b.id))
 
   const rawSnapshot: AIContextSnapshot = {
     version: AI_CONTEXT_VERSION,
@@ -126,6 +125,7 @@ export const createAIContextSnapshot = (
     ...(evidence.length ? { evidence } : {})
   }
 
+  // Sanitize before measuring so the transmitted snapshot itself satisfies the byte budget.
   const sanitized = sanitizeContextValue(rawSnapshot) as AIContextSnapshot
   return applyBudget(sanitized, options.maxBytes ?? AI_CONTEXT_DEFAULT_MAX_BYTES)
 }

@@ -35,6 +35,26 @@ describe('sanitizeContextValue', () => {
     expect(result.registry).not.toContain('username=nacos')
   })
 
+  it('redacts values described by semantic sensitive keys', () => {
+    const result = sanitizeContextValue({
+      properties: [
+        { key: 'access-token', value: 'token-value' },
+        { name: 'DB_PASSWORD', currentValue: 'password-value', defaultValue: 'default-value' },
+        { key: 'environment', value: 'production' }
+      ]
+    }) as Record<string, any>
+
+    expect(result.properties).toEqual([
+      { key: 'access-token', value: '[REDACTED]' },
+      {
+        currentValue: '[REDACTED]',
+        defaultValue: '[REDACTED]',
+        name: 'DB_PASSWORD'
+      },
+      { key: 'environment', value: 'production' }
+    ])
+  })
+
   it('limits strings, arrays, depth, and circular values', () => {
     const circular: Record<string, unknown> = {}
     circular.self = circular

@@ -55,9 +55,17 @@ import { onMounted, reactive } from 'vue'
 import { listApplicationEvent } from '@/api/service/app'
 import { ClockCircleOutlined } from '@ant-design/icons-vue'
 import { PRIMARY_COLOR } from '@/base/constants'
+import { createEventListContribution, useAIContextProvider } from '@/ai-context'
 
 let __ = PRIMARY_COLOR
 let events: any = reactive({ list: [] })
+
+useAIContextProvider({
+  id: 'event-list',
+  priority: 60,
+  collect: () => createEventListContribution(events.list)
+})
+
 onMounted(async () => {
   let eventsRes = await listApplicationEvent({})
   events.list = eventsRes.data.list

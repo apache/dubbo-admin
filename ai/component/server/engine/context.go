@@ -33,7 +33,7 @@ import (
 const (
 	contextMaxStringLength = 1000
 	contextMaxArrayItems   = 10
-	contextMaxDepth        = 4
+	contextMaxDepth        = 12
 	redactedContextValue   = "[REDACTED]"
 	maxDepthContextValue   = "[MAX_DEPTH]"
 )
@@ -48,6 +48,18 @@ var sensitiveContextKeys = []string{
 	"apikey",
 	"privatekey",
 	"kubeconfig",
+}
+
+var sensitiveDescriptorKeys = map[string]struct{}{
+	"key":  {},
+	"name": {},
+}
+
+var semanticValueKeys = map[string]struct{}{
+	"value":        {},
+	"values":       {},
+	"currentvalue": {},
+	"defaultvalue": {},
 }
 
 func (r *ChatRequest) ParseContext() (*schema.AIContextSnapshot, error) {
@@ -71,6 +83,7 @@ func (r *ChatRequest) ParseContext() (*schema.AIContextSnapshot, error) {
 		return nil, err
 	}
 
+	// Re-sanitize at the trust boundary so non-browser clients cannot bypass frontend filtering.
 	sanitizeAIContext(&snapshot)
 	return &snapshot, nil
 }
@@ -160,15 +173,35 @@ func sanitizeContextMap(value map[string]any, depth int) map[string]any {
 	if value == nil {
 		return nil
 	}
+	// Handle pair-shaped settings such as {"key":"token","value":"..."}.
+	sensitiveDescriptor := hasSensitiveContextDescriptor(value)
 	result := make(map[string]any, len(value))
 	for key, item := range value {
-		if isSensitiveContextKey(key) {
+		if isSensitiveContextKey(key) || (sensitiveDescriptor && isSemanticContextValueKey(key)) {
 			result[key] = redactedContextValue
 			continue
 		}
 		result[key] = sanitizeContextValue(item, depth+1)
 	}
 	return result
+}
+
+func hasSensitiveContextDescriptor(value map[string]any) bool {
+	for key, item := range value {
+		if _, ok := sensitiveDescriptorKeys[normalizeContextKey(key)]; !ok {
+			continue
+		}
+		text, ok := item.(string)
+		if ok && isSensitiveContextKey(text) {
+			return true
+		}
+	}
+	return false
+}
+
+func isSemanticContextValueKey(key string) bool {
+	_, ok := semanticValueKeys[normalizeContextKey(key)]
+	return ok
 }
 
 func sanitizeContextValue(value any, depth int) any {
@@ -223,16 +256,20 @@ func sanitizeContextURL(value string) string {
 }
 
 func isSensitiveContextKey(key string) bool {
-	normalized := strings.Map(func(char rune) rune {
-		if unicode.IsLetter(char) || unicode.IsDigit(char) {
-			return unicode.ToLower(char)
-		}
-		return -1
-	}, key)
+	normalized := normalizeContextKey(key)
 	for _, sensitiveKey := range sensitiveContextKeys {
 		if strings.Contains(normalized, sensitiveKey) {
 			return true
 		}
 	}
 	return false
+}
+
+func normalizeContextKey(key string) string {
+	return strings.Map(func(char rune) rune {
+		if unicode.IsLetter(char) || unicode.IsDigit(char) {
+			return unicode.ToLower(char)
+		}
+		return -1
+	}, key)
 }

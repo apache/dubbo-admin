@@ -21,6 +21,18 @@ export interface SearchFilterParam {
   param?: unknown
 }
 
+export interface SearchResultColumn {
+  key?: unknown
+  dataIndex?: unknown
+  __hide?: unknown
+}
+
+export interface SearchResultPaging {
+  curPage?: unknown
+  pageSize?: unknown
+  total?: unknown
+}
+
 type SearchFilterValue = string | number | boolean | SearchFilterValue[]
 
 const normalizeFilterValue = (value: unknown): SearchFilterValue | undefined => {
@@ -56,4 +68,58 @@ export const createSearchFiltersContribution = (
   }
 
   return Object.keys(filters).length ? { state: { filters } } : undefined
+}
+
+const normalizeResultCell = (value: unknown): SearchFilterValue | undefined => {
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return normalizeFilterValue(value)
+  }
+  if (!Array.isArray(value)) return undefined
+
+  const items = value
+    .map(normalizeFilterValue)
+    .filter((item): item is SearchFilterValue => item !== undefined)
+  return items.length ? items : undefined
+}
+
+export const createSearchResultsContribution = (
+  rows: unknown,
+  columns: readonly SearchResultColumn[] | undefined,
+  paging?: SearchResultPaging
+): AIContextContribution | undefined => {
+  if (!Array.isArray(rows)) return undefined
+
+  // Mirror what the user can inspect: visible columns and at most the first ten displayed rows.
+  const columnKeys = (columns || [])
+    .filter((column) => column.__hide !== true)
+    .map((column) => column.dataIndex ?? column.key)
+    .filter((key): key is string => typeof key === 'string' && key !== 'idx')
+  const visibleRows = rows.slice(0, 10).map((row) => {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) return {}
+
+    const source = row as Record<string, unknown>
+    const result: Record<string, SearchFilterValue> = {}
+    for (const key of columnKeys) {
+      const value = normalizeResultCell(source[key])
+      if (value !== undefined) result[key] = value
+    }
+    return result
+  })
+  const total = normalizeFilterValue(paging?.total) ?? rows.length
+
+  return {
+    evidence: {
+      id: 'search-results',
+      source: 'search-result-table',
+      data: {
+        total,
+        currentPage: normalizeFilterValue(paging?.curPage),
+        pageSize: normalizeFilterValue(paging?.pageSize),
+        displayedCount: rows.length,
+        includedCount: visibleRows.length,
+        truncated: rows.length > visibleRows.length,
+        rows: visibleRows
+      }
+    }
+  }
 }

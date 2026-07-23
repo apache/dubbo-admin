@@ -19,7 +19,7 @@ const REDACTED_VALUE = '[REDACTED]'
 const CIRCULAR_VALUE = '[CIRCULAR]'
 const MAX_STRING_LENGTH = 1000
 const MAX_ARRAY_ITEMS = 10
-const MAX_DEPTH = 4
+const MAX_DEPTH = 12
 
 const SENSITIVE_KEYS = [
   'password',
@@ -33,6 +33,9 @@ const SENSITIVE_KEYS = [
   'kubeconfig'
 ]
 
+const SENSITIVE_DESCRIPTOR_KEYS = new Set(['key', 'name'])
+const SEMANTIC_VALUE_KEYS = new Set(['value', 'values', 'currentvalue', 'defaultvalue'])
+
 export interface SanitizeOptions {
   maxStringLength?: number
   maxArrayItems?: number
@@ -44,6 +47,17 @@ const normalizeKey = (key: string): string => key.toLowerCase().replace(/[^a-z0-
 const isSensitiveKey = (key: string): boolean => {
   const normalized = normalizeKey(key)
   return SENSITIVE_KEYS.some((sensitiveKey) => normalized.includes(sensitiveKey))
+}
+
+const hasSensitiveDescriptor = (value: Record<string, unknown>): boolean => {
+  // Configuration APIs often encode secrets as { key: 'token', value: '...' }.
+  // In that shape the value field is harmless by name, so inspect its sibling descriptor.
+  return Object.entries(value).some(
+    ([key, item]) =>
+      SENSITIVE_DESCRIPTOR_KEYS.has(normalizeKey(key)) &&
+      typeof item === 'string' &&
+      isSensitiveKey(item)
+  )
 }
 
 const limitString = (value: string, maxLength: number): string => {
@@ -105,19 +119,19 @@ export const sanitizeContextValue = (
     return result
   }
 
+  const record = value as Record<string, unknown>
+  const sensitiveDescriptor = hasSensitiveDescriptor(record)
   const result: Record<string, unknown> = {}
   for (const key of Object.keys(value).sort()) {
-    if (isSensitiveKey(key)) {
+    if (
+      isSensitiveKey(key) ||
+      (sensitiveDescriptor && SEMANTIC_VALUE_KEYS.has(normalizeKey(key)))
+    ) {
       result[key] = REDACTED_VALUE
       continue
     }
 
-    const sanitized = sanitizeContextValue(
-      (value as Record<string, unknown>)[key],
-      options,
-      depth + 1,
-      seen
-    )
+    const sanitized = sanitizeContextValue(record[key], options, depth + 1, seen)
     if (sanitized !== undefined) result[key] = sanitized
   }
 

@@ -20,6 +20,8 @@ import { collectGlobalAIContext } from './global'
 import { collectRouteAIContext } from './route'
 
 export * from './home'
+export * from './instance'
+export * from './page'
 export * from './resource'
 export * from './search'
 export * from './traffic'

@@ -221,6 +221,7 @@ import {
   serviceGenericInvokeAPI
 } from '@/api/service/service'
 import { useMeshStore } from '@/stores/mesh'
+import { createServiceDebugContribution, useAIContextProvider } from '@/ai-context'
 
 defineOptions({
   name: 'ServiceDebugTab'
@@ -302,6 +303,23 @@ const providerInstanceOptions = computed(() =>
     value: instance.name
   }))
 )
+
+useAIContextProvider({
+  id: 'service-debug',
+  priority: 80,
+  collect: () =>
+    createServiceDebugContribution({
+      methods: methodList.value,
+      providers: providerInstances.value,
+      selectedInstance: instanceName.value,
+      method: currentMethodDetail.value,
+      request: requestValue.value,
+      response: responseValue.value,
+      elapsedMs: elapsedMs.value,
+      timeoutMs: timeout.value,
+      attachmentKeys: attachmentsList.value.filter((item) => item.key).map((item) => item.key)
+    })
+})
 
 function shortType(type: string): string {
   const parts = type.split('.')

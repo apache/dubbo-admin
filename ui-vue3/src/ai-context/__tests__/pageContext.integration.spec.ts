@@ -22,6 +22,7 @@ import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import AppTabHeaderSlot from '@/views/resources/applications/slots/AppTabHeaderSlot.vue'
+import InstanceDetailPage from '@/views/resources/instances/tabs/detail.vue'
 import ServiceTabHeaderSlot from '@/views/resources/services/slots/ServiceTabHeaderSlot.vue'
 import AddConditionRuleTabHeaderSlot from '@/views/traffic/routingRule/slots/addConditionRuleTabHeaderSlot.vue'
 import AgentDrawer from '@/components/AgentDrawer.vue'
@@ -36,7 +37,8 @@ const mocks = vi.hoisted(() => ({
   sendChatMessage: vi.fn(),
   getSessions: vi.fn(),
   getSessionInfo: vi.fn(),
-  deleteSession: vi.fn()
+  deleteSession: vi.fn(),
+  getInstanceDetail: vi.fn()
 }))
 
 vi.mock('../instance', () => ({
@@ -54,6 +56,14 @@ vi.mock('@/api/service/ai', () => ({
     getSessionInfo: mocks.getSessionInfo,
     deleteSession: mocks.deleteSession
   }
+}))
+
+vi.mock('@/api/service/instance', () => ({
+  getInstanceDetail: mocks.getInstanceDetail
+}))
+
+vi.mock('vue-clipboard3', () => ({
+  default: () => ({ toClipboard: vi.fn() })
 }))
 
 vi.mock('@/components/ai-chat/MessageList.vue', async () => {
@@ -168,10 +178,25 @@ const searchTableStubs = {
   'a-table': true
 }
 
+const instanceDetailStubs = {
+  'a-card': true,
+  'a-card-grid': true,
+  'a-col': true,
+  'a-descriptions': true,
+  'a-descriptions-item': true,
+  'a-flex': true,
+  'a-row': true,
+  'a-space': true,
+  'a-tag': true,
+  'a-typography-link': true,
+  'a-typography-paragraph': true
+}
+
 describe('page AI context integration', () => {
   beforeEach(() => {
     mocks.register.mockReset()
     mocks.register.mockImplementation(() => vi.fn())
+    mocks.getInstanceDetail.mockReset()
   })
 
   it('unregisters a resource provider when its page is left', async () => {
@@ -236,6 +261,64 @@ describe('page AI context integration', () => {
     wrapper.unmount()
   })
 
+  it('collects instance details after the page data loads', async () => {
+    mocks.getInstanceDetail.mockResolvedValue({
+      data: {
+        appName: 'shop-comment',
+        ip: '10.244.1.83',
+        rpcPort: '20887',
+        lifecycleState: 'Running',
+        registerState: 'Registered',
+        deployState: 'Ready',
+        deployCluster: 'prod-k8s',
+        registerClusters: ['nacos2.5'],
+        workloadName: 'shop-comment(deployment)',
+        labels: { app: 'shop-comment', version: 'v1' }
+      }
+    })
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        {
+          path: '/instances/:name/:pathId/:appName',
+          component: InstanceDetailPage
+        }
+      ]
+    })
+    await router.push('/instances/shop-comment10.244.1.83:20887/10.244.1.83/shop-comment')
+    await router.isReady()
+
+    const wrapper = shallowMount(InstanceDetailPage, {
+      global: {
+        plugins: [router],
+        mocks: { $t: (key: string) => key },
+        stubs: instanceDetailStubs
+      }
+    })
+    await flushPromises()
+
+    const provider = mocks.register.mock.calls[0][0] as AIContextProvider
+    expect(provider.id).toBe('instance-detail')
+    expect(provider.collect()).toMatchObject({
+      evidence: {
+        id: 'instance-detail',
+        data: {
+          application: 'shop-comment',
+          ip: '10.244.1.83',
+          rpcPort: '20887',
+          lifecycleState: 'Running',
+          registerState: 'Registered',
+          deployState: 'Ready',
+          deployCluster: 'prod-k8s',
+          registerClusters: 'nacos2.5',
+          workloadName: 'shop-comment(deployment)',
+          labels: '{"app":"shop-comment","version":"v1"}'
+        }
+      }
+    })
+    wrapper.unmount()
+  })
+
   it('collects current filters from the shared search table', async () => {
     const searchDomain = reactive({
       params: [{ param: 'keywords' }, { param: 'status' }],
@@ -265,6 +348,14 @@ describe('page AI context integration', () => {
 
     const provider = mocks.register.mock.calls[0][0] as AIContextProvider
     expect(provider.collect()).toEqual({ state: { filters: { keywords: 'shop' } } })
+
+    const resultsProvider = mocks.register.mock.calls[1][0] as AIContextProvider
+    expect(resultsProvider.collect()).toMatchObject({
+      evidence: {
+        id: 'search-results',
+        data: { rows: [], total: 0 }
+      }
+    })
 
     searchDomain.queryForm.keywords = 'shop-order'
     searchDomain.queryForm.status = 'healthy'
