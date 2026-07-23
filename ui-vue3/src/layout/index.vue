@@ -75,6 +75,9 @@ provide(PROVIDE_INJECT_KEY.LAYOUT_ROUTE_KEY, refreshCurrentRoute)
     padding: 16px !important;
   }
   .logo {
+    display: flex;
+    align-items: center;
+    gap: 5px;
     height: 40px;
     width: auto;
     margin: 10px 15px;
@@ -86,12 +89,13 @@ provide(PROVIDE_INJECT_KEY.LAYOUT_ROUTE_KEY, refreshCurrentRoute)
     vertical-align: middle;
     font-size: 22px;
     color: white;
+    white-space: nowrap;
 
     img {
+      flex: none;
       width: 28px;
       height: 28px;
-      margin-bottom: 5px;
-      margin-right: 5px;
+      margin: 0;
     }
   }
 

@@ -298,14 +298,17 @@ onMounted(() => {
   }
 
   .statistic-icon-big {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
     width: 40px;
     height: 40px;
     background: v-bind('PRIMARY_COLOR');
-    line-height: 44px;
-    vertical-align: middle;
-    text-align: center;
     border-radius: 5px;
-    font-size: 56px;
+    overflow: hidden;
+    font-size: 28px;
+    line-height: 1;
     color: white;
   }
   .card {
