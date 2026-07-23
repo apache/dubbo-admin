@@ -15,8 +15,11 @@
  * limitations under the License.
  */
 
+import { createPinia, setActivePinia } from 'pinia'
 import { describe, expect, it, vi } from 'vitest'
+import { useMeshStore } from '@/stores/mesh'
 import { AIContextManager } from '../manager'
+import { collectGlobalAIContext } from '../providers/global'
 import type { AIContextBase } from '../types'
 
 const baseContext = (): AIContextBase => ({
@@ -90,5 +93,20 @@ describe('AIContextManager', () => {
 
     expect(() => manager.snapshot()).not.toThrow()
     expect(manager.snapshot().scope.mesh).toBe('nacos2.5')
+  })
+
+  it('reads the current mesh again for the next snapshot', () => {
+    setActivePinia(createPinia())
+    const meshStore = useMeshStore()
+    const manager = new AIContextManager(() => ({
+      ...collectGlobalAIContext(),
+      page: baseContext().page
+    }))
+
+    meshStore.mesh = 'mesh-a'
+    expect(manager.snapshot().scope.mesh).toBe('mesh-a')
+
+    meshStore.mesh = 'mesh-b'
+    expect(manager.snapshot().scope.mesh).toBe('mesh-b')
   })
 })

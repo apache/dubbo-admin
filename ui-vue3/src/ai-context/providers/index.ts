@@ -21,6 +21,7 @@ import { collectRouteAIContext } from './route'
 
 export * from './home'
 export * from './resource'
+export * from './search'
 export * from './traffic'
 
 export const collectBaseAIContext = (): AIContextBase => {

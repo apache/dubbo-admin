@@ -16,14 +16,16 @@
  */
 
 import { defineComponent, h, reactive } from 'vue'
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount, shallowMount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import AppTabHeaderSlot from '@/views/resources/applications/slots/AppTabHeaderSlot.vue'
+import ServiceTabHeaderSlot from '@/views/resources/services/slots/ServiceTabHeaderSlot.vue'
 import AddConditionRuleTabHeaderSlot from '@/views/traffic/routingRule/slots/addConditionRuleTabHeaderSlot.vue'
 import AgentDrawer from '@/components/AgentDrawer.vue'
+import SearchTable from '@/components/SearchTable.vue'
 import { AI_CONTEXT_UNSAVED_CHANGES_SECTION_ID } from '../selection'
 import type { AIContextProvider, AIContextSnapshot } from '../types'
 
@@ -59,6 +61,9 @@ vi.mock('@/components/ai-chat/MessageList.vue', async () => {
   return {
     default: defineComponent({
       name: 'MessageList',
+      props: {
+        messages: { type: Array, default: () => [] }
+      },
       setup(_, { expose }) {
         expose({ scrollToBottom: vi.fn() })
         return () => h('div')
@@ -120,6 +125,23 @@ const createEmptyStream = () =>
     }
   })
 
+const createMessageStream = (content: string) => {
+  const encoder = new TextEncoder()
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(
+        encoder.encode(
+          `event: message_start\ndata: {}\n\nevent: content_block_delta\ndata: ${JSON.stringify({
+            index: 0,
+            delta: { type: 'text_delta', text: content }
+          })}\n\nevent: message_stop\ndata: {}\n\n`
+        )
+      )
+      controller.close()
+    }
+  })
+}
+
 const routerHost = defineComponent({
   setup: () => () => h(RouterView)
 })
@@ -127,6 +149,23 @@ const routerHost = defineComponent({
 const layoutStubs = {
   'a-row': { template: '<div><slot /></div>' },
   'a-col': { template: '<div><slot /></div>' }
+}
+
+const searchTableStubs = {
+  'a-button': true,
+  'a-card': true,
+  'a-col': true,
+  'a-flex': true,
+  'a-form': true,
+  'a-form-item': true,
+  'a-input': true,
+  'a-radio-button': true,
+  'a-radio-group': true,
+  'a-row': true,
+  'a-select': true,
+  'a-select-option': true,
+  'a-skeleton-button': true,
+  'a-table': true
 }
 
 describe('page AI context integration', () => {
@@ -164,6 +203,74 @@ describe('page AI context integration', () => {
     await flushPromises()
 
     expect(unregister).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  })
+
+  it('collects the selected service and its qualifiers from the detail route', async () => {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        {
+          path: '/services/:pathId/:group/:version',
+          component: ServiceTabHeaderSlot
+        }
+      ]
+    })
+    await router.push('/services/org.apache.dubbo.DemoService/prod/1.0.0')
+    await router.isReady()
+
+    const wrapper = mount(routerHost, {
+      global: {
+        plugins: [router],
+        stubs: layoutStubs,
+        mocks: { $t: (key: string) => key }
+      }
+    })
+    await flushPromises()
+
+    const provider = mocks.register.mock.calls[0][0] as AIContextProvider
+    expect(provider.collect()).toEqual({
+      scope: { service: 'org.apache.dubbo.DemoService' },
+      state: { selection: { group: 'prod', version: '1.0.0' } }
+    })
+    wrapper.unmount()
+  })
+
+  it('collects current filters from the shared search table', async () => {
+    const searchDomain = reactive({
+      params: [{ param: 'keywords' }, { param: 'status' }],
+      queryForm: { keywords: 'shop', status: '' },
+      noPaged: false,
+      paged: { pageSize: 10, curPage: 1, total: 0 },
+      table: { columns: [] },
+      tableStyle: {},
+      result: [],
+      onSearch: vi.fn()
+    })
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/applications', component: { template: '<div />' } }]
+    })
+    await router.push('/applications')
+    await router.isReady()
+
+    const wrapper = shallowMount(SearchTable, {
+      global: {
+        plugins: [router],
+        provide: { [PROVIDE_INJECT_KEY.SEARCH_DOMAIN]: searchDomain },
+        mocks: { $t: (key: string) => key },
+        stubs: searchTableStubs
+      }
+    })
+
+    const provider = mocks.register.mock.calls[0][0] as AIContextProvider
+    expect(provider.collect()).toEqual({ state: { filters: { keywords: 'shop' } } })
+
+    searchDomain.queryForm.keywords = 'shop-order'
+    searchDomain.queryForm.status = 'healthy'
+    expect(provider.collect()).toEqual({
+      state: { filters: { keywords: 'shop-order', status: 'healthy' } }
+    })
     wrapper.unmount()
   })
 
@@ -281,6 +388,46 @@ describe('AI context request integration', () => {
 
     const secondContext = mocks.sendChatMessage.mock.calls[1][2] as AIContextSnapshot
     expect(secondContext.state?.unsavedChanges).toEqual(snapshot.state?.unsavedChanges)
+    wrapper.unmount()
+  })
+
+  it('parses the same SSE response with context enabled or disabled', async () => {
+    const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    mocks.sendChatMessage.mockImplementation(async () => createMessageStream('streamed answer'))
+    const wrapper = mount(AgentDrawer, {
+      props: { agentDrawerOpen: true },
+      global: {
+        stubs: {
+          'a-drawer': { template: '<div><slot /></div>' }
+        }
+      }
+    })
+    await flushPromises()
+
+    const preview = wrapper.findComponent({ name: 'AIContextPreview' })
+    const input = wrapper.findComponent({ name: 'ChatInput' })
+    const exposedInput = input.vm.$.exposed as { inputMessage: { value: string } }
+
+    exposedInput.inputMessage.value = 'with context'
+    await input.vm.$emit('sendMessage')
+    await flushPromises()
+
+    await preview.vm.$emit('update:enabled', false)
+    exposedInput.inputMessage.value = 'without context'
+    await input.vm.$emit('sendMessage')
+    await flushPromises()
+
+    expect(mocks.sendChatMessage.mock.calls[0][2]).toEqual(snapshot)
+    expect(mocks.sendChatMessage.mock.calls[1][2]).toBeUndefined()
+
+    const messages = wrapper.findComponent({ name: 'MessageList' }).props('messages') as Array<{
+      role: string
+      content: string
+    }>
+    expect(
+      messages.filter((item) => item.role === 'assistant').map((item) => item.content)
+    ).toEqual(['streamed answer', 'streamed answer'])
+    consoleLog.mockRestore()
     wrapper.unmount()
   })
 })

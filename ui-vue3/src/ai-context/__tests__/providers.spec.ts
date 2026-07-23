@@ -26,6 +26,7 @@ import {
   createInstanceResourceContribution,
   createServiceResourceContribution
 } from '../providers/resource'
+import { createSearchFiltersContribution } from '../providers/search'
 import {
   createTrafficDraftContribution,
   createTrafficRuleResourceContribution
@@ -109,6 +110,32 @@ describe('AI context providers', () => {
     expect(createServiceResourceContribution(['DemoService'], '', undefined)).toEqual({
       scope: { service: 'DemoService' }
     })
+  })
+
+  it('collects only declared, non-empty search filters', () => {
+    expect(
+      createSearchFiltersContribution(
+        [{ param: 'keywords' }, { param: 'status' }, { param: 'labels' }, { param: 'options' }],
+        {
+          keywords: '  shop-user  ',
+          status: false,
+          labels: ['prod', '', 'gray'],
+          options: { includeOffline: true },
+          internalToken: 'must-not-be-included'
+        }
+      )
+    ).toEqual({
+      state: {
+        filters: {
+          keywords: 'shop-user',
+          status: false,
+          labels: ['prod', 'gray']
+        }
+      }
+    })
+    expect(
+      createSearchFiltersContribution([{ param: 'keywords' }], { keywords: ' ' })
+    ).toBeUndefined()
   })
 
   it('collects only a whitelisted condition rule draft summary', () => {

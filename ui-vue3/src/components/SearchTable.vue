@@ -138,6 +138,7 @@ import type { SearchDomain } from '@/utils/SearchUtil'
 import { Icon } from '@iconify/vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import { message } from 'ant-design-vue'
+import { createSearchFiltersContribution, useAIContextProvider } from '@/ai-context'
 
 const commonTool = reactive({
   customColumns: false
@@ -148,9 +149,15 @@ const {
   appContext: {
     config: { globalProperties }
   }
-} = <ComponentInternalInstance>getCurrentInstance()
+} = getCurrentInstance() as ComponentInternalInstance
 
 const searchDomain: SearchDomain | any = inject(PROVIDE_INJECT_KEY.SEARCH_DOMAIN)
+
+useAIContextProvider({
+  id: 'search-filters',
+  priority: 20,
+  collect: () => createSearchFiltersContribution(searchDomain.params, searchDomain.queryForm)
+})
 
 searchDomain.table.columns.forEach((column: any) => {
   if (column.title) {
