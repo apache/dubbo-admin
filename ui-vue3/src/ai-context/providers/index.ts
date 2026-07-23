@@ -20,6 +20,8 @@ import { collectGlobalAIContext } from './global'
 import { collectRouteAIContext } from './route'
 
 export * from './home'
+export * from './resource'
+export * from './traffic'
 
 export const collectBaseAIContext = (): AIContextBase => {
   const globalContext = collectGlobalAIContext()

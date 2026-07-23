@@ -29,7 +29,15 @@
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
+import { createTrafficRuleResourceContribution, useAIContextProvider } from '@/ai-context'
+
 const route = useRoute()
+
+useAIContextProvider({
+  id: 'tag-rule-resource',
+  priority: 100,
+  collect: () => createTrafficRuleResourceContribution(route.params?.ruleName)
+})
 </script>
 <style lang="less" scoped>
 .__container_AppTabHeaderSlot {

@@ -39,7 +39,8 @@ const words: I18nType = {
     unavailable: 'No context is available for this page',
     disabled: 'Disabled',
     section: {
-      'cluster-overview': 'Cluster overview'
+      'cluster-overview': 'Cluster overview',
+      'unsaved-changes': 'Unsaved rule draft'
     },
     scope: {
       application: 'Application',

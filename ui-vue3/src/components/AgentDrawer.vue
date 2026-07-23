@@ -90,7 +90,11 @@ import MessageList from './ai-chat/MessageList.vue'
 import ChatInput from './ai-chat/ChatInput.vue'
 import AIContextPreview from './ai-chat/AIContextPreview.vue'
 import SessionHistoryModal from './ai-chat/SessionHistoryModal.vue'
-import { aiContextManager, selectAIContextSnapshot } from '@/ai-context'
+import {
+  AI_CONTEXT_UNSAVED_CHANGES_SECTION_ID,
+  aiContextManager,
+  selectAIContextSnapshot
+} from '@/ai-context'
 import type { AIContextSnapshot } from '@/ai-context'
 
 // 初始化 markdown 解析器
@@ -142,6 +146,9 @@ const refreshContextSnapshot = () => {
   try {
     const snapshot = aiContextManager.snapshot()
     const availableSectionIds = new Set(snapshot.evidence?.map((section) => section.id) || [])
+    if (snapshot.state?.unsavedChanges) {
+      availableSectionIds.add(AI_CONTEXT_UNSAVED_CHANGES_SECTION_ID)
+    }
     excludedContextSectionIds.value = excludedContextSectionIds.value.filter((id) =>
       availableSectionIds.has(id)
     )

@@ -47,7 +47,8 @@ const words: I18nType = {
     unavailable: '当前页面无可用上下文',
     disabled: '已关闭',
     section: {
-      'cluster-overview': '集群概览'
+      'cluster-overview': '集群概览',
+      'unsaved-changes': '未保存的规则草稿'
     },
     scope: {
       application: '应用',

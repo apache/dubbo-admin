@@ -69,19 +69,19 @@
 
             <div class="ai-context-group">
               <div class="ai-context-group-title">{{ t('aiContext.sections') }}</div>
-              <div v-if="snapshot.evidence?.length" class="ai-context-sections">
+              <div v-if="optionalSectionIds.length" class="ai-context-sections">
                 <label
-                  v-for="section in snapshot.evidence"
-                  :key="section.id"
+                  v-for="sectionId in optionalSectionIds"
+                  :key="sectionId"
                   class="ai-context-section"
                 >
                   <a-checkbox
-                    :checked="!excludedSectionIds.includes(section.id)"
+                    :checked="!excludedSectionIds.includes(sectionId)"
                     :disabled="!enabled"
-                    @change="toggleSection(section.id)"
+                    @change="toggleSection(sectionId)"
                   />
                   <span class="ai-context-section-copy">
-                    <span class="ai-context-section-name">{{ getSectionLabel(section.id) }}</span>
+                    <span class="ai-context-section-name">{{ getSectionLabel(sectionId) }}</span>
                   </span>
                 </label>
               </div>
@@ -117,6 +117,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PaperClipOutlined } from '@ant-design/icons-vue'
+import { AI_CONTEXT_UNSAVED_CHANGES_SECTION_ID } from '@/ai-context'
 import type { AIContextSnapshot } from '@/ai-context'
 
 const props = defineProps<{
@@ -133,11 +134,16 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
+const optionalSectionIds = computed(() => {
+  const sectionIds = props.snapshot?.evidence?.map((section) => section.id) || []
+  if (props.snapshot?.state?.unsavedChanges) {
+    sectionIds.unshift(AI_CONTEXT_UNSAVED_CHANGES_SECTION_ID)
+  }
+  return [...new Set(sectionIds)]
+})
+
 const includedSectionCount = computed(() => {
-  return (
-    props.snapshot?.evidence?.filter((section) => !props.excludedSectionIds.includes(section.id))
-      .length || 0
-  )
+  return optionalSectionIds.value.filter((id) => !props.excludedSectionIds.includes(id)).length
 })
 
 const contextSummary = computed(() => {

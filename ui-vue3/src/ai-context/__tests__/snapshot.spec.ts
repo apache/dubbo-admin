@@ -16,7 +16,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { selectAIContextSnapshot } from '../selection'
+import { AI_CONTEXT_UNSAVED_CHANGES_SECTION_ID, selectAIContextSnapshot } from '../selection'
 import { createAIContextSnapshot, getSerializedSize } from '../snapshot'
 import type { AIContextBase } from '../types'
 
@@ -106,6 +106,10 @@ describe('createAIContextSnapshot', () => {
         id: 'home',
         priority: 10,
         contribution: {
+          state: {
+            filters: { keyword: 'shop' },
+            unsavedChanges: { kind: 'condition-rule', entryCount: 1 }
+          },
           evidence: [
             { id: 'overview', source: 'overview-api', data: { applications: 3 } },
             { id: 'filters', source: 'page-state', data: { keyword: 'shop' } }
@@ -115,11 +119,13 @@ describe('createAIContextSnapshot', () => {
     ])
 
     const selected = selectAIContextSnapshot(snapshot, {
-      excludedSectionIds: ['filters']
+      excludedSectionIds: ['filters', AI_CONTEXT_UNSAVED_CHANGES_SECTION_ID]
     })
 
     expect(selected?.evidence?.map((section) => section.id)).toEqual(['overview'])
+    expect(selected?.state).toEqual({ filters: { keyword: 'shop' } })
     expect(snapshot.evidence?.map((section) => section.id)).toEqual(['filters', 'overview'])
+    expect(snapshot.state?.unsavedChanges).toEqual({ kind: 'condition-rule', entryCount: 1 })
     expect(selectAIContextSnapshot(snapshot, { enabled: false })).toBeUndefined()
   })
 })

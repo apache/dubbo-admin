@@ -26,8 +26,29 @@
 </template>
 
 <script setup lang="ts">
+import { inject } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
+import { createTrafficDraftContribution, useAIContextProvider } from '@/ai-context'
+import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
+
 const { t } = useI18n()
+const route = useRoute()
+const TAB_STATE: any = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+
+useAIContextProvider({
+  id: 'condition-rule-draft',
+  priority: 100,
+  collect: () =>
+    createTrafficDraftContribution({
+      kind: 'condition-rule',
+      mode: 'create',
+      representation: String(route.name).endsWith('YAMLView') ? 'yaml' : 'form',
+      draft: TAB_STATE?.conditionRule,
+      version: TAB_STATE?.addConditionRuleSate?.version,
+      group: TAB_STATE?.addConditionRuleSate?.group
+    })
+})
 </script>
 <style lang="less" scoped>
 .__container_AppTabHeaderSlot {

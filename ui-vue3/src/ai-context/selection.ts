@@ -17,6 +17,8 @@
 
 import type { AIContextSnapshot } from './types'
 
+export const AI_CONTEXT_UNSAVED_CHANGES_SECTION_ID = 'unsaved-changes'
+
 export interface AIContextSelectionOptions {
   enabled?: boolean
   excludedSectionIds?: Iterable<string>
@@ -29,14 +31,27 @@ export const selectAIContextSnapshot = (
   if (options.enabled === false) return undefined
 
   const excludedSectionIds = new Set(options.excludedSectionIds)
-  if (!excludedSectionIds.size || !snapshot.evidence?.length) return snapshot
+  if (!excludedSectionIds.size) return snapshot
 
-  const evidence = snapshot.evidence.filter((section) => !excludedSectionIds.has(section.id))
   const selected: AIContextSnapshot = {
-    ...snapshot,
-    evidence
+    ...snapshot
   }
 
-  if (!evidence.length) delete selected.evidence
+  if (snapshot.evidence?.length) {
+    const evidence = snapshot.evidence.filter((section) => !excludedSectionIds.has(section.id))
+    selected.evidence = evidence
+    if (!evidence.length) delete selected.evidence
+  }
+
+  if (
+    excludedSectionIds.has(AI_CONTEXT_UNSAVED_CHANGES_SECTION_ID) &&
+    snapshot.state?.unsavedChanges
+  ) {
+    const state = { ...snapshot.state }
+    delete state.unsavedChanges
+    selected.state = state
+    if (!Object.keys(state).length) delete selected.state
+  }
+
   return selected
 }

@@ -33,8 +33,35 @@
 </template>
 
 <script setup lang="ts">
+import { inject } from 'vue'
 import { useRoute } from 'vue-router'
+import {
+  createTrafficDraftContribution,
+  createTrafficRuleResourceContribution,
+  useAIContextProvider
+} from '@/ai-context'
+import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
+
 const route = useRoute()
+const TAB_STATE: any = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+
+useAIContextProvider({
+  id: 'dynamic-config-context',
+  priority: 100,
+  collect: () => {
+    if (route.params?.isEdit !== '1') {
+      return createTrafficRuleResourceContribution(route.params?.pathId)
+    }
+
+    return createTrafficDraftContribution({
+      kind: 'dynamic-config',
+      mode: route.params?.pathId === '_tmp' ? 'create' : 'update',
+      representation: String(route.name).endsWith('YAMLView') ? 'yaml' : 'form',
+      rule: route.params?.pathId,
+      draft: TAB_STATE?.dynamicConfigForm?.data
+    })
+  }
+})
 </script>
 <style lang="less" scoped>
 .__container_AppTabHeaderSlot {
