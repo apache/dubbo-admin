@@ -24,7 +24,7 @@
             <a-row style="width: 100%" justify="end">
               <a-col v-if="!viewData.isAdd">
                 <a-space>
-                  <a-tag v-if="latestRecordedVersionNo !== undefined" color="blue">
+                  <a-tag v-if="latestRecordedVersionNo !== undefined">
                     {{
                       $t('ruleVersionDomain.latestRecordedVersionBadge', {
                         versionNo: latestRecordedVersionNo

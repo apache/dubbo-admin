@@ -61,7 +61,7 @@
             :labelStyle="{ fontWeight: 'bold' }"
           >
             <a-space>
-              <a-tag v-if="latestRecordedVersionNo !== undefined" color="blue">
+              <a-tag v-if="latestRecordedVersionNo !== undefined">
                 {{
                   $t('ruleVersionDomain.latestRecordedVersionBadge', {
                     versionNo: latestRecordedVersionNo

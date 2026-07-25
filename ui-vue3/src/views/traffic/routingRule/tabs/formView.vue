@@ -22,8 +22,8 @@
         <a-row>
           <a-flex justify="space-between" style="width: 100%">
             <a-typography-title :level="3"> 基础信息</a-typography-title>
-            <a-space>
-              <a-tag v-if="latestRecordedVersionNo !== undefined" color="blue">
+            <a-space :size="8">
+              <a-tag v-if="latestRecordedVersionNo !== undefined">
                 {{
                   $t('ruleVersionDomain.latestRecordedVersionBadge', {
                     versionNo: latestRecordedVersionNo

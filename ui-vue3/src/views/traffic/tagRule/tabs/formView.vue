@@ -88,29 +88,31 @@
           <a-descriptions-item
             :label="$t('flowControlDomain.runTimeEffective')"
             :labelStyle="{ fontWeight: 'bold' }"
+            :contentStyle="{ verticalAlign: 'middle' }"
           >
-            <a-typography-paragraph>
-              {{
-                tagRuleDetail.runtime
-                  ? $t('flowControlDomain.opened')
-                  : $t('flowControlDomain.closed')
-              }}
-            </a-typography-paragraph>
+            <span>{{
+              tagRuleDetail.runtime
+                ? $t('flowControlDomain.opened')
+                : $t('flowControlDomain.closed')
+            }}</span>
           </a-descriptions-item>
           <a-descriptions-item
             :label="$t('flowControlDomain.versionRecords')"
             :labelStyle="{ fontWeight: 'bold' }"
+            :contentStyle="{ verticalAlign: 'middle' }"
           >
-            <a-space>
-              <a-tag v-if="latestRecordedVersionNo !== undefined" color="blue">{{
-                $t('ruleVersionDomain.latestRecordedVersionBadge', {
-                  versionNo: latestRecordedVersionNo
-                })
-              }}</a-tag>
-              <a-button type="text" style="color: #0a90d5" @click="isHistoryOpen = true">
-                {{ $t('flowControlDomain.versionRecords') }}
-              </a-button>
-            </a-space>
+            <a-tag v-if="latestRecordedVersionNo !== undefined">{{
+              $t('ruleVersionDomain.latestRecordedVersionBadge', {
+                versionNo: latestRecordedVersionNo
+              })
+            }}</a-tag>
+            <a-button
+              type="text"
+              style="color: #0a90d5; height: auto; padding: 0"
+              @click="isHistoryOpen = true"
+            >
+              {{ $t('flowControlDomain.versionRecords') }}
+            </a-button>
           </a-descriptions-item>
 
           <!-- priority -->
