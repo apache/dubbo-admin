@@ -28,7 +28,7 @@ import (
 	"github.com/firebase/genkit/go/ai"
 )
 
-func TestInjectCurrentAIContext(t *testing.T) {
+func TestInjectCurrentPageContext(t *testing.T) {
 	history := []*ai.Message{
 		ai.NewUserMessage(ai.NewTextPart("previous question")),
 		ai.NewModelMessage(ai.NewTextPart("previous answer")),
@@ -43,9 +43,9 @@ func TestInjectCurrentAIContext(t *testing.T) {
 		Scope:      schema.AIContextScope{Mesh: "nacos2.5"},
 	}
 
-	messages, err := injectCurrentAIContext(withCurrentAIContext(context.Background(), snapshot), history)
+	messages, err := injectCurrentPageContext(withCurrentPageContext(context.Background(), snapshot), history)
 	if err != nil {
-		t.Fatalf("injectCurrentAIContext() error = %v", err)
+		t.Fatalf("injectCurrentPageContext() error = %v", err)
 	}
 	if len(messages) != 5 || len(history) != 4 {
 		t.Fatalf("message lengths = (%d, %d), want (5, 4)", len(messages), len(history))
@@ -57,7 +57,7 @@ func TestInjectCurrentAIContext(t *testing.T) {
 	if messages[3].Content[0].Text != "current question" || messages[4].Content[0].Text != "current thought" {
 		t.Fatalf("context changed the current turn order: %#v", messages)
 	}
-	var envelope currentAIContextEnvelope
+	var envelope currentPageContextEnvelope
 	if err := json.Unmarshal([]byte(contextMessage.Content[0].Text), &envelope); err != nil {
 		t.Fatalf("unmarshal context message: %v", err)
 	}

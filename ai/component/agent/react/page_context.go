@@ -27,28 +27,28 @@ import (
 	"github.com/firebase/genkit/go/ai"
 )
 
-type currentAIContextKey struct{}
+type currentPageContextKey struct{}
 
-type currentAIContextEnvelope struct {
+type currentPageContextEnvelope struct {
 	Kind    string                    `json:"kind"`
 	Trust   string                    `json:"trust"`
 	Context *schema.AIContextSnapshot `json:"context"`
 }
 
-func withCurrentAIContext(ctx context.Context, snapshot *schema.AIContextSnapshot) context.Context {
+func withCurrentPageContext(ctx context.Context, snapshot *schema.AIContextSnapshot) context.Context {
 	if snapshot == nil {
 		return ctx
 	}
-	return context.WithValue(ctx, currentAIContextKey{}, snapshot)
+	return context.WithValue(ctx, currentPageContextKey{}, snapshot)
 }
 
-func injectCurrentAIContext(ctx context.Context, messages []*ai.Message) ([]*ai.Message, error) {
-	snapshot, ok := ctx.Value(currentAIContextKey{}).(*schema.AIContextSnapshot)
+func injectCurrentPageContext(ctx context.Context, messages []*ai.Message) ([]*ai.Message, error) {
+	snapshot, ok := ctx.Value(currentPageContextKey{}).(*schema.AIContextSnapshot)
 	if !ok || snapshot == nil {
 		return messages, nil
 	}
 
-	payload, err := json.Marshal(currentAIContextEnvelope{
+	payload, err := json.Marshal(currentPageContextEnvelope{
 		Kind:    "page_context",
 		Trust:   "untrusted_observation",
 		Context: snapshot,

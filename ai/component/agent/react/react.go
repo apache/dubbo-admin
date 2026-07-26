@@ -176,7 +176,7 @@ func (ra *ReActAgent) Interact(input *schema.UserInput, sessionID string) *agent
 
 		// Add user input to history
 		interactionCtx := context.WithValue(ra.memoryCtx, memory.SessionIDKey, sessionID)
-		interactionCtx = withCurrentAIContext(interactionCtx, input.Context)
+		interactionCtx = withCurrentPageContext(interactionCtx, input.Context)
 		history, ok := interactionCtx.Value(memory.ChatHistoryKey).(*memory.HistoryMemory)
 		if !ok {
 			err = fmt.Errorf("failed to get history from context")
@@ -263,7 +263,7 @@ func ThinkFlow(
 			}
 
 			// Execute the thinking prompt with window memory and current-turn page context.
-			messages, err := injectCurrentAIContext(ctx, history.WindowMemory(sessionID))
+			messages, err := injectCurrentPageContext(ctx, history.WindowMemory(sessionID))
 			if err != nil {
 				return nil, err
 			}
@@ -342,7 +342,7 @@ func ActFlow(g *genkit.Genkit, actPrompt ai.Prompt) agent.NormalFlow {
 			if history.IsEmpty(sessionID) {
 				return nil, fmt.Errorf("history is empty")
 			}
-			messages, err := injectCurrentAIContext(ctx, history.WindowMemory(sessionID))
+			messages, err := injectCurrentPageContext(ctx, history.WindowMemory(sessionID))
 			if err != nil {
 				return nil, err
 			}
@@ -404,7 +404,7 @@ func observe(g *genkit.Genkit, observePrompt ai.Prompt) agent.StreamFlow {
 				return nil, fmt.Errorf("history is empty")
 			}
 
-			messages, err := injectCurrentAIContext(ctx, history.WindowMemory(sessionID))
+			messages, err := injectCurrentPageContext(ctx, history.WindowMemory(sessionID))
 			if err != nil {
 				return nil, err
 			}
