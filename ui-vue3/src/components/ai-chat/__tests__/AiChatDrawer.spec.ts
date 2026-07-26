@@ -17,7 +17,7 @@
 
 import { defineComponent, h, ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import AiChatDrawer from '../AiChatDrawer.vue'
 import type { ChatService, ChatSuggestion } from '../types'
 
@@ -72,6 +72,23 @@ const createEmptyStream = () =>
     }
   })
 
+const createMessageStream = (content: string) => {
+  const encoder = new TextEncoder()
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(
+        encoder.encode(
+          `event: message_start\ndata: {}\n\nevent: content_block_delta\ndata: ${JSON.stringify({
+            index: 0,
+            delta: { type: 'text_delta', text: content }
+          })}\n\nevent: message_stop\ndata: {}\n\n`
+        )
+      )
+      controller.close()
+    }
+  })
+}
+
 const mountDrawer = (service: ChatService<unknown>, extraProps = {}) =>
   mount(AiChatDrawer, {
     props: {
@@ -89,7 +106,28 @@ const mountDrawer = (service: ChatService<unknown>, extraProps = {}) =>
     }
   })
 
+const mountDrawerWithMessages = (service: ChatService<unknown>) => {
+  Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+    configurable: true,
+    value: vi.fn()
+  })
+  return mount(AiChatDrawer, {
+    props: { open: true, service },
+    global: {
+      stubs: {
+        'a-drawer': DrawerStub,
+        'a-button': true,
+        ChatInput: ChatInputStub
+      }
+    }
+  })
+}
+
 describe('AiChatDrawer', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('sends messages through the injected service with collected context', async () => {
     const context = { page: 'instances', resourceId: 'demo' }
     const service: ChatService<unknown> = {
@@ -157,5 +195,43 @@ describe('AiChatDrawer', () => {
     await wrapper.find('.close-drawer').trigger('click')
 
     expect(wrapper.emitted('update:open')).toContainEqual([false])
+  })
+
+  it('escapes raw HTML in user and model messages', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    const rawHTML = '<img src="x" onerror="alert(1)">'
+    const service: ChatService<unknown> = {
+      createSession: vi.fn().mockResolvedValue('session-1'),
+      sendChatMessage: vi.fn().mockResolvedValue(createMessageStream(rawHTML))
+    }
+    const wrapper = mountDrawerWithMessages(service)
+    const input = wrapper.findComponent(ChatInputStub)
+    const exposed = input.vm.$.exposed as { inputMessage: { value: string } }
+
+    exposed.inputMessage.value = rawHTML
+    await input.find('.send-message').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('img[onerror]').exists()).toBe(false)
+    expect(wrapper.text()).toContain(rawHTML)
+  })
+
+  it('escapes raw HTML in error messages', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const rawHTML = '<img src="x" onerror="alert(1)">'
+    const service: ChatService<unknown> = {
+      createSession: vi.fn().mockResolvedValue('session-1'),
+      sendChatMessage: vi.fn().mockRejectedValue(new Error(rawHTML))
+    }
+    const wrapper = mountDrawerWithMessages(service)
+    const input = wrapper.findComponent(ChatInputStub)
+    const exposed = input.vm.$.exposed as { inputMessage: { value: string } }
+
+    exposed.inputMessage.value = 'trigger an error'
+    await input.find('.send-message').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('img[onerror]').exists()).toBe(false)
+    expect(wrapper.text()).toContain(rawHTML)
   })
 })

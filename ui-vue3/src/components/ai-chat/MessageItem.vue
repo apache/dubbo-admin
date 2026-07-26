@@ -30,7 +30,7 @@
                             <span class="mr-2">❌</span>
                             <span class="font-medium">{{ labels.errorTitle }}</span>
                         </div>
-                        <div class="text-red-600 text-sm mb-3" v-html="message.content.replace(/\n/g, '<br />')"></div>
+                        <div class="text-red-600 text-sm mb-3 whitespace-pre-wrap">{{ message.content }}</div>
                         <div class="flex justify-end">
                             <a-button size="small" type="primary" @click="retryLastMessage" :loading="isLoading"
                                 class="flex items-center">
@@ -51,7 +51,7 @@
                 </div>
             </template>
             <template v-else>
-                <p v-html="message.content.replace(/\n/g, '<br />')"></p>
+                <p class="whitespace-pre-wrap">{{ message.content }}</p>
             </template>
         </div>
     </div>

@@ -59,4 +59,12 @@ describe('aiService.sendChatMessage', () => {
       sessionID: 'session-1'
     })
   })
+
+  it('rejects successful responses without a stream body', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, body: null }))
+
+    await expect(aiService.sendChatMessage('hello', 'session-1')).rejects.toThrow(
+      'AI service returned an empty response body'
+    )
+  })
 })

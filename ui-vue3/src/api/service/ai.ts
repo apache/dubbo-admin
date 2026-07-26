@@ -53,7 +53,7 @@ export const aiService: ChatService<AIContextSnapshot> = {
     message: string,
     sessionId?: string,
     context?: AIContextSnapshot
-  ): Promise<ReadableStream> {
+  ): Promise<ReadableStream<Uint8Array>> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json'
     }
@@ -77,8 +77,11 @@ export const aiService: ChatService<AIContextSnapshot> = {
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
+    if (!response.body) {
+      throw new Error('AI service returned an empty response body')
+    }
 
-    return response.body!
+    return response.body
   }
 }
 

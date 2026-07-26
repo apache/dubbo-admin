@@ -133,7 +133,7 @@ import {
 
 // 初始化 markdown 解析器
 const md: MarkdownIt = new MarkdownIt({
-  html: true, // 启用 HTML 标签
+  html: false, // Escape raw HTML from untrusted model output.
   breaks: true, // 转换 \n 为 <br>
   linkify: true, // 自动转换 URL 为链接
   typographer: true, // 启用一些语言中性的替换 + 引号美化
