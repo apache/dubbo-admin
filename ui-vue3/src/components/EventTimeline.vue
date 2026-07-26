@@ -64,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import type { EventItem } from '@/types/api'
 import { CheckCircleOutlined, WarningOutlined, ArrowDownOutlined } from '@ant-design/icons-vue'
 
@@ -99,13 +99,6 @@ onMounted(() => {
   })
   observer.observe(loadMoreTriggerRef.value)
 })
-
-watch(
-  () => [props.hasMore, props.loading, props.loadingMore, props.events.length],
-  () => {
-    tryLoadMore()
-  }
-)
 
 onBeforeUnmount(() => {
   observer?.disconnect()

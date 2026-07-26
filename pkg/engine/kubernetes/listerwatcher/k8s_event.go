@@ -77,6 +77,15 @@ func (k *K8sEventListerWatcher) TransformFunc() cache.TransformFunc {
 			return nil, bizerror.NewAssertionError("v1.Event", reflect.TypeOf(obj).Name())
 		}
 
+		firstTs := ""
+		if !k8sEvent.FirstTimestamp.IsZero() {
+			firstTs = k8sEvent.FirstTimestamp.Format(constants.TimeFormatStr)
+		}
+		lastTs := ""
+		if !k8sEvent.LastTimestamp.IsZero() {
+			lastTs = k8sEvent.LastTimestamp.Format(constants.TimeFormatStr)
+		}
+
 		res := meshresource.NewK8sEventResourceWithAttributes(k8sEvent.Namespace+"/"+k8sEvent.Name, k.cfg.ID)
 		res.Spec = &meshproto.K8sEvent{
 			Namespace:       k8sEvent.Namespace,
@@ -87,8 +96,8 @@ func (k *K8sEventListerWatcher) TransformFunc() cache.TransformFunc {
 			InvolvedObjName: k8sEvent.InvolvedObject.Name,
 			SourceComponent: k8sEvent.Source.Component,
 			SourceHost:      k8sEvent.Source.Host,
-			FirstTimestamp:  k8sEvent.FirstTimestamp.Format(constants.TimeFormatStr),
-			LastTimestamp:   k8sEvent.LastTimestamp.Format(constants.TimeFormatStr),
+			FirstTimestamp:  firstTs,
+			LastTimestamp:   lastTs,
 			Count:           k8sEvent.Count,
 			EventSource:     "KUBERNETES",
 		}

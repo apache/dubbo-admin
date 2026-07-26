@@ -54,6 +54,8 @@ type RegistryEventInput struct {
 // so that Console API queries can use a single HasPrefix lookup.
 func RecordRegistryEvent(storeRouter store.Router, input RegistryEventInput) {
 	if input.Mesh == "" || input.Message == "" {
+		logger.Warnf("RecordRegistryEvent: dropping event due to empty Mesh or Message, source=%s, category=%s, action=%s, appName=%s",
+			input.SourceType, input.Category, input.Action, input.AppName)
 		return
 	}
 	eventStore, err := storeRouter.ResourceKindRoute(meshresource.K8sEventKind)

@@ -30,6 +30,7 @@ import (
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store"
+	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
 // K8sEventSubscriber processes K8sEvent resources on the EventBus.
@@ -103,6 +104,8 @@ func (k *K8sEventSubscriber) processUpsert(event events.Event) error {
 
 // alignMeshFromRuntimeInstance resolves the correct Dubbo mesh for a K8sEvent
 // by looking up the corresponding RuntimeInstance via the Pod name.
+// RuntimeInstances are stored under their discovery mesh (e.g. "nacos2.5"),
+// not the engine mesh, so we use the name index to search across all meshes.
 func (k *K8sEventSubscriber) alignMeshFromRuntimeInstance(eventRes *meshresource.K8sEventResource) {
 	rtStore, err := k.storeRouter.ResourceKindRoute(meshresource.RuntimeInstanceKind)
 	if err != nil {
@@ -112,30 +115,30 @@ func (k *K8sEventSubscriber) alignMeshFromRuntimeInstance(eventRes *meshresource
 
 	podName := eventRes.Spec.InvolvedObjName
 
-	// Try the engine's configured mesh first, then fall back to the default mesh.
-	for _, candidateMesh := range []string{k.engineCfg.ID, "default"} {
-		key := coremodel.BuildResourceKey(candidateMesh, podName)
-		rtRes, exists, getErr := rtStore.GetByKey(key)
-		if getErr != nil {
+	rtResources, listErr := rtStore.ListByIndexes([]index.IndexCondition{
+		{IndexName: index.ByRuntimeInstanceNameIndex, Value: podName, Operator: index.Equals},
+	})
+	if listErr != nil {
+		logger.Debugf("K8sEventSubscriber: failed to list RuntimeInstances by name %s: %v", podName, listErr)
+		return
+	}
+
+	for _, rtRes := range rtResources {
+		rtInstance, ok := rtRes.(*meshresource.RuntimeInstanceResource)
+		if !ok || rtInstance == nil {
 			continue
 		}
-		if exists && rtRes != nil {
-			rtInstance, ok := rtRes.(*meshresource.RuntimeInstanceResource)
-			if !ok || rtInstance == nil {
-				continue
+		resolvedMesh := rtInstance.ResourceMesh()
+		if resolvedMesh != "" && resolvedMesh != eventRes.Mesh {
+			// Delete the old entry (keyed by old mesh) before changing mesh.
+			eventStore, _ := k.storeRouter.ResourceKindRoute(meshresource.K8sEventKind)
+			if eventStore != nil {
+				_ = eventStore.Delete(eventRes)
 			}
-			resolvedMesh := rtInstance.ResourceMesh()
-			if resolvedMesh != "" && resolvedMesh != eventRes.Mesh {
-				// Delete the old entry (keyed by old mesh) before changing mesh.
-				eventStore, _ := k.storeRouter.ResourceKindRoute(meshresource.K8sEventKind)
-				if eventStore != nil {
-					_ = eventStore.Delete(eventRes)
-				}
-				eventRes.Mesh = resolvedMesh
-				logger.Debugf("K8sEventSubscriber: aligned mesh from %q to %q for pod %s",
-					k.engineCfg.ID, resolvedMesh, podName)
-				return
-			}
+			eventRes.Mesh = resolvedMesh
+			logger.Debugf("K8sEventSubscriber: aligned mesh from %q to %q for pod %s",
+				k.engineCfg.ID, resolvedMesh, podName)
+			return
 		}
 	}
 }
@@ -168,13 +171,23 @@ func (k *K8sEventSubscriber) writeEvent(eventRes *meshresource.K8sEventResource)
 	// Ensure K8s-sourced events have a sortable timestamp prefix in their key
 	// so that PageListByIndexes (which sorts keys alphabetically) returns
 	// events in chronological order.
+	var oldName string
 	if eventRes.Spec.EventSource == "KUBERNETES" {
+		oldName = eventRes.Name
 		k.prefixTimestampKey(eventRes)
 	}
 
 	if err := eventStore.Add(eventRes); err != nil {
 		logger.Errorf("K8sEventSubscriber: failed to add K8sEvent %s: %v", eventRes.ResourceKey(), err)
 		return err
+	}
+
+	// Delete the informer-written entry with the original key only after the
+	// timestamp-prefixed entry has been successfully added, so that a failed
+	// Add does not cause permanent event loss.
+	if oldName != "" {
+		oldRes := meshresource.NewK8sEventResourceWithAttributes(oldName, eventRes.Mesh)
+		_ = eventStore.Delete(oldRes)
 	}
 
 	logger.Infof("K8sEventSubscriber: processed event, source=%s, kind=%s, involved=%s",
@@ -185,17 +198,9 @@ func (k *K8sEventSubscriber) writeEvent(eventRes *meshresource.K8sEventResource)
 // prefixTimestampKey prepends a descending nano-timestamp to the resource name
 // so that the store's alphabetical key sort produces chronological (most-recent-first)
 // ordering. Registry events already have this prefix from RecordRegistryEvent.
-// The old informer-written key is deleted first to avoid duplicate entries.
+// The caller (writeEvent) is responsible for deleting the original key after a
+// successful Add to avoid duplicate entries.
 func (k *K8sEventSubscriber) prefixTimestampKey(eventRes *meshresource.K8sEventResource) {
-	eventStore, err := k.storeRouter.ResourceKindRoute(meshresource.K8sEventKind)
-	if err != nil {
-		return
-	}
-
-	// Delete the informer-written entry (original key) so that only the
-	// timestamp-prefixed entry remains in the store.
-	_ = eventStore.Delete(eventRes)
-
 	timestampNano := int64(0)
 	if eventRes.Spec.LastTimestamp != "" {
 		if t, err := time.Parse(constants.TimeFormatStr, eventRes.Spec.LastTimestamp); err == nil {
