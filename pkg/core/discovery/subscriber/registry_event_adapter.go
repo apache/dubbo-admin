@@ -33,7 +33,7 @@ import (
 var registryEventNameSanitizer = regexp.MustCompile(`[^a-zA-Z0-9._-]+`)
 
 // RegistryEventInput carries the data needed to record a registry-side event
-// as a unified K8sEventResource.
+// as a unified LifecycleEventResource.
 type RegistryEventInput struct {
 	Mesh         string
 	Source       string // human-readable source name (e.g. "Nacos", "Zookeeper")
@@ -49,7 +49,7 @@ type RegistryEventInput struct {
 }
 
 // RecordRegistryEvent writes a registry-side lifecycle event as a unified
-// K8sEventResource. The InvolvedObjName encodes a hierarchical identifier
+// LifecycleEventResource. The InvolvedObjName encodes a hierarchical identifier
 // (appName/ip:port for instances, appName/serviceName for config/metadata)
 // so that Console API queries can use a single HasPrefix lookup.
 func RecordRegistryEvent(storeRouter store.Router, input RegistryEventInput) {
@@ -58,9 +58,9 @@ func RecordRegistryEvent(storeRouter store.Router, input RegistryEventInput) {
 			input.SourceType, input.Category, input.Action, input.AppName)
 		return
 	}
-	eventStore, err := storeRouter.ResourceKindRoute(meshresource.K8sEventKind)
+	eventStore, err := storeRouter.ResourceKindRoute(meshresource.LifecycleEventKind)
 	if err != nil {
-		logger.Errorf("route K8sEvent store failed, cause: %v", err)
+		logger.Errorf("route LifecycleEvent store failed, cause: %v", err)
 		return
 	}
 
@@ -106,8 +106,8 @@ func RecordRegistryEvent(storeRouter store.Router, input RegistryEventInput) {
 		source = input.SourceType
 	}
 
-	res := meshresource.NewK8sEventResourceWithAttributes(eventName, input.Mesh)
-	res.Spec = &meshproto.K8sEvent{
+	res := meshresource.NewLifecycleEventResourceWithAttributes(eventName, input.Mesh)
+	res.Spec = &meshproto.LifecycleEvent{
 		InvolvedObjKind: input.Category,
 		InvolvedObjName: involvedObjName,
 		Reason:          input.Action,

@@ -27,25 +27,25 @@ import (
 )
 
 const (
-	ByK8sEventInvolvedObjKind = "idx_k8s_event_involved_obj_kind"
-	ByK8sEventInvolvedObjName = "idx_k8s_event_involved_obj_name"
-	ByK8sEventType            = "idx_k8s_event_type"
-	ByK8sEventSource          = "idx_k8s_event_source"
+	ByLifecycleEventInvolvedObjKind = "idx_lifecycle_event_involved_obj_kind"
+	ByLifecycleEventInvolvedObjName = "idx_lifecycle_event_involved_obj_name"
+	ByLifecycleEventType            = "idx_lifecycle_event_type"
+	ByLifecycleEventSource          = "idx_lifecycle_event_source"
 )
 
 func init() {
-	RegisterIndexers(meshresource.K8sEventKind, map[string]cache.IndexFunc{
-		ByK8sEventInvolvedObjKind: byK8sEventInvolvedObjKind,
-		ByK8sEventInvolvedObjName: byK8sEventInvolvedObjName,
-		ByK8sEventType:            byK8sEventType,
-		ByK8sEventSource:          byK8sEventSource,
+	RegisterIndexers(meshresource.LifecycleEventKind, map[string]cache.IndexFunc{
+		ByLifecycleEventInvolvedObjKind: byLifecycleEventInvolvedObjKind,
+		ByLifecycleEventInvolvedObjName: byLifecycleEventInvolvedObjName,
+		ByLifecycleEventType:            byLifecycleEventType,
+		ByLifecycleEventSource:          byLifecycleEventSource,
 	})
 }
 
-func byK8sEventInvolvedObjKind(obj interface{}) ([]string, error) {
-	event, ok := obj.(*meshresource.K8sEventResource)
+func byLifecycleEventInvolvedObjKind(obj interface{}) ([]string, error) {
+	event, ok := obj.(*meshresource.LifecycleEventResource)
 	if !ok {
-		return nil, bizerror.NewAssertionError(meshresource.K8sEventKind, reflect.TypeOf(obj).Name())
+		return nil, bizerror.NewAssertionError(meshresource.LifecycleEventKind, reflect.TypeOf(obj).Name())
 	}
 	if event.Spec == nil || event.Spec.InvolvedObjKind == "" {
 		return []string{}, nil
@@ -53,10 +53,10 @@ func byK8sEventInvolvedObjKind(obj interface{}) ([]string, error) {
 	return []string{event.Spec.InvolvedObjKind}, nil
 }
 
-func byK8sEventInvolvedObjName(obj interface{}) ([]string, error) {
-	event, ok := obj.(*meshresource.K8sEventResource)
+func byLifecycleEventInvolvedObjName(obj interface{}) ([]string, error) {
+	event, ok := obj.(*meshresource.LifecycleEventResource)
 	if !ok {
-		return nil, bizerror.NewAssertionError(meshresource.K8sEventKind, reflect.TypeOf(obj).Name())
+		return nil, bizerror.NewAssertionError(meshresource.LifecycleEventKind, reflect.TypeOf(obj).Name())
 	}
 	if event.Spec == nil || event.Spec.InvolvedObjName == "" {
 		return []string{}, nil
@@ -64,10 +64,10 @@ func byK8sEventInvolvedObjName(obj interface{}) ([]string, error) {
 	return []string{event.Spec.InvolvedObjName}, nil
 }
 
-func byK8sEventType(obj interface{}) ([]string, error) {
-	event, ok := obj.(*meshresource.K8sEventResource)
+func byLifecycleEventType(obj interface{}) ([]string, error) {
+	event, ok := obj.(*meshresource.LifecycleEventResource)
 	if !ok {
-		return nil, bizerror.NewAssertionError(meshresource.K8sEventKind, reflect.TypeOf(obj).Name())
+		return nil, bizerror.NewAssertionError(meshresource.LifecycleEventKind, reflect.TypeOf(obj).Name())
 	}
 	if event.Spec == nil || event.Spec.Type == "" {
 		return []string{}, nil
@@ -75,10 +75,10 @@ func byK8sEventType(obj interface{}) ([]string, error) {
 	return []string{event.Spec.Type}, nil
 }
 
-func byK8sEventSource(obj interface{}) ([]string, error) {
-	event, ok := obj.(*meshresource.K8sEventResource)
+func byLifecycleEventSource(obj interface{}) ([]string, error) {
+	event, ok := obj.(*meshresource.LifecycleEventResource)
 	if !ok {
-		return nil, bizerror.NewAssertionError(meshresource.K8sEventKind, reflect.TypeOf(obj).Name())
+		return nil, bizerror.NewAssertionError(meshresource.LifecycleEventKind, reflect.TypeOf(obj).Name())
 	}
 	if event.Spec == nil || event.Spec.EventSource == "" {
 		return []string{}, nil

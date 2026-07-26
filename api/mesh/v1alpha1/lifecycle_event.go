@@ -17,9 +17,9 @@
 
 package v1alpha1
 
-// K8sEvent is the spec for a K8s event resource, capturing both K8s native events
+// LifecycleEvent is the spec for a K8s event resource, capturing both K8s native events
 // and registry-side lifecycle events in a unified format.
-type K8sEvent struct {
+type LifecycleEvent struct {
 	Namespace       string `json:"namespace,omitempty"`
 	Reason          string `json:"reason,omitempty"`
 	Message         string `json:"message,omitempty"`
@@ -34,11 +34,11 @@ type K8sEvent struct {
 	EventSource     string `json:"eventSource,omitempty"`
 }
 
-func (e *K8sEvent) Clone() *K8sEvent {
+func (e *LifecycleEvent) Clone() *LifecycleEvent {
 	if e == nil {
 		return nil
 	}
-	return &K8sEvent{
+	return &LifecycleEvent{
 		Namespace:       e.Namespace,
 		Reason:          e.Reason,
 		Message:         e.Message,

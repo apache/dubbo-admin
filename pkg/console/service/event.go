@@ -41,9 +41,9 @@ func ListApplicationEvents(ctx consolectx.Context, req *model.EventQueryReq) (*m
 	allConditions := []index.IndexCondition{
 		{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
 	}
-	resources, err := manager.ListByIndexes[*meshresource.K8sEventResource](
+	resources, err := manager.ListByIndexes[*meshresource.LifecycleEventResource](
 		ctx.ResourceManager(),
-		meshresource.K8sEventKind,
+		meshresource.LifecycleEventKind,
 		allConditions,
 	)
 	if err != nil {
@@ -69,7 +69,7 @@ func ListApplicationEvents(ctx consolectx.Context, req *model.EventQueryReq) (*m
 	}
 	paged := filtered[offset:end]
 
-	return toEventListResp(&coremodel.PageData[*meshresource.K8sEventResource]{
+	return toEventListResp(&coremodel.PageData[*meshresource.LifecycleEventResource]{
 		Pagination: coremodel.Pagination{
 			Total:      len(filtered),
 			PageOffset: req.PageOffset,
@@ -135,8 +135,8 @@ func resolveAppEventNames(ctx consolectx.Context, req *model.EventQueryReq) []st
 // filterEventsByNames returns events whose InvolvedObjName matches any of the
 // given names, supporting both exact match and prefix match.
 // Prefix candidates end with "/" (registry: appName/...) or "-" (K8s pod: appName-hash-hash).
-func filterEventsByNames(resources []*meshresource.K8sEventResource, matchNames []string) []*meshresource.K8sEventResource {
-	filtered := make([]*meshresource.K8sEventResource, 0)
+func filterEventsByNames(resources []*meshresource.LifecycleEventResource, matchNames []string) []*meshresource.LifecycleEventResource {
+	filtered := make([]*meshresource.LifecycleEventResource, 0)
 	for _, r := range resources {
 		if r.Spec == nil {
 			continue
@@ -170,9 +170,9 @@ func ListInstanceEvents(ctx consolectx.Context, req *model.EventQueryReq) (*mode
 	allConditions := []index.IndexCondition{
 		{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
 	}
-	resources, err := manager.ListByIndexes[*meshresource.K8sEventResource](
+	resources, err := manager.ListByIndexes[*meshresource.LifecycleEventResource](
 		ctx.ResourceManager(),
-		meshresource.K8sEventKind,
+		meshresource.LifecycleEventKind,
 		allConditions,
 	)
 	if err != nil {
@@ -198,7 +198,7 @@ func ListInstanceEvents(ctx consolectx.Context, req *model.EventQueryReq) (*mode
 	}
 	paged := filtered[offset:end]
 
-	return toEventListResp(&coremodel.PageData[*meshresource.K8sEventResource]{
+	return toEventListResp(&coremodel.PageData[*meshresource.LifecycleEventResource]{
 		Pagination: coremodel.Pagination{
 			Total:      len(filtered),
 			PageOffset: req.PageOffset,
@@ -260,15 +260,15 @@ func ListServiceEvents(ctx consolectx.Context, req *model.EventQueryReq) (*model
 
 	if req.ServiceName != "" && req.AppName != "" {
 		conditions = append(conditions, index.IndexCondition{
-			IndexName: index.ByK8sEventInvolvedObjName,
+			IndexName: index.ByLifecycleEventInvolvedObjName,
 			Value:     req.AppName + "/" + req.ServiceName,
 			Operator:  index.HasPrefix,
 		})
 	}
 
-	pageData, err := manager.PageListByIndexes[*meshresource.K8sEventResource](
+	pageData, err := manager.PageListByIndexes[*meshresource.LifecycleEventResource](
 		ctx.ResourceManager(),
-		meshresource.K8sEventKind,
+		meshresource.LifecycleEventKind,
 		conditions,
 		req.PageReq,
 	)
@@ -279,7 +279,7 @@ func ListServiceEvents(ctx consolectx.Context, req *model.EventQueryReq) (*model
 	return toEventListResp(pageData), nil
 }
 
-func toEventListResp(pageData *coremodel.PageData[*meshresource.K8sEventResource]) *model.EventListResp {
+func toEventListResp(pageData *coremodel.PageData[*meshresource.LifecycleEventResource]) *model.EventListResp {
 	items := pageData.Data
 	list := make([]*model.EventItem, 0, len(items))
 	for _, eventRes := range items {

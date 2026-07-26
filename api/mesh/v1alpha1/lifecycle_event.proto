@@ -6,9 +6,9 @@ option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
 
 import "api/mesh/options.proto";
 
-message K8sEvent {
-  option (dubbo.mesh.resource).name = "K8sEvent";
-  option (dubbo.mesh.resource).plural_name = "K8sEvents";
+message LifecycleEvent {
+  option (dubbo.mesh.resource).name = "LifecycleEvent";
+  option (dubbo.mesh.resource).plural_name = "LifecycleEvents";
   option (dubbo.mesh.resource).package = "mesh";
   option (dubbo.mesh.resource).is_experimental = true;
 

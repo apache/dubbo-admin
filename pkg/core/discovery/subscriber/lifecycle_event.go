@@ -33,34 +33,34 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
-// K8sEventSubscriber processes K8sEvent resources on the EventBus.
+// LifecycleEventSubscriber processes LifecycleEvent resources on the EventBus.
 // It enriches K8s-sourced events with Dubbo application identification
 // and discards events from non-Dubbo Pods before they reach the store.
-type K8sEventSubscriber struct {
+type LifecycleEventSubscriber struct {
 	storeRouter store.Router
 	engineCfg   *enginecfg.Config
 }
 
-func NewK8sEventSubscriber(storeRouter store.Router, engineCfg *enginecfg.Config) *K8sEventSubscriber {
-	return &K8sEventSubscriber{
+func NewLifecycleEventSubscriber(storeRouter store.Router, engineCfg *enginecfg.Config) *LifecycleEventSubscriber {
+	return &LifecycleEventSubscriber{
 		storeRouter: storeRouter,
 		engineCfg:   engineCfg,
 	}
 }
 
-func (k *K8sEventSubscriber) Name() string {
+func (k *LifecycleEventSubscriber) Name() string {
 	return "Discovery-" + k.ResourceKind().ToString()
 }
 
-func (k *K8sEventSubscriber) ResourceKind() coremodel.ResourceKind {
-	return meshresource.K8sEventKind
+func (k *LifecycleEventSubscriber) ResourceKind() coremodel.ResourceKind {
+	return meshresource.LifecycleEventKind
 }
 
-func (k *K8sEventSubscriber) AsyncEnabled() bool {
+func (k *LifecycleEventSubscriber) AsyncEnabled() bool {
 	return true
 }
 
-func (k *K8sEventSubscriber) ProcessEvent(event events.Event) error {
+func (k *LifecycleEventSubscriber) ProcessEvent(event events.Event) error {
 	switch event.Type() {
 	case cache.Deleted:
 		return k.processDelete(event)
@@ -69,10 +69,10 @@ func (k *K8sEventSubscriber) ProcessEvent(event events.Event) error {
 	}
 }
 
-func (k *K8sEventSubscriber) processUpsert(event events.Event) error {
-	newObj, ok := event.NewObj().(*meshresource.K8sEventResource)
+func (k *LifecycleEventSubscriber) processUpsert(event events.Event) error {
+	newObj, ok := event.NewObj().(*meshresource.LifecycleEventResource)
 	if !ok || newObj == nil || newObj.Spec == nil {
-		logger.Debugf("K8sEventSubscriber: event has no valid K8sEventResource, skipping")
+		logger.Debugf("LifecycleEventSubscriber: event has no valid LifecycleEventResource, skipping")
 		return nil
 	}
 
@@ -84,17 +84,17 @@ func (k *K8sEventSubscriber) processUpsert(event events.Event) error {
 	// KUBERNETES events: filter by Dubbo app identification.
 	identifier := k.engineCfg.Properties.DubboAppIdentifier
 	if identifier == nil {
-		logger.Debugf("K8sEventSubscriber: DubboAppIdentifier not configured, skipping K8s event %s",
+		logger.Debugf("LifecycleEventSubscriber: DubboAppIdentifier not configured, skipping K8s event %s",
 			newObj.Spec.InvolvedObjName)
 		return nil
 	}
 
 	if newObj.Spec.InvolvedObjKind != "Pod" {
-		logger.Debugf("K8sEventSubscriber: skipping non-Pod K8s event (kind=%s)", newObj.Spec.InvolvedObjKind)
+		logger.Debugf("LifecycleEventSubscriber: skipping non-Pod K8s event (kind=%s)", newObj.Spec.InvolvedObjKind)
 		return nil
 	}
 
-	// Align K8sEvent mesh with the RuntimeInstance mesh.
+	// Align LifecycleEvent mesh with the RuntimeInstance mesh.
 	// K8sEventListerWatcher cannot know the Pod's Dubbo mesh at transform time,
 	// so we resolve it here by looking up the corresponding RuntimeInstance.
 	k.alignMeshFromRuntimeInstance(newObj)
@@ -102,14 +102,14 @@ func (k *K8sEventSubscriber) processUpsert(event events.Event) error {
 	return k.writeEvent(newObj)
 }
 
-// alignMeshFromRuntimeInstance resolves the correct Dubbo mesh for a K8sEvent
+// alignMeshFromRuntimeInstance resolves the correct Dubbo mesh for a LifecycleEvent
 // by looking up the corresponding RuntimeInstance via the Pod name.
 // RuntimeInstances are stored under their discovery mesh (e.g. "nacos2.5"),
 // not the engine mesh, so we use the name index to search across all meshes.
-func (k *K8sEventSubscriber) alignMeshFromRuntimeInstance(eventRes *meshresource.K8sEventResource) {
+func (k *LifecycleEventSubscriber) alignMeshFromRuntimeInstance(eventRes *meshresource.LifecycleEventResource) {
 	rtStore, err := k.storeRouter.ResourceKindRoute(meshresource.RuntimeInstanceKind)
 	if err != nil {
-		logger.Debugf("K8sEventSubscriber: cannot route to RuntimeInstance store: %v", err)
+		logger.Debugf("LifecycleEventSubscriber: cannot route to RuntimeInstance store: %v", err)
 		return
 	}
 
@@ -119,7 +119,7 @@ func (k *K8sEventSubscriber) alignMeshFromRuntimeInstance(eventRes *meshresource
 		{IndexName: index.ByRuntimeInstanceNameIndex, Value: podName, Operator: index.Equals},
 	})
 	if listErr != nil {
-		logger.Debugf("K8sEventSubscriber: failed to list RuntimeInstances by name %s: %v", podName, listErr)
+		logger.Debugf("LifecycleEventSubscriber: failed to list RuntimeInstances by name %s: %v", podName, listErr)
 		return
 	}
 
@@ -131,40 +131,40 @@ func (k *K8sEventSubscriber) alignMeshFromRuntimeInstance(eventRes *meshresource
 		resolvedMesh := rtInstance.ResourceMesh()
 		if resolvedMesh != "" && resolvedMesh != eventRes.Mesh {
 			// Delete the old entry (keyed by old mesh) before changing mesh.
-			eventStore, _ := k.storeRouter.ResourceKindRoute(meshresource.K8sEventKind)
+			eventStore, _ := k.storeRouter.ResourceKindRoute(meshresource.LifecycleEventKind)
 			if eventStore != nil {
 				_ = eventStore.Delete(eventRes)
 			}
 			eventRes.Mesh = resolvedMesh
-			logger.Debugf("K8sEventSubscriber: aligned mesh from %q to %q for pod %s",
+			logger.Debugf("LifecycleEventSubscriber: aligned mesh from %q to %q for pod %s",
 				k.engineCfg.ID, resolvedMesh, podName)
 			return
 		}
 	}
 }
 
-func (k *K8sEventSubscriber) processDelete(event events.Event) error {
-	oldObj, ok := event.OldObj().(*meshresource.K8sEventResource)
+func (k *LifecycleEventSubscriber) processDelete(event events.Event) error {
+	oldObj, ok := event.OldObj().(*meshresource.LifecycleEventResource)
 	if !ok || oldObj == nil {
 		return nil
 	}
 
-	eventStore, err := k.storeRouter.ResourceKindRoute(meshresource.K8sEventKind)
+	eventStore, err := k.storeRouter.ResourceKindRoute(meshresource.LifecycleEventKind)
 	if err != nil {
-		logger.Errorf("K8sEventSubscriber: cannot route to K8sEvent store: %v", err)
+		logger.Errorf("LifecycleEventSubscriber: cannot route to LifecycleEvent store: %v", err)
 		return err
 	}
 
 	if err := eventStore.Delete(oldObj); err != nil {
-		logger.Errorf("K8sEventSubscriber: failed to delete K8sEvent %s: %v", oldObj.ResourceKey(), err)
+		logger.Errorf("LifecycleEventSubscriber: failed to delete LifecycleEvent %s: %v", oldObj.ResourceKey(), err)
 	}
 	return nil
 }
 
-func (k *K8sEventSubscriber) writeEvent(eventRes *meshresource.K8sEventResource) error {
-	eventStore, err := k.storeRouter.ResourceKindRoute(meshresource.K8sEventKind)
+func (k *LifecycleEventSubscriber) writeEvent(eventRes *meshresource.LifecycleEventResource) error {
+	eventStore, err := k.storeRouter.ResourceKindRoute(meshresource.LifecycleEventKind)
 	if err != nil {
-		logger.Errorf("K8sEventSubscriber: cannot route to K8sEvent store: %v", err)
+		logger.Errorf("LifecycleEventSubscriber: cannot route to LifecycleEvent store: %v", err)
 		return err
 	}
 
@@ -178,7 +178,7 @@ func (k *K8sEventSubscriber) writeEvent(eventRes *meshresource.K8sEventResource)
 	}
 
 	if err := eventStore.Add(eventRes); err != nil {
-		logger.Errorf("K8sEventSubscriber: failed to add K8sEvent %s: %v", eventRes.ResourceKey(), err)
+		logger.Errorf("LifecycleEventSubscriber: failed to add LifecycleEvent %s: %v", eventRes.ResourceKey(), err)
 		return err
 	}
 
@@ -186,11 +186,11 @@ func (k *K8sEventSubscriber) writeEvent(eventRes *meshresource.K8sEventResource)
 	// timestamp-prefixed entry has been successfully added, so that a failed
 	// Add does not cause permanent event loss.
 	if oldName != "" {
-		oldRes := meshresource.NewK8sEventResourceWithAttributes(oldName, eventRes.Mesh)
+		oldRes := meshresource.NewLifecycleEventResourceWithAttributes(oldName, eventRes.Mesh)
 		_ = eventStore.Delete(oldRes)
 	}
 
-	logger.Infof("K8sEventSubscriber: processed event, source=%s, kind=%s, involved=%s",
+	logger.Infof("LifecycleEventSubscriber: processed event, source=%s, kind=%s, involved=%s",
 		eventRes.Spec.EventSource, eventRes.Spec.InvolvedObjKind, eventRes.Spec.InvolvedObjName)
 	return nil
 }
@@ -200,7 +200,7 @@ func (k *K8sEventSubscriber) writeEvent(eventRes *meshresource.K8sEventResource)
 // ordering. Registry events already have this prefix from RecordRegistryEvent.
 // The caller (writeEvent) is responsible for deleting the original key after a
 // successful Add to avoid duplicate entries.
-func (k *K8sEventSubscriber) prefixTimestampKey(eventRes *meshresource.K8sEventResource) {
+func (k *LifecycleEventSubscriber) prefixTimestampKey(eventRes *meshresource.LifecycleEventResource) {
 	timestampNano := int64(0)
 	if eventRes.Spec.LastTimestamp != "" {
 		if t, err := time.Parse(constants.TimeFormatStr, eventRes.Spec.LastTimestamp); err == nil {

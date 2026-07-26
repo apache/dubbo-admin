@@ -47,7 +47,7 @@ var _ controller.ResourceListerWatcher = &K8sEventListerWatcher{}
 
 func NewK8sEventListWatcher(clientset *kubernetes.Clientset, cfg *enginecfg.Config) (*K8sEventListerWatcher, error) {
 	// Only watch events related to Pods to avoid collecting cluster-wide noise
-	// (Node events, Namespace events, etc.). The K8sEventSubscriber on the
+	// (Node events, Namespace events, etc.). The LifecycleEventSubscriber on the
 	// EventBus performs further filtering using DubboAppIdentifier.
 	lw := cache.NewListWatchFromClient(
 		clientset.CoreV1().RESTClient(),
@@ -67,7 +67,7 @@ func (k *K8sEventListerWatcher) Watch(options metav1.ListOptions) (watch.Interfa
 }
 
 func (k *K8sEventListerWatcher) ResourceKind() coremodel.ResourceKind {
-	return meshresource.K8sEventKind
+	return meshresource.LifecycleEventKind
 }
 
 func (k *K8sEventListerWatcher) TransformFunc() cache.TransformFunc {
@@ -86,8 +86,8 @@ func (k *K8sEventListerWatcher) TransformFunc() cache.TransformFunc {
 			lastTs = k8sEvent.LastTimestamp.Format(constants.TimeFormatStr)
 		}
 
-		res := meshresource.NewK8sEventResourceWithAttributes(k8sEvent.Namespace+"/"+k8sEvent.Name, k.cfg.ID)
-		res.Spec = &meshproto.K8sEvent{
+		res := meshresource.NewLifecycleEventResourceWithAttributes(k8sEvent.Namespace+"/"+k8sEvent.Name, k.cfg.ID)
+		res.Spec = &meshproto.LifecycleEvent{
 			Namespace:       k8sEvent.Namespace,
 			Reason:          k8sEvent.Reason,
 			Message:         k8sEvent.Message,
