@@ -31,8 +31,12 @@ help:
 	@echo "  lint       - Run golangci-lint"
 
 # Run unit tests
+# -short skips integration/e2e tests that require external services (Milvus, LLM APIs).
+# Integration tests are additionally guarded by the `integration` build tag; run them
+# explicitly with: (cd ai && go test -tags=integration ./...)
 test: clean
-	go test ./... -gcflags=-l -coverprofile=coverage.txt -covermode=atomic
+	go test ./... -short -gcflags=-l -coverprofile=coverage.txt -covermode=atomic
+	cd ai && go test ./... -short -gcflags=-l
 
 fmt:
 	go fmt ./...

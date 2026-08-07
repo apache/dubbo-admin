@@ -160,28 +160,12 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 	}
 }
 
-// MessageDelta finishes stream and handles usage
+// MessageDelta finishes the stream and reports token usage. The observation's
+// Summary/FinalAnswer text was already streamed live by the observe stage
+// (react emitObservation), so this only emits the stop reason + usage — it must
+// NOT re-stream the text, or the client would receive the answer twice.
 func (h *AgentHandler) MessageDelta(sseHandler *sse.SSEHandler, output schema.Schema) {
 	stopReason := "end_turn"
-
-	// If the output is an Observation with a final answer, stream it as text delta first
-	switch v := output.(type) {
-	case *schema.Observation:
-		// Send Summary as text if present
-		if v.Summary != "" {
-			if err := sseHandler.HandleText(v.Summary+"\n", 0); err != nil {
-				rt.GetLogger().Error("Failed to stream summary in MessageDelta", "error", err)
-			}
-		}
-		// Send FinalAnswer as text if present
-		if v.FinalAnswer != "" {
-			if err := sseHandler.HandleText(v.FinalAnswer+"\n", 0); err != nil {
-				rt.GetLogger().Error("Failed to stream final answer in MessageDelta", "error", err)
-			}
-		}
-	default:
-		rt.GetLogger().Info("MessageDelta: unexpected output type", "type", fmt.Sprintf("%T", output))
-	}
 
 	if err := sseHandler.MessageDeltaWithUsage(stopReason, output); err != nil {
 		sseHandler.HandleError("finish_stream_error", fmt.Sprintf("failed to finish stream: %v", err))

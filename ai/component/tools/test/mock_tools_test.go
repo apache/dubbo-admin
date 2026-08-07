@@ -17,7 +17,7 @@ func TestCall_MockTool_PrometheusServiceLatency(t *testing.T) {
 	rt.SetGenkitRegistry(genkit.Init(context.Background()))
 	toolEngine.NewMockToolManager(rt)
 
-	out, err := toolEngine.Call(rt.GetGenkitRegistry(), "prometheus_query_service_latency", toolEngine.PrometheusServiceLatencyInput{
+	out, err := toolEngine.Call(context.Background(), rt.GetGenkitRegistry(), "prometheus_query_service_latency", toolEngine.PrometheusServiceLatencyInput{
 		ServiceName:      "order-service",
 		TimeRangeMinutes: 10,
 		Quantile:         0.99,

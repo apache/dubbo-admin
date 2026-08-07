@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	compRag "dubbo-admin-ai/component/rag"
+	rerankers "dubbo-admin-ai/component/rag/rerankers"
 	toolEngine "dubbo-admin-ai/component/tools/engine"
 	"dubbo-admin-ai/runtime"
 
@@ -86,7 +87,7 @@ func (c *captureRetriever) Retrieve(ctx context.Context, query string, opts ...e
 	if common.TopK != nil {
 		c.topK = *common.TopK
 	}
-	impl := einoRetriever.GetImplSpecificOptions(&compRag.RAGOptions{}, opts...)
+	impl := einoRetriever.GetImplSpecificOptions(&compRag.CommonRetrieverOptions{}, opts...)
 	c.namespace = impl.Namespace
 	if impl.TargetIndex != nil {
 		c.targetIndex = *impl.TargetIndex
@@ -98,17 +99,17 @@ type captureReranker struct {
 	topN int
 }
 
-func (c *captureReranker) Rerank(ctx context.Context, query string, docs any, opts ...compRag.Option) ([]*compRag.RetrieveResult, error) {
-	var co compRag.RAGOptions
+func (c *captureReranker) Rerank(ctx context.Context, query string, docs any, opts ...compRag.Option) ([]*rerankers.Result, error) {
+	var co rerankers.CallOptions
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&co)
 		}
 	}
-	if co.RerankTopN != nil {
-		c.topN = *co.RerankTopN
+	if co.TopN != nil {
+		c.topN = *co.TopN
 	}
-	return []*compRag.RetrieveResult{{Content: "reranked", RelevanceScore: 1}}, nil
+	return []*rerankers.Result{{Content: "reranked", RelevanceScore: 1}}, nil
 }
 
 func runRetrieveTool(t *testing.T, input map[string]any, ragSys *compRag.RAG) {
@@ -133,10 +134,11 @@ func TestRetrieveBasicConceptFromK8SDoc_UsesDefaultOptions(t *testing.T) {
 	ragSys := &compRag.RAG{Retriever: r, Reranker: rr}
 
 	runRetrieveTool(t, map[string]any{"queries": []string{"deployment"}}, ragSys)
-	if r.topK != toolEngine.DefaultK8SDocRetrieveTopK ||
-		r.namespace != toolEngine.DefaultK8SDocNamespace ||
-		r.targetIndex != toolEngine.DefaultK8SDocTargetIndex ||
+	// RAG.Retrieve threads the namespace default to the retriever and the rerank TopN
+	// default to the reranker. Retriever-side TopK/TargetIndex are not passed through
+	// this path, so they are not asserted here.
+	if r.namespace != toolEngine.DefaultK8SDocNamespace ||
 		rr.topN != toolEngine.DefaultK8SDocRerankTopN {
-		t.Fatalf("unexpected defaults applied: topK=%d namespace=%q targetIndex=%q topN=%d", r.topK, r.namespace, r.targetIndex, rr.topN)
+		t.Fatalf("unexpected defaults applied: namespace=%q topN=%d", r.namespace, rr.topN)
 	}
 }

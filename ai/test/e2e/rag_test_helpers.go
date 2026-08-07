@@ -1,3 +1,5 @@
+//go:build integration
+
 package e2e
 
 func truncateString(s string, maxLen int) string {

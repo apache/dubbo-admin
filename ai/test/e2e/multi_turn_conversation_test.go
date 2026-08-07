@@ -1,3 +1,5 @@
+//go:build integration
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -26,10 +28,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	appruntime "dubbo-admin-ai/runtime"
 )
@@ -74,25 +78,31 @@ func TestMultiTurnConversation(t *testing.T) {
 		// Define 10 rounds of conversation
 		// Each round tests different capabilities
 		conversationRounds := []ConversationRound{
+			// Each Expected entry is a concept; '|'-separated variants let a correct
+			// answer match whether it uses English, Dubbo's camelCase names, or
+			// Chinese (the model sometimes replies in Chinese). ASCII variants match
+			// case-insensitively with optional separators, so a single "round robin"
+			// covers "round-robin"/"RoundRobin"/"roundrobin"; add a separate variant
+			// only for spellings that differ by more than separator/case.
 			{
 				Name:     "Round 1: Basic Introduction",
 				Message:  "Hello, what is Dubbo?",
-				Expected: []string{"Dubbo", "RPC", "framework"},
+				Expected: []string{"Dubbo", "RPC", "framework|框架"},
 			},
 			{
 				Name:     "Round 2: Follow-up on Architecture",
 				Message:  "What are the main components of Dubbo?",
-				Expected: []string{"Provider", "Consumer", "Registry", "Monitor"},
+				Expected: []string{"Provider|提供者", "Consumer|消费者", "Registry|注册中心", "Monitor|监控"},
 			},
 			{
 				Name:     "Round 3: Service Governance",
 				Message:  "Tell me about Dubbo's service governance features",
-				Expected: []string{"load balancing", "circuit breaking", "service degradation"},
+				Expected: []string{"load balancing|loadbalance|负载均衡", "circuit breaking|熔断", "service degradation|降级"},
 			},
 			{
 				Name:     "Round 4: Load Balancing Details",
 				Message:  "What load balancing strategies does Dubbo support?",
-				Expected: []string{"random", "round-robin", "least active", "consistent hashing"},
+				Expected: []string{"random|随机", "round robin|轮询", "least active|最少活跃|最小活跃", "consistent hash|一致性哈希|一致性hash"},
 			},
 			{
 				Name:     "Round 5: Protocol Support",
@@ -102,27 +112,27 @@ func TestMultiTurnConversation(t *testing.T) {
 			{
 				Name:     "Round 6: Fault Tolerance",
 				Message:  "What are the cluster fault tolerance strategies?",
-				Expected: []string{"Failover", "Failfast", "Failsafe", "Failback"},
+				Expected: []string{"Failover|故障转移", "Failfast|快速失败", "Failsafe|失败安全", "Failback|失败自动恢复|失败恢复"},
 			},
 			{
 				Name:     "Round 7: Context Retention Check",
 				Message:  "Based on what we discussed, which load balancing is the default?",
-				Expected: []string{"random", "default"},
+				Expected: []string{"random|随机", "default|默认"},
 			},
 			{
 				Name:     "Round 8: Advanced Features",
 				Message:  "How does Dubbo handle service registration and discovery?",
-				Expected: []string{"registry", "Nacos", "Zookeeper"},
+				Expected: []string{"registry|注册中心", "Nacos", "Zookeeper|zk"},
 			},
 			{
 				Name:     "Round 9: Performance Question",
 				Message:  "What makes Dubbo perform well in high-concurrency scenarios?",
-				Expected: []string{"NIO", "async", "long connection"},
+				Expected: []string{"NIO", "async|异步", "long connection|长连接"},
 			},
 			{
 				Name:     "Round 10: Summary Request",
 				Message:  "Can you summarize the key points about Dubbo we discussed?",
-				Expected: []string{"architecture", "protocols", "governance", "fault tolerance"},
+				Expected: []string{"architecture|架构", "protocols|protocol|协议", "governance|治理", "fault tolerance|容错"},
 			},
 			// Rounds 11-14 ask for precise, documentation-grade details that live in
 			// the seeded knowledge base (component/rag/seeds/*.md). Per the Think
@@ -397,32 +407,100 @@ func extractTextFromSSE(sseData string) string {
 	return result
 }
 
-// validateResponse checks if response contains expected keywords
-func validateResponse(response string, expected []string) bool {
-	responseLower := strings.ToLower(response)
-	matchCount := 0
+// scoringNoise lists framework-emitted text that must not satisfy a keyword:
+// the streamed stage-progress lines and the fallback boilerplate the agent
+// returns when it has no real answer. Stripping these before scoring stops a
+// pure-fallback response (e.g. "No previous Dubbo discussion found") from
+// matching a concept like "Dubbo" and being counted as a success.
+var scoringNoise = []string{
+	"🔍 分析问题并调用工具中...",
+	"✅ 分析与工具调用完成。",
+	"🧠 整理结论中...",
+	"✅ 结论整理完成。",
+	"No previous Dubbo discussion found in session memory",
+	"I don't see any previous discussion about Dubbo in our conversation history",
+	"I apologize, but I need more time to process your request",
+	"Generate response based on available context",
+}
 
-	for _, keyword := range expected {
-		if strings.Contains(responseLower, strings.ToLower(keyword)) {
+func stripScoringNoise(s string) string {
+	for _, n := range scoringNoise {
+		s = strings.ReplaceAll(s, n, " ")
+	}
+	return s
+}
+
+// variantSep splits a variant into tokens on space/hyphen/underscore so the
+// separator between tokens can be made optional when matching.
+var variantSep = regexp.MustCompile(`[\s\-_]+`)
+
+func isASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= utf8.RuneSelf {
+			return false
+		}
+	}
+	return true
+}
+
+// variantPattern builds a case-insensitive, word-bounded regexp for an ASCII
+// variant. Internal separators are optional so one variant such as
+// "round robin" matches "round-robin", "round robin" and "roundrobin"; the
+// leading/trailing \b keeps short tokens like "all" or "rest" from matching
+// inside "install" or "interest".
+func variantPattern(variant string) *regexp.Regexp {
+	tokens := variantSep.Split(strings.ToLower(variant), -1)
+	for i, t := range tokens {
+		tokens[i] = regexp.QuoteMeta(t)
+	}
+	return regexp.MustCompile(`(?i)\b` + strings.Join(tokens, `[\s\-_]*`) + `\b`)
+}
+
+// conceptMatched reports whether any '|'-separated variant of a concept appears
+// in the response. ASCII variants match with word boundaries + optional
+// separators (tolerant of case/space/hyphen); CJK variants (no word boundary)
+// fall back to a plain substring test, letting a Chinese answer still count.
+func conceptMatched(response, concept string) bool {
+	lower := strings.ToLower(response)
+	for _, variant := range strings.Split(concept, "|") {
+		variant = strings.TrimSpace(variant)
+		if variant == "" {
+			continue
+		}
+		if isASCII(variant) {
+			if variantPattern(variant).MatchString(lower) {
+				return true
+			}
+		} else if strings.Contains(lower, strings.ToLower(variant)) {
+			return true
+		}
+	}
+	return false
+}
+
+// validateResponse checks whether the response covers the expected concepts.
+func validateResponse(response string, expected []string) bool {
+	clean := stripScoringNoise(response)
+	matchCount := 0
+	for _, concept := range expected {
+		if conceptMatched(clean, concept) {
 			matchCount++
 		}
 	}
-
-	// Consider successful if at least half of expected keywords are found
+	// Consider successful if at least half of expected concepts are covered.
 	return matchCount >= len(expected)/2
 }
 
-// findMatchedKeywords returns which expected keywords were found in response
+// findMatchedKeywords returns the primary label of each expected concept that
+// was matched in the response.
 func findMatchedKeywords(response string, expected []string) []string {
-	responseLower := strings.ToLower(response)
+	clean := stripScoringNoise(response)
 	var matched []string
-
-	for _, keyword := range expected {
-		if strings.Contains(responseLower, strings.ToLower(keyword)) {
-			matched = append(matched, keyword)
+	for _, concept := range expected {
+		if conceptMatched(clean, concept) {
+			matched = append(matched, strings.SplitN(concept, "|", 2)[0])
 		}
 	}
-
 	return matched
 }
 

@@ -10,105 +10,18 @@ import (
 	"github.com/firebase/genkit/go/ai"
 )
 
-// StreamChunk represents streaming status information for ReAct Agent
-type StreamChunk struct {
-	Stage string                 `json:"stage"` // "think" | "act"
-	Index int                    `json:"index"`
-	Chunk *ai.ModelResponseChunk `json:"chunk"`
-}
-
 type UserInput struct {
 	Content string `json:"content,omitempty"`
 }
 
-type ThinkInput struct {
-	UserInput     *UserInput              `json:"user_input,omitempty"`
-	SessionID     string                  `json:"session_id"`
-	ToolResponses []toolEngine.ToolOutput `json:"tool_responses,omitempty"`
-	Observation   *Observation            `json:"observation,omitempty"`
-	UsageInfo     *ai.GenerationUsage     `json:"usage,omitempty" jsonschema_description:"DO NOT USE THIS FIELD, IT IS FOR INTERNAL USAGE ONLY"`
-}
-
-func (i ThinkInput) Validate(T reflect.Type) error {
-	if reflect.TypeOf(i) != T {
-		return fmt.Errorf("ThinkInput: %v is not of type %v", i, T)
-	}
-	return nil
-}
-
-func (i ThinkInput) Usage() *ai.GenerationUsage {
-	return i.UsageInfo
-}
-
-func (i ThinkInput) String() string {
-	data, err := json.MarshalIndent(i, "", "  ")
-	if err != nil {
-		return fmt.Sprintf("ThinkInput{error: %v}", err)
-	}
-	return string(data)
-}
-
-type ThinkOutput struct {
-	Thought        string              `json:"thought"`
-	Intent         PrimaryIntent       `json:"intent,omitempty"`
-	TargetServices []string            `json:"target_services,omitempty"`
-	SuggestedTools []string            `json:"suggested_tools,omitempty"`
-	UsageInfo      *ai.GenerationUsage `json:"usage,omitempty" jsonschema_description:"DO NOT USE THIS FIELD, IT IS FOR INTERNAL USAGE ONLY"`
-}
-
-func (ta ThinkOutput) Validate(T reflect.Type) error {
-	if reflect.TypeOf(ta) != T {
-		return fmt.Errorf("ThinkOutput: %v is not of type %v", ta, T)
-	}
-	return nil
-}
-
-func (ta ThinkOutput) Usage() *ai.GenerationUsage {
-	return ta.UsageInfo
-}
-
-func (ta ThinkOutput) String() string {
-	data, err := json.MarshalIndent(ta, "", "  ")
-	if err != nil {
-		return fmt.Sprintf("ThinkOutput{error: %v}", err)
-	}
-	return string(data)
-}
-
 type ToolOutputs struct {
 	Outputs   []toolEngine.ToolOutput `json:"tool_responses"`
-	Thought   string                  `json:"thought,omitempty"`
 	UsageInfo *ai.GenerationUsage     `json:"usage,omitempty" jsonschema_description:"DO NOT USE THIS FIELD, IT IS FOR INTERNAL USAGE ONLY"`
-}
-
-func (to ToolOutputs) Validate(T reflect.Type) error {
-	if reflect.TypeOf(to) != T {
-		return fmt.Errorf("ToolRequest: %v is not of type %v", to, T)
-	}
-	return nil
-}
-
-func (to ToolOutputs) Usage() *ai.GenerationUsage {
-	return to.UsageInfo
 }
 
 func (to *ToolOutputs) Add(output *toolEngine.ToolOutput) {
 	to.Outputs = append(to.Outputs, *output)
 }
-
-type PrimaryIntent string
-
-const (
-	PerformanceInvestigation PrimaryIntent = "PERFORMANCE_INVESTIGATION"
-	ErrorDiagnosis           PrimaryIntent = "ERROR_DIAGNOSIS"
-	HealthCheck              PrimaryIntent = "HEALTH_CHECK"
-	ResourceMonitoring       PrimaryIntent = "RESOURCE_MONITORING"
-	TrafficAnalysis          PrimaryIntent = "TRAFFIC_ANALYSIS"
-	ServiceDependency        PrimaryIntent = "SERVICE_DEPENDENCY"
-	AlertingInvestigation    PrimaryIntent = "ALERTING_INVESTIGATION"
-	MemorySearch             PrimaryIntent = "MEMORY_SEARCH"
-	GeneralInquiry           PrimaryIntent = "GENERAL_INQUIRY"
-)
 
 type Observation struct {
 	Summary     string              `json:"summary"`
@@ -168,13 +81,10 @@ func AccumulateUsage(dist *ai.GenerationUsage, src ...*ai.GenerationUsage) {
 	}
 }
 
-// TODO: `index` is currently a package-level global counter.
-// It is shared across sessions and not concurrency-safe, which can cause
-// cross-session interference and data races under concurrent requests.
-// Move this counter to per-session/per-stream state (e.g. Channels/SSEHandler)
-// and guard mutation with synchronization if shared.
-var index = 0
-
+// StreamFeedback carries one chunk of streaming output. Its content-block
+// `index` is assigned by the owning Channels at send time (see Channels.Send),
+// keeping it per-interaction and free of the cross-session interference and
+// data races a shared global counter would cause.
 type StreamFeedback struct {
 	index int
 	done  bool
@@ -183,13 +93,11 @@ type StreamFeedback struct {
 }
 
 func StreamEnd() *StreamFeedback {
-	defer func() { index++ }()
-	return &StreamFeedback{index: index, done: true, text: "", final: nil}
+	return &StreamFeedback{done: true, text: "", final: nil}
 }
 
 func StreamFinal(final *Observation) *StreamFeedback {
-	defer func() { index++ }()
-	return &StreamFeedback{index: index, done: true, text: "", final: final}
+	return &StreamFeedback{done: true, text: "", final: final}
 }
 
 func (sf *StreamFeedback) Text() string {
@@ -202,14 +110,19 @@ func (sf *StreamFeedback) Final() Schema {
 
 func NewStreamFeedback(text string) *StreamFeedback {
 	return &StreamFeedback{
-		index: index,
-		done:  false,
-		text:  text,
+		done: false,
+		text: text,
 	}
 }
 
 func (sf *StreamFeedback) Index() int {
 	return sf.index
+}
+
+// SetIndex assigns the content-block index. Called by Channels.Send so the
+// counter lives with the single-consumer stream rather than a global.
+func (sf *StreamFeedback) SetIndex(i int) {
+	sf.index = i
 }
 
 func (sf *StreamFeedback) IsDone() bool {

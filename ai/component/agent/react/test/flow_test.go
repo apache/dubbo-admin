@@ -16,9 +16,9 @@ func validAgentSpec() *compReact.AgentSpec {
 		StageChannelBufferSize: 2,
 		MCPHostName:            "mcp_host",
 		Stages: []compReact.StageInfo{{
-			Name:        "thinking",
-			FlowType:    "think",
-			PromptFile:  "agentThink.txt",
+			Name:        "reasonAct",
+			FlowType:    "reasonAct",
+			PromptFile:  "agentReasonAct.txt",
 			Temperature: 0.7,
 			TopP:        0.9,
 			MaxTokens:   1000,

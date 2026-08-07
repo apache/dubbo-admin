@@ -15,25 +15,21 @@ Given conversation history and tool outputs, return a short structured decision.
 - Treat earlier turns as background context, not the primary target.
 - If evidence mainly supports an older question but not the latest one, set `heartbeat=true`, leave `final_answer` empty, and use `focus` to state what is still needed for the latest user message.
 - Avoid re-answering previously resolved questions unless the latest user message explicitly asks for it.
+- When the latest message asks to summarize or recall what was discussed, synthesize the answer from the conversation history and memory tool outputs present in the input. Do NOT reply that there is no prior discussion when earlier turns exist.
 
 # Language Rules (STRICT)
 - `summary`, `final_answer`, `focus`, and `evidence` must use the same language as the latest user message.
 
 # Output Contract (STRICT)
-Return one JSON object only. No markdown. No code fence. No extra text.
-Use exactly these fields:
-- `summary`: short status, max 120 chars
-- `heartbeat`: boolean (true if need more info, false if done)
-- `final_answer`: empty string when continuing; concise complete answer when stopping
-- `focus`: next step when continuing; empty string when stopping
-- `evidence`: short evidence summary, max 240 chars
-
-# Important Format Notes
-- Input contains tool outputs with fields like `tool_name`, `result`, `summary`
-- Your output MUST be in the Observation format defined above
-- Do NOT include `tool_name` or `result` fields in your output
-- Your output should ONLY have: summary, heartbeat, final_answer, focus, evidence
-- Use the `evidence` field to summarize what you learned from tools
+Return exactly one JSON object — no markdown, no code fence, no extra text — with
+ONLY these five fields (never echo the input's `tool_name`/`result` fields):
+- `summary`: internal status line for logs, max 120 chars. NOT the user-facing
+  answer — put the actual reply in `final_answer`.
+- `heartbeat`: boolean — true if more info is needed, false if done.
+- `final_answer`: empty string when continuing; the concise, complete user-facing
+  answer when stopping.
+- `focus`: next step when continuing; empty string when stopping.
+- `evidence`: short summary of what the tools showed, max 240 chars.
 
 # Required Format
 {"summary":"...","heartbeat":true,"final_answer":"","focus":"...","evidence":"..."}

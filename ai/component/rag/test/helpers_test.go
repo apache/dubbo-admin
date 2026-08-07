@@ -15,31 +15,18 @@
  * limitations under the License.
  */
 
-package react
+package ragtest
 
-import (
-	"fmt"
-
-	"dubbo-admin-ai/runtime"
-
-	"gopkg.in/yaml.v3"
-)
-
-// AgentFactory creates an agent component (explicit registration, no init)
-func AgentFactory(spec *yaml.Node) (runtime.Component, error) {
-	var cfg AgentSpec
-	if err := spec.Decode(&cfg); err != nil {
-		return nil, fmt.Errorf("failed to decode agent spec: %w", err)
+// truncateString truncates a string to a maximum length and adds "..." if truncated.
+// Shared by both unit tests and integration (build tag: integration) tests, so it lives
+// in an untagged file.
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
 	}
-
-	return NewAgentComponent(
-		cfg.AgentType,
-		cfg.Model,
-		cfg.PromptBasePath,
-		cfg.MaxIterations,
-		cfg.StageChannelBufferSize,
-		cfg.MCPHostName,
-		cfg.ToolTimeouts,
-		cfg.Stages,
-	)
+	runes := []rune(s)
+	if len(runes) <= maxLen {
+		return s
+	}
+	return string(runes[:maxLen]) + "..."
 }

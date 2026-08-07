@@ -1,3 +1,5 @@
+//go:build integration
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -140,15 +142,10 @@ func TestRAGCompleteFlow(t *testing.T) {
 		agentConfigBuilder.WriteString("  stage_channel_buffer_size: 10\n")
 		agentConfigBuilder.WriteString("  mcp_host_name: \"mcp_host\"\n")
 		agentConfigBuilder.WriteString("  stages:\n")
-		agentConfigBuilder.WriteString("  - name: think\n")
-		agentConfigBuilder.WriteString("    flow_type: think\n")
-		agentConfigBuilder.WriteString("    prompt_file: agentThink.txt\n")
+		agentConfigBuilder.WriteString("  - name: reasonAct\n")
+		agentConfigBuilder.WriteString("    flow_type: reasonAct\n")
+		agentConfigBuilder.WriteString("    prompt_file: agentReasonAct.txt\n")
 		agentConfigBuilder.WriteString("    temperature: 0.7\n")
-		agentConfigBuilder.WriteString("    enable_tools: true\n")
-		agentConfigBuilder.WriteString("  - name: act\n")
-		agentConfigBuilder.WriteString("    flow_type: act\n")
-		agentConfigBuilder.WriteString("    prompt_file: agentAct.txt\n")
-		agentConfigBuilder.WriteString("    temperature: 0.3\n")
 		agentConfigBuilder.WriteString("    enable_tools: true\n")
 		agentConfigBuilder.WriteString("  - name: observe\n")
 		agentConfigBuilder.WriteString("    flow_type: observe\n")
