@@ -19,18 +19,36 @@ package react
 
 import "fmt"
 
+// AgentTypeReAct is the agent_type discriminator for the ReAct strategy.
 const AgentTypeReAct = "react"
 
+// Flow types for a react stage. reasonAct reasons + calls tools; observe
+// synthesizes the answer and controls the loop. These are react-internal (the
+// generic agent package stays strategy-agnostic).
+const (
+	flowReasonAct = "reasonAct"
+	flowObserve   = "observe"
+)
+
+// defaultToolTimeoutSeconds is the tool execution timeout used for any tool
+// without an explicit tool_timeouts override. It is intentionally not
+// configurable — override individual tools via tool_timeouts instead.
+const defaultToolTimeoutSeconds = 30
+
+// AgentSpec is the YAML-decoded configuration for a ReAct agent component.
 type AgentSpec struct {
-	AgentType              string      `yaml:"agent_type"`
-	Model                  string      `yaml:"model"`
-	PromptBasePath         string      `yaml:"prompt_base_path"`
-	MaxIterations          int         `yaml:"max_iterations"`
-	StageChannelBufferSize int         `yaml:"stage_channel_buffer_size"`
-	MCPHostName            string      `yaml:"mcp_host_name"`
-	Stages                 []StageInfo `yaml:"stages"`
+	AgentType              string         `yaml:"agent_type"`
+	Model                  string         `yaml:"model"`
+	PromptBasePath         string         `yaml:"prompt_base_path"`
+	MaxIterations          int            `yaml:"max_iterations"`
+	StageChannelBufferSize int            `yaml:"stage_channel_buffer_size"`
+	MCPHostName            string         `yaml:"mcp_host_name"`
+	ToolTimeouts           map[string]int `yaml:"tool_timeouts,omitempty"` // per-tool timeout overrides (seconds), keyed by tool name; defaults to defaultToolTimeoutSeconds
+	Stages                 []StageInfo    `yaml:"stages"`
 }
 
+// StageInfo is the per-stage configuration within an AgentSpec: which prompt to
+// run, its flow type (reasonAct or observe), and the model sampling settings.
 type StageInfo struct {
 	Name        string  `yaml:"name"`
 	FlowType    string  `yaml:"flow_type"`
@@ -55,19 +73,9 @@ func ReActDefaultSpec() *AgentSpec {
 		MCPHostName:            "mcp_host",
 		Stages: []StageInfo{
 			{
-				Name:        "agentThinking",
-				FlowType:    "think",
-				PromptFile:  "agentThink.txt",
-				Temperature: 0.7,
-				TopP:        0.9,
-				MaxTokens:   2000,
-				Timeout:     60,
-				EnableTools: true,
-			},
-			{
-				Name:        "agentTool",
-				FlowType:    "act",
-				PromptFile:  "agentAct.txt",
+				Name:        "reasonAct",
+				FlowType:    "reasonAct",
+				PromptFile:  "agentReasonAct.txt",
 				Temperature: 0.7,
 				TopP:        0.9,
 				MaxTokens:   3000,
@@ -108,6 +116,11 @@ func (c *AgentSpec) Validate() error {
 	if len(c.Stages) == 0 {
 		return fmt.Errorf("stages is required")
 	}
+	for name, t := range c.ToolTimeouts {
+		if t <= 0 {
+			return fmt.Errorf("tool_timeouts[%q] must be greater than 0", name)
+		}
+	}
 
 	for i, stage := range c.Stages {
 		if err := stage.Validate(i); err != nil {
@@ -127,12 +140,11 @@ func (s *StageInfo) Validate(index int) error {
 
 	// Validate flow type
 	validFlowTypes := map[string]bool{
-		"think":    true,
-		"act":      true,
-		"observe":  true,
+		flowReasonAct: true,
+		flowObserve:   true,
 	}
 	if !validFlowTypes[s.FlowType] {
-		return fmt.Errorf("stage[%d]: invalid flow_type '%s', must be one of: think, act, observe", index, s.FlowType)
+		return fmt.Errorf("stage[%d]: invalid flow_type '%s', must be one of: %s, %s", index, s.FlowType, flowReasonAct, flowObserve)
 	}
 
 	if s.PromptFile == "" {

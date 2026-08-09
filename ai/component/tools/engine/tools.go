@@ -19,14 +19,14 @@ type ToolOutput struct {
 	// Success  bool   `json:"success" jsonschema_description:"Indicates whether the tool execution was successful"`
 }
 
-func Call(g *genkit.Genkit, toolName string, input any) (toolOutput ToolOutput, err error) {
+func Call(ctx context.Context, g *genkit.Genkit, toolName string, input any) (toolOutput ToolOutput, err error) {
 	tool := genkit.LookupTool(g, toolName)
 	if tool == nil {
 		return toolOutput, fmt.Errorf("tool not found: %s", toolName)
 	}
 
 	// Pass Parameter directly to the tool, not the entire ToolInput
-	rawToolOutput, err := tool.RunRaw(context.Background(), input)
+	rawToolOutput, err := tool.RunRaw(ctx, input)
 	if err != nil {
 		return toolOutput, fmt.Errorf("failed to call tool %s: %w", toolName, err)
 	}

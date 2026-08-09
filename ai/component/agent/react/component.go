@@ -18,12 +18,15 @@
 package react
 
 import (
+	"fmt"
+
 	"dubbo-admin-ai/component/tools"
 	"dubbo-admin-ai/runtime"
-	"fmt"
 )
 
-// AgentComponent Agent component implementation
+// AgentComponent is the runtime.Component wrapper around a ReActAgent: it holds
+// the agent's YAML-sourced configuration and, on Init, resolves dependencies
+// (tools) and constructs the underlying ReActAgent.
 type AgentComponent struct {
 	instanceName           string
 	Agent                  *ReActAgent
@@ -33,9 +36,12 @@ type AgentComponent struct {
 	maxIterations          int
 	stageChannelBufferSize int
 	mcpHostName            string
+	toolTimeouts           map[string]int
 	stages                 []StageInfo
 }
 
+// NewAgentComponent builds an unstarted AgentComponent from resolved
+// configuration values. The ReActAgent itself is created later, in Init.
 func NewAgentComponent(
 	agentType string,
 	model string,
@@ -43,6 +49,7 @@ func NewAgentComponent(
 	maxIterations int,
 	stageChannelBufferSize int,
 	mcpHostName string,
+	toolTimeouts map[string]int,
 	stages []StageInfo,
 ) (runtime.Component, error) {
 	return &AgentComponent{
@@ -52,10 +59,12 @@ func NewAgentComponent(
 		maxIterations:          maxIterations,
 		stageChannelBufferSize: stageChannelBufferSize,
 		mcpHostName:            mcpHostName,
+		toolTimeouts:           toolTimeouts,
 		stages:                 stages,
 	}, nil
 }
 
+// Name returns the component's instance name, or "agent" if none was set.
 func (a *AgentComponent) Name() string {
 	if a.instanceName != "" {
 		return a.instanceName
@@ -63,10 +72,12 @@ func (a *AgentComponent) Name() string {
 	return "agent"
 }
 
+// SetName sets the component's instance name.
 func (a *AgentComponent) SetName(name string) {
 	a.instanceName = name
 }
 
+// Validate checks the component's configuration without side effects.
 func (a *AgentComponent) Validate() error {
 	cfg := AgentSpec{
 		AgentType:              a.agentType,
@@ -75,11 +86,14 @@ func (a *AgentComponent) Validate() error {
 		MaxIterations:          a.maxIterations,
 		StageChannelBufferSize: a.stageChannelBufferSize,
 		MCPHostName:            a.mcpHostName,
+		ToolTimeouts:           a.toolTimeouts,
 		Stages:                 a.stages,
 	}
 	return cfg.Validate()
 }
 
+// Init resolves the tools dependency from the runtime and constructs the
+// underlying ReActAgent, wiring tool references and per-tool timeouts.
 func (a *AgentComponent) Init(rt *runtime.Runtime) error {
 	toolsComp, err := rt.GetComponent("tools")
 	if err != nil {
@@ -90,7 +104,8 @@ func (a *AgentComponent) Init(rt *runtime.Runtime) error {
 		return fmt.Errorf("invalid tools component type")
 	}
 	toolRefs := tools.GetToolRefs()
-	reactAgent, err := NewReactAgent(rt.GetGenkitRegistry(), a.promptBasePath, a.model, a.maxIterations, a.stages, toolRefs)
+	toolTimeouts := newToolTimeoutResolver(defaultToolTimeoutSeconds, a.toolTimeouts)
+	reactAgent, err := NewReActAgent(rt.GetGenkitRegistry(), a.promptBasePath, a.model, a.maxIterations, a.stageChannelBufferSize, a.stages, toolTimeouts, toolRefs)
 	if err != nil {
 		return fmt.Errorf("failed to create ReAct agent: %w", err)
 	}
@@ -106,10 +121,12 @@ func (a *AgentComponent) Init(rt *runtime.Runtime) error {
 	return nil
 }
 
+// Start is a no-op: the agent has no background work to launch.
 func (a *AgentComponent) Start() error {
 	return nil
 }
 
+// Stop is a no-op: the agent holds no resources that need releasing.
 func (a *AgentComponent) Stop() error {
 	return nil
 }

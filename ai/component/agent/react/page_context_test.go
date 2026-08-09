@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"dubbo-admin-ai/component/memory"
 	"dubbo-admin-ai/schema"
 
 	"github.com/firebase/genkit/go/ai"
@@ -66,17 +67,38 @@ func TestInjectCurrentPageContext(t *testing.T) {
 	}
 }
 
+func TestNewInteractionCarriesPageContext(t *testing.T) {
+	snapshot := &schema.AIContextSnapshot{
+		Version: schema.AIContextVersion,
+		Page:    schema.AIContextPage{Path: "/home"},
+		Scope:   schema.AIContextScope{Mesh: "nacos2.5"},
+	}
+	ra := &ReActAgent{memoryCtx: memory.NewMemoryContext(memory.ChatHistoryKey)}
+
+	ctx, _, history, err := ra.newInteraction(&schema.UserInput{
+		Content: "current question",
+		Context: snapshot,
+	}, "session")
+	if err != nil {
+		t.Fatalf("newInteraction() error = %v", err)
+	}
+	messages, err := injectCurrentPageContext(ctx, history.WindowMemory("session"))
+	if err != nil {
+		t.Fatalf("injectCurrentPageContext() error = %v", err)
+	}
+	if len(messages) != 2 || messages[1].Content[0].Text != "current question" {
+		t.Fatalf("unexpected interaction messages: %#v", messages)
+	}
+}
+
 func TestUserInputContextIsNotSerialized(t *testing.T) {
-	input := schema.ThinkInput{
-		SessionID: "session",
-		UserInput: &schema.UserInput{
-			Content: "hello",
-			Context: &schema.AIContextSnapshot{Version: schema.AIContextVersion},
-		},
+	input := schema.UserInput{
+		Content: "hello",
+		Context: &schema.AIContextSnapshot{Version: schema.AIContextVersion},
 	}
 	data, err := json.Marshal(input)
 	if err != nil {
-		t.Fatalf("marshal ThinkInput: %v", err)
+		t.Fatalf("marshal UserInput: %v", err)
 	}
 	if strings.Contains(string(data), "context") {
 		t.Fatalf("serialized history contains page context: %s", data)

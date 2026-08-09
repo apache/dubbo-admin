@@ -1,3 +1,5 @@
+//go:build integration
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -100,10 +102,10 @@ func TestServerE2E(t *testing.T) {
 	}()
 
 	// Wait for server to be ready
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	// Get server address
-	baseURL := fmt.Sprintf("http://0.0.0.0:8880")
+	baseURL := fmt.Sprintf("http://127.0.0.1:8880")
 
 	t.Run("health_check", func(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, "GET", baseURL+"/health", nil)
@@ -306,8 +308,8 @@ func TestAPIWithMockSession(t *testing.T) {
 		svr.Stop()
 	}()
 
-	time.Sleep(2 * time.Second)
-	baseURL := fmt.Sprintf("http://0.0.0.0:8880")
+	time.Sleep(5 * time.Second)
+	baseURL := fmt.Sprintf("http://127.0.0.1:8880")
 
 	t.Run("get_mock_session", func(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, "GET", baseURL+"/api/v1/ai/sessions/session_test", nil)
@@ -473,8 +475,8 @@ func registerFactories(rt *appruntime.Runtime) {
 	rt.RegisterFactory("models", models.ModelsFactory)
 	rt.RegisterFactory("rag", compRag.RAGFactory)
 	rt.RegisterFactory("tools", tools.ToolsFactory)
-	rt.RegisterFactory("server", server.ServerFactory)
 	rt.RegisterFactory("agent", react.AgentFactory)
+	rt.RegisterFactory("server", server.ServerFactory)
 }
 
 // createTestConfig creates a temporary config with absolute paths for testing

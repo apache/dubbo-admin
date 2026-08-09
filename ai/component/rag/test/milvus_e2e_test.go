@@ -1,3 +1,5 @@
+//go:build integration
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -40,6 +42,9 @@ import (
 // TestMilvusRAGE2E_FullWorkflow tests the complete RAG workflow with Milvus:
 // Load -> Split -> Index -> Retrieve
 func TestMilvusRAGE2E_FullWorkflow(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration test; skipped in -short mode")
+	}
 	// Load .env file
 	if err := godotenv.Load("../../../.env"); err != nil {
 		t.Skip("Skipping test: .env file not found")
@@ -251,6 +256,9 @@ func TestMilvusRAGE2E_FullWorkflow(t *testing.T) {
 
 // TestMilvusRAG_NamespaceIsolation tests namespace isolation.
 func TestMilvusRAG_NamespaceIsolation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration test; skipped in -short mode")
+	}
 	if err := godotenv.Load("../../../.env"); err != nil {
 		t.Skip("Skipping test: .env file not found")
 	}

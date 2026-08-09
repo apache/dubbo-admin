@@ -44,6 +44,14 @@
           "minLength": 1,
           "default": "mcp_host"
         },
+        "tool_timeouts": {
+          "type": "object",
+          "description": "Per-tool execution timeout overrides in seconds, keyed by tool name. Tools without an entry use the built-in 30s default.",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
         "stages": {
           "type": "array",
           "minItems": 1,
@@ -66,8 +74,8 @@
         },
         "flow_type": {
           "type": "string",
-          "enum": ["think", "act", "observe", "feedback"],
-          "default": "think"
+          "enum": ["reasonAct", "observe"],
+          "default": "reasonAct"
         },
         "model": {
           "type": "string"

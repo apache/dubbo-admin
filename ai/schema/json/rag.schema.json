@@ -34,6 +34,9 @@
         },
         "query_processor": {
           "$ref": "#/$defs/query_processor"
+        },
+        "seed": {
+          "$ref": "#/$defs/seed"
         }
       }
     }
@@ -360,6 +363,17 @@
               "type": "string"
             }
           }
+        }
+      }
+    },
+    "seed": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Auto-seed the local vector store with bundled knowledge at startup",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
         }
       }
     },

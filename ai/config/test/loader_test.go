@@ -249,9 +249,9 @@ spec:
   model: qwen-max
   prompt_base_path: ./prompts
   stages:
-    - name: think-stage
-      flow_type: think
-      prompt_file: think.txt
+    - name: reasonAct
+      flow_type: reasonAct
+      prompt_file: agentReasonAct.txt
 `,
 			assertFn: func(t *testing.T, cfg *config.Config) {
 				var spec react.AgentSpec
