@@ -730,9 +730,12 @@ func UpInsertServiceArgumentRouteConfig(ctx consolectx.Context, req model.BaseSe
 		logger.Errorf("get service condition rule %s failed, cause: %v", serviceConditionRuleName, err)
 		return err
 	}
+	shouldCreate := conditionRouteRes == nil
 	if conditionRouteRes == nil {
 		conditionRouteRes = meshresource.NewConditionRouteResourceWithAttributes(serviceConditionRuleName, req.Mesh)
 		conditionRouteRes.Spec.Conditions = make([]string, 0)
+	} else if conditionRouteRes.Spec == nil {
+		conditionRouteRes.Spec = &meshproto.ConditionRoute{Conditions: make([]string, 0)}
 	}
 	conditions := slice.Filter(conditionRouteRes.Spec.Conditions, func(index int, condition string) bool {
 		return !isArgumentRoute(condition)
@@ -751,8 +754,13 @@ func UpInsertServiceArgumentRouteConfig(ctx consolectx.Context, req model.BaseSe
 		Scope:         constants.ScopeService,
 		Conditions:    conditions,
 	}
-	if err = UpdateConditionRule(ctx, conditionRouteRes); err != nil {
-		logger.Errorf("create service condition rule %s failed, cause: %v", serviceConditionRuleName, err)
+	if shouldCreate {
+		err = CreateConditionRule(ctx, conditionRouteRes)
+	} else {
+		err = UpdateConditionRule(ctx, conditionRouteRes)
+	}
+	if err != nil {
+		logger.Errorf("upsert service condition rule %s failed, cause: %v", serviceConditionRuleName, err)
 		return err
 	}
 	return nil
