@@ -293,7 +293,9 @@ const addRoutingRule = async () => {
   } = baseInfo
 
   let ruleName =
-    ruleGranularity === 'service' ? `${objectOfAction}:${version}:${group}` : `${objectOfAction}` // application
+    ruleGranularity === 'service'
+      ? `${objectOfAction}:${version}:${group}.condition-router`
+      : `${objectOfAction}.condition-router`
 
   const data = {
     configVersion: 'v3.0',
