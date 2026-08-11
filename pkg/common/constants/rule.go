@@ -29,6 +29,7 @@ const (
 	ScopeService            = `service`
 	SideProvider            = `provider`
 	SideConsumer            = `consumer`
+	RuleConfigGroup         = `dubbo`
 
 	ConfiguratorRuleDotSuffix = ".configurators"
 	ConfiguratorsSuffix       = "configurators"

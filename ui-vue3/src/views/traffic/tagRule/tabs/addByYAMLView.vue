@@ -127,20 +127,8 @@ const changeEditor = (val: string) => {
 
 const updateTagRule = async () => {
   const data = yaml.load(YAMLValue.value)
-  const {
-    configVersion,
-    scope: ruleGranularity,
-    key: objectOfAction,
-    runtime,
-    force,
-    conditions
-  } = data
-  let ruleName = ''
-  if (ruleGranularity == 'application') {
-    ruleName = `${objectOfAction}.tag-router`
-  } else {
-    ruleName = `${objectOfAction}:${configVersion}.tag-router`
-  }
+  const { key: objectOfAction } = data
+  const ruleName = `${objectOfAction}.tag-router`
   const res = await addTagRuleAPI(ruleName, data)
   if (res.code === HTTP_STATUS.SUCCESS) {
     router.push('/traffic/tagRule')

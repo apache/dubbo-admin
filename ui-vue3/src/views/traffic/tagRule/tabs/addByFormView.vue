@@ -127,7 +127,7 @@
                               :columns="labelsColumns"
                               :data-source="tagItem.scope?.labels"
                             >
-                              <template #bodyCell="{ column, record, text, index: labelItemIndex }">
+                              <template #bodyCell="{ column, record, index: labelItemIndex }">
                                 <template v-if="column.key === 'myKey'">
                                   <a-input placeholder="label key" v-model:value="record.myKey" />
                                 </template>
@@ -284,7 +284,7 @@ const {
   appContext: {
     config: { globalProperties }
   }
-} = <ComponentInternalInstance>getCurrentInstance()
+} = getCurrentInstance() as ComponentInternalInstance
 const route = useRoute()
 
 const isDrawerOpened = ref(false)
@@ -475,7 +475,6 @@ const tagList = ref<any[]>([])
 watch(
   tagList,
   (newVal) => {
-    console.log(newVal)
     const tags: any[] = []
     newVal.forEach((tagItem) => {
       const { tagName, scope } = tagItem
@@ -584,12 +583,7 @@ const addTagRule = async () => {
     })
     data.tags.push(tag)
   })
-  let ruleName = ''
-  if (ruleGranularity == 'application') {
-    ruleName = `${objectOfAction}.tag-router`
-  } else {
-    ruleName = `${objectOfAction}:${configVersion}.tag-router`
-  }
+  const ruleName = `${objectOfAction}.tag-router`
   const res = await addTagRuleAPI(ruleName, data)
   if (res.code === HTTP_STATUS.SUCCESS) {
     router.push('/traffic/tagRule')

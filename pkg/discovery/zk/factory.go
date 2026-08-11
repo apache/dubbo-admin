@@ -116,11 +116,10 @@ func toDeleteMappingResource(mesh, nodePath string) coremodel.Resource {
 }
 
 func toUpsertZKConfigResource(mesh, nodePath, nodeData string) coremodel.Resource {
-	paths := strings.Split(nodePath, constants.PathSeparator)
-	if len(paths) != 4 {
+	configName, ok := zkConfigName(nodePath)
+	if !ok {
 		return nil
 	}
-	configName := paths[3]
 	res := meshresource.NewZKConfigResourceWithAttributes(configName, mesh)
 	res.Spec = &meshproto.ZKConfig{
 		NodeName: configName,
@@ -130,16 +129,27 @@ func toUpsertZKConfigResource(mesh, nodePath, nodeData string) coremodel.Resourc
 }
 
 func toDeleteZKConfigResource(mesh, nodePath string) coremodel.Resource {
-	paths := strings.Split(nodePath, constants.PathSeparator)
-	if len(paths) != 4 {
+	configName, ok := zkConfigName(nodePath)
+	if !ok {
 		return nil
 	}
-	configName := paths[3]
 	res := meshresource.NewZKConfigResourceWithAttributes(configName, mesh)
 	res.Spec = &meshproto.ZKConfig{
 		NodeName: configName,
 	}
 	return res
+}
+
+func zkConfigName(nodePath string) (string, bool) {
+	paths := strings.Split(nodePath, constants.PathSeparator)
+	switch len(paths) {
+	case 4:
+		return paths[3], paths[3] != ""
+	case 5:
+		return paths[4], paths[3] != "" && paths[4] != ""
+	default:
+		return "", false
+	}
 }
 
 func toUpsertZKMetadataResource(mesh, nodePath, nodeData string) coremodel.Resource {
