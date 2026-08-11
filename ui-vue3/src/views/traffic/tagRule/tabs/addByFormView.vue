@@ -475,7 +475,6 @@ const tagList = ref<any[]>([])
 watch(
   tagList,
   (newVal) => {
-    console.log(newVal)
     const tags: any[] = []
     newVal.forEach((tagItem) => {
       const { tagName, scope } = tagItem
@@ -584,12 +583,7 @@ const addTagRule = async () => {
     })
     data.tags.push(tag)
   })
-  let ruleName = ''
-  if (ruleGranularity == 'application') {
-    ruleName = `${objectOfAction}.tag-router`
-  } else {
-    ruleName = `${objectOfAction}:${configVersion}.tag-router`
-  }
+  const ruleName = `${objectOfAction}.tag-router`
   const res = await addTagRuleAPI(ruleName, data)
   if (res.code === HTTP_STATUS.SUCCESS) {
     router.push('/traffic/tagRule')
