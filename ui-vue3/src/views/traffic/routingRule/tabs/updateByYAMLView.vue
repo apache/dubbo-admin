@@ -87,7 +87,6 @@ import { getConditionRuleDetailAPI, updateConditionRuleAPI } from '@/api/service
 import { useRoute } from 'vue-router'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import yaml from 'js-yaml'
-import { isNil } from 'lodash'
 import { message } from 'ant-design-vue'
 import { HTTP_STATUS } from '@/base/http/constants'
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
@@ -103,14 +102,29 @@ const sliderSpan = ref(8)
 const YAMLValue = ref('')
 
 onMounted(async () => {
-  if (!isNil(TAB_STATE.conditionRule)) {
-    const data = TAB_STATE.conditionRule
-    YAMLValue.value = yaml.dump(data)
+  const draft = TAB_STATE.conditionRule
+  if (isCompleteConditionRule(draft)) {
+    YAMLValue.value = yaml.dump(draft)
   } else {
-    YAMLValue.value = ``
     await getRoutingRuleDetail()
   }
 })
+
+const isCompleteConditionRule = (data: unknown): data is Record<string, any> => {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return false
+  }
+  return [
+    'configVersion',
+    'priority',
+    'enabled',
+    'force',
+    'runtime',
+    'key',
+    'scope',
+    'conditions'
+  ].every((field) => Object.prototype.hasOwnProperty.call(data, field))
+}
 
 const changeEditor = () => {
   TAB_STATE.conditionRule = yaml.load(YAMLValue.value)
@@ -128,12 +142,8 @@ const parseYAMLObject = (): Record<string, any> => {
 async function getRoutingRuleDetail() {
   let res = await getConditionRuleDetailAPI(route.params?.ruleName as string)
   if (res?.code === HTTP_STATUS.SUCCESS) {
-    const conditionName = String(route.params?.ruleName || '')
-    if (conditionName && res.data.scope === 'service') {
-      const arr = conditionName?.split(':')
-      res.data.group = arr[2]?.split('.')[0]
-    }
-    YAMLValue.value = yaml.dump(res?.data)
+    TAB_STATE.conditionRule = res.data
+    YAMLValue.value = yaml.dump(res.data)
   }
 }
 
