@@ -160,6 +160,8 @@ describe('condition route add form', () => {
     const wrapper = mountForm(tabState)
     await flushPromises()
 
+    expect(tabState.conditionRule.key).toBe('org.apache.demo.DemoService:1.0.0:demo')
+
     const submitButton = wrapper.findAll('button')[1]
     await submitButton.trigger('click')
     await flushPromises()

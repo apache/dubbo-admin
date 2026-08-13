@@ -627,7 +627,7 @@ export const routes: Readonly<RouteRecordType[]> = [
             path: '/affinityRule',
             name: 'affinityRule',
             component: () => import('../views/traffic/affinityRule/index.vue'),
-            meta: { icon: 'material-symbols:hub-outline' }
+            meta: {}
           },
           {
             path: '/affinityRule/edit/:ruleName?',
@@ -639,7 +639,7 @@ export const routes: Readonly<RouteRecordType[]> = [
             path: '/scriptRule',
             name: 'scriptRule',
             component: () => import('../views/traffic/scriptRule/index.vue'),
-            meta: { icon: 'material-symbols:code-blocks-outline' }
+            meta: {}
           },
           {
             path: '/scriptRule/edit/:ruleName?',

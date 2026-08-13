@@ -103,10 +103,15 @@ describe('condition route form compatibility', () => {
         priority: 12,
         enabled: true,
         force: true,
-        key: 'demo-service',
+        key: 'org.apache.demo.DemoService:1.0.0:demo',
         scope: 'service',
         runtime: false,
-        conditions: ['host=1.1.1.1 => host=2.2.2.2']
+        conditions: [
+          {
+            from: { match: 'method=SayHello' },
+            to: [{ match: 'region=hangzhou', weight: 100 }]
+          }
+        ]
       }
     }
 
@@ -159,12 +164,18 @@ describe('condition route form compatibility', () => {
         priority: 12,
         force: true,
         runtime: false,
-        conditions: ['host=1.1.1.1 => host=2.2.2.2']
+        conditions: [
+          {
+            from: { match: 'method=SayHello' },
+            to: [{ match: 'region=hangzhou', weight: 100 }]
+          }
+        ]
       })
     )
 
-    const submitButton = wrapper.findAll('button')[1]
-    await submitButton.trigger('click')
+    const submitButton = wrapper.findAll('button').find((button) => button.text().includes('确认'))
+    expect(submitButton).toBeDefined()
+    await submitButton!.trigger('click')
     await flushPromises()
 
     expect(mocks.updateConditionRuleAPI).toHaveBeenCalledWith(
@@ -174,7 +185,12 @@ describe('condition route form compatibility', () => {
         priority: 12,
         force: true,
         runtime: false,
-        conditions: ['host=1.1.1.1 => host=2.2.2.2']
+        conditions: [
+          {
+            from: { match: 'method=SayHello' },
+            to: [{ match: 'region=hangzhou', weight: 100 }]
+          }
+        ]
       })
     )
   })

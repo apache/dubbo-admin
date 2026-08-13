@@ -89,6 +89,7 @@ import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import yaml from 'js-yaml'
 import { message } from 'ant-design-vue'
 import { HTTP_STATUS } from '@/base/http/constants'
+import { isCompleteConditionRule } from '../model/ConditionRuleModel'
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 
 const route = useRoute()
@@ -109,22 +110,6 @@ onMounted(async () => {
     await getRoutingRuleDetail()
   }
 })
-
-const isCompleteConditionRule = (data: unknown): data is Record<string, any> => {
-  if (!data || typeof data !== 'object' || Array.isArray(data)) {
-    return false
-  }
-  return [
-    'configVersion',
-    'priority',
-    'enabled',
-    'force',
-    'runtime',
-    'key',
-    'scope',
-    'conditions'
-  ].every((field) => Object.prototype.hasOwnProperty.call(data, field))
-}
 
 const changeEditor = () => {
   TAB_STATE.conditionRule = yaml.load(YAMLValue.value)
