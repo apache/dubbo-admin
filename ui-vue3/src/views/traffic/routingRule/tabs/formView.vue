@@ -162,7 +162,13 @@
           </a-card>
         </a-row>
 
-        <a-card style="margin-top: 10px" class="_detail">
+        <StructuredConditionRuleList
+          v-if="conditionRuleDetail.configVersion === 'v3.1'"
+          v-model="structuredConditions"
+          readonly
+          style="margin-top: 10px"
+        />
+        <a-card v-else style="margin-top: 10px" class="_detail">
           <a-space align="start" style="width: 100%">
             <a-typography-title :level="5"
               >{{ $t('flowControlDomain.requestParameterMatching') }}:
@@ -213,8 +219,14 @@ import { getConditionRuleDetailAPI } from '@/api/service/traffic'
 import { useRoute } from 'vue-router'
 import { HTTP_STATUS } from '@/base/http/constants'
 import RuleHistoryPanel from '../../_shared/RuleHistoryPanel.vue'
+import StructuredConditionRuleList from '../components/StructuredConditionRuleList.vue'
+import {
+  normalizeStructuredConditions,
+  type StructuredConditionRule
+} from '../model/ConditionRuleModel'
 
 interface ConditionRuleDetail {
+  configVersion: string
   key: string
   scope: string
   version: string
@@ -222,7 +234,7 @@ interface ConditionRuleDetail {
   force?: boolean
   enabled?: boolean
   runtime?: boolean
-  conditions: string[]
+  conditions: any[]
 }
 
 const {
@@ -245,12 +257,14 @@ function copyIt(v: string) {
 
 // Condition routing details
 const conditionRuleDetail = reactive<ConditionRuleDetail>({
+  configVersion: '',
   key: '',
   scope: '',
   version: '',
   group: '',
   conditions: []
 })
+const structuredConditions = ref<StructuredConditionRule[]>([])
 
 const actionObj = computed(() => {
   const key = conditionRuleDetail.key || ''
@@ -272,6 +286,10 @@ async function getRoutingRuleDetail() {
 
     requestParameterMatch.value = []
     addressSubsetMatch.value = []
+    if (conditionRuleDetail.configVersion === 'v3.1') {
+      structuredConditions.value = normalizeStructuredConditions(conditionRuleDetail.conditions)
+      return
+    }
     conditionRuleDetail.conditions.forEach((item: any) => {
       const arr = item.split(' => ')
       const addressArr = arr[1]?.split(' & ')

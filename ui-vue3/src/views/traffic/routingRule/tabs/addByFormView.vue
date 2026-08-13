@@ -65,6 +65,13 @@
                           :un-checked-children="t('flowControlDomain.off')"
                         />
                       </a-form-item>
+                      <a-form-item :label="t('routingRuleDomain.configVersion')" required>
+                        <a-select
+                          v-model:value="baseInfo.configVersion"
+                          :options="configVersionOptions"
+                          style="width: 120px"
+                        />
+                      </a-form-item>
                     </a-col>
                     <a-col :span="12">
                       <a-form-item :label="t('routingRuleDomain.objectOfAction')" required>
@@ -94,7 +101,12 @@
             </a-row>
 
             <a-card :title="t('routingRuleDomain.routeList')" style="width: 100%" class="_detail">
+              <StructuredConditionRuleList
+                v-if="baseInfo.configVersion === 'v3.1'"
+                v-model="structuredConditions"
+              />
               <RoutingRuleList
+                v-else
                 :routeList="routeList"
                 :baseInfo="baseInfo"
                 :routingRuleLogic="routingRuleLogic"
@@ -134,26 +146,20 @@
 </template>
 
 <script lang="ts" setup>
-import {
-  type ComponentInternalInstance,
-  getCurrentInstance,
-  reactive,
-  ref,
-  inject,
-  onMounted,
-  watch
-} from 'vue'
+import { computed, inject, onMounted, reactive, ref, watch } from 'vue'
 import { DoubleLeftOutlined, DoubleRightOutlined } from '@ant-design/icons-vue'
-import useClipboard from 'vue-clipboard3'
 import { message } from 'ant-design-vue'
-import { PRIMARY_COLOR } from '@/base/constants'
-import { useRouter } from 'vue-router'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { addConditionRuleAPI } from '@/api/service/traffic'
 import { isNil } from 'lodash'
 import { HTTP_STATUS } from '@/base/http/constants'
 import useRoutingRule from '../composables/useRoutingRule'
 import RoutingRuleList from '../components/RoutingRuleList.vue'
+import StructuredConditionRuleList from '../components/StructuredConditionRuleList.vue'
+import {
+  normalizeStructuredConditions,
+  type StructuredConditionRule
+} from '../model/ConditionRuleModel'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -166,24 +172,54 @@ const {
   parseConditionMatchStringToArray,
   parseConditionToStringToArray
 } = routingRuleLogic
+const structuredConditions = ref<StructuredConditionRule[]>([])
+const initialized = ref(false)
 
 onMounted(() => {
   if (!isNil(TAB_STATE.conditionRule)) {
-    const { enabled = true, key, scope, runtime = true, conditions } = TAB_STATE.conditionRule
+    const {
+      configVersion = 'v3.0',
+      priority = null,
+      enabled = true,
+      force = false,
+      key,
+      scope,
+      runtime = true,
+      conditions
+    } = TAB_STATE.conditionRule
+    baseInfo.configVersion = configVersion
+    baseInfo.priority = priority
     baseInfo.enable = enabled
-    baseInfo.objectOfAction = key
+    baseInfo.faultTolerantProtection = force
+    const keyParts = String(key || '').split(':')
+    baseInfo.objectOfAction = scope === 'service' ? keyParts[0] : key
     baseInfo.ruleGranularity = scope
     baseInfo.runtime = runtime
+    if (scope === 'service' && keyParts.length >= 3) {
+      baseInfo.version = keyParts[1]
+      baseInfo.group = keyParts[2]
+    }
 
-    conditions &&
-      conditions.length &&
-      conditions.forEach((item: string, index: number) => {
-        const conditionArr = item.split(' => ')
-        const match = conditionArr[0]?.trim()
-        const to = conditionArr[1]?.trim()
-        routeList.value[index].requestMatch = parseConditionMatchStringToArray(match, index)
-        routeList.value[index].routeDistribute = parseConditionToStringToArray(to, index)
-      })
+    if (configVersion === 'v3.1') {
+      structuredConditions.value = normalizeStructuredConditions(conditions)
+    } else {
+      routeList.value = []
+      conditions &&
+        conditions.length &&
+        conditions.forEach((item: string, index: number) => {
+          routeList.value.push({
+            selectedMatchConditionTypes: [],
+            requestMatch: [],
+            selectedRouteDistributeMatchTypes: [],
+            routeDistribute: []
+          })
+          const conditionArr = item.split(' => ')
+          const match = conditionArr[0]?.trim()
+          const to = conditionArr[1]?.trim()
+          routeList.value[index].requestMatch = parseConditionMatchStringToArray(match, index)
+          routeList.value[index].routeDistribute = parseConditionToStringToArray(to, index)
+        })
+    }
   }
 
   if (!isNil(TAB_STATE.addConditionRuleSate)) {
@@ -191,26 +227,12 @@ onMounted(() => {
     baseInfo.version = version
     baseInfo.group = group
   }
+  initialized.value = true
+  syncConditionRuleDraft()
 })
-const {
-  appContext: {
-    config: { globalProperties }
-  }
-} = getCurrentInstance() as ComponentInternalInstance
-const router = useRouter()
-
 const isDrawerOpened = ref(false)
 
 const sliderSpan = ref(8)
-
-let __ = PRIMARY_COLOR
-
-const toClipboard = useClipboard().toClipboard
-
-function copyIt(v: string) {
-  message.success(globalProperties.$t('messageDomain.success.copy'))
-  toClipboard(v)
-}
 
 // base info
 const baseInfo = reactive({
@@ -221,33 +243,39 @@ const baseInfo = reactive({
   faultTolerantProtection: false,
   runtime: true,
   priority: null,
+  configVersion: 'v3.0',
   group: ''
 })
 
-watch(
-  baseInfo,
-  (newVal) => {
-    const { ruleGranularity, enable = true, runtime = true, objectOfAction } = newVal
-    TAB_STATE.conditionRule = {
-      ...TAB_STATE.conditionRule,
-      enabled: enable,
-      key: objectOfAction,
-      runtime: runtime,
-      scope: ruleGranularity
-    }
-    TAB_STATE.addConditionRuleSate = {
-      version: newVal.version,
-      group: newVal.group
-    }
-  },
-  {
-    immediate: isNil(TAB_STATE.conditionRule) ? true : false
+const currentConditions = () =>
+  baseInfo.configVersion === 'v3.1' ? structuredConditions.value : mergeConditions()
+
+const currentRuleKey = () =>
+  baseInfo.ruleGranularity === 'service' && baseInfo.version && baseInfo.group
+    ? `${baseInfo.objectOfAction}:${baseInfo.version}:${baseInfo.group}`
+    : baseInfo.objectOfAction
+
+const syncConditionRuleDraft = () => {
+  if (!initialized.value) return
+  TAB_STATE.conditionRule = {
+    configVersion: baseInfo.configVersion,
+    priority: baseInfo.priority,
+    enabled: baseInfo.enable,
+    force: baseInfo.faultTolerantProtection,
+    key: currentRuleKey(),
+    runtime: baseInfo.runtime,
+    scope: baseInfo.ruleGranularity,
+    conditions: currentConditions()
   }
-)
+  TAB_STATE.addConditionRuleSate = {
+    version: baseInfo.version,
+    group: baseInfo.group
+  }
+}
+
+watch(baseInfo, syncConditionRuleDraft)
 
 // rule granularity options
-// rule granularity options
-import { computed } from 'vue'
 const ruleGranularityOptions = computed(() => [
   {
     label: t('routingRuleDomain.application'),
@@ -258,26 +286,15 @@ const ruleGranularityOptions = computed(() => [
     value: 'service'
   }
 ])
+const configVersionOptions = [
+  { label: 'v3.0', value: 'v3.0' },
+  { label: 'v3.1', value: 'v3.1' }
+]
 
-enum ruleGranularityEnum {
-  application = '应用',
-  service = '服务'
-}
-
-watch(
-  routeList,
-  (newVal) => {
-    if (TAB_STATE && TAB_STATE.conditionRule) {
-      TAB_STATE.conditionRule = {
-        ...TAB_STATE.conditionRule,
-        conditions: mergeConditions()
-      }
-    }
-  },
-  {
-    deep: true
-  }
-)
+watch(routeList, syncConditionRuleDraft, {
+  deep: true
+})
+watch(structuredConditions, syncConditionRuleDraft, { deep: true })
 
 const addRoutingRule = async () => {
   // Logic for adding routing rule
@@ -298,13 +315,14 @@ const addRoutingRule = async () => {
       : `${objectOfAction}.condition-router`
 
   const data = {
-    configVersion: 'v3.0',
+    configVersion: baseInfo.configVersion,
+    priority: baseInfo.priority,
     scope: ruleGranularity,
-    key: ruleGranularity === 'service' ? `${objectOfAction}:${version}:${group}` : objectOfAction,
+    key: currentRuleKey(),
     enabled: enable,
     force: faultTolerantProtection,
     runtime,
-    conditions: mergeConditions()
+    conditions: currentConditions()
   }
   const res = await addConditionRuleAPI(ruleName, data)
   if (res?.code === HTTP_STATUS.SUCCESS) {
