@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/dubbogo/go-zookeeper/zk"
-	"sigs.k8s.io/yaml"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/common/constants"
@@ -30,6 +29,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/clients"
 	"github.com/apache/dubbo-admin/pkg/core/events"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store"
 )
@@ -44,7 +44,7 @@ type RuleGovernor struct {
 }
 
 func NewZKRuleGovernor(cfg *discoverycfg.Config, router store.Router, emitter events.Emitter) (*RuleGovernor, error) {
-	address := cfg.Address.Registry
+	address := cfg.Address.ConfigCenter
 	conn, err := clients.NewZKConnection(address)
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func NewZKRuleGovernor(cfg *discoverycfg.Config, router store.Router, emitter ev
 
 func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
 	path := ruleConfigPath(r.ResourceMeta().Name)
-	content, err := yaml.Marshal(r.ResourceSpec())
+	content, err := meshresource.EncodeRule(r)
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.YamlError,
 			fmt.Sprintf("failed to marshal resource spec, res: %s", r.String()))
@@ -72,7 +72,6 @@ func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
 		return bizerror.Wrap(err, bizerror.ZKError,
 			fmt.Sprintf("failed to create zk node, path: %s", path))
 	}
-	g.deleteLegacyRulePath(r.ResourceMeta().Name)
 	// save to store once znode is created in zk to insure local store is consistent to zk timely.
 	// if save to store failed, the discovery will watch and update the store finally.
 	st, err := g.storeRouter.ResourceRoute(r)
@@ -90,7 +89,7 @@ func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
 
 func (g *RuleGovernor) UpdateRule(r coremodel.Resource) error {
 	path := ruleConfigPath(r.ResourceMeta().Name)
-	content, err := yaml.Marshal(r.ResourceSpec())
+	content, err := meshresource.EncodeRule(r)
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.YamlError,
 			fmt.Sprintf("failed to marshal resource spec, res: %s", r.String()))
@@ -101,9 +100,6 @@ func (g *RuleGovernor) UpdateRule(r coremodel.Resource) error {
 			return err
 		}
 		_, err = g.conn.Create(path, content, 0, zk.WorldACL(zk.PermAll))
-		if err == nil {
-			g.deleteLegacyRulePath(r.ResourceMeta().Name)
-		}
 	}
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.ZKError,
@@ -123,24 +119,9 @@ func (g *RuleGovernor) UpdateRule(r coremodel.Resource) error {
 
 func (g *RuleGovernor) DeleteRule(r coremodel.Resource) error {
 	path := ruleConfigPath(r.ResourceMeta().Name)
-	legacyPath := legacyRuleConfigPath(r.ResourceMeta().Name)
-	deleted := false
 	err := g.conn.Delete(path, -1)
-	if err == nil {
-		deleted = true
-	} else if err != zk.ErrNoNode {
+	if err != nil {
 		return bizerror.Wrap(err, bizerror.ZKError,
-			fmt.Sprintf("failed to delete zk node, path: %s", path))
-	}
-	err = g.conn.Delete(legacyPath, -1)
-	if err == nil {
-		deleted = true
-	} else if err != zk.ErrNoNode {
-		return bizerror.Wrap(err, bizerror.ZKError,
-			fmt.Sprintf("failed to delete zk node, path: %s", legacyPath))
-	}
-	if !deleted {
-		return bizerror.Wrap(zk.ErrNoNode, bizerror.ZKError,
 			fmt.Sprintf("failed to delete zk node, path: %s", path))
 	}
 	st, err := g.storeRouter.ResourceRoute(r)
@@ -164,14 +145,6 @@ func ruleConfigGroupPath() string {
 
 func legacyRuleConfigPath(ruleName string) string {
 	return zkConfigRootPath + constants.PathSeparator + ruleName
-}
-
-func (g *RuleGovernor) deleteLegacyRulePath(ruleName string) {
-	legacyPath := legacyRuleConfigPath(ruleName)
-	err := g.conn.Delete(legacyPath, -1)
-	if err != nil && err != zk.ErrNoNode {
-		logger.Warnf("delete legacy zk rule path failed, path: %s, cause: %v", legacyPath, err)
-	}
 }
 
 func (g *RuleGovernor) ensurePath(targetPath string) error {

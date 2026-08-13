@@ -50,8 +50,12 @@ func TestZKConfigNameSupportsLegacyAndGroupedConfigPaths(t *testing.T) {
 		{
 			name:     "group root",
 			nodePath: "/dubbo/config/dubbo",
-			wantOK:   true,
-			wantName: "dubbo",
+			wantOK:   false,
+		},
+		{
+			name:     "unknown nested group",
+			nodePath: "/dubbo/config/other/demo.condition-router",
+			wantOK:   false,
 		},
 	}
 

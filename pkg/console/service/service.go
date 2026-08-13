@@ -750,7 +750,7 @@ func UpInsertServiceArgumentRouteConfig(ctx consolectx.Context, req model.BaseSe
 		Enabled:       true,
 		Force:         false,
 		Runtime:       true,
-		Key:           req.ServiceName,
+		Key:           req.ServiceKey(),
 		Scope:         constants.ScopeService,
 		Conditions:    conditions,
 	}

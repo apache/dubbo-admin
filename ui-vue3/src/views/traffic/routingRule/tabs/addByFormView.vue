@@ -196,7 +196,7 @@ const {
   appContext: {
     config: { globalProperties }
   }
-} = <ComponentInternalInstance>getCurrentInstance()
+} = getCurrentInstance() as ComponentInternalInstance
 const router = useRouter()
 
 const isDrawerOpened = ref(false)
@@ -300,7 +300,7 @@ const addRoutingRule = async () => {
   const data = {
     configVersion: 'v3.0',
     scope: ruleGranularity,
-    key: objectOfAction,
+    key: ruleGranularity === 'service' ? `${objectOfAction}:${version}:${group}` : objectOfAction,
     enabled: enable,
     force: faultTolerantProtection,
     runtime,

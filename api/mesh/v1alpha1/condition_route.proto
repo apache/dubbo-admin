@@ -20,6 +20,10 @@ message ConditionRoute {
     string key = 6;
     string scope = 7;
     repeated string conditions = 8;
+    // conditionRules preserves the structured v3.1 conditions. External YAML
+    // still uses the field name `conditions`; the rule codec maps it by
+    // configVersion so v3.0 and v3.1 never overwrite each other.
+    repeated ConditionRule conditionRules = 9;
 }
 
 message ConditionRule {

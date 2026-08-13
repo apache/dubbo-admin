@@ -240,22 +240,6 @@ func matchValueToDestinationCondition(val string) []DestinationCondition {
 	return res
 }
 
-func GenConditionRuleToResp(data *meshproto.ConditionRoute) *CommonResp {
-	if data == nil {
-		return NewSuccessResp(nil)
-	}
-	return NewSuccessResp(ConditionRuleResp{
-		Conditions:    data.Conditions,
-		ConfigVersion: data.ConfigVersion,
-		Enabled:       data.Enabled,
-		Force:         data.Force,
-		Key:           data.Key,
-		Priority:      data.Priority,
-		Runtime:       data.Runtime,
-		Scope:         data.Scope,
-	})
-}
-
 type ConditionRuleV3X1 struct {
 	Conditions    []Condition `json:"conditions"`
 	ConfigVersion string      `json:"configVersion"`

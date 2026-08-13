@@ -141,7 +141,6 @@ const updateRoutingRule = async () => {
   loading.value = true
   try {
     const data = parseYAMLObject()
-    data.configVersion = 'v3.0'
     const res = await updateConditionRuleAPI(route.params?.ruleName as string, data)
     if (res.code === HTTP_STATUS.SUCCESS) {
       message.success('update success')

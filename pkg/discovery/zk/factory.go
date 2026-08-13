@@ -144,12 +144,15 @@ func zkConfigName(nodePath string) (string, bool) {
 	paths := strings.Split(nodePath, constants.PathSeparator)
 	switch len(paths) {
 	case 4:
-		return paths[3], paths[3] != ""
+		if paths[3] != "" && paths[3] != constants.RuleConfigGroup {
+			return paths[3], true
+		}
 	case 5:
-		return paths[4], paths[3] != "" && paths[4] != ""
-	default:
-		return "", false
+		if paths[3] == constants.RuleConfigGroup && paths[4] != "" {
+			return paths[4], true
+		}
 	}
+	return "", false
 }
 
 func toUpsertZKMetadataResource(mesh, nodePath, nodeData string) coremodel.Resource {

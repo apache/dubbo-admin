@@ -169,7 +169,7 @@ describe('condition route add form', () => {
       expect.objectContaining({
         configVersion: 'v3.0',
         scope: 'service',
-        key: 'org.apache.demo.DemoService',
+        key: 'org.apache.demo.DemoService:1.0.0:demo',
         conditions: ['method=sayHello => region=hangzhou']
       })
     )

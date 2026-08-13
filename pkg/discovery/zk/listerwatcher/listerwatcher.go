@@ -31,6 +31,7 @@ import (
 	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
 	"github.com/apache/dubbo-admin/pkg/core/clients"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/discovery/zk/zkwatcher"
 )
@@ -51,6 +52,7 @@ type ListerWatcher[T coremodel.Resource] struct {
 	watcher              *zkwatcher.RecursiveWatcher
 	resultChan           chan watch.Event
 	stopChan             chan struct{}
+	address              string
 }
 
 func NewListerWatcher(
@@ -67,7 +69,11 @@ func NewListerWatcher(
 	if err != nil {
 		return nil, err
 	}
-	conn, err := clients.NewZKConnection(cfg.Address.Registry)
+	address := cfg.Address.Registry
+	if rk == meshresource.ZKConfigKind {
+		address = cfg.Address.ConfigCenter
+	}
+	conn, err := clients.NewZKConnection(address)
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +88,7 @@ func NewListerWatcher(
 		newResListFunc:       newResListFunc,
 		resultChan:           make(chan watch.Event, 1000),
 		stopChan:             make(chan struct{}),
+		address:              address,
 	}, nil
 }
 
@@ -198,7 +205,7 @@ func (lw *ListerWatcher[T]) handleEvent(event zkwatcher.ZookeeperEvent) {
 }
 
 func (lw *ListerWatcher[T]) zkAddr() string {
-	return lw.cfg.Address.Registry
+	return lw.address
 }
 
 func (lw *ListerWatcher[T]) mesh() string {

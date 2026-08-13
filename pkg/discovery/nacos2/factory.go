@@ -53,6 +53,9 @@ func (f *Factory) Support(d discoverycfg.Type) bool {
 func (f *Factory) NewListWatchers(
 	cfg *discoverycfg.Config) ([]controller.ResourceListerWatcher, error) {
 	nacosConfigClient, nacosNamingClient, err := f.initNacosClients(cfg)
+	if err != nil {
+		return nil, err
+	}
 	listerWatchers, err := f.initListerWatchers(cfg, nacosConfigClient, nacosNamingClient)
 	if err != nil {
 		return nil, err
@@ -127,6 +130,30 @@ func (f *Factory) initListerWatchers(
 	if err != nil {
 		return nil, err
 	}
+	affinityRouteLW, err := listerwatcher.NewConfigListerWatcher(
+		meshresource.AffinityRouteKind,
+		cfg,
+		nacosConfigClient,
+		meshresource.ToAffinityRouteResource,
+		true,
+		constants.WildcardCharacter+constants.AffinityRuleDotSuffix,
+		constants.RuleConfigGroup,
+	)
+	if err != nil {
+		return nil, err
+	}
+	scriptRouteLW, err := listerwatcher.NewConfigListerWatcher(
+		meshresource.ScriptRouteKind,
+		cfg,
+		nacosConfigClient,
+		meshresource.ToScriptRouteResource,
+		true,
+		constants.WildcardCharacter+constants.ScriptRuleDotSuffix,
+		constants.RuleConfigGroup,
+	)
+	if err != nil {
+		return nil, err
+	}
 	serviceProviderMetadataLW, err := listerwatcher.NewConfigListerWatcher(
 		meshresource.ServiceProviderMetadataKind,
 		cfg,
@@ -156,6 +183,8 @@ func (f *Factory) initListerWatchers(
 		dynamicConfigLW,
 		conditionRouteLW,
 		tagRouteLW,
+		affinityRouteLW,
+		scriptRouteLW,
 		serviceProviderMetadataLW,
 		serviceProviderMappingLW,
 	}, nil

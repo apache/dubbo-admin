@@ -116,6 +116,12 @@ func (z *ZKConfigEventSubscriber) processUpsert(configRes *meshresource.ZKConfig
 	case constants.ConfiguratorsSuffix:
 		return processConfigUpsert[*meshresource.DynamicConfigResource](
 			configRes, meshresource.ToDynamicConfigResource, z.storeRouter, z.emitter)
+	case constants.AffinityRuleSuffix:
+		return processConfigUpsert[*meshresource.AffinityRouteResource](
+			configRes, meshresource.ToAffinityRouteResource, z.storeRouter, z.emitter)
+	case constants.ScriptRuleSuffix:
+		return processConfigUpsert[*meshresource.ScriptRouteResource](
+			configRes, meshresource.ToScriptRouteResource, z.storeRouter, z.emitter)
 	default:
 		return bizerror.New(bizerror.UnknownError,
 			fmt.Sprintf("unknown rule type in mesh %s, skipped processing, path: %s, raw content: %s",
@@ -141,6 +147,12 @@ func (z *ZKConfigEventSubscriber) processDelete(configRes *meshresource.ZKConfig
 	case constants.ConfiguratorsSuffix:
 		return processConfigDelete[*meshresource.DynamicConfigResource](
 			configRes, meshresource.DynamicConfigKind, z.storeRouter, z.emitter)
+	case constants.AffinityRuleSuffix:
+		return processConfigDelete[*meshresource.AffinityRouteResource](
+			configRes, meshresource.AffinityRouteKind, z.storeRouter, z.emitter)
+	case constants.ScriptRuleSuffix:
+		return processConfigDelete[*meshresource.ScriptRouteResource](
+			configRes, meshresource.ScriptRouteKind, z.storeRouter, z.emitter)
 	default:
 		return bizerror.New(bizerror.UnknownError,
 			fmt.Sprintf("unknown rule type in mesh %s, skipped processing, node: %s",
