@@ -26,7 +26,6 @@ import (
 	nacosnamingclient "github.com/nacos-group/nacos-sdk-go/v2/clients/naming_client"
 	nacosvo "github.com/nacos-group/nacos-sdk-go/v2/vo"
 	"k8s.io/client-go/tools/cache"
-	"sigs.k8s.io/yaml"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/common/constants"
@@ -65,7 +64,7 @@ func NewNacos2Governor(
 }
 
 func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
-	rawContent, err := yaml.Marshal(r.ResourceSpec())
+	rawContent, err := meshresource.EncodeRule(r)
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.NacosError,
 			fmt.Sprintf("failed to marshal resource spec, res: %s", r.String()))
@@ -132,14 +131,10 @@ func (g *RuleGovernor) GetConfigAndUpdateStore(r coremodel.Resource) {
 		logger.Errorf("failed to get store in %s, res: %s, cause: %s", r.String(), r.ResourceMesh(), err)
 		return
 	}
-	var res coremodel.Resource
-	switch r.ResourceKind() {
-	case meshresource.DynamicConfigKind:
-		res = meshresource.ToDynamicConfigResource(r.ResourceMesh(), r.ResourceMeta().Name, content)
-	case meshresource.ConditionRouteKind:
-		res = meshresource.ToConditionRouteResource(r.ResourceMesh(), r.ResourceMeta().Name, content)
-	case meshresource.TagRouteKind:
-		res = meshresource.ToTagRouteResource(r.ResourceMesh(), r.ResourceMeta().Name, content)
+	res, err := meshresource.DecodeRule(r.ResourceKind(), r.ResourceMesh(), r.ResourceMeta().Name, content)
+	if err != nil {
+		logger.Errorf("failed to decode config in %s, res: %s, cause: %s", r.String(), r.ResourceMesh(), err)
+		return
 	}
 	obj, exists, err := st.GetByKey(r.ResourceKey())
 	if err != nil {

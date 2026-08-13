@@ -347,7 +347,10 @@ const updateRoutingRule = async () => {
       configVersion: configVersion || 'v3.0',
       priority,
       scope: ruleGranularity,
-      key: objectOfAction,
+      key:
+        ruleGranularity === 'service'
+          ? `${objectOfAction}:${baseInfo.version}:${baseInfo.group}`
+          : objectOfAction,
       enabled: enable,
       force: faultTolerantProtection,
       runtime,

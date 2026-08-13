@@ -86,8 +86,7 @@ func NormalizeResource(res coremodel.Resource) (string, string, error) {
 
 // ResourceFromSpecJSON rebuilds a typed rule Resource from a stored version's
 // spec JSON. Used by rollback to re-publish a historical snapshot through the
-// normal ResourceManager mutation path. Only the three governor-managed rule
-// kinds are supported. protojson is tried first (matching how specs are
+// normal ResourceManager mutation path. protojson is tried first (matching how specs are
 // normalized), falling back to plain JSON for resilience.
 func ResourceFromSpecJSON(kind coremodel.ResourceKind, mesh, ruleName, specJSON string) (coremodel.Resource, error) {
 	switch kind {
@@ -110,6 +109,22 @@ func ResourceFromSpecJSON(kind coremodel.ResourceKind, mesh, ruleName, specJSON 
 	case meshresource.DynamicConfigKind:
 		res := meshresource.NewDynamicConfigResourceWithAttributes(ruleName, mesh)
 		var spec meshproto.DynamicConfig
+		if err := unmarshalSpec(specJSON, &spec); err != nil {
+			return nil, err
+		}
+		res.Spec = &spec
+		return res, nil
+	case meshresource.AffinityRouteKind:
+		res := meshresource.NewAffinityRouteResourceWithAttributes(ruleName, mesh)
+		var spec meshproto.AffinityRoute
+		if err := unmarshalSpec(specJSON, &spec); err != nil {
+			return nil, err
+		}
+		res.Spec = &spec
+		return res, nil
+	case meshresource.ScriptRouteKind:
+		res := meshresource.NewScriptRouteResourceWithAttributes(ruleName, mesh)
+		var spec meshproto.ScriptRoute
 		if err := unmarshalSpec(specJSON, &spec); err != nil {
 			return nil, err
 		}

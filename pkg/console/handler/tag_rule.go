@@ -103,6 +103,10 @@ func PutTagRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
 			return
 		}
+		if err = meshresource.ValidateRule(res); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
 		opts := mutationOptions(c)
 		if err = service.UpdateTagRuleWithOptions(ctx, res, opts); err != nil {
 			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
@@ -126,6 +130,10 @@ func PostTagRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 		err := c.Bind(res.Spec)
 		if err != nil {
 			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
+			return
+		}
+		if err = meshresource.ValidateRule(res); err != nil {
+			util.HandleArgumentError(c, err)
 			return
 		}
 		opts := mutationOptions(c)

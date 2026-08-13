@@ -90,7 +90,17 @@ func PutConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 			return
 		}
 		res := meshresource.NewConditionRouteResourceWithAttributes(ruleName, mesh)
-		if err := c.ShouldBindJSON(res.Spec); err != nil {
+		input := &model.ConditionRuleInput{}
+		if err := c.ShouldBindJSON(input); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+		res.Spec, err = input.ToProto()
+		if err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+		if err := meshresource.ValidateRule(res); err != nil {
 			util.HandleArgumentError(c, err)
 			return
 		}
@@ -114,7 +124,18 @@ func PostConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 			return
 		}
 		res := meshresource.NewConditionRouteResourceWithAttributes(ruleName, mesh)
-		if err := c.ShouldBindJSON(res.Spec); err != nil {
+		input := &model.ConditionRuleInput{}
+		if err := c.ShouldBindJSON(input); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+		var err error
+		res.Spec, err = input.ToProto()
+		if err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+		if err := meshresource.ValidateRule(res); err != nil {
 			util.HandleArgumentError(c, err)
 			return
 		}

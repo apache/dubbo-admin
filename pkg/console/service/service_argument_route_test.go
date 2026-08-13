@@ -65,7 +65,7 @@ func TestUpInsertServiceArgumentRouteConfigCreatesMissingConditionRule(t *testin
 	require.NotNil(t, conditionRule.Spec)
 	assert.Equal(t, constants.ConfiguratorVersionV3, conditionRule.Spec.ConfigVersion)
 	assert.Equal(t, constants.ScopeService, conditionRule.Spec.Scope)
-	assert.Equal(t, "org.apache.demo.DemoService", conditionRule.Spec.Key)
+	assert.Equal(t, "org.apache.demo.DemoService:1.0.0:demo", conditionRule.Spec.Key)
 	assert.Equal(t, []string{"method=sayHello & arguments[0]=foo => region=hangzhou"}, conditionRule.Spec.Conditions)
 
 	versions, err := ListRuleVersions(ctx, RuleRef{Kind: meshresource.ConditionRouteKind, Name: ruleName})

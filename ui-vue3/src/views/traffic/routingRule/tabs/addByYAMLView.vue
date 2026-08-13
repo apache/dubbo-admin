@@ -80,7 +80,7 @@
 <script setup lang="ts">
 import MonacoEditor from '@/components/editor/MonacoEditor.vue'
 import { DoubleLeftOutlined, DoubleRightOutlined } from '@ant-design/icons-vue'
-import { ref, inject, onMounted, watch } from 'vue'
+import { ref, inject, onMounted } from 'vue'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { addConditionRuleAPI } from '@/api/service/traffic'
 import { useRouter } from 'vue-router'
@@ -135,31 +135,22 @@ onMounted(() => {
   }
 })
 
-const changeEditor = (val: string) => {
+const changeEditor = () => {
   TAB_STATE.conditionRule = yaml.load(YAMLValue.value)
 }
 
 const addRoutingRule = async () => {
   const data = yaml.load(YAMLValue.value)
-  const { configVersion, scope, key, runtime, force, conditions } = data
-  let ruleName = ''
-
-  if (key == 'application') {
-    ruleName = `${key}.condition-router`
-  } else {
-    if (!isNil(TAB_STATE.addConditionRuleSate)) {
-      const { version, group } = TAB_STATE.addConditionRuleSate
-      if (version == '' || group == '') {
-        message.error('请先填写版本和分组字段')
-        return
-      }
-      ruleName = `${key}:${version}:${group}.condition-router`
-    } else {
-      message.error('请先填写版本和分组字段')
-      return
-    }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    message.error('YAML content must be an object')
+    return
   }
-  data.configVersion = 'v3.0'
+  const { key } = data as Record<string, any>
+  if (!key) {
+    message.error('key is required')
+    return
+  }
+  const ruleName = `${key}.condition-router`
   const res = await addConditionRuleAPI(ruleName, data)
   if (res.code === HTTP_STATUS.SUCCESS) {
     router.push('/traffic/routingRule')

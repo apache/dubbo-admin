@@ -46,3 +46,5 @@ build/
 vendor/
 
 app/dubbo-ui/dist/
+# Local router-rule-chain E2E reproduction and evidence
+e2e/router-rule-chain/

@@ -17,7 +17,14 @@
 
 import request from '@/base/http/request'
 
-export type TrafficRuleKind = 'condition-rule' | 'tag-rule' | 'configurator'
+export type TrafficRuleKind =
+  | 'condition-rule'
+  | 'tag-rule'
+  | 'configurator'
+  | 'affinity-rule'
+  | 'script-rule'
+
+export type RouterRuleKind = 'affinity-rule' | 'script-rule'
 
 export interface RuleVersion {
   ruleKind: string
@@ -61,7 +68,9 @@ export interface RollbackRuleVersionResult {
 }
 
 const ruleNameForPath = (kind: TrafficRuleKind, ruleName: string): string => {
-  return kind === 'configurator' ? encodeURIComponent(ruleName) : ruleName
+  return ['configurator', 'affinity-rule', 'script-rule'].includes(kind)
+    ? encodeURIComponent(ruleName)
+    : ruleName
 }
 
 export const listRuleVersionsAPI = (
@@ -191,6 +200,34 @@ export const addTagRuleAPI = (ruleName: string, data: any): Promise<any> => {
     method: 'post',
     data
   })
+}
+
+export const searchRouterRuleAPI = (kind: RouterRuleKind, params: any): Promise<any> => {
+  return request({ url: `/${kind}/search`, method: 'get', params })
+}
+
+export const getRouterRuleAPI = (kind: RouterRuleKind, ruleName: string): Promise<any> => {
+  return request({ url: `/${kind}/${encodeURIComponent(ruleName)}`, method: 'get' })
+}
+
+export const addRouterRuleAPI = (
+  kind: RouterRuleKind,
+  ruleName: string,
+  data: any
+): Promise<any> => {
+  return request({ url: `/${kind}/${encodeURIComponent(ruleName)}`, method: 'post', data })
+}
+
+export const updateRouterRuleAPI = (
+  kind: RouterRuleKind,
+  ruleName: string,
+  data: any
+): Promise<any> => {
+  return request({ url: `/${kind}/${encodeURIComponent(ruleName)}`, method: 'put', data })
+}
+
+export const deleteRouterRuleAPI = (kind: RouterRuleKind, ruleName: string): Promise<any> => {
+  return request({ url: `/${kind}/${encodeURIComponent(ruleName)}`, method: 'delete' })
 }
 
 export const searchDynamicConfig = (params: any): Promise<any> => {

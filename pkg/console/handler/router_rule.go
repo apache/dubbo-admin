@@ -1,0 +1,212 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0.
+ */
+
+package handler
+
+import (
+	"fmt"
+	"net/http"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+
+	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
+	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
+	"github.com/apache/dubbo-admin/pkg/console/model"
+	"github.com/apache/dubbo-admin/pkg/console/service"
+	"github.com/apache/dubbo-admin/pkg/console/util"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
+)
+
+func AffinityRuleSearch(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := model.NewSearchConditionRuleReq()
+		if err := c.ShouldBindQuery(req); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+		result, err := service.SearchAffinityRules(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, model.NewSuccessResp(result))
+	}
+}
+
+func GetAffinityRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !validRuleSuffix(c, constants.AffinityRuleDotSuffix) {
+			return
+		}
+		r, err := service.GetAffinityRule(ctx, c.Param("ruleName"), c.Query("mesh"))
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+		if r == nil {
+			util.HandleNotFoundError(c, c.Param("ruleName"))
+			return
+		}
+		c.JSON(http.StatusOK, model.GenAffinityRuleResp(r.Spec))
+	}
+}
+func PostAffinityRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
+	return mutateAffinityRule(ctx, false)
+}
+func PutAffinityRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
+	return mutateAffinityRule(ctx, true)
+}
+func mutateAffinityRule(ctx consolectx.Context, update bool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !validRuleSuffix(c, constants.AffinityRuleDotSuffix) {
+			return
+		}
+		input := &model.AffinityRuleInput{}
+		if err := c.ShouldBindJSON(input); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+		r := meshresource.NewAffinityRouteResourceWithAttributes(c.Param("ruleName"), c.Query("mesh"))
+		r.Spec = input.ToProto()
+		if err := meshresource.ValidateRule(r); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+		var err error
+		if update {
+			existing, getErr := service.GetAffinityRule(ctx, r.Name, r.Mesh)
+			if getErr != nil {
+				util.HandleServiceError(c, getErr)
+				return
+			}
+			if existing == nil {
+				util.HandleNotFoundError(c, r.Name)
+				return
+			}
+			err = service.UpdateAffinityRuleWithOptions(ctx, r, mutationOptions(c))
+		} else {
+			err = service.CreateAffinityRuleWithOptions(ctx, r, mutationOptions(c))
+		}
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, model.GenAffinityRuleResp(r.Spec))
+	}
+}
+func DeleteAffinityRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !validRuleSuffix(c, constants.AffinityRuleDotSuffix) {
+			return
+		}
+		if err := service.DeleteAffinityRuleWithOptions(ctx, c.Param("ruleName"), c.Query("mesh"), mutationOptions(c)); err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, model.NewSuccessResp(""))
+	}
+}
+
+func ScriptRuleSearch(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := model.NewSearchConditionRuleReq()
+		if err := c.ShouldBindQuery(req); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+		result, err := service.SearchScriptRules(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, model.NewSuccessResp(result))
+	}
+}
+func GetScriptRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !validRuleSuffix(c, constants.ScriptRuleDotSuffix) {
+			return
+		}
+		r, err := service.GetScriptRule(ctx, c.Param("ruleName"), c.Query("mesh"))
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+		if r == nil {
+			util.HandleNotFoundError(c, c.Param("ruleName"))
+			return
+		}
+		c.JSON(http.StatusOK, model.NewSuccessResp(r.Spec))
+	}
+}
+func PostScriptRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
+	return mutateScriptRule(ctx, false)
+}
+func PutScriptRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
+	return mutateScriptRule(ctx, true)
+}
+func mutateScriptRule(ctx consolectx.Context, update bool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !validRuleSuffix(c, constants.ScriptRuleDotSuffix) {
+			return
+		}
+		spec := &meshproto.ScriptRoute{}
+		if err := c.ShouldBindJSON(spec); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+		r := meshresource.NewScriptRouteResourceWithAttributes(c.Param("ruleName"), c.Query("mesh"))
+		r.Spec = spec
+		if err := meshresource.ValidateRule(r); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+		var err error
+		if update {
+			existing, getErr := service.GetScriptRule(ctx, r.Name, r.Mesh)
+			if getErr != nil {
+				util.HandleServiceError(c, getErr)
+				return
+			}
+			if existing == nil {
+				util.HandleNotFoundError(c, r.Name)
+				return
+			}
+			err = service.UpdateScriptRuleWithOptions(ctx, r, mutationOptions(c))
+		} else {
+			err = service.CreateScriptRuleWithOptions(ctx, r, mutationOptions(c))
+		}
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, model.NewSuccessResp(r.Spec))
+	}
+}
+func DeleteScriptRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !validRuleSuffix(c, constants.ScriptRuleDotSuffix) {
+			return
+		}
+		if err := service.DeleteScriptRuleWithOptions(ctx, c.Param("ruleName"), c.Query("mesh"), mutationOptions(c)); err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, model.NewSuccessResp(""))
+	}
+}
+
+func validRuleSuffix(c *gin.Context, suffix string) bool {
+	if strings.HasSuffix(c.Param("ruleName"), suffix) {
+		return true
+	}
+	c.JSON(http.StatusBadRequest, model.NewBizErrorResp(bizerror.New(bizerror.InvalidArgument, fmt.Sprintf("ruleName must end with %s", suffix))))
+	return false
+}

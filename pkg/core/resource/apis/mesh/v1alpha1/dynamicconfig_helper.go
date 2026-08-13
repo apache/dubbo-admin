@@ -17,18 +17,8 @@
 
 package v1alpha1
 
-import (
-	"sigs.k8s.io/yaml"
-
-	"github.com/apache/dubbo-admin/pkg/core/logger"
-	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
-)
+import coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 
 func ToDynamicConfigResource(mesh, name, data string) coremodel.Resource {
-	res := NewDynamicConfigResourceWithAttributes(name, mesh)
-	err := yaml.Unmarshal([]byte(data), res.Spec)
-	if err != nil {
-		logger.Warnf("cannot unmarshal dynamic config %s in %s, cause %s, raw content:\n %s, ", name, mesh, err, data)
-	}
-	return res
+	return toRuleResource(DynamicConfigKind, mesh, name, data)
 }
