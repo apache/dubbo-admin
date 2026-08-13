@@ -171,11 +171,12 @@ const {
 // Raw conditions as fetched. When configVersion is unsupported the form cannot
 // parse them into routeList, so we send these back untouched on save instead of
 // letting mergeConditions() overwrite the rule with an empty list.
-const originalConditions = ref<string[]>([])
+const originalConditions = ref<any[]>([])
 const conditionsEditable = ref(true)
+const initialized = ref(false)
 
 onMounted(async () => {
-  if (!isNil(TAB_STATE.conditionRule)) {
+  if (isCompleteConditionRule(TAB_STATE.conditionRule)) {
     const {
       configVersion,
       priority,
@@ -225,7 +226,25 @@ onMounted(async () => {
     await getRoutingRuleDetail()
   }
   getVersionAndGroup()
+  initialized.value = true
+  syncConditionRuleDraft()
 })
+
+const isCompleteConditionRule = (data: unknown): data is Record<string, any> => {
+  if (isNil(data) || typeof data !== 'object' || Array.isArray(data)) {
+    return false
+  }
+  return [
+    'configVersion',
+    'priority',
+    'enabled',
+    'force',
+    'runtime',
+    'key',
+    'scope',
+    'conditions'
+  ].every((field) => Object.prototype.hasOwnProperty.call(data, field))
+}
 const route = useRoute()
 
 const isDrawerOpened = ref(false)
@@ -245,16 +264,23 @@ const baseInfo = reactive({
   group: ''
 })
 
-watch(baseInfo, (newVal) => {
-  const { ruleGranularity, enable = true, runtime = true, objectOfAction } = newVal
-  TAB_STATE.conditionRule = {
-    ...TAB_STATE.conditionRule,
-    enabled: enable,
-    key: objectOfAction,
-    runtime: runtime,
-    scope: ruleGranularity
+const syncConditionRuleDraft = () => {
+  if (!initialized.value) {
+    return
   }
-})
+  TAB_STATE.conditionRule = {
+    configVersion: baseInfo.configVersion || 'v3.0',
+    priority: baseInfo.priority,
+    enabled: baseInfo.enable,
+    force: baseInfo.faultTolerantProtection,
+    key: baseInfo.objectOfAction,
+    runtime: baseInfo.runtime,
+    scope: baseInfo.ruleGranularity,
+    conditions: conditionsEditable.value ? mergeConditions() : originalConditions.value
+  }
+}
+
+watch(baseInfo, syncConditionRuleDraft)
 
 // rule granularity options
 // rule granularity options
@@ -270,18 +296,9 @@ const ruleGranularityOptions = computed(() => [
   }
 ])
 
-watch(
-  routeList,
-  () => {
-    TAB_STATE.conditionRule = {
-      ...TAB_STATE.conditionRule,
-      conditions: mergeConditions()
-    }
-  },
-  {
-    deep: true
-  }
-)
+watch(routeList, syncConditionRuleDraft, {
+  deep: true
+})
 
 // Get condition routing details
 async function getRoutingRuleDetail() {
