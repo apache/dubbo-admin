@@ -248,22 +248,17 @@ spec:
 spec:
   model: qwen-max
   prompt_base_path: ./prompts
-  stages:
-    - name: reasonAct
-      flow_type: reasonAct
-      prompt_file: agentReasonAct.txt
 `,
 			assertFn: func(t *testing.T, cfg *config.Config) {
 				var spec react.AgentSpec
 				if err := cfg.Spec.Decode(&spec); err != nil {
 					t.Fatalf("decode agent spec: %v", err)
 				}
-				if len(spec.Stages) != 1 {
-					t.Fatalf("stages len = %d, want 1", len(spec.Stages))
+				if spec.PromptFile == "" || spec.MaxIterations == 0 {
+					t.Fatalf("agent defaults not injected: %+v", spec)
 				}
-				stage := spec.Stages[0]
-				if stage.Temperature == 0 || stage.TopP == 0 || stage.MaxTokens == 0 || stage.Timeout == 0 {
-					t.Fatalf("agent stage defaults not injected: %+v", stage)
+				if spec.Temperature == 0 || spec.TopP == 0 || spec.MaxTokens == 0 || spec.Timeout == 0 {
+					t.Fatalf("agent model-call defaults not injected: %+v", spec)
 				}
 			},
 		},

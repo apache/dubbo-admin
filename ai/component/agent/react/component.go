@@ -28,40 +28,15 @@ import (
 // the agent's YAML-sourced configuration and, on Init, resolves dependencies
 // (tools) and constructs the underlying ReActAgent.
 type AgentComponent struct {
-	instanceName           string
-	Agent                  *ReActAgent
-	agentType              string
-	model                  string
-	promptBasePath         string
-	maxIterations          int
-	stageChannelBufferSize int
-	mcpHostName            string
-	toolTimeouts           map[string]int
-	stages                 []StageInfo
+	instanceName string
+	Agent        *ReActAgent
+	spec         AgentSpec
 }
 
-// NewAgentComponent builds an unstarted AgentComponent from resolved
-// configuration values. The ReActAgent itself is created later, in Init.
-func NewAgentComponent(
-	agentType string,
-	model string,
-	promptBasePath string,
-	maxIterations int,
-	stageChannelBufferSize int,
-	mcpHostName string,
-	toolTimeouts map[string]int,
-	stages []StageInfo,
-) (runtime.Component, error) {
-	return &AgentComponent{
-		agentType:              agentType,
-		model:                  model,
-		promptBasePath:         promptBasePath,
-		maxIterations:          maxIterations,
-		stageChannelBufferSize: stageChannelBufferSize,
-		mcpHostName:            mcpHostName,
-		toolTimeouts:           toolTimeouts,
-		stages:                 stages,
-	}, nil
+// NewAgentComponent builds an unstarted AgentComponent from a decoded spec. The
+// ReActAgent itself is created later, in Init.
+func NewAgentComponent(spec AgentSpec) (runtime.Component, error) {
+	return &AgentComponent{spec: spec}, nil
 }
 
 // Name returns the component's instance name, or "agent" if none was set.
@@ -79,17 +54,7 @@ func (a *AgentComponent) SetName(name string) {
 
 // Validate checks the component's configuration without side effects.
 func (a *AgentComponent) Validate() error {
-	cfg := AgentSpec{
-		AgentType:              a.agentType,
-		Model:                  a.model,
-		PromptBasePath:         a.promptBasePath,
-		MaxIterations:          a.maxIterations,
-		StageChannelBufferSize: a.stageChannelBufferSize,
-		MCPHostName:            a.mcpHostName,
-		ToolTimeouts:           a.toolTimeouts,
-		Stages:                 a.stages,
-	}
-	return cfg.Validate()
+	return a.spec.Validate()
 }
 
 // Init resolves the tools dependency from the runtime and constructs the
@@ -104,8 +69,8 @@ func (a *AgentComponent) Init(rt *runtime.Runtime) error {
 		return fmt.Errorf("invalid tools component type")
 	}
 	toolRefs := tools.GetToolRefs()
-	toolTimeouts := newToolTimeoutResolver(defaultToolTimeoutSeconds, a.toolTimeouts)
-	reactAgent, err := NewReActAgent(rt.GetGenkitRegistry(), a.promptBasePath, a.model, a.maxIterations, a.stageChannelBufferSize, a.stages, toolTimeouts, toolRefs)
+	toolTimeouts := newToolTimeoutResolver(defaultToolTimeoutSeconds, a.spec.ToolTimeouts)
+	reactAgent, err := NewReActAgent(rt.GetGenkitRegistry(), &a.spec, toolTimeouts, toolRefs)
 	if err != nil {
 		return fmt.Errorf("failed to create ReAct agent: %w", err)
 	}
@@ -113,10 +78,9 @@ func (a *AgentComponent) Init(rt *runtime.Runtime) error {
 	a.Agent = reactAgent
 
 	rt.GetLogger().Info("Agent component initialized",
-		"agent_type", a.agentType,
-		"model", a.model,
-		"max_iterations", a.maxIterations,
-		"stages", len(a.stages))
+		"agent_type", a.spec.AgentType,
+		"model", a.spec.Model,
+		"max_iterations", a.spec.MaxIterations)
 
 	return nil
 }

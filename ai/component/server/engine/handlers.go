@@ -33,7 +33,6 @@ func NewAgentHandler(agent agent.Agent, sessionMgr *session.Manager) *AgentHandl
 func (h *AgentHandler) StreamChat(c *gin.Context) {
 	var (
 		req          ChatRequest
-		pageContext  *schema.AIContextSnapshot
 		sessionID    string
 		session      *session.Session
 		sseHandler   *sse.SSEHandler
@@ -44,10 +43,6 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 
 	// Parse request
 	if err = c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, NewErrorResponse("Invalid request: "+err.Error()))
-		return
-	}
-	if pageContext, err = req.ParseContext(); err != nil {
 		c.JSON(http.StatusBadRequest, NewErrorResponse("Invalid request: "+err.Error()))
 		return
 	}
@@ -74,7 +69,7 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 		}
 	}()
 
-	channels = h.agent.Interact(&schema.UserInput{Content: req.Message, Context: pageContext}, sessionID)
+	channels = h.agent.Interact(&schema.UserInput{Content: req.Message}, sessionID)
 	var (
 		feedback *schema.StreamFeedback
 		ok       bool

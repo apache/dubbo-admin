@@ -22,115 +22,74 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"time"
 
 	"dubbo-admin-ai/runtime"
-	"dubbo-admin-ai/schema"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/openai/openai-go"
 )
 
-// builtStage is a prompt assembled once at construction time plus the metadata
-// the matching step needs at run time. Steps are (re)built per Interact from
-// these so a single agent can serve concurrent interactions.
-type builtStage struct {
-	kind    string // "reasonAct" | "observe"
-	prompt  ai.Prompt
-	timeout time.Duration
-}
+// answerDirective nudges the model to commit to a final answer from whatever it
+// has already gathered. It is only attached to the tool-less answer prompt,
+// which the loop uses once the iteration budget is exhausted.
+const answerDirective = "Provide your final answer now, using the information already gathered. Do not request any more tools."
 
-// buildStages assembles one prompt per configured stage, in order.
-func (ra *ReActAgent) buildStages(g *genkit.Genkit, stagesCfg []StageInfo, promptBasePath string, defaultModel string, toolRefs []ai.ToolRef) ([]builtStage, error) {
-	var stages []builtStage
-
-	for _, stageCfg := range stagesCfg {
-		// Read prompt file.
-		promptPath := path.Join(promptBasePath, stageCfg.PromptFile)
-		systemPrompt, err := os.ReadFile(promptPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read prompt file %s: %w", promptPath, err)
-		}
-
-		// Only the reasonAct stage calls tools.
-		needsTools := stageCfg.FlowType == flowReasonAct
-		var tools []ai.ToolRef
-		if needsTools && stageCfg.EnableTools {
-			tools = toolRefs
-		}
-
-		// Advertise the available tool names to the reasonAct stage.
-		extraPrompt := stageCfg.ExtraPrompt
-		if needsTools && extraPrompt == "" {
-			toolNames := make([]string, 0, len(toolRefs))
-			for _, toolRef := range toolRefs {
-				toolNames = append(toolNames, toolRef.Name())
-			}
-			toolsJson, err := json.Marshal(toolNames)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal tool names: %w", err)
-			}
-			extraPrompt = fmt.Sprintf("available tools: %s", string(toolsJson))
-			runtime.GetLogger().Debug("Tool details", "extraPrompt", extraPrompt)
-		}
-
-		// Each step knows its own in/out types. reasonAct uses native tool
-		// calling (no structured output); observe returns a structured decision.
-		var inType, outType any
-		switch stageCfg.FlowType {
-		case flowReasonAct:
-			// native function calling — no structured in/out type
-		case flowObserve:
-			outType = schema.Observation{}
-		default:
-			return nil, fmt.Errorf("unknown flow type: %s", stageCfg.FlowType)
-		}
-
-		// Use default model if not specified in configuration.
-		model := stageCfg.Model
-		if model == "" {
-			model = defaultModel
-		}
-
-		prompt := buildPrompt(g, inType, outType, stageCfg.Name, string(systemPrompt),
-			stageCfg.Temperature, stageCfg.TopP, stageCfg.MaxTokens, model, extraPrompt, tools...)
-
-		timeout := time.Duration(stageCfg.Timeout) * time.Second
-		stages = append(stages, builtStage{kind: stageCfg.FlowType, prompt: prompt, timeout: timeout})
+// buildPrompts assembles the two genkit prompts a ReAct agent needs, both from
+// the single configured system prompt:
+//   - act reasons with tools available (native function calling); each iteration
+//     either calls tools or answers directly.
+//   - answer is the same system prompt without tools, used to force a final
+//     answer when the iteration budget is exhausted.
+//
+// They share every model setting; only the tool binding (and answer's synthesis
+// directive) differ.
+func (ra *ReActAgent) buildPrompts(g *genkit.Genkit, spec *AgentSpec, model string, toolRefs []ai.ToolRef) (act, answer ai.Prompt, err error) {
+	promptPath := path.Join(spec.PromptBasePath, spec.PromptFile)
+	systemPrompt, err := os.ReadFile(promptPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read prompt file %s: %w", promptPath, err)
 	}
 
-	return stages, nil
+	// Advertise the available tool names to the model.
+	toolNames := make([]string, 0, len(toolRefs))
+	for _, toolRef := range toolRefs {
+		toolNames = append(toolNames, toolRef.Name())
+	}
+	toolsJSON, err := json.Marshal(toolNames)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to marshal tool names: %w", err)
+	}
+	extraPrompt := fmt.Sprintf("available tools: %s", string(toolsJSON))
+	runtime.GetLogger().Debug("Tool details", "extraPrompt", extraPrompt)
+
+	act = buildPrompt(g, "react_act", string(systemPrompt), spec, model, extraPrompt, toolRefs)
+	answer = buildPrompt(g, "react_answer", string(systemPrompt), spec, model, answerDirective, nil)
+	return act, answer, nil
 }
 
-// buildPrompt assembles a genkit prompt for one stage from its model settings
-// and, when provided, its structured in/out types and tool set.
-func buildPrompt(registry *genkit.Genkit, inType, outType any, tag, prompt string, temp, topP float64, maxTokens int, model string, extraPrompt string, tools ...ai.ToolRef) ai.Prompt {
+// buildPrompt assembles a genkit prompt from the shared model settings, binding
+// the given tool set when one is provided.
+func buildPrompt(registry *genkit.Genkit, tag, systemPrompt string, spec *AgentSpec, model, extraPrompt string, tools []ai.ToolRef) ai.Prompt {
 	cfg := &openai.ChatCompletionNewParams{
-		Temperature: openai.Float(temp),
+		Temperature: openai.Float(spec.Temperature),
 	}
-	if topP > 0 {
-		cfg.TopP = openai.Float(topP)
+	if spec.TopP > 0 {
+		cfg.TopP = openai.Float(spec.TopP)
 	}
-	if maxTokens > 0 {
-		cfg.MaxTokens = openai.Int(int64(maxTokens))
+	if spec.MaxTokens > 0 {
+		cfg.MaxTokens = openai.Int(int64(spec.MaxTokens))
 	}
 
 	opts := []ai.PromptOption{
-		ai.WithSystem(prompt),
+		ai.WithSystem(systemPrompt),
 		ai.WithConfig(cfg),
 		ai.WithModelName(model),
-	}
-	if inType != nil {
-		opts = append(opts, ai.WithInputType(inType))
-	}
-	if outType != nil {
-		opts = append(opts, ai.WithOutputType(outType))
 	}
 	if extraPrompt != "" {
 		opts = append(opts, ai.WithPrompt(extraPrompt))
 	}
-	if tools != nil {
+	if len(tools) > 0 {
 		opts = append(opts, ai.WithTools(tools...), ai.WithReturnToolRequests(true))
 	}
 

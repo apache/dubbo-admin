@@ -32,14 +32,5 @@ func AgentFactory(spec *yaml.Node) (runtime.Component, error) {
 		return nil, fmt.Errorf("failed to decode agent spec: %w", err)
 	}
 
-	return NewAgentComponent(
-		cfg.AgentType,
-		cfg.Model,
-		cfg.PromptBasePath,
-		cfg.MaxIterations,
-		cfg.StageChannelBufferSize,
-		cfg.MCPHostName,
-		cfg.ToolTimeouts,
-		cfg.Stages,
-	)
+	return NewAgentComponent(cfg)
 }

@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -37,9 +36,8 @@ func NewErrorResponse(message string) *Response {
 
 // ChatRequest defines streaming chat request
 type ChatRequest struct {
-	Message   string          `json:"message" binding:"required"`   // User message
-	SessionID string          `json:"sessionID" binding:"required"` // Session ID
-	Context   json.RawMessage `json:"context,omitempty"`            // Current-turn page context
+	Message   string `json:"message" binding:"required"`   // User message
+	SessionID string `json:"sessionID" binding:"required"` // Session ID
 }
 
 // generateRequestID generates a request ID

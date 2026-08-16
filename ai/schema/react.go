@@ -11,8 +11,7 @@ import (
 )
 
 type UserInput struct {
-	Content string             `json:"content,omitempty"`
-	Context *AIContextSnapshot `json:"-"`
+	Content string `json:"content,omitempty"`
 }
 
 type ToolOutputs struct {
