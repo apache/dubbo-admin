@@ -16,7 +16,7 @@
 -->
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { login } from '@/api/service/login'
 import { useRoute, useRouter } from 'vue-router'
 import { updateAuthState } from '@/utils/AuthUtil'
@@ -33,6 +33,12 @@ const router = useRouter()
 const route = useRoute()
 const redirect: any = route.query.redirect || '/'
 const meshStore = useMeshStore()
+
+const usernameInputRef = ref()
+
+onMounted(() => {
+  usernameInputRef.value?.focus()
+})
 
 function loginHandle() {
   let formData = new FormData()
@@ -68,7 +74,11 @@ function loginHandle() {
             name="username"
             :rules="[{ required: true }]"
           >
-            <a-input type="" v-model:value="userinfo.username"></a-input>
+            <a-input 
+              ref="usernameInputRef"
+              v-model:value="userinfo.username"
+              @pressEnter="loginHandle"
+            ></a-input>
           </a-form-item>
           <a-form-item
             class="item"
@@ -76,7 +86,11 @@ function loginHandle() {
             name="password"
             :rules="[{ required: true }]"
           >
-            <a-input type="password" v-model:value="userinfo.password"></a-input>
+            <a-input 
+              type="password" 
+              v-model:value="userinfo.password"
+              @pressEnter="loginHandle"
+            ></a-input>
           </a-form-item>
           <a-form-item class="item" label="">
             <a-button @click="loginHandle" size="large" type="primary" class="login-btn"
