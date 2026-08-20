@@ -31,8 +31,9 @@ import (
 
 // scriptPrompt is an ai.Prompt whose Execute dispenses queued responses/errors
 // in call order, letting the loop tests drive several iterations without a live
-// model. actPrompt and answerPrompt are pointed at the same instance so calls
-// are consumed in the exact order run() makes them.
+// model. testAgent points actPrompt and answerPrompt at the same instance so
+// calls are consumed in the exact order run() makes them; tests that must tell
+// the two prompts apart override answerPrompt with a second instance.
 type scriptPrompt struct {
 	resps []*ai.ModelResponse
 	errs  []error
@@ -177,5 +178,76 @@ func TestRun_PropagatesExecuteError(t *testing.T) {
 	_, err := ra.run(ctx, nil)
 	if err == nil || !strings.Contains(err.Error(), "failed to execute react prompt") {
 		t.Fatalf("expected wrapped execute error, got %v", err)
+	}
+}
+
+// TestRun_ForcedFinalIterationUsesAnswerPrompt pins the loop's core guarantee:
+// once the tool-round budget is spent, the forced final iteration must switch to
+// the tool-less answer prompt. actPrompt and answerPrompt are distinct spies so
+// selecting the wrong one is observable (unlike testAgent's shared instance).
+func TestRun_ForcedFinalIterationUsesAnswerPrompt(t *testing.T) {
+	g := genkit.Init(context.Background())
+	genkit.DefineTool(g, "loop_tool", "keeps the loop going", func(ctx *ai.ToolContext, input map[string]any) (map[string]any, error) {
+		return map[string]any{"tool_name": "loop_tool", "summary": "ok"}, nil
+	})
+	// actPrompt always asks for a tool, so the loop only terminates once the
+	// forced final iteration switches to answerPrompt.
+	act := &scriptPrompt{resps: []*ai.ModelResponse{
+		toolReqResp("loop_tool", map[string]any{"q": "1"}),
+		toolReqResp("loop_tool", map[string]any{"q": "2"}),
+		toolReqResp("loop_tool", map[string]any{"q": "3"}),
+	}}
+	answer := &scriptPrompt{resps: []*ai.ModelResponse{textResp("Final synthesized answer.")}}
+	ra := testAgent(g, 3, act)
+	ra.answerPrompt = answer
+	ctx, history := contextWithHistory("s5")
+
+	if _, err := ra.run(ctx, nil); err != nil {
+		t.Fatalf("run error: %v", err)
+	}
+	if act.calls != 2 {
+		t.Fatalf("expected actPrompt used for the 2 non-final iterations, got %d", act.calls)
+	}
+	if answer.calls != 1 {
+		t.Fatalf("expected answerPrompt used exactly once on the forced final iteration, got %d", answer.calls)
+	}
+	if !strings.Contains(historyText(history, "s5"), "Final synthesized answer.") {
+		t.Fatalf("forced final answer (from answerPrompt) not recorded: %q", historyText(history, "s5"))
+	}
+}
+
+// TestRun_EmptyResponseRetries covers a tool-free empty response mid-loop: it
+// carries nothing to stream, so run() must retry rather than finish on silence.
+func TestRun_EmptyResponseRetries(t *testing.T) {
+	g := genkit.Init(context.Background())
+	script := &scriptPrompt{resps: []*ai.ModelResponse{textResp(""), textResp("Recovered answer.")}}
+	ra := testAgent(g, 2, script)
+	ctx, history := contextWithHistory("s6")
+
+	if _, err := ra.run(ctx, nil); err != nil {
+		t.Fatalf("run error: %v", err)
+	}
+	if script.calls != 2 {
+		t.Fatalf("expected empty response to trigger a retry (2 calls), got %d", script.calls)
+	}
+	if !strings.Contains(historyText(history, "s6"), "Recovered answer.") {
+		t.Fatalf("expected recovered answer recorded, got: %q", historyText(history, "s6"))
+	}
+}
+
+// TestRun_EmptyForcedAnswerFallsBack covers an empty response on the forced final
+// iteration: with no iterations left to retry, run() must emit an explicit
+// fallback so the interaction never ends with bare stream markers.
+func TestRun_EmptyForcedAnswerFallsBack(t *testing.T) {
+	g := genkit.Init(context.Background())
+	script := &scriptPrompt{resps: []*ai.ModelResponse{textResp("")}}
+	ra := testAgent(g, 1, script)
+	ctx, history := contextWithHistory("s7")
+
+	if _, err := ra.run(ctx, nil); err != nil {
+		t.Fatalf("run error: %v", err)
+	}
+	if !strings.Contains(historyText(history, "s7"), fallbackAnswer) {
+		t.Fatalf("expected fallback answer recorded, got: %q", historyText(history, "s7"))
 	}
 }

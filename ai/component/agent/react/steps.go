@@ -32,6 +32,11 @@ import (
 	"github.com/firebase/genkit/go/ai"
 )
 
+// fallbackAnswer is streamed when the model returns no text on the forced final
+// iteration, so an interaction always ends with a user-visible reply instead of
+// bare stream markers.
+const fallbackAnswer = "抱歉，我暂时无法生成回答，请稍后再试。"
+
 // run drives the reason-and-act loop for one interaction. Each iteration is a
 // single model call: with native function calling the model either requests
 // tools (whose results are fed back as context for the next iteration) or
@@ -83,7 +88,21 @@ func (ra *ReActAgent) run(ctx context.Context, chans *agent.Channels) (*ai.Gener
 			}
 		}
 
-		ra.finish(chans, history, sessionID, resp.Text())
+		// A tool-free response IS the final answer — but an empty response has
+		// nothing to stream. While iterations remain, retry rather than finish on
+		// silence; on the forced last iteration substitute an explicit fallback so
+		// the loop always terminates with a real reply.
+		answer := resp.Text()
+		if answer == "" {
+			if !forceAnswer {
+				runtime.GetLogger().Warn("react: empty model response, retrying", "iteration", i)
+				continue
+			}
+			runtime.GetLogger().Warn("react: empty forced answer, using fallback")
+			answer = fallbackAnswer
+		}
+
+		ra.finish(chans, history, sessionID, answer)
 		return usage, nil
 	}
 

@@ -23,7 +23,16 @@ paths:
           application/json:
             schema:
               type: object
-              properties: {}
+              required:
+                - message
+                - sessionID
+              properties:
+                message:
+                  type: string
+                  description: 用户消息
+                sessionID:
+                  type: string
+                  description: 会话 ID
             example:
               message: 你是谁
               sessionID: session_test
