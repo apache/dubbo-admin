@@ -24,6 +24,7 @@ import (
 type IndexCommand struct {
 	Directory  string
 	ConfigPath string
+	IndexName  string
 }
 
 func main() {
@@ -43,8 +44,9 @@ func main() {
 func parseFlags() *IndexCommand {
 	cmd := &IndexCommand{}
 
-	flag.StringVar(&cmd.Directory, "dir", "/Users/liwener/programming/ospp/dubbo-admin/ai/reference/k8s_docs/concepts", "Directory to index (required)")
+	flag.StringVar(&cmd.Directory, "dir", "component/rag/seeds", "Directory to index (required)")
 	flag.StringVar(&cmd.ConfigPath, "config", "component/rag/rag.yaml", "Configuration file path")
+	flag.StringVar(&cmd.IndexName, "index", "default", "Target index name (must match the runtime retriever target)")
 
 	flag.Parse()
 	return cmd
@@ -115,8 +117,10 @@ func executeIndexing(cmd *IndexCommand) error {
 
 	g := genkit.Init(ctx, genkit.WithPlugins(plugins...))
 
-	// Build-time target index selection: default to directory name for this CLI
-	targetIndex := getNamespace("", cmd.Directory)
+	// Build-time target index selection. Default to "default" so the indexed data
+	// lands in the same target the runtime retriever reads from; fall back to the
+	// directory name only when explicitly cleared.
+	targetIndex := getNamespace(cmd.IndexName, cmd.Directory)
 
 	sys, err := buildRAGSystem(g, cfg)
 	if err != nil {

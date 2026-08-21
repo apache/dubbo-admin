@@ -40,12 +40,22 @@ import { inject, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import type { GrafanaState } from '@/types/grafana'
+import { createDashboardStateContribution, useAIContextProvider } from '@/ai-context'
+import { useRoute } from 'vue-router'
 
 const grafana = inject<GrafanaState>(PROVIDE_INJECT_KEY.GRAFANA)
 
 if (!grafana) {
   throw new Error('Grafana state not provided')
 }
+
+const route = useRoute()
+
+useAIContextProvider({
+  id: 'dashboard-state',
+  priority: 50,
+  collect: () => createDashboardStateContribution(route.name, grafana.params, grafana.url)
+})
 
 onMounted(async () => {
   try {

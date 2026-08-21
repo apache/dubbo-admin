@@ -32,13 +32,20 @@ type QueryProcessorConfig = query.QueryProcessorConfig
 // RAGSpec defines RAG component configuration with recursive structure
 // Each subcomponent uses the standard Config pattern (type + spec)
 type RAGSpec struct {
-	Embedder        *config.Config `yaml:"embedder"`
-	Loader          *config.Config `yaml:"loader"`
-	Splitter        *config.Config `yaml:"splitter"`
-	Indexer         *config.Config `yaml:"indexer"`
-	Retriever       *config.Config `yaml:"retriever"`
-	Reranker        *config.Config `yaml:"reranker,omitempty"`
-	QueryProcessor  *config.Config `yaml:"query_processor,omitempty"`
+	Embedder       *config.Config `yaml:"embedder"`
+	Loader         *config.Config `yaml:"loader"`
+	Splitter       *config.Config `yaml:"splitter"`
+	Indexer        *config.Config `yaml:"indexer"`
+	Retriever      *config.Config `yaml:"retriever"`
+	Reranker       *config.Config `yaml:"reranker,omitempty"`
+	QueryProcessor *config.Config `yaml:"query_processor,omitempty"`
+	Seed           *SeedSpec      `yaml:"seed,omitempty"`
+}
+
+// SeedSpec controls auto-seeding the local vector store with bundled knowledge
+// documents at startup, so retrieval is never empty on a fresh deployment.
+type SeedSpec struct {
+	Enabled bool `yaml:"enabled"`
 }
 
 // EmbedderSpec defines embedder specific parameters
@@ -83,20 +90,20 @@ type RerankerSpec struct {
 type QueryProcessorSpec struct {
 	Enabled         bool    `yaml:"enabled"`
 	Model           string  `yaml:"model"`
-	Timeout         string  `yaml:"timeout"`        // Duration string like "5s"
+	Timeout         string  `yaml:"timeout"` // Duration string like "5s"
 	Temperature     float64 `yaml:"temperature"`
 	FallbackOnError bool    `yaml:"fallback_on_error"`
 }
 
 // MilvusIndexerSpec defines Milvus indexer specific parameters
 type MilvusIndexerSpec struct {
-	Address     string `yaml:"address"`      // Milvus server address (env: MILVUS_HOST)
-	Token       string `yaml:"token"`        // Auth token for Zilliz Cloud (env: MILVUS_TOKEN)
-	Username    string `yaml:"username"`     // Optional username (for self-hosted)
-	Password    string `yaml:"password"`     // Optional password (for self-hosted)
-	Collection  string `yaml:"collection"`   // Collection name
-	Dimension   int    `yaml:"dimension"`    // Vector dimension
-	BatchSize   int    `yaml:"batch_size"`   // Insert batch size
+	Address      string `yaml:"address"`       // Milvus server address (env: MILVUS_HOST)
+	Token        string `yaml:"token"`         // Auth token for Zilliz Cloud (env: MILVUS_TOKEN)
+	Username     string `yaml:"username"`      // Optional username (for self-hosted)
+	Password     string `yaml:"password"`      // Optional password (for self-hosted)
+	Collection   string `yaml:"collection"`    // Collection name
+	Dimension    int    `yaml:"dimension"`     // Vector dimension
+	BatchSize    int    `yaml:"batch_size"`    // Insert batch size
 	EnableSparse bool   `yaml:"enable_sparse"` // Enable sparse vector support for BM25
 
 	// Field names
@@ -111,11 +118,11 @@ type MilvusIndexerSpec struct {
 
 // MilvusRetrieverSpec defines Milvus retriever specific parameters with hybrid search support
 type MilvusRetrieverSpec struct {
-	Address    string `yaml:"address"`     // Milvus server address (env: MILVUS_HOST)
-	Token      string `yaml:"token"`       // Auth token for Zilliz Cloud (env: MILVUS_TOKEN)
-	Username   string `yaml:"username"`    // Optional username (for self-hosted)
-	Password   string `yaml:"password"`    // Optional password (for self-hosted)
-	Collection string `yaml:"collection"`  // Collection name
+	Address    string `yaml:"address"`    // Milvus server address (env: MILVUS_HOST)
+	Token      string `yaml:"token"`      // Auth token for Zilliz Cloud (env: MILVUS_TOKEN)
+	Username   string `yaml:"username"`   // Optional username (for self-hosted)
+	Password   string `yaml:"password"`   // Optional password (for self-hosted)
+	Collection string `yaml:"collection"` // Collection name
 
 	// Search type: "dense" (vector), "sparse" (BM25), or "hybrid" (both)
 	SearchType string `yaml:"search_type"` // dense | sparse | hybrid
@@ -130,9 +137,9 @@ type MilvusRetrieverSpec struct {
 	SparseTopK  int    `yaml:"sparse_top_k"` // Default TopK for sparse search
 
 	// Hybrid search configuration
-	HybridRanker string  `yaml:"hybrid_ranker"`  // rrf | weighted_rank | nnf
-	DenseWeight  float64 `yaml:"dense_weight"`   // Weight for dense results (default: 0.7)
-	SparseWeight float64 `yaml:"sparse_weight"`  // Weight for sparse results (default: 0.3)
+	HybridRanker string  `yaml:"hybrid_ranker"` // rrf | weighted_rank | nnf
+	DenseWeight  float64 `yaml:"dense_weight"`  // Weight for dense results (default: 0.7)
+	SparseWeight float64 `yaml:"sparse_weight"` // Weight for sparse results (default: 0.3)
 }
 
 // DefaultEmbedderSpec returns default embedder configuration
@@ -225,9 +232,9 @@ func (c *RAGSpec) Validate() error {
 // High-frequency fields are flattened for direct access; low-frequency fields go into Metadata.
 type RetrieveResult struct {
 	Content  string         `json:"content"`
-	Score    float64        `json:"score"`               // Final relevance score
-	Source   string         `json:"source,omitempty"`    // Document source path
-	Title    string         `json:"title,omitempty"`     // Document title
+	Score    float64        `json:"score"`              // Final relevance score
+	Source   string         `json:"source,omitempty"`   // Document source path
+	Title    string         `json:"title,omitempty"`    // Document title
 	Metadata map[string]any `json:"metadata,omitempty"` // Extended metadata (page, header_path, etc.)
 }
 
@@ -235,17 +242,17 @@ type RetrieveResult struct {
 
 // RetrieveRequest represents a retrieval request.
 type RetrieveRequest struct {
-	Query     string          // Original user query
-	TopK      int             // Maximum results to return
-	Namespace string          // Namespace/collection
-	Options   map[string]any  // Additional options
+	Query     string         // Original user query
+	TopK      int            // Maximum results to return
+	Namespace string         // Namespace/collection
+	Options   map[string]any // Additional options
 }
 
 // RetrieveResponse represents the response from retrieval.
 type RetrieveResponse struct {
-	Results       []*RetrieveResult    // Retrieved documents
-	QueryResult   *QueryProcessResult   // Query processing results
-	RetrievalMeta map[string]any        // Retrieval metadata
+	Results       []*RetrieveResult   // Retrieved documents
+	QueryResult   *QueryProcessResult // Query processing results
+	RetrievalMeta map[string]any      // Retrieval metadata
 }
 
 // QueryProcessResult represents the result of query processing.

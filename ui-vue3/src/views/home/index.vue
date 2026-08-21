@@ -65,6 +65,7 @@
 import { Icon } from '@iconify/vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import { onMounted, reactive } from 'vue'
+import { createHomeOverviewContribution, useAIContextProvider } from '@/ai-context'
 import { getClusterInfo } from '@/api/service/clusterInfo'
 import { getMetricsMetadata } from '@/api/service/serverInfo'
 import { useRoute } from 'vue-router'
@@ -81,6 +82,12 @@ let clusterInfo = reactive({
 
 let metricsMetadata = reactive({
   info: <{ [key: string]: string }>{}
+})
+
+useAIContextProvider({
+  id: 'home-overview',
+  priority: 50,
+  collect: () => createHomeOverviewContribution(clusterInfo.info)
 })
 
 onMounted(() => {
@@ -291,14 +298,17 @@ onMounted(() => {
   }
 
   .statistic-icon-big {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
     width: 40px;
     height: 40px;
     background: v-bind('PRIMARY_COLOR');
-    line-height: 44px;
-    vertical-align: middle;
-    text-align: center;
     border-radius: 5px;
-    font-size: 56px;
+    overflow: hidden;
+    font-size: 28px;
+    line-height: 1;
     color: white;
   }
   .card {

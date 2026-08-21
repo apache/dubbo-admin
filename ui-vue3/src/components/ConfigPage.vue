@@ -94,6 +94,7 @@ import { Icon } from '@iconify/vue'
 import { useRoute } from 'vue-router'
 import { computed, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { createConfigurationStateContribution, useAIContextProvider } from '@/ai-context'
 
 let props = defineProps<{
   options: {
@@ -110,6 +111,13 @@ let props = defineProps<{
 
 let currentOption: any = computed(() => {
   return props.options.list[props.options.current[0]]
+})
+
+useAIContextProvider({
+  id: 'configuration-state',
+  priority: 60,
+  collect: () =>
+    createConfigurationStateContribution(currentOption.value?.key, currentOption.value?.form)
 })
 
 let __config_form: any = ref(null)

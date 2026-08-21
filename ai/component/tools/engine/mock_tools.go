@@ -611,25 +611,6 @@ func (o QueryKnowledgeBaseOutput) String() string {
 	return fmt.Sprintf("QueryKnowledgeBaseOutput{Documents: %d items}", len(o.Documents))
 }
 
-func queryKnowledgeBase(ctx *ai.ToolContext, input QueryKnowledgeBaseInput) (ToolOutput, error) {
-
-	output := QueryKnowledgeBaseOutput{
-		Documents: []KnowledgeDocument{
-			{
-				Source:          "Project-VIP-Feature-Design-Doc.md",
-				ContentSnippet:  "The 'Lifetime Achievement' badge requires calculating total user spending. Note: This may cause slow queries on the orders table if the user_id column is not properly indexed.",
-				SimilarityScore: 0.92,
-			},
-		},
-	}
-
-	return ToolOutput{
-		ToolName: "query_knowledge_base",
-		Summary:  fmt.Sprintf("Knowledge base query '%s' completed", input.QueryText),
-		Result:   output,
-	}, nil
-}
-
 // ================================================
 // Tool Registration Function
 // ================================================
@@ -654,7 +635,6 @@ func defineMockTools(rt *runtime.Runtime) []ai.Tool {
 		genkit.DefineTool(g, "dubbo_service_status", "Use dubbo-admin-like commands to query the provider and consumer lists and their status for a specific Dubbo service", dubboServiceStatus),
 		genkit.DefineTool(g, "query_log_database", "Query indexed log databases (such as Elasticsearch, Loki) for real-time or near real-time log analysis", queryLogDatabase),
 		genkit.DefineTool(g, "search_archived_logs", "Perform text search (similar to grep) in archived log files (such as .log.gz files stored in S3 or server file system)", searchArchivedLogs),
-		genkit.DefineTool(g, "query_knowledge_base", "Query vector databases for historical failure reports or solution documents related to the question", queryKnowledgeBase),
 	}
 }
 

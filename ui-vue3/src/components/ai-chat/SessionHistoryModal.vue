@@ -1,18 +1,18 @@
 <template>
     <!-- 对话历史Modal -->
-    <a-modal v-model:visible="localVisible" title="对话历史" :footer="null" width="600px">
+    <a-modal v-model:visible="localVisible" :title="labels.historyTitle" :footer="null" width="600px">
         <div class="max-h-[400px] overflow-y-auto">
-            <a-empty v-if="sessions.length === 0" description="暂无对话历史" />
+            <a-empty v-if="sessions.length === 0" :description="labels.emptyHistory" />
             <a-list v-else>
                 <a-list-item v-for="session in sessions" :key="session.session_id"
                     class="cursor-pointer hover:bg-gray-100 rounded p-2">
                     <div class="flex justify-between w-full" @click="loadSession(session.session_id)">
                         <div>
                             <div class="font-medium">
-                                会话 #{{ session.session_id ? session.session_id.substring(0, 8) : '' }}
+                                {{ labels.session }} #{{ session.session_id ? session.session_id.substring(0, 8) : '' }}
                             </div>
                             <div class="text-gray-500 text-sm">
-                                {{ session.message_count ? `消息数: ${session.message_count}` : '新会话' }}
+                                {{ session.message_count ? `${labels.messageCount}: ${session.message_count}` : labels.newSession }}
                             </div>
                         </div>
                         <div>
@@ -20,7 +20,7 @@
                                 {{ new Date(session.created_at).toLocaleString() }}
                             </div>
                             <a-button type="link" size="small" @click.stop="deleteSession(session.session_id)" danger>
-                                <DeleteOutlined /> 删除
+                                <DeleteOutlined /> {{ labels.delete }}
                             </a-button>
                         </div>
                     </div>
@@ -33,12 +33,13 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { DeleteOutlined } from '@ant-design/icons-vue'
-import type { Session } from '@/api/service/ai'
+import type { AIChatLabels, Session } from './types'
 
 // 定义props
 const props = defineProps<{
     visible: boolean
     sessions: Session[]
+    labels: AIChatLabels
 }>()
 
 // 定义emits

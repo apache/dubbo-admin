@@ -18,8 +18,9 @@
 package react
 
 import (
-	"dubbo-admin-ai/runtime"
 	"fmt"
+
+	"dubbo-admin-ai/runtime"
 
 	"gopkg.in/yaml.v3"
 )
@@ -38,6 +39,7 @@ func AgentFactory(spec *yaml.Node) (runtime.Component, error) {
 		cfg.MaxIterations,
 		cfg.StageChannelBufferSize,
 		cfg.MCPHostName,
+		cfg.ToolTimeouts,
 		cfg.Stages,
 	)
 }

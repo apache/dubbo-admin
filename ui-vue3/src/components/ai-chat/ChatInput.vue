@@ -9,9 +9,9 @@
           );
         " @click="handleNewChat">
                 <PlusOutlined />
-                新对话
+                {{ labels.newChat }}
             </a-button>
-            <a-button class="flex items-center" style="
+            <a-button v-if="showHistory" class="flex items-center" style="
           background-image: linear-gradient(
             97deg,
             rgb(242, 249, 254) 0%,
@@ -19,7 +19,7 @@
           );
         " @click="handleViewHistory">
                 <ClockCircleOutlined />
-                对话历史
+                {{ labels.history }}
             </a-button>
             <a-button class="flex items-center" style="
           background-image: linear-gradient(
@@ -29,16 +29,16 @@
           );
         " @click="clearHistory">
                 <DeleteOutlined />
-                清空历史
+                {{ labels.clearHistory }}
             </a-button>
         </div>
         <div class="mt-2">
             <div class="relative">
                 <div
                     class="flex w-full rounded-lg border border-gray-200 bg-white shadow-lg transition-all duration-200 hover:shadow-xl focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-100">
-                    <textarea id="chat-input" v-model="inputMessage" @keydown="handleKeyDown" rows="1"
+                    <textarea ref="inputRef" v-model="inputMessage" @keydown="handleKeyDown" rows="1"
                         class="block w-full resize-none rounded-lg border-0 bg-transparent px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0 sm:text-sm transition-colors duration-200 hover:bg-gray-50"
-                        placeholder="输入你的问题，Shift + Enter 换行" :disabled="isLoading" required></textarea>
+                        :placeholder="labels.placeholder" :disabled="isLoading" required></textarea>
                     <div class="flex items-end gap-2 p-2">
                         <a-button shape="circle" type="primary" :loading="isLoading" @click="sendMessage"
                             class="flex h-8 w-8 items-center justify-center">
@@ -59,12 +59,14 @@ import {
     PlusOutlined,
     ArrowUpOutlined
 } from '@ant-design/icons-vue'
-import type { ChatMessage } from '@/api/service/ai'
+import type { AIChatLabels, ChatMessage } from './types'
 
 // 定义props
-const props = defineProps<{
+defineProps<{
     messages: ChatMessage[]
     isLoading: boolean
+    labels: AIChatLabels
+    showHistory: boolean
 }>()
 
 // 定义emits
@@ -79,6 +81,7 @@ const emit = defineEmits<{
 
 // 输入消息
 const inputMessage = ref('')
+const inputRef = ref<HTMLTextAreaElement | null>(null)
 
 // 监听输入消息变化并通知父组件
 watch(inputMessage, (newVal) => {
@@ -110,8 +113,13 @@ const handleKeyDown = (event: KeyboardEvent) => {
     emit('keydown', event)
 }
 
+const focus = () => {
+    inputRef.value?.focus()
+}
+
 // 定义暴露给父组件的属性
 defineExpose({
-    inputMessage
+    inputMessage,
+    focus
 })
 </script>

@@ -301,51 +301,6 @@ func (sh *SSEHandler) HandleText(text string, index int) error {
 	return nil
 }
 
-// HandleStreamChunk handles streaming data chunks
-func (sh *SSEHandler) HandleStreamChunk(chunk schema.StreamChunk) error {
-	// Send message start and content block start events when processing first chunk
-	if !sh.ContentStarted {
-		// Send message start event
-		msg := &Message{
-			ID:      sh.messageID,
-			Type:    "message",
-			Role:    "assistant",
-			Content: []ContentItem{},
-		}
-		if err := sh.writer.WriteMessageStart(msg); err != nil {
-			return err
-		}
-
-		// Send content block start event
-		contentBlock := &ContentBlock{
-			Type: "text",
-			Text: "",
-		}
-		if err := sh.writer.WriteContentBlockStart(0, contentBlock); err != nil {
-			return err
-		}
-
-		sh.ContentStarted = true
-	}
-
-	// Process based on Agent's streaming output format
-	if chunk.Chunk != nil {
-		// Get delta text directly
-		deltaText := chunk.Chunk.Text()
-		if deltaText != "" {
-			delta := &Delta{
-				Type: TextDelta,
-				Text: deltaText,
-			}
-			if err := sh.writer.WriteContentBlockDelta(0, delta); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
 // HandleContentBlockStop handles content block stop event
 func (sh *SSEHandler) HandleContentBlockStop(index int) error {
 	// Only send content_block_stop if content has started

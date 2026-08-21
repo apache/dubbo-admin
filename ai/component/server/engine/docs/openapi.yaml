@@ -23,10 +23,30 @@ paths:
           application/json:
             schema:
               type: object
-              properties: {}
+              required:
+                - message
+                - sessionID
+              properties:
+                message:
+                  type: string
+                sessionID:
+                  type: string
+                context:
+                  $ref: "#/components/schemas/AIContextSnapshot"
+              additionalProperties: false
             example:
               message: 你是谁
               sessionID: session_test
+              context:
+                version: 1
+                capturedAt: "2026-07-19T13:00:00Z"
+                global:
+                  locale: cn
+                page:
+                  routeName: homePage
+                  path: /home
+                scope:
+                  mesh: nacos2.5
       responses:
         "200":
           description: 流式响应
@@ -253,7 +273,124 @@ paths:
           headers: {}
       security: []
 components:
-  schemas: {}
+  schemas:
+    AIContextSnapshot:
+      type: object
+      description: Current-turn untrusted page observation, limited to 8 KB.
+      required:
+        - version
+        - capturedAt
+        - global
+        - page
+        - scope
+      additionalProperties: false
+      properties:
+        version:
+          type: integer
+          enum: [1]
+        capturedAt:
+          type: string
+          format: date-time
+        global:
+          type: object
+          additionalProperties: false
+          properties:
+            locale:
+              type: string
+        page:
+          $ref: "#/components/schemas/AIContextPage"
+        scope:
+          $ref: "#/components/schemas/AIContextScope"
+        state:
+          $ref: "#/components/schemas/AIContextState"
+        evidence:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/AIContextSection"
+        truncation:
+          type: object
+          required:
+            - truncated
+            - omittedSections
+          additionalProperties: false
+          properties:
+            truncated:
+              type: boolean
+            omittedSections:
+              type: array
+              maxItems: 10
+              items:
+                type: string
+    AIContextPage:
+      type: object
+      required:
+        - path
+      additionalProperties: false
+      properties:
+        routeName:
+          type: string
+        path:
+          type: string
+        fullPath:
+          type: string
+        activeTab:
+          type: string
+        params:
+          type: object
+          additionalProperties: true
+        query:
+          type: object
+          additionalProperties: true
+    AIContextScope:
+      type: object
+      required:
+        - mesh
+      additionalProperties: false
+      properties:
+        mesh:
+          type: string
+        application:
+          type: string
+        service:
+          type: string
+        instance:
+          type: string
+        rule:
+          type: string
+    AIContextState:
+      type: object
+      additionalProperties: false
+      properties:
+        filters:
+          type: object
+          additionalProperties: true
+        selection:
+          type: object
+          additionalProperties: true
+        unsavedChanges:
+          type: object
+          additionalProperties: true
+    AIContextSection:
+      type: object
+      required:
+        - id
+        - source
+        - data
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        source:
+          type: string
+        capturedAt:
+          type: string
+          format: date-time
+        priority:
+          type: integer
+        data:
+          type: object
+          additionalProperties: true
   securitySchemes: {}
 servers: []
 security: []

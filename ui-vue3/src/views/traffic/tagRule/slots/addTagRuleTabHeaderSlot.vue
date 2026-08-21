@@ -25,7 +25,27 @@
   </div>
 </template>
 
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { inject } from 'vue'
+import { useRoute } from 'vue-router'
+import { createTrafficDraftContribution, useAIContextProvider } from '@/ai-context'
+import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
+
+const route = useRoute()
+const TAB_STATE: any = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+
+useAIContextProvider({
+  id: 'tag-rule-draft',
+  priority: 100,
+  collect: () =>
+    createTrafficDraftContribution({
+      kind: 'tag-rule',
+      mode: 'create',
+      representation: String(route.name).endsWith('YAMLView') ? 'yaml' : 'form',
+      draft: TAB_STATE?.tagRule
+    })
+})
+</script>
 <style lang="less" scoped>
 .__container_AppTabHeaderSlot {
   .header-desc {

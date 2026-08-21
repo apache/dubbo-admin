@@ -212,6 +212,7 @@ import { PRIMARY_COLOR } from '@/base/constants'
 import { getConditionRuleDetailAPI } from '@/api/service/traffic'
 import { useRoute } from 'vue-router'
 import { HTTP_STATUS } from '@/base/http/constants'
+import { createTrafficRuleContentContribution, useAIContextProvider } from '@/ai-context'
 
 const {
   appContext: {
@@ -235,6 +236,12 @@ function copyIt(v: string) {
 
 // Condition routing details
 const conditionRuleDetail = reactive({})
+
+useAIContextProvider({
+  id: 'rule-content',
+  priority: 80,
+  collect: () => createTrafficRuleContentContribution('condition-rule', conditionRuleDetail)
+})
 
 const actionObj = computed(() => {
   const key = conditionRuleDetail.key || ''

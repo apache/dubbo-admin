@@ -32,7 +32,15 @@
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
+import { createApplicationResourceContribution, useAIContextProvider } from '@/ai-context'
+
 const route = useRoute()
+
+useAIContextProvider({
+  id: 'application-resource',
+  priority: 100,
+  collect: () => createApplicationResourceContribution(route.params?.pathId)
+})
 </script>
 <style lang="less" scoped>
 .__container_AppTabHeaderSlot {

@@ -71,8 +71,23 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { getServiceDetail } from '@/api/service/service'
+import { createResourceDetailsContribution, useAIContextProvider } from '@/ai-context'
 
 const serviceDetail = ref({})
+
+useAIContextProvider({
+  id: 'service-detail',
+  priority: 80,
+  collect: () =>
+    createResourceDetailsContribution('service-detail', 'service-detail-api', serviceDetail.value, [
+      'timeOut',
+      'timeout',
+      'retry',
+      'obsolete',
+      'protocol',
+      'delay'
+    ])
+})
 const onSearch = async () => {
   const { data } = await getServiceDetail({})
   serviceDetail.value = data.data

@@ -24,6 +24,41 @@ const words: I18nType = {
     login: 'Login',
     authFail: 'Auth Fail'
   },
+  aiContext: {
+    title: 'Page context',
+    nextMessage: 'Next message',
+    include: 'Include page context',
+    page: 'Page',
+    mesh: 'Mesh',
+    locale: 'Language',
+    notSet: 'Not set',
+    resourceScope: 'Resource scope',
+    sections: 'Page information',
+    noSections: 'No additional page information',
+    truncated: 'Some information was omitted due to the size limit',
+    unavailable: 'No context is available for this page',
+    disabled: 'Disabled',
+    section: {
+      'cluster-overview': 'Cluster overview',
+      'application-detail': 'Application details',
+      'configuration-state': 'Current configuration',
+      'dashboard-state': 'Dashboard state',
+      'event-list': 'Events',
+      'instance-detail': 'Instance details',
+      'rule-content': 'Rule content',
+      'search-results': 'Current list',
+      'service-debug': 'Service debug',
+      'service-detail': 'Service details',
+      'topology-state': 'Topology',
+      'unsaved-changes': 'Unsaved rule draft'
+    },
+    scope: {
+      application: 'Application',
+      service: 'Service',
+      instance: 'Instance',
+      rule: 'Rule'
+    }
+  },
   destinationRuleDomain: {
     YAMLView: 'YAML view',
     formView: 'Form view'

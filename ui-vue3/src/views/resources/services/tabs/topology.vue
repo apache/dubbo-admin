@@ -54,10 +54,12 @@ import { VueNode } from 'g6-extension-vue'
 
 import { useRoute } from 'vue-router'
 import { ExtensionCategory, register, Graph, NodeEvent } from '@antv/g6'
+import { createTopologyStateContribution, useAIContextProvider } from '@/ai-context'
 const route = useRoute()
 
 // G6 graph instance for this view (resize/destroy lifecycle)
 const graphRef = shallowRef<Graph | null>(null)
+const topologyData = shallowRef<{ nodes: any[]; edges: any[] }>()
 register(ExtensionCategory.NODE, 'vue-node', VueNode)
 
 // Right-side detail drawer state
@@ -73,6 +75,17 @@ const detailCache = new Map<string, Record<string, unknown>>()
 const currentDetailKey = ref('')
 const currentDetailType = ref('')
 const selectedNodeId = ref('')
+
+useAIContextProvider({
+  id: 'topology-state',
+  priority: 70,
+  collect: () =>
+    createTopologyStateContribution(topologyData.value, {
+      key: currentDetailKey.value,
+      type: currentDetailType.value,
+      detail: detailData.value
+    })
+})
 
 // Clear selection when the drawer closes to avoid stale highlight
 const clearSelectedNode = () => {
@@ -338,6 +351,7 @@ onMounted(async () => {
     const res = await getServiceGraph(serviceName)
     if (res?.code !== HTTP_STATUS.SUCCESS) return
     const graphData = buildGraphData(res?.data)
+    topologyData.value = graphData
     renderTopology(graphData)
 
     // Resize canvas on window resize (keep container width responsive)

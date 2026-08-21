@@ -200,18 +200,18 @@ func (f *ConfigFixture) ValidAgentConfig() *yaml.Node {
 		"max_iterations":   10,
 		"stages": []map[string]any{
 			{
-				"name":         "agentThinking",
-				"flow_type":    "think",
-				"prompt_file":  "agentThink.txt",
+				"name":         "reasonAct",
+				"flow_type":    "reasonAct",
+				"prompt_file":  "agentReasonAct.txt",
 				"temperature":  0.7,
 				"enable_tools": true,
 			},
 			{
-				"name":         "agentTool",
-				"flow_type":    "act",
-				"prompt_file":  "agentTool.txt",
+				"name":         "observe",
+				"flow_type":    "observe",
+				"prompt_file":  "agentObserve.txt",
 				"temperature":  0.7,
-				"enable_tools": true,
+				"enable_tools": false,
 			},
 		},
 	})

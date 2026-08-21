@@ -90,6 +90,7 @@ import useClipboard from 'vue-clipboard3'
 import { message } from 'ant-design-vue'
 import type { ComponentInternalInstance } from 'vue'
 import { useRoute } from 'vue-router'
+import { createResourceDetailsContribution, useAIContextProvider } from '@/ai-context'
 
 const route = useRoute()
 
@@ -108,6 +109,30 @@ let detailMap = reactive({
   left: {},
   right: {},
   bottom: {}
+})
+
+useAIContextProvider({
+  id: 'application-detail',
+  priority: 80,
+  collect: () =>
+    createResourceDetailsContribution(
+      'application-detail',
+      'application-detail-api',
+      apiData.detail?.data,
+      [
+        'appName',
+        'rpcProtocols',
+        'dubboVersions',
+        'dubboPorts',
+        'serialProtocols',
+        'appTypes',
+        'images',
+        'workloads',
+        'deployClusters',
+        'registerClusters',
+        'registerModes'
+      ]
+    )
 })
 
 onMounted(async () => {

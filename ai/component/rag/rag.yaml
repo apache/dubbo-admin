@@ -3,7 +3,7 @@ spec:
   embedder:
     type: genkit
     spec:
-      model: dashscope/qwen3-embedding
+      model: dashscope/text-embedding-v4
 
   loader:
     type: local
@@ -46,6 +46,13 @@ spec:
       timeout: 5s
       temperature: 0.3
       fallback_on_error: true
+
+  # Auto-seed the local vector store with bundled Dubbo/Dubbo-Admin knowledge
+  # (component/rag/seeds/*.md) at startup, so retrieval is never empty on a
+  # fresh deployment. Best-effort: requires the embedder to be reachable, and
+  # only applies to the local indexer. Set enabled: false to disable.
+  seed:
+    enabled: true
 
   # --- Milvus/Zilliz Cloud Configuration ---
   # To use Milvus, set indexer.type and retriever.type to "milvus"

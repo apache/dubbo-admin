@@ -1,3 +1,5 @@
+//go:build integration
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -27,18 +29,6 @@ import (
 	"github.com/cloudwego/eino/schema"
 	"github.com/joho/godotenv"
 )
-
-// truncateString truncates a string to a maximum length and adds "..." if truncated.
-func truncateString(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	runes := []rune(s)
-	if len(runes) <= maxLen {
-		return s
-	}
-	return string(runes[:maxLen]) + "..."
-}
 
 // TestMilvusIndexerConfig tests Milvus indexer configuration validation.
 func TestMilvusIndexerConfig(t *testing.T) {
@@ -134,6 +124,9 @@ func TestMilvusIndexerConfig(t *testing.T) {
 // TestMilvusIndexer_Store tests Milvus indexer functionality.
 // Requires MILVUS_HOST and MILVUS_TOKEN environment variables.
 func TestMilvusIndexer_Store(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration test; skipped in -short mode")
+	}
 	// Load .env file
 	if err := godotenv.Load("../../../.env"); err != nil {
 		t.Skip("Skipping test: .env file not found")

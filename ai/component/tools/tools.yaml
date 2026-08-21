@@ -2,9 +2,9 @@ type: tools
 spec:
   enable_mock_tools: true
   enable_internal_tools: true
-  enable_mcp_tools: true
+  enable_mcp_tools: false
   mcp:
-    enabled: true
+    enabled: false
     host: localhost
     port: 8888
     apiKey: ""  # Optional API Key for MCP authentication

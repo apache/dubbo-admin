@@ -33,6 +33,7 @@ func NewAgentHandler(agent agent.Agent, sessionMgr *session.Manager) *AgentHandl
 func (h *AgentHandler) StreamChat(c *gin.Context) {
 	var (
 		req          ChatRequest
+		pageContext  *schema.AIContextSnapshot
 		sessionID    string
 		session      *session.Session
 		sseHandler   *sse.SSEHandler
@@ -43,6 +44,10 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 
 	// Parse request
 	if err = c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, NewErrorResponse("Invalid request: "+err.Error()))
+		return
+	}
+	if pageContext, err = req.ParseContext(); err != nil {
 		c.JSON(http.StatusBadRequest, NewErrorResponse("Invalid request: "+err.Error()))
 		return
 	}
@@ -69,7 +74,7 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 		}
 	}()
 
-	channels = h.agent.Interact(&schema.UserInput{Content: req.Message}, sessionID)
+	channels = h.agent.Interact(&schema.UserInput{Content: req.Message, Context: pageContext}, sessionID)
 	var (
 		feedback *schema.StreamFeedback
 		ok       bool
@@ -92,7 +97,14 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 				channels.UserRespChan = nil
 				continue
 			}
+			rt.GetLogger().Info("Handler received feedback",
+				"session_id", sessionID,
+				"text", feedback.Text(),
+				"done", feedback.IsDone(),
+				"final", feedback.IsFinal(),
+				"final_nil", feedback.Final() == nil)
 			if feedback.IsFinal() {
+				rt.GetLogger().Info("MessageDelta called with output type", "type", fmt.Sprintf("%T", feedback.Final()))
 				h.MessageDelta(sseHandler, feedback.Final())
 			} else if feedback.IsDone() {
 				if err := sseHandler.HandleContentBlockStop(feedback.Index()); err != nil {
@@ -110,6 +122,39 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 
 		default:
 			if channels.Closed() {
+				// Drain remaining messages before finishing
+				rt.GetLogger().Info("Channels closed, draining remaining messages", "session_id", sessionID)
+			drainLoop:
+				for {
+					select {
+					case feedback, ok = <-channels.UserRespChan:
+						if !ok {
+							channels.UserRespChan = nil
+							break drainLoop
+						}
+						if feedback.IsFinal() {
+							h.MessageDelta(sseHandler, feedback.Final())
+						} else if feedback.IsDone() {
+							if err := sseHandler.HandleContentBlockStop(feedback.Index()); err != nil {
+								rt.GetLogger().Error("Failed to handle content block stop", "error", err)
+							}
+						} else {
+							if err := sseHandler.HandleText(feedback.Text(), feedback.Index()); err != nil {
+								rt.GetLogger().Error("Failed to handle text", "error", err)
+							}
+						}
+					case err, ok = <-channels.ErrorChan:
+						if !ok {
+							channels.ErrorChan = nil
+							break drainLoop
+						}
+						if err != nil {
+							sseHandler.HandleError("agent_error", fmt.Sprintf("agent error: %v", err))
+						}
+					default:
+						break drainLoop
+					}
+				}
 				if err := sseHandler.FinishStream(); err != nil {
 					rt.GetLogger().Error("Failed to finish stream", "error", err)
 				}
@@ -120,9 +165,13 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 	}
 }
 
-// MessageDelta finishes stream and handles usage
+// MessageDelta finishes the stream and reports token usage. The observation's
+// Summary/FinalAnswer text was already streamed live by the observe stage
+// (react emitObservation), so this only emits the stop reason + usage — it must
+// NOT re-stream the text, or the client would receive the answer twice.
 func (h *AgentHandler) MessageDelta(sseHandler *sse.SSEHandler, output schema.Schema) {
 	stopReason := "end_turn"
+
 	if err := sseHandler.MessageDeltaWithUsage(stopReason, output); err != nil {
 		sseHandler.HandleError("finish_stream_error", fmt.Sprintf("failed to finish stream: %v", err))
 	}

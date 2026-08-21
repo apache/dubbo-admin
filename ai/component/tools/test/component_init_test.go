@@ -69,11 +69,11 @@ func newInitializedRAGComponent(t *testing.T, rt *runtime.Runtime) *compRag.RAGC
 			Spec: toYAMLNode(t, &compRag.SplitterSpec{ChunkSize: 100, OverlapSize: 10}),
 		},
 		Indexer: &config.Config{
-			Type: "dev",
+			Type: "local",
 			Spec: toYAMLNode(t, &compRag.IndexerSpec{}),
 		},
 		Retriever: &config.Config{
-			Type: "dev",
+			Type: "local",
 			Spec: toYAMLNode(t, &compRag.RetrieverSpec{}),
 		},
 	}

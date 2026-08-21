@@ -35,9 +35,16 @@ import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getInstanceDetail } from '@/api/service/instance'
 import { INSTANCE_LIFECYCLE_COLOR } from '@/base/constants'
+import { createInstanceResourceContribution, useAIContextProvider } from '@/ai-context'
 
 const route = useRoute()
 const instanceLifecycleState = ref('Unknown')
+
+useAIContextProvider({
+  id: 'instance-resource',
+  priority: 100,
+  collect: () => createInstanceResourceContribution(route.params?.name, route.params?.appName)
+})
 
 const lifecycleColor = (state?: string) => {
   return INSTANCE_LIFECYCLE_COLOR[(state || 'UNKNOWN').toUpperCase()] || 'default'

@@ -16,35 +16,15 @@
  */
 
 import axios from 'axios'
+import type { AIContextSnapshot } from '@/ai-context'
+import type { ChatResponse, ChatService, Session } from '@/components/ai-chat/types'
+
+export type { ChatMessage, ChatResponse, Session } from '@/components/ai-chat/types'
 
 const BASE_URL = '/api/v1'
 
-// 定义接口类型
-export interface Session {
-  session_id: string
-  created_at: string
-  updated_at: string
-  message_count: number
-  status: string
-}
-
-export interface ChatMessage {
-  id: string
-  content: string
-  role: 'user' | 'assistant'
-  timestamp: number
-  type?: 'normal' | 'error' | 'partial_error'
-}
-
-export interface ChatResponse {
-  data: {
-    session_id: string
-    messages: ChatMessage[]
-  }
-}
-
 // AI 服务接口
-export const aiService = {
+export const aiService: ChatService<AIContextSnapshot> = {
   // 创建新会话
   async createSession(): Promise<string> {
     const response = await axios.post(`${BASE_URL}/ai/sessions`)
@@ -69,7 +49,11 @@ export const aiService = {
   },
 
   // 发送聊天消息（流式响应）
-  async sendChatMessage(message: string, sessionId?: string): Promise<ReadableStream> {
+  async sendChatMessage(
+    message: string,
+    sessionId?: string,
+    context?: AIContextSnapshot
+  ): Promise<ReadableStream<Uint8Array>> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json'
     }
@@ -83,7 +67,8 @@ export const aiService = {
       headers,
       body: JSON.stringify({
         message,
-        sessionID: sessionId
+        sessionID: sessionId,
+        context
       }),
       mode: 'cors', // 允许跨域
       credentials: 'include' // 允许携带 cookie
@@ -92,8 +77,11 @@ export const aiService = {
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
+    if (!response.body) {
+      throw new Error('AI service returned an empty response body')
+    }
 
-    return response.body!
+    return response.body
   }
 }
 

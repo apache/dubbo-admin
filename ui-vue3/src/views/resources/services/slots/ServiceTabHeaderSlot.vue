@@ -32,7 +32,20 @@
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
+import { createServiceResourceContribution, useAIContextProvider } from '@/ai-context'
+
 const route = useRoute()
+
+useAIContextProvider({
+  id: 'service-resource',
+  priority: 100,
+  collect: () =>
+    createServiceResourceContribution(
+      route.params?.pathId,
+      route.params?.group,
+      route.params?.version
+    )
+})
 </script>
 <style lang="less" scoped>
 .__container_ServiceTabHeaderSlot {

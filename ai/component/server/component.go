@@ -106,6 +106,12 @@ func (s *ServerComponent) Init(rt *runtime.Runtime) error {
 }
 
 func (s *ServerComponent) Start() error {
+	// Check if server is already running (idempotent Start)
+	if s.srv != nil {
+		s.rt.GetLogger().Info("Server already running", "addr", fmt.Sprintf("%s:%d", s.host, s.port))
+		return nil
+	}
+
 	// Retrieve Agent component from Runtime
 	agentComp, err := s.rt.GetComponent("agent")
 	if err != nil {
@@ -147,6 +153,7 @@ func (s *ServerComponent) Start() error {
 		"debug", s.debug)
 
 	go func() {
+		s.rt.GetLogger().Info("Server listening...", "addr", s.srv.Addr)
 		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			s.rt.GetLogger().Error("Server failed", "error", err)
 		}

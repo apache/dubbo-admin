@@ -21,21 +21,21 @@
                 <template v-if="message === messages[messages.length - 1] && isAiThinking && !message.content">
                     <div class="flex items-center text-gray-400 text-sm">
                         <LoadingOutlined class="mr-2" />
-                        <span class="animate-pulse">正在思考...</span>
+                        <span class="animate-pulse">{{ labels.thinking }}</span>
                     </div>
                 </template>
                 <template v-else-if="message.type === 'error'">
                     <div class="flex flex-col">
                         <div class="flex items-center text-red-500 text-sm mb-2">
                             <span class="mr-2">❌</span>
-                            <span class="font-medium">出现错误</span>
+                            <span class="font-medium">{{ labels.errorTitle }}</span>
                         </div>
-                        <div class="text-red-600 text-sm mb-3" v-html="message.content.replace(/\n/g, '<br />')"></div>
+                        <div class="text-red-600 text-sm mb-3 whitespace-pre-wrap">{{ message.content }}</div>
                         <div class="flex justify-end">
                             <a-button size="small" type="primary" @click="retryLastMessage" :loading="isLoading"
                                 class="flex items-center">
                                 <RedoOutlined v-if="!isLoading" class="mr-1" />
-                                重试
+                                {{ labels.retry }}
                             </a-button>
                         </div>
                     </div>
@@ -46,12 +46,12 @@
                     <div v-if="message === messages[messages.length - 1] && isAiThinking"
                         class="flex items-center text-gray-400 text-xs mt-2">
                         <LoadingOutlined class="mr-1" />
-                        <span class="animate-pulse">正在思考...</span>
+                        <span class="animate-pulse">{{ labels.thinking }}</span>
                     </div>
                 </div>
             </template>
             <template v-else>
-                <p v-html="message.content.replace(/\n/g, '<br />')"></p>
+                <p class="whitespace-pre-wrap">{{ message.content }}</p>
             </template>
         </div>
     </div>
@@ -59,15 +59,16 @@
 
 <script setup lang="ts">
 import { LoadingOutlined, RedoOutlined } from '@ant-design/icons-vue'
-import type { ChatMessage } from '@/api/service/ai'
+import type { AIChatLabels, ChatMessage } from './types'
 
 // 定义props
-const props = defineProps<{
+defineProps<{
     message: ChatMessage
     isAiThinking: boolean
     isLoading: boolean
     messages: ChatMessage[]
     md: any
+    labels: AIChatLabels
 }>()
 
 // 定义emits

@@ -1,3 +1,5 @@
+//go:build integration
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -125,6 +127,9 @@ func TestMilvusRetrieverConfig(t *testing.T) {
 // TestMilvusRetriever_Retrieve tests Milvus retriever functionality.
 // Requires MILVUS_HOST and MILVUS_TOKEN environment variables.
 func TestMilvusRetriever_Retrieve(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration test; skipped in -short mode")
+	}
 	// Load .env file
 	if err := godotenv.Load("../../../.env"); err != nil {
 		t.Skip("Skipping test: .env file not found")

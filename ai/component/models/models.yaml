@@ -1,12 +1,18 @@
 type: models
 spec:
-  default_model: "dashscope/qwen-max"
+  default_model: "dashscope/qwen3.7-max"
   default_embedding: "dashscope/text-embedding-v4"
   providers:
     dashscope:
       api_key: "${DASHSCOPE_API_KEY}"
       base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
       models:
+        - name: "qwen3.7-max"
+          key: "qwen3.7-max"
+          type: "chat"
+        - name: "qwen3.7-plus"
+          key: "qwen3.7-plus"
+          type: "chat"
         - name: "qwen-max"
           key: "qwen-max"
           type: "chat"

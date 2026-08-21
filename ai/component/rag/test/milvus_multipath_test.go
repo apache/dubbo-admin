@@ -1,3 +1,5 @@
+//go:build integration
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -247,6 +249,9 @@ func printResultsTable(p *Printer, query string, denseResults, bm25Results, hybr
 
 // TestMilvusMultiPathRetrieval tests Milvus multi-path retrieval
 func TestMilvusMultiPathRetrieval(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration test; skipped in -short mode")
+	}
 	p := NewPrinter(t)
 
 	p.Title("Milvus 多路召回测试")
@@ -432,6 +437,9 @@ func TestMilvusMultiPathRetrieval(t *testing.T) {
 
 // TestMilvusMultiPathWithMerge tests multi-path retrieval with RRF merge
 func TestMilvusMultiPathWithMerge(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration test; skipped in -short mode")
+	}
 	p := NewPrinter(t)
 
 	p.Title("Milvus 多路召回 + RRF 合并测试")

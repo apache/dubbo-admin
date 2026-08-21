@@ -243,6 +243,7 @@ import useClipboard from 'vue-clipboard3'
 import { message } from 'ant-design-vue'
 import { INSTANCE_DEPLOY_COLOR, PRIMARY_COLOR, PRIMARY_COLOR_T } from '@/base/constants'
 import { getInstanceDetail } from '@/api/service/instance'
+import { createInstanceDetailContribution, useAIContextProvider } from '@/ai-context'
 import { useRoute, useRouter } from 'vue-router'
 import { formattedDate } from '@/utils/DateUtil'
 
@@ -260,6 +261,12 @@ let PRIMARY_COLOR_20 = PRIMARY_COLOR_T('20')
 
 // instance detail information
 const instanceDetail = <any>reactive({})
+
+useAIContextProvider({
+  id: 'instance-detail',
+  priority: 80,
+  collect: () => createInstanceDetailContribution(instanceDetail)
+})
 
 onMounted(async () => {
   const { name, pathId } = route.params

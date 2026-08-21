@@ -46,3 +46,4 @@ build/
 vendor/
 
 app/dubbo-ui/dist/
+/.env
