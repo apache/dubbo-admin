@@ -1,0 +1,26 @@
+# Agent lifecycle hooks component
+#
+# Available events:
+#   interaction.start, interaction.end       - full Agent invocation
+#   interaction.error, interaction.cancel    - interaction failed or was cancelled
+#   interaction.degrade                      - interaction completed with degraded quality
+#   iteration.start, iteration.end           - one ReAct think-act cycle
+#   stage.start, stage.end, stage.error      - think / act / observe
+#   model_call.start, model_call.end         - LLM request/response
+#   model_call.error                         - model call failed
+#   tool_call.start, tool_call.end           - tool execution
+#   tool_call.error                          - tool call failed (degraded)
+#
+# Error events are emitted before the corresponding .end event when an operation fails.
+# Built-in logging and tracing hooks subscribe to all events.
+# Custom hooks can filter by event and tool name via the Registration API.
+type: hooks
+spec:
+  logging:
+    enabled: true
+  tracing:
+    enabled: false
+    protocol: "grpc"
+    service_name: "dubbo-admin-ai"
+    sample_ratio: 1.0
+    capture_content: "none"

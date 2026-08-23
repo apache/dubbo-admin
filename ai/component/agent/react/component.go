@@ -20,6 +20,7 @@ package react
 import (
 	"fmt"
 
+	"dubbo-admin-ai/component/hooks"
 	"dubbo-admin-ai/component/tools"
 	"dubbo-admin-ai/runtime"
 )
@@ -105,7 +106,18 @@ func (a *AgentComponent) Init(rt *runtime.Runtime) error {
 	}
 	toolRefs := tools.GetToolRefs()
 	toolTimeouts := newToolTimeoutResolver(defaultToolTimeoutSeconds, a.toolTimeouts)
-	reactAgent, err := NewReActAgent(rt.GetGenkitRegistry(), a.promptBasePath, a.model, a.maxIterations, a.stageChannelBufferSize, a.stages, toolTimeouts, toolRefs)
+	var hookManager *hooks.Manager
+	if hooksComp, hooksErr := rt.GetComponent("hooks"); hooksErr == nil {
+		component, ok := hooksComp.(*hooks.Component)
+		if !ok {
+			return fmt.Errorf("invalid hooks component type")
+		}
+		// Keep the stable Manager pointer even when no built-in hooks are active.
+		// Its empty fast path is allocation-free, and later custom registrations
+		// become visible to the already initialized Agent.
+		hookManager = component.GetManager()
+	}
+	reactAgent, err := NewReActAgent(rt.GetGenkitRegistry(), a.promptBasePath, a.model, a.maxIterations, a.stageChannelBufferSize, a.stages, toolTimeouts, hookManager, toolRefs)
 	if err != nil {
 		return fmt.Errorf("failed to create ReAct agent: %w", err)
 	}
@@ -126,7 +138,10 @@ func (a *AgentComponent) Start() error {
 	return nil
 }
 
-// Stop is a no-op: the agent holds no resources that need releasing.
+// Stop drains active interactions before the hooks component shuts down.
 func (a *AgentComponent) Stop() error {
+	if a.Agent != nil {
+		a.Agent.Stop()
+	}
 	return nil
 }

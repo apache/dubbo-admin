@@ -34,15 +34,23 @@ type ParseResponse interface {
 
 // ParseObservation parses Observation with fallback
 func (h *Handler) ParseObservation(resp ParseResponse) (*schema.Observation, error) {
+	observation, _, err := h.ParseObservationWithFallback(resp)
+	return observation, err
+}
+
+// ParseObservationWithFallback reports whether schema parsing required the
+// raw-response fallback so callers can expose that degraded path to hooks.
+func (h *Handler) ParseObservationWithFallback(resp ParseResponse) (*schema.Observation, bool, error) {
 	var observation schema.Observation
 	observation.UsageInfo = &ai.GenerationUsage{}
 
 	if err := resp.Output(&observation); err != nil {
 		runtime.GetLogger().Warn("Observation schema parsing failed, using fallback", "error", err)
-		return h.fallbackObservation(resp)
+		fallback, fallbackErr := h.fallbackObservation(resp)
+		return fallback, true, fallbackErr
 	}
 
-	return &observation, nil
+	return &observation, false, nil
 }
 
 // fallbackObservation creates an Observation from raw text when schema parsing fails

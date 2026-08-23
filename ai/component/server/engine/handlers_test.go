@@ -19,10 +19,12 @@ package engine
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"dubbo-admin-ai/component/agent"
 	"dubbo-admin-ai/component/memory"
@@ -30,18 +32,45 @@ import (
 	"dubbo-admin-ai/schema"
 
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type captureAgent struct {
+	ctx   context.Context
 	input *schema.UserInput
 }
 
-func (a *captureAgent) Interact(input *schema.UserInput, _ string) *agent.Channels {
+func TestDiscardAgentOutputUnblocksDetachedProducer(t *testing.T) {
+	channels := agent.NewChannels(1)
+	producerDone := make(chan struct{})
+	go func() {
+		defer close(producerDone)
+		for i := 0; i < 10; i++ {
+			channels.Send(schema.NewStreamFeedback("discard"))
+		}
+		channels.Close()
+	}()
+	go discardAgentOutput(channels)
+
+	select {
+	case <-producerDone:
+	case <-time.After(time.Second):
+		t.Fatal("detached producer remained blocked on response channels")
+	}
+}
+
+func (a *captureAgent) Interact(ctx context.Context, input *schema.UserInput, _ string) *agent.Channels {
+	a.ctx = ctx
 	a.input = input
 	channels := agent.NewChannels(1)
+	channels.SetTraceID("trace-test")
 	channels.Close()
 	return channels
 }
+
+type requestContextKey struct{}
 
 func (a *captureAgent) GetMemory() *memory.HistoryMemory {
 	return nil
@@ -49,6 +78,9 @@ func (a *captureAgent) GetMemory() *memory.HistoryMemory {
 
 func TestStreamChatContextContract(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	previousPropagator := otel.GetTextMapPropagator()
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+	t.Cleanup(func() { otel.SetTextMapPropagator(previousPropagator) })
 	tests := []struct {
 		name        string
 		withContext bool
@@ -82,7 +114,11 @@ func TestStreamChatContextContract(t *testing.T) {
 			}
 
 			request := httptest.NewRequest(http.MethodPost, "/api/v1/ai/chat/stream", bytes.NewReader(body))
+			requestCtx, cancel := context.WithCancel(context.WithValue(request.Context(), requestContextKey{}, "trace-value"))
+			defer cancel()
+			request = request.WithContext(requestCtx)
 			request.Header.Set("Content-Type", "application/json")
+			request.Header.Set("traceparent", "00-00000000000000000000000000000001-0000000000000002-01")
 			response := httptest.NewRecorder()
 			router.ServeHTTP(response, request)
 
@@ -92,8 +128,26 @@ func TestStreamChatContextContract(t *testing.T) {
 			if contentType := response.Header().Get("Content-Type"); contentType != "text/event-stream" {
 				t.Fatalf("Content-Type = %q, want text/event-stream", contentType)
 			}
+			if traceID := response.Header().Get("X-Trace-ID"); traceID != "trace-test" {
+				t.Fatalf("X-Trace-ID = %q, want trace-test", traceID)
+			}
 			if capturedAgent.input == nil {
 				t.Fatal("agent did not receive user input")
+			}
+			if capturedAgent.ctx == nil {
+				t.Fatal("agent did not receive request context")
+			}
+			if got := capturedAgent.ctx.Value(requestContextKey{}); got != "trace-value" {
+				t.Fatalf("request context value = %v, want trace-value", got)
+			}
+			if _, ok := capturedAgent.ctx.Deadline(); ok {
+				t.Fatal("interaction context retained the request deadline")
+			}
+			if capturedAgent.ctx.Done() != nil {
+				t.Fatal("interaction context retained request cancellation")
+			}
+			if spanContext := trace.SpanContextFromContext(capturedAgent.ctx); !spanContext.IsValid() || !spanContext.IsRemote() {
+				t.Fatalf("agent received invalid inbound span context: %v", spanContext)
 			}
 			if !test.withContext {
 				if capturedAgent.input.Context != nil {
@@ -108,5 +162,75 @@ func TestStreamChatContextContract(t *testing.T) {
 				t.Fatalf("agent received unsanitized context: %#v", capturedAgent.input.Context.State.Filters)
 			}
 		})
+	}
+}
+
+// panicOnTextWriter fails the first SSE content write so StreamChat panics
+// after the interaction has already started.
+type panicOnTextWriter struct {
+	gin.ResponseWriter
+	panicked bool
+}
+
+func (w *panicOnTextWriter) Write(data []byte) (int, error) {
+	if !w.panicked && bytes.Contains(data, []byte("content_block_delta")) {
+		w.panicked = true
+		panic("injected write failure")
+	}
+	return w.ResponseWriter.Write(data)
+}
+
+func (w *panicOnTextWriter) WriteString(s string) (int, error) {
+	return w.Write([]byte(s))
+}
+
+// blockingAgent emits more feedback than the channel buffer holds, so the
+// producer stays blocked until someone drains the channels.
+type blockingAgent struct {
+	channels     *agent.Channels
+	producerDone chan struct{}
+}
+
+func (a *blockingAgent) Interact(_ context.Context, _ *schema.UserInput, _ string) *agent.Channels {
+	a.channels = agent.NewChannels(1)
+	a.producerDone = make(chan struct{})
+	go func() {
+		defer close(a.producerDone)
+		for i := 0; i < 8; i++ {
+			a.channels.Send(schema.NewStreamFeedback("blocked"))
+		}
+		a.channels.Close()
+	}()
+	return a.channels
+}
+
+func (a *blockingAgent) GetMemory() *memory.HistoryMemory { return nil }
+
+func TestStreamChatDrainsChannelsOnPanic(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	blocked := &blockingAgent{}
+	sessionManager := session.NewManager()
+	handler := NewAgentHandler(blocked, sessionManager)
+	router := gin.New()
+	router.POST("/api/v1/ai/chat/stream", func(c *gin.Context) {
+		c.Writer = &panicOnTextWriter{ResponseWriter: c.Writer}
+		handler.StreamChat(c)
+	})
+
+	body, err := json.Marshal(map[string]any{"message": "hello", "sessionID": "session_test"})
+	if err != nil {
+		t.Fatalf("marshal request: %v", err)
+	}
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/ai/chat/stream", bytes.NewReader(body))
+	request.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(httptest.NewRecorder(), request)
+
+	if blocked.producerDone == nil {
+		t.Fatal("agent interaction never started")
+	}
+	select {
+	case <-blocked.producerDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("panic recovery left the detached producer blocked on its channels")
 	}
 }

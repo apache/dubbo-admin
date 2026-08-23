@@ -20,7 +20,10 @@ package react
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
+	"dubbo-admin-ai/component/hooks"
 	"dubbo-admin-ai/schema"
 
 	"github.com/firebase/genkit/go/ai"
@@ -30,8 +33,13 @@ import (
 // write its concrete fields directly (Tools/Observe) instead of type-asserting
 // an erased payload, keeping the reasonAct → observe handoff cheap and explicit.
 type state struct {
-	Input   *schema.UserInput
-	Session string
+	Input         *schema.UserInput
+	Session       string
+	InteractionID string
+	Iteration     int
+	Stage         string
+	Model         string
+	hookManager   *hooks.Manager
 
 	Tools   *schema.ToolOutputs // reasonAct step writes
 	Observe *schema.Observation // observe step writes
@@ -39,6 +47,10 @@ type state struct {
 	// Usage is the running token accounting for the whole interaction; each
 	// step accumulates its model call into it. The final observation reports it.
 	Usage *ai.GenerationUsage
+
+	FallbackUsed   bool
+	FallbackReason string
+	Degraded       bool // set when any tool call fails
 }
 
 // addUsage folds one or more model-call usages into the interaction total,
@@ -62,15 +74,78 @@ func runLoop(ctx context.Context, s *state, maxIter int, steps ...step) error {
 		return errors.New("nil input")
 	}
 	for i := 0; i < maxIter; i++ {
-		for _, st := range steps {
-			done, err := st(ctx, s)
-			if err != nil {
-				return err
-			}
-			if done {
-				return nil
-			}
+		s.Iteration = i + 1
+		done, err := runIteration(ctx, s, steps)
+		if err != nil {
+			return err
+		}
+		if done {
+			return nil
 		}
 	}
 	return nil
+}
+
+func runIteration(ctx context.Context, s *state, steps []step) (done bool, err error) {
+	startedAt := time.Now()
+	ctx = emitHook(s.hookManager, ctx, hooks.State{
+		Event:         hooks.EventIterationStart,
+		InteractionID: s.InteractionID,
+		SessionID:     s.Session,
+		Iteration:     s.Iteration,
+		StartedAt:     startedAt,
+	})
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("iteration %d panicked: %v", s.Iteration, recovered)
+			emitIterationEnd(s, ctx, startedAt, err)
+			panic(recovered)
+		}
+		emitIterationEnd(s, ctx, startedAt, err)
+	}()
+
+	for _, st := range steps {
+		done, err = st(ctx, s)
+		if err != nil || done {
+			return done, err
+		}
+	}
+	return false, nil
+}
+
+func emitIterationEnd(s *state, ctx context.Context, startedAt time.Time, err error) {
+	emitHook(s.hookManager, ctx, hooks.State{
+		Event:         hooks.EventIterationEnd,
+		InteractionID: s.InteractionID,
+		SessionID:     s.Session,
+		Iteration:     s.Iteration,
+		Error:         hooks.ErrorMessage(err),
+		ErrorType:     hooks.ErrorType(err),
+		StartedAt:     startedAt,
+		EndedAt:       time.Now(),
+	})
+}
+
+func emitHook(manager *hooks.Manager, ctx context.Context, state hooks.State) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if manager == nil {
+		return ctx
+	}
+	return manager.Emit(ctx, state)
+}
+
+func withHookInput(manager *hooks.Manager, event hooks.Event, toolName string, state hooks.State, provider func() any) hooks.State {
+	if manager == nil || !manager.NeedsContent(event, toolName) {
+		return state
+	}
+	return state.WithInputContent(provider)
+}
+
+func withHookOutput(manager *hooks.Manager, event hooks.Event, toolName string, state hooks.State, provider func() any) hooks.State {
+	if manager == nil || !manager.NeedsContent(event, toolName) {
+		return state
+	}
+	return state.WithOutputContent(provider)
 }

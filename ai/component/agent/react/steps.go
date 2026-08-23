@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"dubbo-admin-ai/component/agent"
+	"dubbo-admin-ai/component/hooks"
 	"dubbo-admin-ai/component/memory"
 	toolEngine "dubbo-admin-ai/component/tools/engine"
 	"dubbo-admin-ai/runtime"
@@ -39,14 +40,81 @@ import (
 func (ra *ReActAgent) buildSteps(chans *agent.Channels) []step {
 	steps := make([]step, 0, len(ra.stages))
 	for _, st := range ra.stages {
+		var run step
 		switch st.kind {
 		case flowReasonAct:
-			steps = append(steps, ra.reasonActStep(st.prompt, chans, st.timeout))
+			run = ra.reasonActStep(st.prompt, chans, st.timeout)
 		case flowObserve:
-			steps = append(steps, ra.observeStep(st.prompt, chans, st.timeout))
+			run = ra.observeStep(st.prompt, chans, st.timeout)
+		}
+		if run != nil {
+			steps = append(steps, withStageHooks(st, run))
 		}
 	}
 	return steps
+}
+
+func withStageHooks(stage builtStage, run step) step {
+	return func(ctx context.Context, s *state) (done bool, err error) {
+		startedAt := time.Now()
+		s.Stage = stage.name
+		s.Model = stage.model
+		s.FallbackUsed = false
+		s.FallbackReason = ""
+		ctx = emitHook(s.hookManager, ctx, hooks.State{
+			Event:         hooks.EventStageStart,
+			InteractionID: s.InteractionID,
+			SessionID:     s.Session,
+			Iteration:     s.Iteration,
+			Stage:         s.Stage,
+			Model:         s.Model,
+			StartedAt:     startedAt,
+		})
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				err = fmt.Errorf("stage %s panicked: %v", s.Stage, recovered)
+				emitStageEnd(s, ctx, startedAt, err)
+				panic(recovered)
+			}
+			emitStageEnd(s, ctx, startedAt, err)
+		}()
+		return run(ctx, s)
+	}
+}
+
+func emitStageEnd(s *state, ctx context.Context, startedAt time.Time, err error) {
+	now := time.Now()
+	// Emit error event if the stage failed
+	if err != nil {
+		emitHook(s.hookManager, ctx, hooks.State{
+			Event:          hooks.EventStageError,
+			InteractionID:  s.InteractionID,
+			SessionID:      s.Session,
+			Iteration:      s.Iteration,
+			Stage:          s.Stage,
+			Model:          s.Model,
+			Error:          hooks.ErrorMessage(err),
+			ErrorType:      hooks.ErrorType(err),
+			FallbackUsed:   s.FallbackUsed,
+			FallbackReason: s.FallbackReason,
+			StartedAt:      startedAt,
+			EndedAt:        now,
+		})
+	}
+	emitHook(s.hookManager, ctx, hooks.State{
+		Event:          hooks.EventStageEnd,
+		InteractionID:  s.InteractionID,
+		SessionID:      s.Session,
+		Iteration:      s.Iteration,
+		Stage:          s.Stage,
+		Model:          s.Model,
+		Error:          hooks.ErrorMessage(err),
+		ErrorType:      hooks.ErrorType(err),
+		FallbackUsed:   s.FallbackUsed,
+		FallbackReason: s.FallbackReason,
+		StartedAt:      startedAt,
+		EndedAt:        now,
+	})
 }
 
 // historyFromCtx pulls the session-scoped history out of ctx, replacing the
@@ -88,7 +156,7 @@ func (ra *ReActAgent) reasonActStep(prompt ai.Prompt, chans *agent.Channels, tim
 		// runs on the original ctx so a slow reasoning step can't starve the tools
 		// it just asked for (which would otherwise fail hard on the shared deadline).
 		lctx, cancel := withTimeout(ctx, timeout)
-		resp, err := prompt.Execute(lctx, ai.WithMessages(messages...))
+		resp, err := executeModelCall(lctx, s, prompt, messages, nil, ai.WithMessages(messages...))
 		cancel()
 		if err != nil {
 			return false, fmt.Errorf("failed to execute reasonAct prompt: %w", err)
@@ -114,19 +182,11 @@ func (ra *ReActAgent) reasonActStep(prompt ai.Prompt, chans *agent.Channels, tim
 			// Each tool runs under its own timeout (per-tool override, else the
 			// shared default), independent of the model call's budget above.
 			tctx, cancel := withTimeout(ctx, ra.toolTimeouts.For(req.Name))
-			output, err := toolEngine.Call(tctx, ra.registry, req.Name, req.Input)
-			cancel()
-			if err != nil {
-				// Degrade instead of aborting: record the failure as a tool output
-				// so the observe stage can still compose an answer (or explain the
-				// gap) from whatever other tools returned.
-				runtime.GetLogger().Warn("tool call failed, continuing with degraded context",
-					"tool", req.Name, "error", err)
-				output = toolEngine.ToolOutput{
-					ToolName: req.Name,
-					Summary:  fmt.Sprintf("tool %q failed: %v", req.Name, err),
-				}
+			output, toolErr := ra.executeToolCall(tctx, s, req)
+			if toolErr != nil {
+				s.Degraded = true
 			}
+			cancel()
 			outputJson, err := json.Marshal(output)
 			if err != nil {
 				return false, fmt.Errorf("failed to marshal output: %w", err)
@@ -163,23 +223,43 @@ func (ra *ReActAgent) observeStep(prompt ai.Prompt, chans *agent.Channels, timeo
 		defer cancel()
 
 		var observation *schema.Observation
-		resp, err := prompt.Execute(obsCtx, ai.WithMessages(messages...))
+		var parseErr error
+		resp, err := executeModelCall(obsCtx, s, prompt, messages, func(resp *ai.ModelResponse, callErr error) {
+			switch {
+			case errors.Is(callErr, context.DeadlineExceeded):
+				fb := generateFallbackObservation(s, hooks.FallbackReasonTimeout)
+				observation = &fb
+				s.FallbackUsed = true
+				s.FallbackReason = hooks.FallbackReasonTimeout
+			case callErr != nil:
+				return
+			default:
+				var fallbackUsed bool
+				observation, fallbackUsed, parseErr = ra.fallback.ParseObservationWithFallback(resp)
+				if parseErr != nil {
+					fb := generateFallbackObservation(s, hooks.FallbackReasonParseError)
+					observation = &fb
+				}
+				if fallbackUsed || parseErr != nil {
+					s.FallbackUsed = true
+					s.FallbackReason = hooks.FallbackReasonParseError
+					if observation != nil {
+						observation.Evidence = fallbackEvidence(hooks.FallbackReasonParseError)
+					}
+				}
+			}
+		}, ai.WithMessages(messages...))
 		switch {
-		case err != nil && (errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)):
+		case errors.Is(err, context.DeadlineExceeded):
 			runtime.GetLogger().Warn("Observe stage timeout, returning fallback response", "timeout", timeout)
-			fb := generateFallbackObservation(s)
-			observation = &fb
 		case err != nil:
 			return false, fmt.Errorf("failed to execute observe prompt: %w", err)
 		default:
 			// The model responded and consumed tokens regardless of whether its
 			// output parses, so account for usage before attempting the parse.
 			s.addUsage(resp.Usage)
-			observation, err = ra.fallback.ParseObservation(resp)
-			if err != nil {
-				runtime.GetLogger().Warn("Failed to parse observation, returning fallback", "error", err)
-				fb := generateFallbackObservation(s)
-				observation = &fb
+			if parseErr != nil {
+				runtime.GetLogger().Warn("Failed to parse observation, returning fallback", "error", parseErr)
 			}
 		}
 		runtime.GetLogger().Info("Observe out:", "out", observation)
@@ -193,6 +273,176 @@ func (ra *ReActAgent) observeStep(prompt ai.Prompt, chans *agent.Channels, timeo
 
 		return !observation.Heartbeat && observation.FinalAnswer != "", nil
 	}
+}
+
+type modelCallAfterExecute func(*ai.ModelResponse, error)
+
+func executeModelCall(
+	ctx context.Context,
+	s *state,
+	prompt ai.Prompt,
+	input any,
+	afterExecute modelCallAfterExecute,
+	opts ...ai.PromptExecuteOption,
+) (resp *ai.ModelResponse, err error) {
+	startedAt := time.Now()
+	startState := hooks.State{
+		Event:         hooks.EventModelCallStart,
+		InteractionID: s.InteractionID,
+		SessionID:     s.Session,
+		Iteration:     s.Iteration,
+		Stage:         s.Stage,
+		Model:         s.Model,
+		StartedAt:     startedAt,
+	}
+	startState = withHookInput(s.hookManager, hooks.EventModelCallStart, "", startState, func() any {
+		return genAIInputMessages(input)
+	})
+	ctx = emitHook(s.hookManager, ctx, startState)
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("model call panicked: %v", recovered)
+			emitModelCallEnd(ctx, s, startedAt, resp, err)
+			panic(recovered)
+		}
+		emitModelCallEnd(ctx, s, startedAt, resp, err)
+	}()
+	resp, err = prompt.Execute(ctx, opts...)
+	if afterExecute != nil {
+		afterExecute(resp, err)
+	}
+	return resp, err
+}
+
+func emitModelCallEnd(ctx context.Context, s *state, startedAt time.Time, output any, err error) {
+	now := time.Now()
+	// Emit error event if the call failed
+	if err != nil {
+		errorState := hooks.State{
+			Event:          hooks.EventModelCallError,
+			InteractionID:  s.InteractionID,
+			SessionID:      s.Session,
+			Iteration:      s.Iteration,
+			Stage:          s.Stage,
+			Model:          s.Model,
+			Error:          hooks.ErrorMessage(err),
+			ErrorType:      hooks.ErrorType(err),
+			FallbackUsed:   s.FallbackUsed,
+			FallbackReason: s.FallbackReason,
+			StartedAt:      startedAt,
+			EndedAt:        now,
+		}
+		emitHook(s.hookManager, ctx, errorState)
+	}
+
+	endState := hooks.State{
+		Event:          hooks.EventModelCallEnd,
+		InteractionID:  s.InteractionID,
+		SessionID:      s.Session,
+		Iteration:      s.Iteration,
+		Stage:          s.Stage,
+		Model:          s.Model,
+		Error:          hooks.ErrorMessage(err),
+		ErrorType:      hooks.ErrorType(err),
+		FallbackUsed:   s.FallbackUsed,
+		FallbackReason: s.FallbackReason,
+		StartedAt:      startedAt,
+		EndedAt:        now,
+	}
+	endState = withHookOutput(s.hookManager, hooks.EventModelCallEnd, "", endState, func() any {
+		return genAIOutputMessages(output)
+	})
+	if response, ok := output.(*ai.ModelResponse); ok && response != nil && response.Usage != nil {
+		endState.InputTokens = response.Usage.InputTokens
+		endState.OutputTokens = response.Usage.OutputTokens
+		endState.TotalTokens = response.Usage.TotalTokens
+	}
+	emitHook(s.hookManager, ctx, endState)
+}
+
+func (ra *ReActAgent) executeToolCall(ctx context.Context, s *state, req *ai.ToolRequest) (output toolEngine.ToolOutput, callErr error) {
+	startedAt := time.Now()
+	startState := hooks.State{
+		Event:         hooks.EventToolCallStart,
+		InteractionID: s.InteractionID,
+		SessionID:     s.Session,
+		Iteration:     s.Iteration,
+		Stage:         s.Stage,
+		Model:         s.Model,
+		ToolName:      req.Name,
+		ToolCallID:    req.Ref,
+		StartedAt:     startedAt,
+	}
+	startState = withHookInput(s.hookManager, hooks.EventToolCallStart, req.Name, startState, func() any {
+		return req.Input
+	})
+	ctx = emitHook(s.hookManager, ctx, startState)
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			callErr = fmt.Errorf("tool call panicked: %v", recovered)
+			emitToolCallEnd(ctx, s, req, startedAt, output, callErr)
+			panic(recovered)
+		}
+		emitToolCallEnd(ctx, s, req, startedAt, output, callErr)
+	}()
+
+	output, callErr = toolEngine.Call(ctx, ra.registry, req.Name, req.Input)
+	if callErr != nil {
+		// Degrade instead of aborting: record the failure as a tool output so the
+		// observe stage can still compose an answer from the remaining context.
+		runtime.GetLogger().Warn("tool call failed, continuing with degraded context",
+			"tool", req.Name, "error", callErr)
+		output = toolEngine.ToolOutput{
+			ToolName: req.Name,
+			Summary:  fmt.Sprintf("tool %q failed: %v", req.Name, callErr),
+		}
+	}
+	return output, callErr
+}
+
+func emitToolCallEnd(ctx context.Context, s *state, req *ai.ToolRequest, startedAt time.Time, output toolEngine.ToolOutput, err error) {
+	now := time.Now()
+	// Emit error event if the call failed (degraded)
+	if err != nil {
+		errorState := hooks.State{
+			Event:         hooks.EventToolCallError,
+			InteractionID: s.InteractionID,
+			SessionID:     s.Session,
+			Iteration:     s.Iteration,
+			Stage:         s.Stage,
+			Model:         s.Model,
+			ToolName:      req.Name,
+			ToolCallID:    req.Ref,
+			Error:         hooks.ErrorMessage(err),
+			ErrorType:     hooks.ErrorType(err),
+			Degraded:      true,
+			StartedAt:     startedAt,
+			EndedAt:       now,
+		}
+		emitHook(s.hookManager, ctx, errorState)
+	}
+
+	endState := hooks.State{
+		Event:         hooks.EventToolCallEnd,
+		InteractionID: s.InteractionID,
+		SessionID:     s.Session,
+		Iteration:     s.Iteration,
+		Stage:         s.Stage,
+		Model:         s.Model,
+		ToolName:      req.Name,
+		ToolCallID:    req.Ref,
+		Error:         hooks.ErrorMessage(err),
+		ErrorType:     hooks.ErrorType(err),
+		Degraded:      err != nil,
+		StartedAt:     startedAt,
+		EndedAt:       now,
+	}
+	if err == nil {
+		endState = withHookOutput(s.hookManager, hooks.EventToolCallEnd, req.Name, endState, func() any {
+			return output
+		})
+	}
+	emitHook(s.hookManager, ctx, endState)
 }
 
 // emitObservation streams the observation's user-facing text and closes the
@@ -213,12 +463,12 @@ func emitObservation(chans *agent.Channels, obs *schema.Observation) {
 // generateFallbackObservation creates a fallback observation when the observe
 // stage times out or its output can't be parsed. It prefers concrete tool
 // outputs, then the think stage's thought, matching the old switch behaviour.
-func generateFallbackObservation(s *state) schema.Observation {
+func generateFallbackObservation(s *state, reason string) schema.Observation {
 	fb := schema.Observation{
 		Heartbeat:   false,
 		FinalAnswer: "",
 		Summary:     "Generate response based on available context",
-		Evidence:    "Timeout - using available context",
+		Evidence:    fallbackEvidence(reason),
 	}
 
 	switch {
@@ -229,6 +479,17 @@ func generateFallbackObservation(s *state) schema.Observation {
 	}
 
 	return fb
+}
+
+func fallbackEvidence(reason string) string {
+	switch reason {
+	case hooks.FallbackReasonTimeout:
+		return "Timeout - using available context"
+	case hooks.FallbackReasonParseError:
+		return "Parse error - using available context"
+	default:
+		return "Fallback - using available context"
+	}
 }
 
 // generateResponseFromToolOutputs generates a response from tool outputs

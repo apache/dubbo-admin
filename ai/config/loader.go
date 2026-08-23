@@ -265,6 +265,8 @@ func schemaFileForComponent(componentType string) (string, error) {
 		return "rag.schema.json", nil
 	case "agent":
 		return "agent.schema.json", nil
+	case "hooks":
+		return "hooks.schema.json", nil
 	default:
 		return "", fmt.Errorf("structural error: unsupported component type: %s", componentType)
 	}

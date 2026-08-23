@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dubbo-admin.ai/schema/hooks.schema.json",
+  "title": "Hooks Component Config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "spec"],
+  "properties": {
+    "type": {
+      "const": "hooks"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "logging": {
+          "type": "object",
+          "additionalProperties": false,
+          "default": {},
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "tracing": {
+          "type": "object",
+          "additionalProperties": false,
+          "default": {},
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "protocol": {
+              "type": "string",
+              "enum": ["grpc", "http/protobuf"],
+              "default": "grpc"
+            },
+            "service_name": {
+              "type": "string",
+              "minLength": 1,
+              "default": "dubbo-admin-ai"
+            },
+            "sample_ratio": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 1.0
+            },
+            "capture_content": {
+              "type": "string",
+              "enum": ["none", "truncated", "full"],
+              "default": "none"
+            }
+          }
+        }
+      }
+    }
+  }
+}

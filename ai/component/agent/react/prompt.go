@@ -36,7 +36,9 @@ import (
 // the matching step needs at run time. Steps are (re)built per Interact from
 // these so a single agent can serve concurrent interactions.
 type builtStage struct {
+	name    string
 	kind    string // "reasonAct" | "observe"
+	model   string
 	prompt  ai.Prompt
 	timeout time.Duration
 }
@@ -97,7 +99,7 @@ func (ra *ReActAgent) buildStages(g *genkit.Genkit, stagesCfg []StageInfo, promp
 			stageCfg.Temperature, stageCfg.TopP, stageCfg.MaxTokens, model, extraPrompt, tools...)
 
 		timeout := time.Duration(stageCfg.Timeout) * time.Second
-		stages = append(stages, builtStage{kind: stageCfg.FlowType, prompt: prompt, timeout: timeout})
+		stages = append(stages, builtStage{name: stageCfg.Name, kind: stageCfg.FlowType, model: model, prompt: prompt, timeout: timeout})
 	}
 
 	return stages, nil

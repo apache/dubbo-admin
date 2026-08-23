@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -12,6 +13,8 @@ import (
 	"dubbo-admin-ai/schema"
 
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 // AgentHandler handles AI Agent requests
@@ -70,11 +73,28 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 	// Set response headers and error recovery
 	defer func() {
 		if r := recover(); r != nil {
+			// The interaction is detached from the request context, so nothing
+			// else will stop it. Drain its bounded channels or the agent blocks
+			// forever on its next send and never runs its end hooks.
+			if channels != nil {
+				go discardAgentOutput(channels)
+			}
 			sseHandler.HandleError("internal_error", fmt.Sprintf("internal error: %v", r))
 		}
 	}()
 
-	channels = h.agent.Interact(&schema.UserInput{Content: req.Message, Context: pageContext}, sessionID)
+	// The interaction can outlive the SSE request. Preserve request-scoped
+	// values (including an extracted trace context) while detaching cancellation
+	// and deadlines from the client connection.
+	extractedCtx := otel.GetTextMapPropagator().Extract(
+		c.Request.Context(),
+		propagation.HeaderCarrier(c.Request.Header),
+	)
+	interactionCtx := context.WithoutCancel(extractedCtx)
+	channels = h.agent.Interact(interactionCtx, &schema.UserInput{Content: req.Message, Context: pageContext}, sessionID)
+	if traceID := channels.TraceID(); traceID != "" {
+		c.Header("X-Trace-ID", traceID)
+	}
 	var (
 		feedback *schema.StreamFeedback
 		ok       bool
@@ -89,7 +109,7 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 			if err != nil {
 				sseHandler.HandleError("agent_error", fmt.Sprintf("agent error: %v", err))
 				rt.GetLogger().Error("Agent interaction error", "session_id", sessionID, "error", err)
-				channels.Close()
+				go discardAgentOutput(channels)
 				return
 			}
 		case feedback, ok = <-channels.UserRespChan:
@@ -118,6 +138,7 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 
 		case <-c.Request.Context().Done():
 			rt.GetLogger().Info("Client disconnected from stream")
+			go discardAgentOutput(channels)
 			return
 
 		default:
@@ -161,6 +182,19 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 				rt.GetLogger().Info("Stream processing completed", "session_id", sessionID)
 				return
 			}
+		}
+	}
+}
+
+// discardAgentOutput keeps detached interactions from blocking on their
+// bounded response channels after the SSE consumer disconnects.
+func discardAgentOutput(channels *agent.Channels) {
+	for {
+		select {
+		case <-channels.UserRespChan:
+		case <-channels.ErrorChan:
+		case <-channels.Done():
+			return
 		}
 	}
 }
