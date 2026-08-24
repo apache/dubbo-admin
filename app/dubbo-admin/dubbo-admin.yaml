@@ -43,6 +43,16 @@ observability:
   #       type: loki
   #       endpoint: http://localhost:3100
   #       tenant: ""
+  # [Optional] trace providers used by MCP diagnosis tools.
+  # The bundled monitoring manifests use the Jaeger query API on port 16686.
+  # tracing:
+  #   defaultProvider: jaeger-main
+  #   providers:
+  #     - name: jaeger-main
+  #       type: jaeger
+  #       endpoint: http://jaeger.monitoring.svc:16686
+  #       bearerToken: ""
+  #       tenant: ""
 
 # [Optional] config for console.
 console:

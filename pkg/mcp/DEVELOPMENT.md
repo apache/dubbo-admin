@@ -407,3 +407,32 @@ const (
 - 使用 `common.JsonResult` 返回结果
 - 使用 `common.ErrorResult` 处理错误
 - 使用 `common.DefaultPageSize` 和 `common.DefaultPageNumber` 常量
+
+## 可观测性诊断工具
+
+Dubbo Admin MCP 提供以下只读诊断工具：
+
+| 工具 | 数据源 | 用途 |
+|------|--------|------|
+| `query_prometheus` | Prometheus | 执行即时 PromQL 查询 |
+| `query_prometheus_range` | Prometheus | 执行最长 24 小时的区间 PromQL 查询 |
+| `get_trace_by_id` | Jaeger | 按 TraceID 查询规范化调用链 |
+| `get_observability_capabilities` | 本地配置 | 查询数据源和查询限制 |
+
+Prometheus 工具复用 `observability.prometheus`。区间查询的 `step` 不得低于 15 秒，返回结果最多包含 100 个时间序列和 5000 个采样点。结果被裁剪时，响应中的 `truncated` 为 `true`。
+
+Jaeger 查询需要配置 trace provider：
+
+```yaml
+observability:
+  tracing:
+    defaultProvider: jaeger-main
+    providers:
+      - name: jaeger-main
+        type: jaeger
+        endpoint: http://jaeger.monitoring.svc:16686
+        bearerToken: "" # 可选
+        tenant: ""      # 可选，通过 X-Scope-OrgID 发送
+```
+
+诊断工具不会记录完整 PromQL、Bearer Token 或完整 trace attributes。工具只读，不提供流量、配置或部署变更能力。

@@ -21,6 +21,8 @@ import (
 	"github.com/apache/dubbo-admin/pkg/mcp/common"
 	"github.com/apache/dubbo-admin/pkg/mcp/tools"
 	logtools "github.com/apache/dubbo-admin/pkg/mcp/tools/log"
+	metrictools "github.com/apache/dubbo-admin/pkg/mcp/tools/metrics"
+	tracetools "github.com/apache/dubbo-admin/pkg/mcp/tools/trace"
 )
 
 // RegisterTools 注册所有 MCP 工具
@@ -369,5 +371,45 @@ func RegisterTools(server *Server) {
 			Properties: logtools.LogCapabilitiesProperties(),
 		},
 		Handler: logtools.GetLogCapabilities,
+	})
+
+	server.RegisterTool(&common.ToolDef{
+		Name:        "query_prometheus",
+		Description: "Execute an instant PromQL query and return normalized metric series",
+		InputSchema: common.InputSchema{
+			Type:       "object",
+			Properties: metrictools.InstantProperties(),
+			Required:   []string{"query"},
+		},
+		Handler: metrictools.QueryPrometheus,
+	})
+
+	server.RegisterTool(&common.ToolDef{
+		Name:        "query_prometheus_range",
+		Description: "Execute a bounded PromQL range query for trend and incident-window analysis",
+		InputSchema: common.InputSchema{
+			Type:       "object",
+			Properties: metrictools.RangeProperties(),
+			Required:   []string{"query", "startTime", "endTime", "step"},
+		},
+		Handler: metrictools.QueryPrometheusRange,
+	})
+
+	server.RegisterTool(&common.ToolDef{
+		Name:        "get_trace_by_id",
+		Description: "Query a distributed trace by TraceID and return services, span relationships, latency, and error status",
+		InputSchema: common.InputSchema{
+			Type:       "object",
+			Properties: tracetools.Properties(),
+			Required:   []string{"traceId"},
+		},
+		Handler: tracetools.GetTraceByID,
+	})
+
+	server.RegisterTool(&common.ToolDef{
+		Name:        "get_observability_capabilities",
+		Description: "Report Prometheus and trace providers, capabilities, and enforced query limits",
+		InputSchema: common.InputSchema{Type: "object"},
+		Handler:     tools.GetObservabilityCapabilities,
 	})
 }

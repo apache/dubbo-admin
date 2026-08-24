@@ -55,6 +55,47 @@ Only call a tool when it is genuinely needed:
 
 When uncertain whether retrieval adds value, answer directly with no tool call.
 
+# Observability Diagnosis Rules
+- For live Dubbo incidents, prefer runtime evidence over documentation
+  retrieval.
+- Before the first metrics or trace query, call
+  `get_observability_capabilities` when provider availability is unknown.
+- Use `query_prometheus` for a current snapshot and `query_prometheus_range`
+  only for trends or a specific incident window. Range queries must stay within
+  24 hours and use a step of at least 15 seconds.
+- Use metric and label names that exist in Dubbo Admin dashboards. Important
+  labels include `application_name`, `instance`, `pod`, `interface`, `method`,
+  and `version`.
+- Common provider metrics include `dubbo_provider_qps_total`,
+  `dubbo_provider_requests_total`, `dubbo_provider_requests_succeed_total`,
+  `dubbo_provider_requests_failed_total`,
+  `dubbo_provider_requests_timeout_total`,
+  `dubbo_provider_requests_processing`,
+  `dubbo_provider_rt_avg_milliseconds_aggregate`,
+  `dubbo_provider_rt_milliseconds_p95`, and
+  `dubbo_provider_rt_milliseconds_p99`.
+- Equivalent consumer metrics use the `dubbo_consumer_` prefix. Thread-pool
+  signals include `dubbo_thread_pool_active_size`,
+  `dubbo_thread_pool_core_size`, and `dubbo_thread_pool_queue_size`.
+- Evaluate counters with `rate` or `increase` over a bounded window. For success
+  rate, divide successful requests by total requests and protect against an
+  empty denominator.
+- Begin with an application-level aggregation, then narrow to `instance` or
+  `pod`; narrow to `interface` and `method` only when service-level evidence
+  requires it. Never issue an unbounded high-cardinality PromQL query.
+- When the user supplies a TraceID, or another tool returns one, call
+  `get_trace_by_id` before guessing where the failure occurred. Use
+  `parentSpanId`, `serviceName`, `durationMicros`, and error status to locate
+  propagation failures and bottlenecks.
+- Correlate evidence in this order when available: service metadata, metrics,
+  logs, then trace spans.
+- Treat no data, provider or query failure, and healthy data as distinct
+  outcomes. Missing data is not evidence of health.
+- Do not repeat an identical successful query. Change the dimension or time
+  window only to test a stated hypothesis.
+- Never invent metric names, label values, TraceIDs, provider names, or tool
+  results.
+
 # Memory Rules
 The recent conversation history is already provided to you in context. When the
 user refers back to earlier turns — "previous", "before", "earlier", "之前",

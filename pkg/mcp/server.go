@@ -24,8 +24,10 @@ import (
 	"io"
 	"net/http"
 	"sync"
+	"time"
 
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/gin-gonic/gin"
 
 	"github.com/apache/dubbo-admin/pkg/mcp/common"
@@ -43,9 +45,9 @@ type Server struct {
 // NewServer 创建 MCP 服务器
 func NewServer(name, version string) *Server {
 	return &Server{
-		name:  name,
+		name:    name,
 		version: version,
-		tools: make(map[string]*common.ToolDef),
+		tools:   make(map[string]*common.ToolDef),
 	}
 }
 
@@ -217,8 +219,10 @@ func (s *Server) handleToolsCall(req *common.JSONRPCRequest) *common.JSONRPCResp
 		return s.newErrorResponse(req.ID, common.ErrCodeInvalidParams, err.Error())
 	}
 
+	startedAt := time.Now()
 	result, err := tool.Handler(ctx, arguments)
 	if err != nil {
+		logger.Sugar().Warnw("MCP tool call failed", "tool", name, "request_id", req.ID, "elapsed_ms", time.Since(startedAt).Milliseconds(), "error", err)
 		return &common.JSONRPCResponse{
 			JSONRPC: common.JSONRPCVersion,
 			ID:      req.ID,
@@ -227,6 +231,15 @@ func (s *Server) handleToolsCall(req *common.JSONRPCRequest) *common.JSONRPCResp
 				IsError: true,
 			},
 		}
+	}
+	if result == nil {
+		logger.Sugar().Errorw("MCP tool returned nil result", "tool", name, "request_id", req.ID, "elapsed_ms", time.Since(startedAt).Milliseconds())
+		return s.newErrorResponse(req.ID, common.ErrCodeInternalError, "Tool returned no result")
+	}
+	if result.IsError {
+		logger.Sugar().Warnw("MCP tool call completed with error", "tool", name, "request_id", req.ID, "elapsed_ms", time.Since(startedAt).Milliseconds(), "content_blocks", len(result.Content))
+	} else {
+		logger.Sugar().Infow("MCP tool call completed", "tool", name, "request_id", req.ID, "elapsed_ms", time.Since(startedAt).Milliseconds(), "content_blocks", len(result.Content))
 	}
 
 	return &common.JSONRPCResponse{
