@@ -118,6 +118,8 @@ const columns = computed(() => {
   return result
 })
 
+// update clones nested condition arrays before emitting so child table edits do
+// not mutate parent form state in place.
 function update(mutator: (conditions: StructuredConditionRule[]) => void) {
   const conditions = props.modelValue.map((condition) => ({
     from: { match: condition.from.match },

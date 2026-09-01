@@ -705,6 +705,8 @@ func isServiceSameRegion(condition string) bool {
 	return strings.Contains(c, "=>region=$region")
 }
 
+// GetServiceArgumentRouteConfig reads method/argument conditions from the
+// service-level condition rule while leaving non-argument conditions untouched.
 func GetServiceArgumentRouteConfig(ctx consolectx.Context, req model.BaseServiceReq) (*model.ServiceArgumentRoute, error) {
 	serviceConditionRuleName := req.ServiceKey() + constants.ConditionRuleDotSuffix
 	rawRes, err := GetConditionRule(ctx, serviceConditionRuleName, req.Mesh)
@@ -723,6 +725,8 @@ func GetServiceArgumentRouteConfig(ctx consolectx.Context, req model.BaseService
 	}, nil
 }
 
+// UpInsertServiceArgumentRouteConfig rewrites only argument-route expressions
+// inside the service condition rule and preserves other condition entries.
 func UpInsertServiceArgumentRouteConfig(ctx consolectx.Context, req model.BaseServiceReq, route model.ServiceArgumentRoute) error {
 	serviceConditionRuleName := req.ServiceKey() + constants.ConditionRuleDotSuffix
 	conditionRouteRes, err := GetConditionRule(ctx, serviceConditionRuleName, req.Mesh)

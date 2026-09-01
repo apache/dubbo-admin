@@ -30,6 +30,8 @@ export const newStructuredConditionRule = (): StructuredConditionRule => ({
   to: [{ match: '', weight: 0 }]
 })
 
+// normalizeStructuredConditions accepts API/YAML output and coerces it into the
+// editable v3.1 form model without trusting optional nested fields.
 export const normalizeStructuredConditions = (conditions: unknown): StructuredConditionRule[] => {
   if (!Array.isArray(conditions)) {
     return []
@@ -45,6 +47,8 @@ export const normalizeStructuredConditions = (conditions: unknown): StructuredCo
   }))
 }
 
+// isCompleteConditionRule distinguishes full rule payloads from list rows before
+// the edit page hydrates form state.
 export const isCompleteConditionRule = (data: unknown): data is Record<string, any> => {
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     return false

@@ -229,6 +229,8 @@ func DecodeRule(kind coremodel.ResourceKind, mesh, name, data string) (coremodel
 	return r, nil
 }
 
+// conditionRulesToYAML converts the internal v3.1 proto shape to the public
+// from/to/weight YAML shape consumed by Dubbo runtimes.
 func conditionRulesToYAML(rules []*meshproto.ConditionRule) []conditionRuleYAML {
 	result := make([]conditionRuleYAML, 0, len(rules))
 	for _, rule := range rules {
@@ -250,6 +252,8 @@ func conditionRulesToYAML(rules []*meshproto.ConditionRule) []conditionRuleYAML 
 	return result
 }
 
+// conditionRulesFromYAML restores the public v3.1 YAML shape into the internal
+// proto fields without falling back to legacy string conditions.
 func conditionRulesFromYAML(rules []conditionRuleYAML) []*meshproto.ConditionRule {
 	result := make([]*meshproto.ConditionRule, 0, len(rules))
 	for _, rule := range rules {
@@ -332,6 +336,8 @@ func ValidateRule(r coremodel.Resource) error {
 	return nil
 }
 
+// validateVersion keeps Admin from publishing formats that the current Dubbo
+// routers do not promise to consume.
 func validateVersion(version string) error {
 	if version != constants.ConfiguratorVersionV3 && version != constants.ConfiguratorVersionV3x1 {
 		return invalidRule("configVersion must be v3.0 or v3.1")
@@ -343,6 +349,8 @@ func invalidRule(message string) error {
 	return bizerror.New(bizerror.InvalidArgument, message)
 }
 
+// toRuleResource is used by config-center watchers; empty data represents a
+// delete/tombstone event, so it returns an empty typed resource for that key.
 func toRuleResource(kind coremodel.ResourceKind, mesh, name, data string) coremodel.Resource {
 	if strings.TrimSpace(data) == "" {
 		switch kind {
@@ -365,10 +373,12 @@ func toRuleResource(kind coremodel.ResourceKind, mesh, name, data string) coremo
 	return r
 }
 
+// ToAffinityRouteResource converts config-center payloads into affinity resources.
 func ToAffinityRouteResource(mesh, name, data string) coremodel.Resource {
 	return toRuleResource(AffinityRouteKind, mesh, name, data)
 }
 
+// ToScriptRouteResource converts config-center payloads into script resources.
 func ToScriptRouteResource(mesh, name, data string) coremodel.Resource {
 	return toRuleResource(ScriptRouteKind, mesh, name, data)
 }

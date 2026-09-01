@@ -29,6 +29,8 @@ export function findRouteByPath(
   }
 }
 
+// activeMenuRoute resolves hidden edit/detail routes back to the visible menu
+// item so traffic rule subpages keep the left navigation highlighted.
 export function activeMenuRoute(
   routes: readonly RouteRecordType[],
   meta: RouterMeta
@@ -56,6 +58,8 @@ function findRouteByKey(
   }
 }
 
+// ancestorMenuKeys returns the parent chain that Ant Design Vue needs for
+// expanded menu groups.
 export function ancestorMenuKeys(route: RouteRecordType | undefined): string[] {
   const keys: string[] = []
   let current = route?.meta?.parent

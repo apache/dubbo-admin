@@ -76,6 +76,8 @@ const searchDomain = reactive(
   )
 )
 
+// remove deletes by public ruleName so the backend removes the same key that
+// Dubbo consumers subscribe to.
 async function remove(ruleName: string) {
   try {
     const res = await deleteRouterRuleAPI(props.kind, ruleName)

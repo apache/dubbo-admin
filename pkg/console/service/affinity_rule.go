@@ -30,6 +30,8 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
+// SearchAffinityRules supports exact ruleName lookup and mesh-scoped paging for
+// the shared affinity rule list page.
 func SearchAffinityRules(ctx consolectx.Context, req *model.SearchConditionRuleReq) (*model.SearchPaginationResult, error) {
 	if strutil.IsNotBlank(req.Keywords) {
 		res, exists, err := manager.GetByKey[*meshresource.AffinityRouteResource](ctx.ResourceManager(), meshresource.AffinityRouteKind, coremodel.BuildResourceKey(req.Mesh, req.Keywords))
@@ -61,25 +63,43 @@ func emptyRuleSearch(page coremodel.PageReq) *model.SearchPaginationResult {
 	return &model.SearchPaginationResult{List: nil, PageInfo: coremodel.Pagination{PageSize: page.PageSize, PageOffset: page.PageOffset}}
 }
 
+// GetAffinityRule loads one affinity rule by the same mesh/name key used by the
+// resource store.
 func GetAffinityRule(ctx consolectx.Context, name, mesh string) (*meshresource.AffinityRouteResource, error) {
 	r, _, err := manager.GetByKey[*meshresource.AffinityRouteResource](ctx.ResourceManager(), meshresource.AffinityRouteKind, coremodel.BuildResourceKey(mesh, name))
 	return r, err
 }
+
+// CreateAffinityRule preserves the existing no-option service API for callers
+// that do not need immediate governor writes.
 func CreateAffinityRule(ctx consolectx.Context, r *meshresource.AffinityRouteResource) error {
 	return CreateAffinityRuleWithOptions(ctx, r, RuleMutationOptions{})
 }
+
+// CreateAffinityRuleWithOptions writes affinity rules through the common rule
+// mutation path so ZK/Nacos and local store stay consistent.
 func CreateAffinityRuleWithOptions(ctx consolectx.Context, r *meshresource.AffinityRouteResource, opts RuleMutationOptions) error {
 	return createRule(ctx, r, opts)
 }
+
+// UpdateAffinityRule updates the resource store without extra mutation options.
 func UpdateAffinityRule(ctx consolectx.Context, r *meshresource.AffinityRouteResource) error {
 	return UpdateAffinityRuleWithOptions(ctx, r, RuleMutationOptions{})
 }
+
+// UpdateAffinityRuleWithOptions routes updates through the same governor-aware
+// path as condition and tag rules.
 func UpdateAffinityRuleWithOptions(ctx consolectx.Context, r *meshresource.AffinityRouteResource, opts RuleMutationOptions) error {
 	return updateRule(ctx, r, opts)
 }
+
+// DeleteAffinityRule removes one affinity rule without extra mutation options.
 func DeleteAffinityRule(ctx consolectx.Context, name, mesh string) error {
 	return DeleteAffinityRuleWithOptions(ctx, name, mesh, RuleMutationOptions{})
 }
+
+// DeleteAffinityRuleWithOptions deletes the configured rule key from both the
+// governor target and local resource state.
 func DeleteAffinityRuleWithOptions(ctx consolectx.Context, name, mesh string, opts RuleMutationOptions) error {
 	return deleteRule(ctx, RuleRef{Kind: meshresource.AffinityRouteKind, Mesh: mesh, Name: name}, opts)
 }

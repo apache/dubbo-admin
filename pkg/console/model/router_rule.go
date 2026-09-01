@@ -42,6 +42,8 @@ type ConditionRuleInput struct {
 	Conditions    json.RawMessage `json:"conditions"`
 }
 
+// ToProto keeps v3.0 string conditions and v3.1 structured conditions separate
+// so form submissions cannot silently downgrade rule content.
 func (i *ConditionRuleInput) ToProto() (*meshproto.ConditionRoute, error) {
 	result := &meshproto.ConditionRoute{
 		ConfigVersion: i.ConfigVersion, Priority: i.Priority, Enabled: i.Enabled,
@@ -57,6 +59,8 @@ func (i *ConditionRuleInput) ToProto() (*meshproto.ConditionRoute, error) {
 	return result, nil
 }
 
+// GenConditionRuleToResp mirrors the input shape expected by the UI: v3.1
+// returns structured conditions, older versions return string expressions.
 func GenConditionRuleToResp(data *meshproto.ConditionRoute) *CommonResp {
 	if data == nil {
 		return NewSuccessResp(nil)
@@ -95,10 +99,14 @@ type AffinityRuleInput struct {
 	AffinityAware *meshproto.AffinityAware `json:"affinityAware"`
 }
 
+// ToProto maps the public affinityAware field back to the internal proto field
+// name used by the generated API type.
 func (i *AffinityRuleInput) ToProto() *meshproto.AffinityRoute {
 	return &meshproto.AffinityRoute{ConfigVersion: i.ConfigVersion, Scope: i.Scope, Key: i.Key, Runtime: i.Runtime, Enabled: i.Enabled, Affinity: i.AffinityAware}
 }
 
+// GenAffinityRuleResp exposes affinityAware instead of the internal affinity
+// field to keep the Console API aligned with Dubbo runtime YAML.
 func GenAffinityRuleResp(data *meshproto.AffinityRoute) *CommonResp {
 	if data == nil {
 		return NewSuccessResp(nil)

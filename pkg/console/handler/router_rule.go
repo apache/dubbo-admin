@@ -34,6 +34,7 @@ import (
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 )
 
+// AffinityRuleSearch lists affinity router rules from the Admin resource store.
 func AffinityRuleSearch(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req := model.NewSearchConditionRuleReq()
@@ -50,6 +51,8 @@ func AffinityRuleSearch(ctx consolectx.Context) gin.HandlerFunc {
 	}
 }
 
+// GetAffinityRuleWithRuleName returns one affinity rule after validating the
+// public ruleName suffix used by Dubbo dynamic configuration.
 func GetAffinityRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !validRuleSuffix(c, constants.AffinityRuleDotSuffix) {
@@ -73,6 +76,9 @@ func PostAffinityRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 func PutAffinityRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 	return mutateAffinityRule(ctx, true)
 }
+
+// mutateAffinityRule shares create/update binding so both endpoints write the
+// same public YAML contract through the service layer.
 func mutateAffinityRule(ctx consolectx.Context, update bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !validRuleSuffix(c, constants.AffinityRuleDotSuffix) {
@@ -111,6 +117,9 @@ func mutateAffinityRule(ctx consolectx.Context, update bool) gin.HandlerFunc {
 		c.JSON(http.StatusOK, model.GenAffinityRuleResp(r.Spec))
 	}
 }
+
+// DeleteAffinityRuleWithRuleName removes the exact affinity rule key from the
+// configured governor so consumers receive the delete event.
 func DeleteAffinityRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !validRuleSuffix(c, constants.AffinityRuleDotSuffix) {
@@ -124,6 +133,8 @@ func DeleteAffinityRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 	}
 }
 
+// ScriptRuleSearch lists script router rules without exposing script bodies in
+// the table response.
 func ScriptRuleSearch(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req := model.NewSearchConditionRuleReq()
@@ -139,6 +150,8 @@ func ScriptRuleSearch(ctx consolectx.Context) gin.HandlerFunc {
 		c.JSON(http.StatusOK, model.NewSuccessResp(result))
 	}
 }
+
+// GetScriptRuleWithRuleName returns the full script rule spec for editing.
 func GetScriptRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !validRuleSuffix(c, constants.ScriptRuleDotSuffix) {
@@ -162,6 +175,9 @@ func PostScriptRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 func PutScriptRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 	return mutateScriptRule(ctx, true)
 }
+
+// mutateScriptRule keeps script create/update on the same validation path;
+// Admin stores the script but never executes it.
 func mutateScriptRule(ctx consolectx.Context, update bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !validRuleSuffix(c, constants.ScriptRuleDotSuffix) {
@@ -200,6 +216,8 @@ func mutateScriptRule(ctx consolectx.Context, update bool) gin.HandlerFunc {
 		c.JSON(http.StatusOK, model.NewSuccessResp(r.Spec))
 	}
 }
+
+// DeleteScriptRuleWithRuleName removes the application-level script rule.
 func DeleteScriptRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !validRuleSuffix(c, constants.ScriptRuleDotSuffix) {
@@ -213,6 +231,8 @@ func DeleteScriptRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 	}
 }
 
+// validRuleSuffix prevents Admin from publishing keys that Dubbo consumers will
+// not subscribe to.
 func validRuleSuffix(c *gin.Context, suffix string) bool {
 	if strings.HasSuffix(c.Param("ruleName"), suffix) {
 		return true

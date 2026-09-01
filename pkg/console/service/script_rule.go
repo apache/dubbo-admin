@@ -28,6 +28,8 @@ import (
 	"github.com/duke-git/lancet/v2/strutil"
 )
 
+// SearchScriptRules supports exact ruleName lookup and mesh-scoped paging while
+// leaving script execution to Dubbo consumers.
 func SearchScriptRules(ctx consolectx.Context, req *model.SearchConditionRuleReq) (*model.SearchPaginationResult, error) {
 	if strutil.IsNotBlank(req.Keywords) {
 		r, ok, err := manager.GetByKey[*meshresource.ScriptRouteResource](ctx.ResourceManager(), meshresource.ScriptRouteKind, coremodel.BuildResourceKey(req.Mesh, req.Keywords))
@@ -50,25 +52,42 @@ func SearchScriptRules(ctx consolectx.Context, req *model.SearchConditionRuleReq
 func scriptSearchItem(r *meshresource.ScriptRouteResource) *model.RouterRuleSearchResp {
 	return &model.RouterRuleSearchResp{CreateTime: r.CreationTimestamp.String(), Enabled: r.Spec.Enabled, RuleName: r.Name, Scope: r.Spec.Scope}
 }
+
+// GetScriptRule loads one script route resource by mesh and ruleName.
 func GetScriptRule(ctx consolectx.Context, name, mesh string) (*meshresource.ScriptRouteResource, error) {
 	r, _, err := manager.GetByKey[*meshresource.ScriptRouteResource](ctx.ResourceManager(), meshresource.ScriptRouteKind, coremodel.BuildResourceKey(mesh, name))
 	return r, err
 }
+
+// CreateScriptRule preserves the existing no-option service API.
 func CreateScriptRule(ctx consolectx.Context, r *meshresource.ScriptRouteResource) error {
 	return CreateScriptRuleWithOptions(ctx, r, RuleMutationOptions{})
 }
+
+// CreateScriptRuleWithOptions writes script rules through the common
+// governor-aware mutation path.
 func CreateScriptRuleWithOptions(ctx consolectx.Context, r *meshresource.ScriptRouteResource, opts RuleMutationOptions) error {
 	return createRule(ctx, r, opts)
 }
+
+// UpdateScriptRule updates one script rule without extra mutation options.
 func UpdateScriptRule(ctx consolectx.Context, r *meshresource.ScriptRouteResource) error {
 	return UpdateScriptRuleWithOptions(ctx, r, RuleMutationOptions{})
 }
+
+// UpdateScriptRuleWithOptions keeps update behavior aligned with create/delete
+// by using the shared rule mutation helper.
 func UpdateScriptRuleWithOptions(ctx consolectx.Context, r *meshresource.ScriptRouteResource, opts RuleMutationOptions) error {
 	return updateRule(ctx, r, opts)
 }
+
+// DeleteScriptRule removes one script rule without extra mutation options.
 func DeleteScriptRule(ctx consolectx.Context, name, mesh string) error {
 	return DeleteScriptRuleWithOptions(ctx, name, mesh, RuleMutationOptions{})
 }
+
+// DeleteScriptRuleWithOptions removes the script rule key from the configured
+// governor target and local resource state.
 func DeleteScriptRuleWithOptions(ctx consolectx.Context, name, mesh string, opts RuleMutationOptions) error {
 	return deleteRule(ctx, RuleRef{Kind: meshresource.ScriptRouteKind, Mesh: mesh, Name: name}, opts)
 }

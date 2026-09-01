@@ -87,6 +87,8 @@ onMounted(async () => {
   if (res.code === HTTP_STATUS.SUCCESS) yamlValue.value = yaml.dump(res.data)
 })
 
+// save derives ruleName from key + suffix on create, matching the backend and
+// Dubbo runtime subscription contract.
 async function save() {
   loading.value = true
   try {
