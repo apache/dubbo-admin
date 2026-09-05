@@ -619,6 +619,30 @@ export const routes: Readonly<RouteRecordType[]> = [
                 }
               }
             ]
+          },
+          {
+            path: '/affinityRule',
+            name: 'affinityRule',
+            component: () => import('../views/traffic/affinityRule/index.vue'),
+            meta: {}
+          },
+          {
+            path: '/affinityRule/edit/:ruleName?',
+            name: 'affinityRuleEditor',
+            component: () => import('../views/traffic/affinityRule/editor.vue'),
+            meta: { hidden: true, back: '/traffic/affinityRule' }
+          },
+          {
+            path: '/scriptRule',
+            name: 'scriptRule',
+            component: () => import('../views/traffic/scriptRule/index.vue'),
+            meta: {}
+          },
+          {
+            path: '/scriptRule/edit/:ruleName?',
+            name: 'scriptRuleEditor',
+            component: () => import('../views/traffic/scriptRule/editor.vue'),
+            meta: { hidden: true, back: '/traffic/scriptRule' }
           }
           // {
           //   path: '/meshRule',
