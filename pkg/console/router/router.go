@@ -152,6 +152,32 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 		tagRule.DELETE("/:ruleName", handler.DeleteTagRuleWithRuleName(ctx))
 	}
 
+	{
+		affinityRule := router.Group("/affinity-rule")
+		affinityRule.GET("/search", handler.AffinityRuleSearch(ctx))
+		affinityRule.GET("/:ruleName/versions", handler.ListRuleVersions(ctx, meshresource.AffinityRouteKind))
+		affinityRule.GET("/:ruleName/versions/:versionNo", handler.GetRuleVersion(ctx, meshresource.AffinityRouteKind))
+		affinityRule.GET("/:ruleName/versions/:versionNo/diff", handler.DiffRuleVersion(ctx, meshresource.AffinityRouteKind))
+		affinityRule.POST("/:ruleName/versions/:versionNo/rollback", handler.RollbackRuleVersion(ctx, meshresource.AffinityRouteKind))
+		affinityRule.GET("/:ruleName", handler.GetAffinityRuleWithRuleName(ctx))
+		affinityRule.PUT("/:ruleName", handler.PutAffinityRuleWithRuleName(ctx))
+		affinityRule.POST("/:ruleName", handler.PostAffinityRuleWithRuleName(ctx))
+		affinityRule.DELETE("/:ruleName", handler.DeleteAffinityRuleWithRuleName(ctx))
+	}
+
+	{
+		scriptRule := router.Group("/script-rule")
+		scriptRule.GET("/search", handler.ScriptRuleSearch(ctx))
+		scriptRule.GET("/:ruleName/versions", handler.ListRuleVersions(ctx, meshresource.ScriptRouteKind))
+		scriptRule.GET("/:ruleName/versions/:versionNo", handler.GetRuleVersion(ctx, meshresource.ScriptRouteKind))
+		scriptRule.GET("/:ruleName/versions/:versionNo/diff", handler.DiffRuleVersion(ctx, meshresource.ScriptRouteKind))
+		scriptRule.POST("/:ruleName/versions/:versionNo/rollback", handler.RollbackRuleVersion(ctx, meshresource.ScriptRouteKind))
+		scriptRule.GET("/:ruleName", handler.GetScriptRuleWithRuleName(ctx))
+		scriptRule.PUT("/:ruleName", handler.PutScriptRuleWithRuleName(ctx))
+		scriptRule.POST("/:ruleName", handler.PostScriptRuleWithRuleName(ctx))
+		scriptRule.DELETE("/:ruleName", handler.DeleteScriptRuleWithRuleName(ctx))
+	}
+
 	router.GET("/prometheus", handler.GetPrometheus(ctx))
 	router.GET("/search", handler.BannerGlobalSearch(ctx))
 	router.GET("/overview", handler.ClusterOverview(ctx))
