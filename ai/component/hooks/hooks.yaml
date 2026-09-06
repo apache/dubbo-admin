@@ -5,7 +5,7 @@
 #   interaction.error, interaction.cancel    - interaction failed or was cancelled
 #   interaction.degrade                      - interaction completed with degraded quality
 #   iteration.start, iteration.end           - one ReAct think-act cycle
-#   stage.start, stage.end, stage.error      - think / act / observe
+#   stage.start, stage.end, stage.error      - reasonAct / forced answer
 #   model_call.start, model_call.end         - LLM request/response
 #   model_call.error                         - model call failed
 #   tool_call.start, tool_call.end           - tool execution

@@ -29,9 +29,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cloudwego/eino/schema"
-	appruntime "dubbo-admin-ai/runtime"
 	compRag "dubbo-admin-ai/component/rag"
+	appruntime "dubbo-admin-ai/runtime"
+	"github.com/cloudwego/eino/schema"
 )
 
 // TestRAGCompleteFlow tests the complete RAG flow:
@@ -139,19 +139,12 @@ func TestRAGCompleteFlow(t *testing.T) {
 		agentConfigBuilder.WriteString("  model: " + llmModel + "\n")
 		agentConfigBuilder.WriteString("  prompt_base_path: \"" + toSlash(filepath.Join(aiDir, "prompts")) + "\"\n")
 		agentConfigBuilder.WriteString("  max_iterations: 5\n")
-		agentConfigBuilder.WriteString("  stage_channel_buffer_size: 10\n")
-		agentConfigBuilder.WriteString("  mcp_host_name: \"mcp_host\"\n")
-		agentConfigBuilder.WriteString("  stages:\n")
-		agentConfigBuilder.WriteString("  - name: reasonAct\n")
-		agentConfigBuilder.WriteString("    flow_type: reasonAct\n")
-		agentConfigBuilder.WriteString("    prompt_file: agentReasonAct.txt\n")
-		agentConfigBuilder.WriteString("    temperature: 0.7\n")
-		agentConfigBuilder.WriteString("    enable_tools: true\n")
-		agentConfigBuilder.WriteString("  - name: observe\n")
-		agentConfigBuilder.WriteString("    flow_type: observe\n")
-		agentConfigBuilder.WriteString("    prompt_file: agentObserve.txt\n")
-		agentConfigBuilder.WriteString("    temperature: 0.7\n")
-		agentConfigBuilder.WriteString("    enable_tools: false\n")
+		agentConfigBuilder.WriteString("  channel_buffer_size: 10\n")
+		agentConfigBuilder.WriteString("  prompt_file: agentReasonAct.txt\n")
+		agentConfigBuilder.WriteString("  temperature: 0.7\n")
+		agentConfigBuilder.WriteString("  top_p: 0.9\n")
+		agentConfigBuilder.WriteString("  max_tokens: 3000\n")
+		agentConfigBuilder.WriteString("  timeout: 90\n")
 
 		_ = os.WriteFile(agentConfigPath, []byte(agentConfigBuilder.String()), 0644)
 
@@ -214,28 +207,28 @@ func TestRAGCompleteFlow(t *testing.T) {
 		// Create test documents about Dubbo
 		testDocs := []*schema.Document{
 			{
-				ID:      "doc1",
-				Content: "Apache Dubbo is a high-performance, lightweight Java RPC framework. It provides three core capabilities: interface-oriented remote call, intelligent fault tolerance, and service governance. Dubbo helps developers develop high-performance, scalable distributed services more easily.",
+				ID:       "doc1",
+				Content:  "Apache Dubbo is a high-performance, lightweight Java RPC framework. It provides three core capabilities: interface-oriented remote call, intelligent fault tolerance, and service governance. Dubbo helps developers develop high-performance, scalable distributed services more easily.",
 				MetaData: map[string]any{"source": "dubbo_intro.txt", "title": "Dubbo Introduction"},
 			},
 			{
-				ID:      "doc2",
-				Content: "Dubbo's service governance features include load balancing, service degradation, circuit breaking, and service registration/discovery. It supports multiple load balancing strategies: random, round-robin, least active, and consistent hashing. The default is random.",
+				ID:       "doc2",
+				Content:  "Dubbo's service governance features include load balancing, service degradation, circuit breaking, and service registration/discovery. It supports multiple load balancing strategies: random, round-robin, least active, and consistent hashing. The default is random.",
 				MetaData: map[string]any{"source": "dubbo_governance.txt", "title": "Dubbo Service Governance"},
 			},
 			{
-				ID:      "doc3",
-				Content: "Dubbo architecture consists of four core roles: Provider (service provider), Consumer (service consumer), Registry (service registry), and Monitor (monitoring center). The provider exposes services, the consumer calls services, the registry handles registration and discovery, and the monitor handles statistics.",
+				ID:       "doc3",
+				Content:  "Dubbo architecture consists of four core roles: Provider (service provider), Consumer (service consumer), Registry (service registry), and Monitor (monitoring center). The provider exposes services, the consumer calls services, the registry handles registration and discovery, and the monitor handles statistics.",
 				MetaData: map[string]any{"source": "dubbo_arch.txt", "title": "Dubbo Architecture"},
 			},
 			{
-				ID:      "doc4",
-				Content: "Dubbo supports multiple protocols including Dubbo protocol (default), REST, HTTP, Hessian, Thrift, gRPC, and more. The Dubbo protocol uses a single long connection and NIO async communication, providing excellent performance for high-concurrency scenarios.",
+				ID:       "doc4",
+				Content:  "Dubbo supports multiple protocols including Dubbo protocol (default), REST, HTTP, Hessian, Thrift, gRPC, and more. The Dubbo protocol uses a single long connection and NIO async communication, providing excellent performance for high-concurrency scenarios.",
 				MetaData: map[string]any{"source": "dubbo_protocol.txt", "title": "Dubbo Protocols"},
 			},
 			{
-				ID:      "doc5",
-				Content: "Dubbo cluster fault tolerance includes multiple strategies: Failover (auto retry with different servers, default), Failfast (immediate error), Failsafe (ignore error), Failback (async retry), and Forking (parallel calls). These help ensure service availability in distributed environments.",
+				ID:       "doc5",
+				Content:  "Dubbo cluster fault tolerance includes multiple strategies: Failover (auto retry with different servers, default), Failfast (immediate error), Failsafe (ignore error), Failback (async retry), and Forking (parallel calls). These help ensure service availability in distributed environments.",
 				MetaData: map[string]any{"source": "dubbo_cluster.txt", "title": "Dubbo Cluster Fault Tolerance"},
 			},
 		}

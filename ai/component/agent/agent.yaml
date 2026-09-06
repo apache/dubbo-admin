@@ -1,34 +1,22 @@
 type: agent
 spec:
   agent_type: "react"
-  model: "dashscope/qwen3.7-max"
+  model: "dashscope/qwen3.5-plus"
   prompt_base_path: "./prompts"
-  max_iterations: 3  # Reduced from 10 to 3 for faster response
-  stage_channel_buffer_size: 5
-  mcp_host_name: "mcp_host"
+  prompt_file: "agentReasonAct.txt"
+  max_iterations: 3  # bounded reason-act loop; the last iteration forces an answer (effective tool rounds = max_iterations - 1)
+  channel_buffer_size: 5
+
+  # Model sampling + per model-call timeout (seconds).
+  temperature: 0.7
+  top_p: 0.9
+  max_tokens: 3000
+  timeout: 90
 
   # Per-tool timeout overrides (seconds), keyed by tool name. Tools without an
   # override use a built-in 30s default. A failed/timed-out tool no longer aborts
-  # the interaction; its error is passed to the observe stage to degrade.
+  # the interaction; its error is recorded as the tool's output so the model can
+  # still answer from whatever else returned.
   # tool_timeouts:
   #   get_service_detail: 15
   #   mcp_log: 60
-
-  stages:
-    - name: "reasonAct"
-      flow_type: "reasonAct"
-      prompt_file: "agentReasonAct.txt"
-      temperature: 0.7
-      top_p: 0.9
-      max_tokens: 3000
-      timeout: 90
-      enable_tools: true
-
-    - name: "observe"
-      flow_type: "observe"
-      prompt_file: "agentObserve.txt"
-      temperature: 0.7
-      top_p: 0.9
-      max_tokens: 2000
-      timeout: 30  # Reduced from 60 to 30 for faster timeout fallback
-      enable_tools: false

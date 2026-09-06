@@ -24,10 +24,13 @@ import (
 	"dubbo-admin-ai/component/hooks"
 	"dubbo-admin-ai/component/tools"
 	"dubbo-admin-ai/runtime"
+
+	"github.com/firebase/genkit/go/genkit"
 )
 
 func TestAgentComponentKeepsEmptyManagerForLateHookRegistration(t *testing.T) {
 	rt := runtime.NewRuntime()
+	rt.SetGenkitRegistry(genkit.Init(context.Background()))
 	toolsComponent, err := tools.NewToolsComponent(tools.ToolConfig{})
 	if err != nil {
 		t.Fatalf("create tools component: %v", err)
@@ -40,7 +43,7 @@ func TestAgentComponentKeepsEmptyManagerForLateHookRegistration(t *testing.T) {
 	}
 	rt.RegisterComponent(hooksComponent)
 
-	agentComponentRaw, err := NewAgentComponent("react", "test/model", "", 1, 1, "", nil, nil)
+	agentComponentRaw, err := NewAgentComponent(AgentSpec{AgentType: "react", Model: "test/model", PromptBasePath: "../../../prompts", PromptFile: "agentReasonAct.txt", MaxIterations: 1, ChannelBufferSize: 1})
 	if err != nil {
 		t.Fatalf("create agent component: %v", err)
 	}

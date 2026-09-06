@@ -51,20 +51,27 @@ const (
 )
 
 const (
-	FallbackReasonTimeout    = "timeout"
-	FallbackReasonParseError = "parse_error"
+	FallbackReasonEmptyResponse = "empty_response"
+	FallbackReasonTimeout       = "timeout"
+	FallbackReasonParseError    = "parse_error"
 )
 
 var allEvents = []Event{
 	EventInteractionStart,
+	EventInteractionError,
+	EventInteractionCancel,
+	EventInteractionDegrade,
 	EventInteractionEnd,
 	EventIterationStart,
 	EventIterationEnd,
 	EventStageStart,
+	EventStageError,
 	EventStageEnd,
 	EventModelCallStart,
+	EventModelCallError,
 	EventModelCallEnd,
 	EventToolCallStart,
+	EventToolCallError,
 	EventToolCallEnd,
 }
 
@@ -85,7 +92,7 @@ func (e Event) valid() bool {
 }
 
 func (e Event) toolCall() bool {
-	return e == EventToolCallStart || e == EventToolCallEnd
+	return e == EventToolCallStart || e == EventToolCallEnd || e == EventToolCallError
 }
 
 // State is a read-only snapshot supplied to hooks. Go context propagation is

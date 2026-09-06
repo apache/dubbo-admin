@@ -200,8 +200,8 @@ func discardAgentOutput(channels *agent.Channels) {
 }
 
 // MessageDelta finishes the stream and reports token usage. The observation's
-// Summary/FinalAnswer text was already streamed live by the observe stage
-// (react emitObservation), so this only emits the stop reason + usage — it must
+// answer text was already streamed live by the ReAct loop, so this only
+// emits the stop reason + usage — it must
 // NOT re-stream the text, or the client would receive the answer twice.
 func (h *AgentHandler) MessageDelta(sseHandler *sse.SSEHandler, output schema.Schema) {
 	stopReason := "end_turn"

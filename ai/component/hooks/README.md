@@ -51,6 +51,12 @@ corresponding `.end` event. Cancel events are emitted when a context cancellatio
 causes an interaction to abort. Degrade events signal that an interaction 
 completed with degraded quality (tool failure or fallback model response).
 
+The single ReAct loop emits one iteration and one stage per model call.
+Stages are `reasonAct` while tools are available and `answer` on the forced
+final iteration. There is no separate observe stage. An empty forced answer
+uses `FallbackReason: empty_response`; model errors and timeouts propagate
+as errors, while tool errors allow the next iteration to answer with degraded context.
+
 Each `State` carries metadata (session/interaction ID, iteration, stage, model,
 tool name) and optional fields like `Degraded`, `FallbackUsed`, `Error` to
 provide additional context. The built-in logging and tracing hooks subscribe to 

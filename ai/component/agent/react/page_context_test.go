@@ -75,7 +75,7 @@ func TestNewInteractionCarriesPageContext(t *testing.T) {
 	}
 	ra := &ReActAgent{memoryCtx: memory.NewMemoryContext(memory.ChatHistoryKey)}
 
-	ctx, _, history, err := ra.newInteraction(context.Background(), &schema.UserInput{
+	ctx, history, err := ra.newInteraction(context.Background(), &schema.UserInput{
 		Content: "current question",
 		Context: snapshot,
 	}, "session")

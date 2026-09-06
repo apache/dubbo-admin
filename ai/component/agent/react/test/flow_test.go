@@ -9,32 +9,30 @@ import (
 
 func validAgentSpec() *compReact.AgentSpec {
 	return &compReact.AgentSpec{
-		AgentType:              compReact.AgentTypeReAct,
-		Model:                  "qwen-max",
-		PromptBasePath:         "./prompts",
-		MaxIterations:          5,
-		StageChannelBufferSize: 2,
-		MCPHostName:            "mcp_host",
-		Stages: []compReact.StageInfo{{
-			Name:        "reasonAct",
-			FlowType:    "reasonAct",
-			PromptFile:  "agentReasonAct.txt",
-			Temperature: 0.7,
-			TopP:        0.9,
-			MaxTokens:   1000,
-			Timeout:     30,
-		}},
+		AgentType:         compReact.AgentTypeReAct,
+		Model:             "qwen-max",
+		PromptBasePath:    "./prompts",
+		PromptFile:        "agentReasonAct.txt",
+		MaxIterations:     5,
+		ChannelBufferSize: 2,
+		Temperature:       0.7,
+		TopP:              0.9,
+		MaxTokens:         1000,
+		Timeout:           30,
 	}
 }
 
-func TestAgentComponent_ValidateStage(t *testing.T) {
+func TestAgentSpec_Validate(t *testing.T) {
 	tests := []struct {
 		name       string
 		mutate     func(*compReact.AgentSpec)
 		errContain string
 	}{
-		{name: "invalid_flow_type", mutate: func(c *compReact.AgentSpec) { c.Stages[0].FlowType = "invalid" }, errContain: "invalid flow_type"},
-		{name: "prompt_required", mutate: func(c *compReact.AgentSpec) { c.Stages[0].PromptFile = "" }, errContain: "prompt_file is required"},
+		{name: "prompt_required", mutate: func(c *compReact.AgentSpec) { c.PromptFile = "" }, errContain: "prompt_file is required"},
+		{name: "temperature_out_of_range", mutate: func(c *compReact.AgentSpec) { c.Temperature = 3 }, errContain: "temperature must be in"},
+		{name: "top_p_out_of_range", mutate: func(c *compReact.AgentSpec) { c.TopP = 2 }, errContain: "top_p must be in"},
+		{name: "max_tokens_required", mutate: func(c *compReact.AgentSpec) { c.MaxTokens = 0 }, errContain: "max_tokens must be greater than 0"},
+		{name: "timeout_required", mutate: func(c *compReact.AgentSpec) { c.Timeout = 0 }, errContain: "timeout must be greater than 0"},
 	}
 
 	for _, tt := range tests {
@@ -45,5 +43,14 @@ func TestAgentComponent_ValidateStage(t *testing.T) {
 				t.Fatalf("expected error containing %q, got %v", tt.errContain, err)
 			}
 		})
+	}
+}
+
+func TestAgentSpec_Validate_AllowsZeroTemperatureAndTopP(t *testing.T) {
+	cfg := validAgentSpec()
+	cfg.Temperature = 0
+	cfg.TopP = 0
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("temperature=0 and top_p=0 must be valid, got %v", err)
 	}
 }

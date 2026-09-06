@@ -78,7 +78,12 @@ func newTracingHook(tracer trace.Tracer, captureContent string) Hook {
 			span.RecordError(errors.New(state.Error))
 			span.SetStatus(codes.Error, state.Error)
 		}
-		span.End()
+		switch state.Event {
+		case EventInteractionEnd, EventIterationEnd, EventStageEnd, EventModelCallEnd, EventToolCallEnd:
+			span.End()
+		default:
+			span.AddEvent(string(state.Event))
+		}
 		return ctx
 	}
 }

@@ -219,3 +219,66 @@ func assertSpanBoolAttribute(t *testing.T, attrs []attribute.KeyValue, key strin
 	}
 	t.Fatalf("attribute %s not found in %v", key, attrs)
 }
+
+func TestTracingSpecializedEventsKeepSpanOpenUntilEnd(t *testing.T) {
+	cases := []struct {
+		name    string
+		start   Event
+		special Event
+		end     Event
+	}{
+		{"interaction error", EventInteractionStart, EventInteractionError, EventInteractionEnd},
+		{"interaction cancel", EventInteractionStart, EventInteractionCancel, EventInteractionEnd},
+		{"interaction degrade", EventInteractionStart, EventInteractionDegrade, EventInteractionEnd},
+		{"stage error", EventStageStart, EventStageError, EventStageEnd},
+		{"model error", EventModelCallStart, EventModelCallError, EventModelCallEnd},
+		{"tool error", EventToolCallStart, EventToolCallError, EventToolCallEnd},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			recorder := tracetest.NewSpanRecorder()
+			provider := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
+			t.Cleanup(func() { _ = provider.Shutdown(context.Background()) })
+			manager := testManager()
+			if err := manager.Register(NewTracingRegistration(provider.Tracer("test"), CaptureNone)); err != nil {
+				t.Fatal(err)
+			}
+			state := State{Event: tt.start, Model: "test/model", ToolName: "test_tool"}
+			ctx := manager.Emit(context.Background(), state)
+			state.Event = tt.special
+			state.Error = "operation failed"
+			manager.Emit(ctx, state)
+			if len(recorder.Ended()) != 0 {
+				t.Fatal("specialized event ended the span before its end event")
+			}
+			if !trace.SpanFromContext(ctx).IsRecording() {
+				t.Fatal("span stopped recording early")
+			}
+			state.Event = tt.end
+			state.TotalTokens = 23
+			manager.Emit(ctx, state)
+			spans := recorder.Ended()
+			if len(spans) != 1 {
+				t.Fatalf("ended spans = %d, want 1", len(spans))
+			}
+			var totalTokens int64
+			for _, attr := range spans[0].Attributes() {
+				if attr.Key == "agent.usage.total_tokens" {
+					totalTokens = attr.Value.AsInt64()
+				}
+			}
+			if totalTokens != 23 {
+				t.Fatalf("final token count = %d, want 23", totalTokens)
+			}
+			found := false
+			for _, event := range spans[0].Events() {
+				if event.Name == string(tt.special) {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatalf("missing %s span event", tt.special)
+			}
+		})
+	}
+}

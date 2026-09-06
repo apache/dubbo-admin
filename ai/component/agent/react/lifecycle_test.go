@@ -63,14 +63,13 @@ func TestStopCancelsAndDrainsActiveInteraction(t *testing.T) {
 		t.Fatalf("register hook: %v", err)
 	}
 
-	ra := testAgent(nil)
+	ra := testAgent(nil, 1, nil)
 	ra.hookManager = manager
 	ra.maxIterations = 1
 	ra.bufferSize = 16
-	ra.stages = []builtStage{{
-		name: "reasonAct", model: "test/model", kind: flowReasonAct,
-		prompt: prompt, timeout: time.Minute,
-	}}
+	ra.actPrompt = prompt
+	ra.answerPrompt = prompt
+	ra.callTimeout = time.Minute
 	channels := ra.Interact(context.Background(), &schema.UserInput{Content: "hello"}, "session")
 	select {
 	case <-prompt.started:
@@ -121,14 +120,13 @@ func TestInteractionPanicStillEmitsEnd(t *testing.T) {
 		t.Fatalf("register hook: %v", err)
 	}
 
-	ra := testAgent(nil)
+	ra := testAgent(nil, 1, nil)
 	ra.hookManager = manager
 	ra.maxIterations = 1
 	ra.bufferSize = 16
-	ra.stages = []builtStage{{
-		name: "reasonAct", model: "test/model", kind: flowReasonAct,
-		prompt: &panicPrompt{}, timeout: time.Second,
-	}}
+	ra.actPrompt = &panicPrompt{}
+	ra.answerPrompt = &panicPrompt{}
+	ra.callTimeout = time.Second
 	channels := ra.Interact(context.Background(), &schema.UserInput{Content: "hello"}, "session")
 	select {
 	case <-channels.Done():
@@ -158,14 +156,12 @@ func TestInteractionWithoutToolsEmitsCompleteLifecycle(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	ra := testAgent(nil)
+	ra := testAgent(nil, 1, nil)
 	ra.hookManager = manager
 	ra.maxIterations = 1
 	ra.bufferSize = 16
-	ra.stages = []builtStage{
-		{name: flowReasonAct, model: "test/model", kind: flowReasonAct, prompt: &stubPrompt{resp: textResp("direct")}},
-		{name: flowObserve, model: "test/model", kind: flowObserve, prompt: &stubPrompt{resp: textResp(`{"summary":"done","heartbeat":false,"final_answer":"answer"}`)}},
-	}
+	ra.actPrompt = &stubPrompt{resp: textResp("answer")}
+	ra.answerPrompt = ra.actPrompt
 	channels := ra.Interact(context.Background(), &schema.UserInput{Content: "hello"}, "session")
 	select {
 	case <-channels.Done():
@@ -176,7 +172,6 @@ func TestInteractionWithoutToolsEmitsCompleteLifecycle(t *testing.T) {
 	want := []hooks.Event{
 		hooks.EventInteractionStart,
 		hooks.EventIterationStart,
-		hooks.EventStageStart, hooks.EventModelCallStart, hooks.EventModelCallEnd, hooks.EventStageEnd,
 		hooks.EventStageStart, hooks.EventModelCallStart, hooks.EventModelCallEnd, hooks.EventStageEnd,
 		hooks.EventIterationEnd,
 		hooks.EventInteractionEnd,
@@ -262,14 +257,12 @@ func TestConcurrentInteractionsKeepHookIdentityIsolated(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	ra := testAgent(nil)
+	ra := testAgent(nil, 1, nil)
 	ra.hookManager = manager
 	ra.maxIterations = 1
 	ra.bufferSize = 16
-	ra.stages = []builtStage{
-		{name: flowReasonAct, model: "test/model", kind: flowReasonAct, prompt: &stubPrompt{resp: textResp("direct")}},
-		{name: flowObserve, model: "test/model", kind: flowObserve, prompt: &stubPrompt{resp: textResp(`{"summary":"done","heartbeat":false,"final_answer":"answer"}`)}},
-	}
+	ra.actPrompt = &stubPrompt{resp: textResp("answer")}
+	ra.answerPrompt = ra.actPrompt
 	first := ra.Interact(context.Background(), &schema.UserInput{Content: "first"}, "session-1")
 	second := ra.Interact(context.Background(), &schema.UserInput{Content: "second"}, "session-2")
 	for i, channels := range []*agent.Channels{first, second} {
@@ -289,4 +282,23 @@ func TestConcurrentInteractionsKeepHookIdentityIsolated(t *testing.T) {
 			t.Fatalf("interaction %s lifecycle = %v", id, entry.events)
 		}
 	}
+}
+
+type stubPrompt struct {
+	resp *ai.ModelResponse
+	err  error
+}
+
+type panicPrompt struct{ stubPrompt }
+
+func (p *panicPrompt) Execute(context.Context, ...ai.PromptExecuteOption) (*ai.ModelResponse, error) {
+	panic("model panic")
+}
+
+func (s *stubPrompt) Name() string { return "stub" }
+func (s *stubPrompt) Execute(ctx context.Context, opts ...ai.PromptExecuteOption) (*ai.ModelResponse, error) {
+	return s.resp, s.err
+}
+func (s *stubPrompt) Render(ctx context.Context, input any) (*ai.GenerateActionOptions, error) {
+	return &ai.GenerateActionOptions{}, nil
 }

@@ -22,81 +22,35 @@ import "fmt"
 // AgentTypeReAct is the agent_type discriminator for the ReAct strategy.
 const AgentTypeReAct = "react"
 
-// Flow types for a react stage. reasonAct reasons + calls tools; observe
-// synthesizes the answer and controls the loop. These are react-internal (the
-// generic agent package stays strategy-agnostic).
-const (
-	flowReasonAct = "reasonAct"
-	flowObserve   = "observe"
-)
-
 // defaultToolTimeoutSeconds is the tool execution timeout used for any tool
 // without an explicit tool_timeouts override. It is intentionally not
 // configurable — override individual tools via tool_timeouts instead.
 const defaultToolTimeoutSeconds = 30
 
 // AgentSpec is the YAML-decoded configuration for a ReAct agent component.
+//
+// A ReAct agent runs a single reason-and-act loop: one model call per iteration
+// reasons about the request and either calls tools (whose results feed the next
+// iteration) or answers directly. The model settings below configure that one
+// call, so the config is flat — there is no multi-stage pipeline to describe.
 type AgentSpec struct {
-	AgentType              string         `yaml:"agent_type"`
-	Model                  string         `yaml:"model"`
-	PromptBasePath         string         `yaml:"prompt_base_path"`
-	MaxIterations          int            `yaml:"max_iterations"`
-	StageChannelBufferSize int            `yaml:"stage_channel_buffer_size"`
-	MCPHostName            string         `yaml:"mcp_host_name"`
-	ToolTimeouts           map[string]int `yaml:"tool_timeouts,omitempty"` // per-tool timeout overrides (seconds), keyed by tool name; defaults to defaultToolTimeoutSeconds
-	Stages                 []StageInfo    `yaml:"stages"`
+	AgentType      string `yaml:"agent_type"`
+	Model          string `yaml:"model"`
+	PromptBasePath string `yaml:"prompt_base_path"`
+	PromptFile     string `yaml:"prompt_file"`
+	// MaxIterations bounds the reason-act loop. The last iteration always forces a
+	// tool-less answer, so the effective number of tool rounds is
+	// MaxIterations - 1; a value of 1 means "answer directly, never call tools".
+	MaxIterations     int            `yaml:"max_iterations"`
+	ChannelBufferSize int            `yaml:"channel_buffer_size"`
+	ToolTimeouts      map[string]int `yaml:"tool_timeouts,omitempty"` // per-tool timeout overrides (seconds), keyed by tool name; defaults to defaultToolTimeoutSeconds
+	Temperature       float64        `yaml:"temperature"`
+	TopP              float64        `yaml:"top_p,omitempty"` // 0 means "unset" — the provider default is used
+	MaxTokens         int            `yaml:"max_tokens"`
+	Timeout           int            `yaml:"timeout"` // per model-call timeout (seconds)
 }
 
-// StageInfo is the per-stage configuration within an AgentSpec: which prompt to
-// run, its flow type (reasonAct or observe), and the model sampling settings.
-type StageInfo struct {
-	Name        string  `yaml:"name"`
-	FlowType    string  `yaml:"flow_type"`
-	Model       string  `yaml:"model,omitempty"`
-	PromptFile  string  `yaml:"prompt_file"`
-	Temperature float64 `yaml:"temperature"`
-	TopP        float64 `yaml:"top_p,omitempty"`
-	MaxTokens   int     `yaml:"max_tokens"`
-	Timeout     int     `yaml:"timeout"`
-	EnableTools bool    `yaml:"enable_tools"`
-	ExtraPrompt string  `yaml:"extra_prompt,omitempty"`
-}
-
-// ReActDefaultSpec returns default ReAct Agent configuration
-func ReActDefaultSpec() *AgentSpec {
-	return &AgentSpec{
-		AgentType:              "react",
-		Model:                  "qwen-max",
-		PromptBasePath:         "./prompts",
-		MaxIterations:          10,
-		StageChannelBufferSize: 5,
-		MCPHostName:            "mcp_host",
-		Stages: []StageInfo{
-			{
-				Name:        "reasonAct",
-				FlowType:    "reasonAct",
-				PromptFile:  "agentReasonAct.txt",
-				Temperature: 0.7,
-				TopP:        0.9,
-				MaxTokens:   3000,
-				Timeout:     90,
-				EnableTools: true,
-			},
-			{
-				Name:        "observe",
-				FlowType:    "observe",
-				PromptFile:  "agentObserve.txt",
-				Temperature: 0.7,
-				TopP:        0.9,
-				MaxTokens:   2000,
-				Timeout:     60,
-				EnableTools: false,
-			},
-		},
-	}
-}
-
-// Validate validates the configuration
+// Validate validates the configuration.
 func (c *AgentSpec) Validate() error {
 	if c.AgentType == "" {
 		return fmt.Errorf("agent_type is required")
@@ -107,65 +61,35 @@ func (c *AgentSpec) Validate() error {
 	if c.PromptBasePath == "" {
 		return fmt.Errorf("prompt_base_path is required")
 	}
+	if c.PromptFile == "" {
+		return fmt.Errorf("prompt_file is required")
+	}
 	if c.MaxIterations <= 0 {
 		return fmt.Errorf("max_iterations must be greater than 0")
 	}
-	if c.StageChannelBufferSize <= 0 {
-		return fmt.Errorf("stage_channel_buffer_size must be greater than 0")
-	}
-	if len(c.Stages) == 0 {
-		return fmt.Errorf("stages is required")
+	if c.ChannelBufferSize <= 0 {
+		return fmt.Errorf("channel_buffer_size must be greater than 0")
 	}
 	for name, t := range c.ToolTimeouts {
 		if t <= 0 {
 			return fmt.Errorf("tool_timeouts[%q] must be greater than 0", name)
 		}
 	}
-
-	for i, stage := range c.Stages {
-		if err := stage.Validate(i); err != nil {
-			return err
-		}
+	// temperature 0 is a valid (deterministic) setting, so the lower bound is
+	// inclusive; only reject negatives and values above the provider ceiling.
+	if c.Temperature < 0 || c.Temperature > 2.0 {
+		return fmt.Errorf("temperature must be in [0, 2.0]")
 	}
-
-	return nil
-}
-
-// Validate validates the stage configuration
-func (s *StageInfo) Validate(index int) error {
-	// Validate name
-	if s.Name == "" {
-		return fmt.Errorf("stage[%d]: name is required", index)
+	// top_p is optional: 0 means "unset" (provider default). Reject only
+	// negatives and values above 1.0.
+	if c.TopP < 0 || c.TopP > 1.0 {
+		return fmt.Errorf("top_p must be in [0, 1.0]")
 	}
-
-	// Validate flow type
-	validFlowTypes := map[string]bool{
-		flowReasonAct: true,
-		flowObserve:   true,
+	if c.MaxTokens <= 0 {
+		return fmt.Errorf("max_tokens must be greater than 0")
 	}
-	if !validFlowTypes[s.FlowType] {
-		return fmt.Errorf("stage[%d]: invalid flow_type '%s', must be one of: %s, %s", index, s.FlowType, flowReasonAct, flowObserve)
+	if c.Timeout <= 0 {
+		return fmt.Errorf("timeout must be greater than 0")
 	}
-
-	if s.PromptFile == "" {
-		return fmt.Errorf("stage[%d]: prompt_file is required", index)
-	}
-
-	if s.Temperature <= 0 || s.Temperature > 2.0 {
-		return fmt.Errorf("stage[%d]: temperature must be in (0, 2.0]", index)
-	}
-
-	if s.TopP <= 0 || s.TopP > 1.0 {
-		return fmt.Errorf("stage[%d]: top_p must be in (0, 1.0]", index)
-	}
-
-	if s.MaxTokens <= 0 {
-		return fmt.Errorf("stage[%d]: max_tokens must be greater than 0", index)
-	}
-
-	if s.Timeout <= 0 {
-		return fmt.Errorf("stage[%d]: timeout must be greater than 0", index)
-	}
-
 	return nil
 }
