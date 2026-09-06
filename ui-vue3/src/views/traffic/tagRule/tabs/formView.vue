@@ -88,14 +88,31 @@
           <a-descriptions-item
             :label="$t('flowControlDomain.runTimeEffective')"
             :labelStyle="{ fontWeight: 'bold' }"
+            :contentStyle="{ verticalAlign: 'middle' }"
           >
-            <a-typography-paragraph>
-              {{
-                tagRuleDetail.runtime
-                  ? $t('flowControlDomain.opened')
-                  : $t('flowControlDomain.closed')
-              }}
-            </a-typography-paragraph>
+            <span>{{
+              tagRuleDetail.runtime
+                ? $t('flowControlDomain.opened')
+                : $t('flowControlDomain.closed')
+            }}</span>
+          </a-descriptions-item>
+          <a-descriptions-item
+            :label="$t('flowControlDomain.versionRecords')"
+            :labelStyle="{ fontWeight: 'bold' }"
+            :contentStyle="{ verticalAlign: 'middle' }"
+          >
+            <a-tag v-if="latestRecordedVersionNo !== undefined">{{
+              $t('ruleVersionDomain.latestRecordedVersionBadge', {
+                versionNo: latestRecordedVersionNo
+              })
+            }}</a-tag>
+            <a-button
+              type="text"
+              style="color: #0a90d5; height: auto; padding: 0"
+              @click="isHistoryOpen = true"
+            >
+              {{ $t('flowControlDomain.versionRecords') }}
+            </a-button>
           </a-descriptions-item>
 
           <!-- priority -->
@@ -110,9 +127,17 @@
         </a-descriptions>
       </a-card>
     </a-flex>
+    <RuleHistoryPanel
+      v-model:open="isHistoryOpen"
+      :title="tagRuleDetail.key || ruleName"
+      kind="tag-rule"
+      :rule-name="ruleName"
+      @latest-recorded-version-no-change="latestRecordedVersionNo = $event"
+    />
 
     <a-card
       v-for="(item, index) in tagRuleDetail.tags"
+      :key="index"
       :title="`标签【${index + 1}】`"
       style="margin-top: 10px"
       class="_detail"
@@ -146,23 +171,27 @@ import {
   computed,
   getCurrentInstance,
   onMounted,
-  reactive
+  reactive,
+  ref
 } from 'vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import { getTagRuleDetailAPI } from '@/api/service/traffic'
 import { useRoute } from 'vue-router'
 import { HTTP_STATUS } from '@/base/http/constants'
 import { createTrafficRuleContentContribution, useAIContextProvider } from '@/ai-context'
+import RuleHistoryPanel from '../../_shared/RuleHistoryPanel.vue'
 
 const route = useRoute()
+const ruleName = computed(() => String(route.params?.ruleName || ''))
 const {
   appContext: {
     config: { globalProperties }
   }
-} = <ComponentInternalInstance>getCurrentInstance()
+} = getCurrentInstance() as ComponentInternalInstance
 
-let __ = PRIMARY_COLOR
 const toClipboard = useClipboard().toClipboard
+const isHistoryOpen = ref(false)
+const latestRecordedVersionNo = ref<number | undefined>(undefined)
 
 function copyIt(v: string) {
   message.success(globalProperties.$t('messageDomain.success.copy'))
@@ -204,7 +233,7 @@ useAIContextProvider({
 
 // Get label routing details
 const getTagRuleDetail = async () => {
-  const res = await getTagRuleDetailAPI(<string>route.params?.ruleName)
+  const res = await getTagRuleDetailAPI(ruleName.value)
   if (res.code === HTTP_STATUS.SUCCESS) {
     Object.assign(tagRuleDetail, res.data || {})
   }

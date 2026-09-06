@@ -18,6 +18,8 @@
 import { i18n } from '@/base/i18n'
 
 export class ConfigModel {
+  [key: string]: any
+
   enabled: boolean = true
   hasMatch: boolean = false
   side: string = 'provider'
@@ -103,7 +105,7 @@ export class ConfigModel {
   constructor(obj: any) {
     if (obj) {
       for (const key of Object.keys(this)) {
-        if (obj[key]) {
+        if (obj[key] !== undefined) {
           this[key] = obj[key]
         }
       }
@@ -112,17 +114,17 @@ export class ConfigModel {
   }
 
   descMatches() {
-    const desc = []
+    const desc: string[] = []
     for (const key in this.matchesValue) {
       const tmp = this.matchesValue[key]
       if (!this.matchesKeys.includes(key)) continue
       if (tmp.type === 'obj') {
         desc.push(`${key} ${tmp.relation} ${tmp.value}`)
       } else if (tmp.type === 'arr') {
-        const oneof = tmp.arr.map((x) => `${x.relation} ${x.value}`).join(', ')
+        const oneof = tmp.arr.map((x: any) => `${x.relation} ${x.value}`).join(', ')
         desc.push(`${key} oneof [${oneof}]`)
       } else {
-        const allof = tmp.arr.map((x) => `${x.key} ${x.relation} ${x.value}`).join(', ')
+        const allof = tmp.arr.map((x: any) => `${x.key} ${x.relation} ${x.value}`).join(', ')
         desc.push(`${key} allof [${allof}]`)
       }
     }
@@ -130,14 +132,14 @@ export class ConfigModel {
   }
 
   descParameters() {
-    const desc = []
+    const desc: string[] = []
     for (const key in this.parametersValue) {
       const tmp = this.parametersValue[key]
       if (!this.parametersKeys.includes(key)) continue
       if (tmp.type === 'obj') {
         desc.push(`${key} = ${tmp.value}`)
       } else {
-        desc.push(...tmp.arr.map((x) => `${x.key} ${x.relation} ${x.value}`))
+        desc.push(...tmp.arr.map((x: any) => `${x.key} ${x.relation} ${x.value}`))
       }
     }
     return desc
@@ -147,7 +149,7 @@ export class ConfigModel {
     obj[key].arr.splice(idx, 1)
   }
 
-  addArrConfig(obj: any, key: string, idx: number, val: any | {}) {
+  addArrConfig(obj: any, key: string, idx: number, val: any = {}) {
     obj[key].arr.splice(idx + 1, 0, {
       key: '',
       relation: val?.relation || '',
@@ -217,7 +219,7 @@ export class ConfigModel {
     }
   }
 
-  checkArrConfig(prefix: string, keys: [any], obj: any, errorMsg: []) {
+  checkArrConfig(prefix: string, keys: any[], obj: any, errorMsg: string[]) {
     for (const key of keys) {
       const item = obj[key]
       if (item.type === 'obj') {
@@ -273,18 +275,18 @@ export class ConfigModel {
 }
 
 export class DynamicConfigBasicInfo {
-  ruleName: 'org.apache.dubbo.samples.UserService::.configurator'
-  scope: '服务'
-  configVersion: 'v3.0'
-  key: 'org.apache.dubbo.samples.UserService'
-  effectTime: '20230/12/19 22:09:34'
-  enabled: true
+  ruleName: string = 'org.apache.dubbo.samples.UserService::.configurator'
+  scope: string = '服务'
+  configVersion: string = 'v3.0'
+  key: string = 'org.apache.dubbo.samples.UserService'
+  effectTime: string = '20230/12/19 22:09:34'
+  enabled: boolean = true
 }
 
 export class ViewDataModel {
   basicInfo: DynamicConfigBasicInfo = new DynamicConfigBasicInfo()
   config: ConfigModel[] = []
-  errorMsg = []
+  errorMsg: string[] = []
   isAdd: boolean = false
 
   constructor() {}
@@ -296,7 +298,7 @@ export class ViewDataModel {
   }
 
   fromApiOutput(data: any) {
-    this.basicInfo.configVerison = data.configVerison || 'v3.0'
+    this.basicInfo.configVersion = data.configVersion || 'v3.0'
     this.basicInfo.scope = data.scope
     this.basicInfo.key = data.key
     this.basicInfo.enabled = data.enabled || false
@@ -325,8 +327,8 @@ export class ViewDataModel {
       scope: this.basicInfo.scope,
       key: this.basicInfo.key,
       enabled: this.basicInfo.enabled,
-      configVersion: this.basicInfo.configVerison || 'v3.0',
-      configs: this.config.map((x: configModel, idx: number) => {
+      configVersion: this.basicInfo.configVersion || 'v3.0',
+      configs: this.config.map((x: ConfigModel, idx: number) => {
         const match: any = {}
         const parameters: any = {}
         if (check) {
@@ -334,7 +336,6 @@ export class ViewDataModel {
             this.errorMsg.push(
               `配置 ${idx + 1}${i18n.global.t('dynamicConfigDomain.configType')} 不能为空`
             )
-            loading.value = false
             throw new Error('数据检查失败')
           }
           if (

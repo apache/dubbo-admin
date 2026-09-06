@@ -332,6 +332,34 @@ describe('AI context providers', () => {
     })
   })
 
+  it('preserves lifecycle event messages and sources without collecting unlisted fields', () => {
+    const contribution = createEventListContribution(
+      Array.from({ length: 12 }, (_, index) => ({
+        type: 'warning',
+        message: `Instance deregistered ${index}`,
+        source: 'nacos',
+        time: '2026-09-06T08:00:00Z',
+        metadata: { token: 'must-not-be-included' }
+      }))
+    )
+
+    expect(contribution?.evidence).toMatchObject({
+      id: 'event-list',
+      data: {
+        total: 12,
+        includedCount: 10,
+        truncated: true,
+        events: Array.from({ length: 10 }, (_, index) => ({
+          type: 'warning',
+          description: `Instance deregistered ${index}`,
+          source: 'nacos',
+          time: '2026-09-06T08:00:00Z'
+        }))
+      }
+    })
+    expect(JSON.stringify(contribution)).not.toContain('must-not-be-included')
+  })
+
   it('summarizes service debug input and output with parsed sensitive fields redacted', () => {
     const contribution = createServiceDebugContribution({
       methods: [

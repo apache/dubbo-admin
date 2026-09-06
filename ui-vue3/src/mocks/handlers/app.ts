@@ -146,7 +146,13 @@ export const appHandlers: HttpHandler[] = [
       time: '2024-03-31 12:00:00',
       type: 'deployment-controller'
     }))
-    return success({ list })
+    const eventList = list.map((item) => ({
+      time: item.time,
+      type: (Math.random() > 0.3 ? 'normal' : 'warning') as 'normal' | 'warning',
+      message: item.desc,
+      source: item.type
+    }))
+    return success({ list: eventList, total: eventList.length })
   }),
 
   http.get(`${base}/application/service/form`, () =>

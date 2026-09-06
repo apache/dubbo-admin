@@ -22,6 +22,7 @@ import (
 
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/handler"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 )
 
 func InitRouter(r *gin.Engine, ctx consolectx.Context) {
@@ -49,6 +50,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 			instanceConfig.GET("/operatorLog", handler.InstanceConfigOperatorLogGET(ctx))
 			instanceConfig.PUT("/operatorLog", handler.InstanceConfigOperatorLogPUT(ctx))
 		}
+		instance.GET("/event", handler.GetInstanceEvents(ctx))
 		instance.GET("/metric-dashboard", handler.GetGrafanaDashboard(ctx, handler.InstanceDimension, handler.MetricDashboard))
 		instance.GET("/trace-dashboard", handler.GetGrafanaDashboard(ctx, handler.InstanceDimension, handler.TraceDashboard))
 		instance.GET("/metrics-list", handler.GetMetricsList(ctx))
@@ -72,6 +74,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 			applicationConfig.GET("/gray", handler.ApplicationConfigGrayGET(ctx))
 			applicationConfig.PUT("/gray", handler.ApplicationConfigGrayPUT(ctx))
 		}
+		application.GET("/event", handler.GetApplicationEvents(ctx))
 		application.GET("/metric-dashboard", handler.GetGrafanaDashboard(ctx, handler.AppDimension, handler.MetricDashboard))
 		application.GET("/trace-dashboard", handler.GetGrafanaDashboard(ctx, handler.AppDimension, handler.TraceDashboard))
 	}
@@ -106,12 +109,17 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 		service.GET("/search", handler.SearchServices(ctx))
 		service.GET("/graph", handler.GetServiceGraph(ctx))
 		service.GET("/detail", handler.GetServiceDetail(ctx))
+		service.GET("/event", handler.GetServiceEvents(ctx))
 		service.GET("/interfaces", handler.GetServiceInterfaces(ctx))
 	}
 
 	{
 		configuration := router.Group("/configurator")
 		configuration.GET("/search", handler.ConfiguratorSearch(ctx))
+		configuration.GET("/:ruleName/versions", handler.ListRuleVersions(ctx, meshresource.DynamicConfigKind))
+		configuration.GET("/:ruleName/versions/:versionNo", handler.GetRuleVersion(ctx, meshresource.DynamicConfigKind))
+		configuration.GET("/:ruleName/versions/:versionNo/diff", handler.DiffRuleVersion(ctx, meshresource.DynamicConfigKind))
+		configuration.POST("/:ruleName/versions/:versionNo/rollback", handler.RollbackRuleVersion(ctx, meshresource.DynamicConfigKind))
 		configuration.GET("/:ruleName", handler.GetConfiguratorWithRuleName(ctx))
 		configuration.PUT("/:ruleName", handler.PutConfiguratorWithRuleName(ctx))
 		configuration.POST("/:ruleName", handler.PostConfiguratorWithRuleName(ctx))
@@ -121,6 +129,10 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 	{
 		conditionRule := router.Group("/condition-rule")
 		conditionRule.GET("/search", handler.ConditionRuleSearch(ctx))
+		conditionRule.GET("/:ruleName/versions", handler.ListRuleVersions(ctx, meshresource.ConditionRouteKind))
+		conditionRule.GET("/:ruleName/versions/:versionNo", handler.GetRuleVersion(ctx, meshresource.ConditionRouteKind))
+		conditionRule.GET("/:ruleName/versions/:versionNo/diff", handler.DiffRuleVersion(ctx, meshresource.ConditionRouteKind))
+		conditionRule.POST("/:ruleName/versions/:versionNo/rollback", handler.RollbackRuleVersion(ctx, meshresource.ConditionRouteKind))
 		conditionRule.GET("/:ruleName", handler.GetConditionRuleWithRuleName(ctx))
 		conditionRule.PUT("/:ruleName", handler.PutConditionRuleWithRuleName(ctx))
 		conditionRule.POST("/:ruleName", handler.PostConditionRuleWithRuleName(ctx))
@@ -130,6 +142,10 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 	{
 		tagRule := router.Group("/tag-rule")
 		tagRule.GET("/search", handler.TagRuleSearch(ctx))
+		tagRule.GET("/:ruleName/versions", handler.ListRuleVersions(ctx, meshresource.TagRouteKind))
+		tagRule.GET("/:ruleName/versions/:versionNo", handler.GetRuleVersion(ctx, meshresource.TagRouteKind))
+		tagRule.GET("/:ruleName/versions/:versionNo/diff", handler.DiffRuleVersion(ctx, meshresource.TagRouteKind))
+		tagRule.POST("/:ruleName/versions/:versionNo/rollback", handler.RollbackRuleVersion(ctx, meshresource.TagRouteKind))
 		tagRule.GET("/:ruleName", handler.GetTagRuleWithRuleName(ctx))
 		tagRule.PUT("/:ruleName", handler.PutTagRuleWithRuleName(ctx))
 		tagRule.POST("/:ruleName", handler.PostTagRuleWithRuleName(ctx))

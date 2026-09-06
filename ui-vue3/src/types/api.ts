@@ -115,6 +115,13 @@ export interface ApplicationEventItem {
   type: string
 }
 
+export interface EventItem {
+  time: string
+  type: 'normal' | 'warning'
+  message: string
+  source: string
+}
+
 export interface InstanceSearchItem {
   ip: string
   name: string

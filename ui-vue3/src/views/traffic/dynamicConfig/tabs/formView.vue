@@ -55,13 +55,35 @@
               :disabled="!isEdit"
             />
           </a-descriptions-item>
+          <a-descriptions-item
+            v-if="!formViewData.isAdd"
+            :label="$t('flowControlDomain.versionRecords')"
+            :labelStyle="{ fontWeight: 'bold' }"
+          >
+            <a-space>
+              <a-tag v-if="latestRecordedVersionNo !== undefined">
+                {{
+                  $t('ruleVersionDomain.latestRecordedVersionBadge', {
+                    versionNo: latestRecordedVersionNo
+                  })
+                }}
+              </a-tag>
+              <a-button type="text" style="color: #0a90d5" @click="isHistoryOpen = true">
+                {{ $t('flowControlDomain.versionRecords') }}
+              </a-button>
+            </a-space>
+          </a-descriptions-item>
         </a-descriptions>
       </div>
     </a-card>
 
     <a-spin :spinning="loading">
       <a-form ref="formRef">
-        <a-card v-for="(config, index) in formViewEdit.config" class="dynamic-config-card">
+        <a-card
+          v-for="(config, index) in formViewEdit.config"
+          :key="index"
+          class="dynamic-config-card"
+        >
           <template #title>
             <a-button
               v-if="!isEdit"
@@ -76,11 +98,15 @@
               对于{{ formViewData?.basicInfo?.scope === 'application' ? '应用' : '服务' }}的{{
                 config.side === 'provider' ? '提供者' : '消费者'
               }}，将满足
-              <a-tag :color="PRIMARY_COLOR" v-for="item in descMatchesComputed(config)">
+              <a-tag v-for="item in descMatchesComputed(config)" :key="item" :color="PRIMARY_COLOR">
                 {{ item }}
               </a-tag>
               的实例，配置
-              <a-tag :color="PRIMARY_COLOR" v-for="item in descParametersComputed(config)">
+              <a-tag
+                v-for="item in descParametersComputed(config)"
+                :key="item"
+                :color="PRIMARY_COLOR"
+              >
                 {{ item }}
               </a-tag>
             </div>
@@ -189,6 +215,7 @@
                       <a-input-group
                         :disabled="!isEdit"
                         v-for="(item, idx) in config.matchesValue[key].arr"
+                        :key="idx"
                         style="margin-bottom: 5px"
                         compact
                       >
@@ -304,6 +331,7 @@
                       </template>
                       <a-input-group
                         v-for="(item, idx) in config.parametersValue[key].arr"
+                        :key="idx"
                         style="margin-bottom: 5px"
                         compact
                       >
@@ -376,14 +404,21 @@
         }}</a-button>
       </a-flex>
     </a-card>
+
+    <RuleHistoryPanel
+      v-if="!formViewData.isAdd"
+      v-model:open="isHistoryOpen"
+      kind="configurator"
+      :rule-name="pathId"
+      :title="formViewData.basicInfo.ruleName || pathId"
+      @latest-recorded-version-no-change="latestRecordedVersionNo = $event"
+    />
   </div>
 </template>
 
 <script lang="ts" setup>
-import type { ComponentInternalInstance } from 'vue'
-import { computed, getCurrentInstance, inject, nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, inject, nextTick, onMounted, reactive, ref } from 'vue'
 import { PRIMARY_COLOR } from '@/base/constants'
-import useClipboard from 'vue-clipboard3'
 import { message, Modal } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -395,25 +430,16 @@ import gsap from 'gsap'
 import { Icon } from '@iconify/vue'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { ConfigModel, ViewDataModel } from '@/views/traffic/dynamicConfig/model/ConfigModel'
+import RuleHistoryPanel from '../../_shared/RuleHistoryPanel.vue'
 
-let __ = PRIMARY_COLOR
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
-const {
-  appContext: {
-    config: { globalProperties }
-  }
-} = <ComponentInternalInstance>getCurrentInstance()
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 
 const route = useRoute()
 const router = useRouter()
+const pathId = computed(() => String(route.params?.pathId || ''))
 const isEdit = ref(route.params.isEdit === '1')
-
-const toClipboard = useClipboard().toClipboard
-
-function copyIt(v: string) {
-  message.success(globalProperties.$t('messageDomain.success.copy'))
-  toClipboard(v)
-}
+const isHistoryOpen = ref(false)
+const latestRecordedVersionNo = ref<number | undefined>(undefined)
 
 const formViewData: ViewDataModel = reactive(new ViewDataModel())
 
@@ -480,10 +506,10 @@ const paramRelation = [
 ]
 
 const descMatchesComputed = computed(() => {
-  return (config) => config.descMatches()
+  return (config: ConfigModel) => config.descMatches()
 })
 const descParametersComputed = computed(() => {
-  return (config) => config.descParameters()
+  return (config: ConfigModel) => config.descParameters()
 })
 
 const addConfig = () => {
@@ -499,7 +525,7 @@ const addConfig = () => {
 }
 
 const handleChange = (index: number, name: string, keys: string) => {
-  const config: ConfigModel = formViewData.config[index]
+  const config = formViewData.config[index] as any
   config[name] = config[name].filter((item: any) => {
     return config[keys].find((i: any) => {
       return i === item.key
@@ -526,12 +552,10 @@ function transApiData(data: any) {
   }
 }
 
-const hasUnsavedChanges = ref(true)
-
 onMounted(async () => {
   await initConfig()
 })
-const delConfig = (idx) => {
+const delConfig = (idx: number) => {
   Modal.confirm({
     title: '确认删除该配置么？',
     onOk() {
@@ -556,8 +580,8 @@ async function initConfig() {
   if (TAB_STATE.dynamicConfigForm?.data) {
     formViewData.fromData(TAB_STATE.dynamicConfigForm.data)
   } else {
-    if (route.params?.pathId !== '_tmp') {
-      const res = await getConfiguratorDetail({ name: route.params?.pathId })
+    if (pathId.value !== '_tmp') {
+      const res = await getConfiguratorDetail({ name: pathId.value })
       transApiData(res.data)
     } else {
       formViewData.basicInfo.ruleName = '_tmp'
@@ -576,27 +600,20 @@ async function saveConfig() {
   try {
     let data = formViewEdit.toApiInput(true)
     if (formViewData.isAdd === true) {
-      addConfiguratorDetail({ name: formViewEdit.basicInfo.key + '.configurators' }, data)
-        .then((res) => {
-          TAB_STATE.dynamicConfigForm.data = null
-          nextTick(() => {
-            router.replace('/traffic/dynamicConfig')
-            message.success('config add success')
-          })
-        })
-        .catch((e) => {
-          message.error('添加失败： ' + e.msg)
-        })
+      await addConfiguratorDetail({ name: formViewEdit.basicInfo.key + '.configurators' }, data)
+      TAB_STATE.dynamicConfigForm.data = null
+      nextTick(() => {
+        router.replace('/traffic/dynamicConfig')
+        message.success('config add success')
+      })
       return
     }
-    await saveConfiguratorDetail({ name: route.params?.pathId }, data)
+    await saveConfiguratorDetail({ name: pathId.value }, data)
     message.success('config save success')
-    // 延迟 2 秒后再获取数据，确保数据库已更新
-    await new Promise((resolve) => setTimeout(resolve, 2000))
     TAB_STATE.dynamicConfigForm.data = null
     await initConfig()
-  } catch (e) {
-    message.error(formViewEdit.errorMsg.join(';'))
+  } catch (e: any) {
+    message.error(formViewEdit.errorMsg.join(';') || e?.message || String(e))
     console.error(e)
   } finally {
     loading.value = false

@@ -33,6 +33,7 @@ import (
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
+	"github.com/apache/dubbo-admin/pkg/core/versioning"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -159,6 +160,10 @@ func (c *toolTestContext) AppContext() context.Context {
 }
 
 func (c *toolTestContext) LockManager() lock.Lock {
+	return nil
+}
+
+func (c *toolTestContext) RuleVersioning() *versioning.Service {
 	return nil
 }
 

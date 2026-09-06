@@ -28,6 +28,14 @@ function randomString(min: number, max: number): string {
   return Array.from({ length: len }, () => String.fromCharCode(97 + randomInt(0, 25))).join('')
 }
 
+const decodeRuleName = (raw: string) => {
+  try {
+    return decodeURIComponent(raw)
+  } catch {
+    return raw
+  }
+}
+
 export const dynamicConfigHandlers: HttpHandler[] = [
   http.get(`${base}/configurator/search`, () => {
     const total = randomInt(8, 1000)
@@ -45,7 +53,7 @@ export const dynamicConfigHandlers: HttpHandler[] = [
 
   http.get(`${base}/configurator/:ruleName`, ({ params }) => {
     const detail: ConfiguratorDetail = {
-      name: params.ruleName as string,
+      name: decodeRuleName(params.ruleName as string),
       configs: [{ side: 'provider', timeout: 3000, retries: 2, loadbalance: 'roundrobin' }]
     }
     return success(detail)
