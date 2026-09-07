@@ -1,0 +1,56 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto3";
+
+package dubbo.mesh.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
+
+import "google/protobuf/timestamp.proto";
+
+// RuleVersion is a traffic-rule version entry. Entries are immutable after
+// creation. Rollback appends a new RuleVersion, while retention may delete the
+// oldest entries.
+message RuleVersion {
+  // Parent rule information
+  string parent_rule_kind = 1;      // e.g., "ConditionRoute"
+  string parent_rule_mesh = 2;      // Mesh name
+  string parent_rule_name = 3;      // Rule name
+
+  // Version metadata
+  int64 version_no = 4;             // Sequential version number (1, 2, 3...)
+  string content_hash = 5;          // SHA256 of normalized spec JSON
+
+  // Spec snapshot
+  string spec_json = 6;             // JSON-serialized rule spec at this version
+
+  // Mutation context
+  string operation = 7;             // CREATE, UPDATE, DELETE
+  string source = 8;                // ADMIN, BOOTSTRAP, ROLLBACK
+  string author = 9;                // User or system identifier
+  string reason = 10;               // Change description
+
+  // rolled_back_from_version_no records the historical version whose snapshot was
+  // re-published to produce this version. It is audit metadata only and MUST NOT
+  // be used as a live-state pointer.
+  int64 rolled_back_from_version_no = 11;
+
+  // Timestamps
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp recorded_at = 13;
+}

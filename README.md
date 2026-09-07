@@ -13,7 +13,7 @@ The main code repositories of Dubbo Admin include:
 
 - [ui-vue3](./ui-vue3): Implements the **front-end interface** of Dubbo Admin.
 - **Dubbo Admin Console**: Implemented in the [app](./app) and [pkg](./pkg) directories.  
-  For more details, see the [app/README](https://github.com/apache/dubbo-admin/blob/develop/app/README.md).
+  For more details, see the [app directory](https://github.com/apache/dubbo-admin/tree/develop/app).
 
 
 ## Quick Start
@@ -26,11 +26,11 @@ Please refer to [RoadMap](https://github.com/apache/dubbo-admin/discussions/1300
 
 ### Admin UI
 - [Vue3](https://vuejs.org/) and [Vite](https://vite.dev/)
-- [ui-vue3/README.md](https://github.com/apache/dubbo-admin/ui-vue3/README.md) for more detail
+- [ui-vue3/README.md](https://github.com/apache/dubbo-admin/blob/develop/ui-vue3/README.md) for more detail
 
 ### Admin Server
 - Golang, Gin, Kubernetes
-- [docs/server-develop](https://github.com/apache/dubbo-admin/docs/server-develop/README.md) for more detail
+- [docs/server-develop](https://github.com/apache/dubbo-admin/blob/develop/docs/server-develop.md) for more detail
 
 ### Other Information 
 Refer to [CONTRIBUTING.md](https://github.com/apache/dubbo-admin/blob/develop/CONTRIBUTING.md)

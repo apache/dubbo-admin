@@ -38,6 +38,13 @@ type ZKConfigEventSubscriber struct {
 	storeRouter store.Router
 }
 
+// sourceRegistryZookeeper labels rule events coming from ZooKeeper so rule
+// history can attribute upstream writes to author "system:zookeeper". Other
+// registry subscribers (Nacos, Apollo, ...) should emit the equivalent
+// SourceRegistryContextKey on their ResourceChangedEvents; until they do, rule
+// history falls back to "system:upstream" for those sources.
+const sourceRegistryZookeeper = "zookeeper"
+
 func NewZKConfigEventSubscriber(eventEmitter events.Emitter, storeRouter store.Router) *ZKConfigEventSubscriber {
 	return &ZKConfigEventSubscriber{
 		emitter:     eventEmitter,
@@ -127,13 +134,13 @@ func (z *ZKConfigEventSubscriber) processDelete(configRes *meshresource.ZKConfig
 	switch suffix {
 	case constants.TagRuleSuffix:
 		return processConfigDelete[*meshresource.TagRouteResource](
-			configRes, meshresource.ToTagRouteResource, z.storeRouter, z.emitter)
+			configRes, meshresource.TagRouteKind, z.storeRouter, z.emitter)
 	case constants.ConditionRuleSuffix:
 		return processConfigDelete[*meshresource.ConditionRouteResource](
-			configRes, meshresource.ToConditionRouteResource, z.storeRouter, z.emitter)
+			configRes, meshresource.ConditionRouteKind, z.storeRouter, z.emitter)
 	case constants.ConfiguratorsSuffix:
 		return processConfigDelete[*meshresource.DynamicConfigResource](
-			configRes, meshresource.ToDynamicConfigResource, z.storeRouter, z.emitter)
+			configRes, meshresource.DynamicConfigKind, z.storeRouter, z.emitter)
 	default:
 		return bizerror.New(bizerror.UnknownError,
 			fmt.Sprintf("unknown rule type in mesh %s, skipped processing, node: %s",
@@ -167,7 +174,11 @@ func processConfigUpsert[T coremodel.Resource](
 			logger.Errorf("add rule %s to store failed, cause: %s", newRuleRes.ResourceKey(), err.Error())
 			return err
 		}
+		recordConfigPlatformEvent(router, newRuleRes, "added")
 		emitter.Send(events.NewResourceChangedEvent(cache.Added, nil, newRuleRes))
+		emitter.Send(events.NewResourceChangedEventWithContext(cache.Added, nil, newRuleRes, map[string]string{
+			events.SourceRegistryContextKey: sourceRegistryZookeeper,
+		}))
 		return nil
 	}
 
@@ -184,39 +195,85 @@ func processConfigUpsert[T coremodel.Resource](
 		return bizerror.NewAssertionError(reflect.TypeOf(oldMetadataRes), oldRes)
 	}
 
+	emitter.Send(events.NewResourceChangedEventWithContext(cache.Updated, oldMetadataRes, newRuleRes, map[string]string{
+		events.SourceRegistryContextKey: sourceRegistryZookeeper,
+	}))
+	recordConfigPlatformEvent(router, newRuleRes, "updated")
 	emitter.Send(events.NewResourceChangedEvent(cache.Updated, oldMetadataRes, newRuleRes))
 	return nil
 }
 
 func processConfigDelete[T coremodel.Resource](
 	configRes *meshresource.ZKConfigResource,
-	toRuleRes meshresource.ToRuleResourceFunc,
+	ruleKind coremodel.ResourceKind,
 	router store.Router,
 	emitter events.Emitter) error {
-	ruleRes := toRuleRes(configRes.Mesh, configRes.Name, configRes.Spec.NodeData)
-	st, err := router.ResourceKindRoute(ruleRes.ResourceKind())
+	st, err := router.ResourceKindRoute(ruleKind)
 	if err != nil {
-		logger.Errorf("get %s store failed, cause: %s", ruleRes.ResourceKind(), err.Error())
+		logger.Errorf("get %s store failed, cause: %s", ruleKind, err.Error())
 		return err
 	}
-	oldRes, exists, err := st.GetByKey(ruleRes.ResourceKey())
+	resourceKey := coremodel.BuildResourceKey(configRes.Mesh, configRes.Name)
+	oldRes, exists, err := st.GetByKey(resourceKey)
 	if err != nil {
-		logger.Errorf("get rule %s from store failed, cause: %s", ruleRes.ResourceKey(), err.Error())
+		logger.Errorf("get rule %s from store failed, cause: %s", resourceKey, err.Error())
 		return err
 	}
 	if !exists {
-		logger.Infof("rule %s not exists in store, skipped deleting", ruleRes.ResourceKey())
+		logger.Infof("rule %s not exists in store, skipped deleting", resourceKey)
 		return nil
 	}
 	oldRuleRes, ok := oldRes.(T)
 	if !ok {
 		return bizerror.NewAssertionError(reflect.TypeOf(oldRuleRes), oldRes)
 	}
-	err = st.Delete(ruleRes)
+	err = st.Delete(oldRuleRes)
 	if err != nil {
-		logger.Errorf("delete rule %s from store failed, cause: %s", ruleRes.ResourceKey(), err.Error())
+		logger.Errorf("delete rule %s from store failed, cause: %s", resourceKey, err.Error())
 		return err
 	}
+	recordConfigPlatformEvent(router, oldRuleRes, "deleted")
 	emitter.Send(events.NewResourceChangedEvent(cache.Deleted, oldRuleRes, nil))
+	emitter.Send(events.NewResourceChangedEventWithContext(cache.Deleted, oldRuleRes, nil, map[string]string{
+		events.SourceRegistryContextKey: sourceRegistryZookeeper,
+	}))
 	return nil
+}
+
+func recordConfigPlatformEvent(router store.Router, res coremodel.Resource, action string) {
+	serviceName, category := extractRuleEventContext(res)
+	if serviceName == "" {
+		return
+	}
+	RecordRegistryEvent(router, RegistryEventInput{
+		Mesh:        res.ResourceMesh(),
+		Source:      "Zookeeper",
+		SourceType:  "zookeeper",
+		Category:    category,
+		Action:      action,
+		Message:     fmt.Sprintf("Zookeeper %s %s: %s", category, action, serviceName),
+		ServiceName: serviceName,
+	})
+}
+
+func extractRuleEventContext(res coremodel.Resource) (string, string) {
+	switch item := res.(type) {
+	case *meshresource.TagRouteResource:
+		if item.Spec == nil {
+			return "", ""
+		}
+		return item.Spec.Key, "tag-route"
+	case *meshresource.ConditionRouteResource:
+		if item.Spec == nil {
+			return "", ""
+		}
+		return item.Spec.Key, "condition-route"
+	case *meshresource.DynamicConfigResource:
+		if item.Spec == nil {
+			return "", ""
+		}
+		return item.Spec.Key, "dynamic-config"
+	default:
+		return "", ""
+	}
 }

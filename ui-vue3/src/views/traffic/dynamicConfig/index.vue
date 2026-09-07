@@ -73,11 +73,12 @@ import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { useRouter } from 'vue-router'
 import { PRIMARY_COLOR } from '@/base/constants'
 import { Icon } from '@iconify/vue'
+import { message } from 'ant-design-vue'
 
 const router = useRouter()
 
 let __null = PRIMARY_COLOR
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 TAB_STATE.dynamicConfigForm = reactive({})
 let columns = [
   {
@@ -92,7 +93,7 @@ let columns = [
     title: 'ruleGranularity',
     key: 'ruleGranularity',
     dataIndex: 'ruleGranularity',
-    render: (text, record) => (record.isService ? '服务' : '应用'),
+    render: (_text: any, record: any) => (record.isService ? '服务' : '应用'),
     width: 100
     // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
@@ -107,7 +108,7 @@ let columns = [
     title: 'enabled',
     key: 'enabled',
     dataIndex: 'enabled',
-    render: (text, record) => (record.enabled ? '是' : '否'),
+    render: (_text: any, record: any) => (record.enabled ? '是' : '否'),
     width: 120
     // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
@@ -143,8 +144,12 @@ onMounted(async () => {
 })
 
 const delDynamicConfig = async (record: any) => {
-  await delConfiguratorDetail({ name: record.ruleName })
-  await searchDomain.onSearch()
+  try {
+    await delConfiguratorDetail({ name: record.ruleName })
+    await searchDomain.onSearch()
+  } catch (e: any) {
+    message.error(e?.message || String(e))
+  }
 }
 
 provide(PROVIDE_INJECT_KEY.SEARCH_DOMAIN, searchDomain)

@@ -16,11 +16,68 @@
 -->
 
 <template>
-  <div>event todo</div>
+  <EventTimeline
+    :events="eventList"
+    :loading="loading"
+    :loadingMore="loadingMore"
+    :hasMore="hasMore"
+    @loadMore="loadEvents()"
+  />
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
-</script>
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { useMeshStore } from '@/stores/mesh'
+import { listInstanceEvent } from '@/api/service/instance'
+import EventTimeline from '@/components/EventTimeline.vue'
+import type { EventItem } from '@/types/api'
 
-<style lang="less" scoped></style>
+const route = useRoute()
+const meshStore = useMeshStore()
+const defaultPageSize = 20
+
+const eventList = ref<EventItem[]>([])
+const loading = ref(false)
+const loadingMore = ref(false)
+const hasMore = ref(false)
+const pageOffset = ref(0)
+
+const loadEvents = async (reset = false) => {
+  if (reset) {
+    loading.value = true
+  } else if (loading.value || loadingMore.value || !hasMore.value) {
+    return
+  } else {
+    loadingMore.value = true
+  }
+  try {
+    const instanceName = (route.params.name as string) || ''
+    const ip = (route.params.pathId as string) || ''
+    const mesh = meshStore.mesh || 'default'
+    const currentOffset = reset ? 0 : pageOffset.value
+    const res = await listInstanceEvent({
+      instanceName,
+      ip,
+      mesh,
+      pageOffset: currentOffset,
+      pageSize: defaultPageSize
+    })
+    const list = res?.data?.list || []
+    const total = res?.data?.total || 0
+    eventList.value = reset ? list : [...eventList.value, ...list]
+    pageOffset.value = currentOffset + list.length
+    hasMore.value = pageOffset.value < total && list.length > 0
+  } finally {
+    loading.value = false
+    loadingMore.value = false
+  }
+}
+
+onMounted(async () => {
+  pageOffset.value = 0
+  eventList.value = []
+  hasMore.value = true
+  await loadEvents(true)
+})
+</script>

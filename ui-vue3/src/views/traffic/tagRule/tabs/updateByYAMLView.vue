@@ -80,19 +80,18 @@
 <script setup lang="ts">
 import MonacoEditor from '@/components/editor/MonacoEditor.vue'
 import { DoubleLeftOutlined, DoubleRightOutlined } from '@ant-design/icons-vue'
-import { inject, onMounted, reactive, ref } from 'vue'
+import { inject, onMounted, ref } from 'vue'
 import { getTagRuleDetailAPI, updateTagRuleAPI } from '@/api/service/traffic'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import yaml from 'js-yaml'
 import { isNil } from 'lodash'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { message } from 'ant-design-vue'
 import { HTTP_STATUS } from '@/base/http/constants'
 
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 
 const route = useRoute()
-const router = useRouter()
 const isReadonly = ref(false)
 
 const isDrawerOpened = ref(false)
@@ -100,18 +99,26 @@ const loading = ref(false)
 
 const sliderSpan = ref(8)
 
-onMounted(() => {
+onMounted(async () => {
   if (!isNil(TAB_STATE.tagRule)) {
     const data = TAB_STATE.tagRule
     YAMLValue.value = yaml.dump(data)
   } else {
     YAMLValue.value = ``
-    getTagRuleDetail()
+    await getTagRuleDetail()
   }
 })
 
-const changeEditor = (val) => {
+const changeEditor = () => {
   TAB_STATE.tagRule = yaml.load(YAMLValue.value)
+}
+
+const parseYAMLObject = (): Record<string, any> => {
+  const data = yaml.load(YAMLValue.value)
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('YAML content must be an object')
+  }
+  return data
 }
 
 const YAMLValue = ref(
@@ -128,7 +135,7 @@ const YAMLValue = ref(
 )
 
 async function getTagRuleDetail() {
-  let res = await getTagRuleDetailAPI(<string>route.params?.ruleName)
+  let res = await getTagRuleDetailAPI(route.params?.ruleName as string)
   if (res?.code === HTTP_STATUS.SUCCESS) {
     YAMLValue.value = yaml.dump(res?.data)
   }
@@ -137,15 +144,18 @@ async function getTagRuleDetail() {
 const updateTagRule = async () => {
   loading.value = true
   try {
-    const data = yaml.load(YAMLValue.value)
-    const res = await updateTagRuleAPI(<string>route.params?.ruleName, data)
+    const data = parseYAMLObject()
+    const res = await updateTagRuleAPI(route.params?.ruleName as string, data)
     if (res.code === HTTP_STATUS.SUCCESS) {
       message.success('update success')
-      // 延迟 2 秒后再获取数据，确保数据库已更新
-      await new Promise((resolve) => setTimeout(resolve, 2000))
       TAB_STATE.tagRule = null
       await getTagRuleDetail()
     }
+  } catch (e: any) {
+    if (e instanceof Error) {
+      message.error(e.message)
+    }
+    console.error(e)
   } finally {
     loading.value = false
   }

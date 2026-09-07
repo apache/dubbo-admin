@@ -181,7 +181,8 @@ export const createEventListContribution = (events: unknown): AIContextContribut
     return sanitizeContextValue(
       {
         type: item.type,
-        description: item.description ?? item.desc,
+        description: item.description ?? item.desc ?? item.message,
+        source: item.source,
         status: item.status,
         time: item.time ?? item.timestamp
       },

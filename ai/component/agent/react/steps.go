@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"dubbo-admin-ai/component/agent"
+	"dubbo-admin-ai/component/hooks"
 	"dubbo-admin-ai/component/memory"
 	toolEngine "dubbo-admin-ai/component/tools/engine"
 	"dubbo-admin-ai/runtime"
@@ -47,7 +48,7 @@ const fallbackAnswer = "抱歉，我暂时无法生成回答，请稍后再试�
 //
 // run streams the answer itself and returns the interaction's accumulated token
 // usage; the caller emits the final usage marker and closes the channels.
-func (ra *ReActAgent) run(ctx context.Context, chans *agent.Channels) (*ai.GenerationUsage, error) {
+func (ra *ReActAgent) run(ctx context.Context, chans *agent.Channels, s *interactionTrace) (*ai.GenerationUsage, error) {
 	history, sessionID, err := historyFromCtx(ctx)
 	if err != nil {
 		return nil, err
@@ -56,58 +57,98 @@ func (ra *ReActAgent) run(ctx context.Context, chans *agent.Channels) (*ai.Gener
 		return nil, fmt.Errorf("history is empty")
 	}
 
-	usage := &ai.GenerationUsage{}
-	for i := 0; i < ra.maxIterations; i++ {
-		// The final iteration must answer: drop the tools so the model can only
-		// synthesize from what it has already gathered.
-		forceAnswer := i == ra.maxIterations-1
-		prompt := ra.actPrompt
-		if forceAnswer {
-			prompt = ra.answerPrompt
-		}
-
-		// Only the model call is bound by the per-call timeout; tool execution
-		// below runs on the original ctx so a slow reasoning step can't starve the
-		// tools it just asked for on a shared deadline.
-		lctx, cancel := withTimeout(ctx, ra.callTimeout)
-		resp, err := prompt.Execute(lctx, ai.WithMessages(history.WindowMemory(sessionID)...))
-		cancel()
-		if err != nil {
-			return usage, fmt.Errorf("failed to execute react prompt: %w", err)
-		}
-		schema.AccumulateUsage(usage, resp.Usage)
-
-		if !forceAnswer {
-			if reqs := resp.ToolRequests(); len(reqs) > 0 {
-				runtime.GetLogger().Debug("react: model requested tools", "count", len(reqs))
-				agent.EmitProgress(chans, "🔍 分析问题并调用工具中...\n")
-				if err := ra.execTools(ctx, history, sessionID, reqs); err != nil {
-					return usage, err
-				}
-				continue
-			}
-		}
-
-		// A tool-free response IS the final answer — but an empty response has
-		// nothing to stream. While iterations remain, retry rather than finish on
-		// silence; on the forced last iteration substitute an explicit fallback so
-		// the loop always terminates with a real reply.
-		answer := resp.Text()
-		if answer == "" {
-			if !forceAnswer {
-				runtime.GetLogger().Warn("react: empty model response, retrying", "iteration", i)
-				continue
-			}
-			runtime.GetLogger().Warn("react: empty forced answer, using fallback")
-			answer = fallbackAnswer
-		}
-
-		ra.finish(chans, history, sessionID, answer)
-		return usage, nil
+	if s.Usage == nil {
+		s.Usage = &ai.GenerationUsage{}
 	}
+	s.Session = sessionID
+	s.Model = ra.model
+	s.hookManager = ra.hookManager
+	for i := 0; i < ra.maxIterations; i++ {
+		s.Iteration = i + 1
+		done, err := ra.runIteration(ctx, chans, history, s, i == ra.maxIterations-1)
+		if err != nil || done {
+			return s.Usage, err
+		}
+	}
+	return s.Usage, nil
+}
 
-	// Unreachable: the final iteration always answers and returns above.
-	return usage, nil
+// runIteration makes one model call and executes its tools or streams its answer.
+func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, history *memory.HistoryMemory, s *interactionTrace, forceAnswer bool) (done bool, err error) {
+	iterationStartedAt := time.Now()
+	iterationCtx := emitHook(s.hookManager, ctx, hooks.State{
+		Event: hooks.EventIterationStart, InteractionID: s.InteractionID,
+		SessionID: s.Session, Iteration: s.Iteration, StartedAt: iterationStartedAt,
+	})
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("iteration %d panicked: %v", s.Iteration, recovered)
+			emitIterationEnd(s, iterationCtx, iterationStartedAt, err)
+			panic(recovered)
+		}
+		emitIterationEnd(s, iterationCtx, iterationStartedAt, err)
+	}()
+
+	prompt := ra.actPrompt
+	s.Stage = "reasonAct"
+	if forceAnswer {
+		prompt = ra.answerPrompt
+		s.Stage = "answer"
+	}
+	stageStartedAt := time.Now()
+	ctx = emitHook(s.hookManager, iterationCtx, hooks.State{
+		Event: hooks.EventStageStart, InteractionID: s.InteractionID,
+		SessionID: s.Session, Iteration: s.Iteration, Stage: s.Stage,
+		Model: s.Model, StartedAt: stageStartedAt,
+	})
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("stage %s panicked: %v", s.Stage, recovered)
+			emitStageEnd(s, ctx, stageStartedAt, err)
+			panic(recovered)
+		}
+		emitStageEnd(s, ctx, stageStartedAt, err)
+	}()
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	messages, err := injectCurrentPageContext(ctx, history.WindowMemory(s.Session))
+	if err != nil {
+		return false, err
+	}
+	// Model and tool deadlines are independent; cancellation still propagates.
+	resp, err := func() (*ai.ModelResponse, error) {
+		lctx, cancel := withTimeout(ctx, ra.callTimeout)
+		defer cancel()
+		return executeModelCall(lctx, s, prompt, messages, func(resp *ai.ModelResponse, err error) {
+			if err == nil && forceAnswer && resp.Text() == "" {
+				s.FallbackUsed = true
+				s.FallbackReason = hooks.FallbackReasonEmptyResponse
+			}
+		}, ai.WithMessages(messages...))
+	}()
+	if err != nil {
+		return false, fmt.Errorf("failed to execute react prompt: %w", err)
+	}
+	schema.AccumulateUsage(s.Usage, resp.Usage)
+	if !forceAnswer {
+		if reqs := resp.ToolRequests(); len(reqs) > 0 {
+			runtime.GetLogger().Debug("react: model requested tools", "count", len(reqs))
+			agent.EmitProgress(chans, "🔍 分析问题并调用工具中...\n")
+			return false, ra.execTools(ctx, history, s, reqs)
+		}
+	}
+	answer := resp.Text()
+	if answer == "" {
+		if !forceAnswer {
+			runtime.GetLogger().Warn("react: empty model response, retrying", "iteration", s.Iteration)
+			return false, nil
+		}
+		runtime.GetLogger().Warn("react: empty forced answer, using fallback")
+		answer = fallbackAnswer
+	}
+	ra.finish(chans, history, s.Session, answer)
+	return true, nil
 }
 
 // execTools runs every requested tool under its own timeout and records the
@@ -115,19 +156,22 @@ func (ra *ReActAgent) run(ctx context.Context, chans *agent.Channels) (*ai.Gener
 // A failed tool degrades (its error is recorded as the tool's output) rather
 // than aborting the interaction, so the model can still answer from whatever
 // other tools returned.
-func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemory, sessionID string, reqs []*ai.ToolRequest) error {
+func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemory, s *interactionTrace, reqs []*ai.ToolRequest) error {
 	var parts []*ai.Part
 	for _, req := range reqs {
-		tctx, cancel := withTimeout(ctx, ra.toolTimeouts.For(req.Name))
-		output, err := toolEngine.Call(tctx, ra.registry, req.Name, req.Input)
-		cancel()
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		output, err := func() (toolOutput toolEngine.ToolOutput, callErr error) {
+			tctx, cancel := withTimeout(ctx, ra.toolTimeouts.For(req.Name))
+			defer cancel()
+			return ra.executeToolCall(tctx, s, req)
+		}()
 		if err != nil {
-			runtime.GetLogger().Warn("tool call failed, continuing with degraded context",
-				"tool", req.Name, "error", err)
-			output = toolEngine.ToolOutput{
-				ToolName: req.Name,
-				Summary:  fmt.Sprintf("tool %q failed: %v", req.Name, err),
-			}
+			s.Degraded = true
+		}
+		if err := ctx.Err(); err != nil {
+			return err
 		}
 		outputJSON, err := json.Marshal(output)
 		if err != nil {
@@ -138,7 +182,7 @@ func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemo
 	runtime.GetLogger().Debug("react: recorded tool results", "count", len(parts))
 	// ai.RoleTool messages are ignored by ai.WithMessages, so tool results are
 	// recorded as a model message.
-	history.AddHistory(sessionID, ai.NewMessage(ai.RoleModel, nil, parts...))
+	history.AddHistory(s.Session, ai.NewMessage(ai.RoleModel, nil, parts...))
 	return nil
 }
 

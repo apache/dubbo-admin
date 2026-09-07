@@ -43,7 +43,16 @@ If you're using GoLand, you can run it locally by following steps:
 2. Fill the block with the config that screenshot shows below:
 ![ide_configuration.png](./static/images/ide-config.png)
 3. Modify the config file(app/dubbo-admin/dubbo-admin.yaml), make sure that the discovery, engine, store is configured.
+   Traffic-rule version history records RuleVersion audit entries for history, diff, and rollback material. Supported governance rule mutations fail closed if the version ledger is unavailable or cannot record the mutation.
 4. Run the application, you can open the browser and visit localhost:8888/admin if everything works.
+
+### Traffic-rule versioning notes
+
+Traffic-rule versioning is always enabled for supported governance rule mutations. It uses the existing `RuleVersion` resource store to create a baseline/import entry for existing `ConditionRoute`, `TagRoute`, and `DynamicConfig` rules that have no history yet. Bootstrap is not reconciliation and does not record external registry changes after history exists.
+
+Version entries are immutable after creation. Create, update, delete, and rollback first record the corresponding ledger entry and then use the normal ResourceManager write path. If the version ledger cannot record the entry, the registry mutation is rejected. DELETE versions are absence markers kept for audit/history continuity and cannot be used as rollback targets. `maxVersionsPerRule` retention may physically delete the oldest entries, so this is a bounded audit history and rollback aid, not a permanent compliance audit log or source of truth for current rule state.
+
+The traffic-form field preservation fix stays with this versioning PR because version history smoke tests depend on round-tripping `priority`, `force`, and `configVersion` without losing fields. These notes document the review boundary instead of splitting the PR.
 
 
 ### Project catalog

@@ -25,12 +25,18 @@ export const searchInstances = (params: any): Promise<any> => {
   })
 }
 
-export const getInstanceDetail = (params: any): Promise<any> => {
+export const getInstanceDetail = (
+  params: any,
+  options?: {
+    silentError?: boolean
+  }
+): Promise<any> => {
   return request({
     url: '/instance/detail',
     method: 'get',
-    params
-  })
+    params,
+    silentError: options?.silentError
+  } as any)
 }
 
 export const getInstanceMetricsDashboard = (params: any): Promise<any> => {
@@ -108,6 +114,21 @@ export const getInstanceTrafficSwitchAPI = (instanceIP: string, appName: string)
  * @param appName
  * @param trafficDisable
  */
+export const listInstanceEvent = (params: {
+  instanceName?: string
+  ip?: string
+  appName?: string
+  mesh?: string
+  pageOffset?: number
+  pageSize?: number
+}): Promise<any> => {
+  return request({
+    url: '/instance/event',
+    method: 'get',
+    params
+  })
+}
+
 export const updateInstanceTrafficSwitchAPI = (
   instanceIP: string,
   appName: string,

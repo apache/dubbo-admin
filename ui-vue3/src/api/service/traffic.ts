@@ -17,6 +17,100 @@
 
 import request from '@/base/http/request'
 
+export type TrafficRuleKind = 'condition-rule' | 'tag-rule' | 'configurator'
+
+export interface RuleVersion {
+  ruleKind: string
+  mesh: string
+  resourceKey: string
+  ruleName: string
+  versionNo: number
+  contentHash: string
+  specJson: string
+  source: 'ADMIN' | 'UPSTREAM' | 'BOOTSTRAP' | 'ROLLBACK' | string
+  operation: 'CREATE' | 'UPDATE' | 'DELETE' | string
+  author: string
+  reason?: string
+  rolledBackFromVersionNo?: number
+  createdAt: string
+  recordedAt?: string
+  isLatestRecorded: boolean
+}
+
+export interface RuleVersionList {
+  items: RuleVersion[]
+  total: number
+  latestRecordedVersionNo?: number
+  latestRecordedDeleted?: boolean
+}
+
+export interface RuleVersionDiffSide {
+  versionNo: number
+  specJson: string
+}
+
+export interface RuleVersionDiff {
+  left: RuleVersionDiffSide
+  right: RuleVersionDiffSide
+}
+
+export interface RollbackRuleVersionResult {
+  rolledBackFromVersionNo: number
+  versionNo: number
+  source: 'ROLLBACK' | string
+}
+
+const ruleNameForPath = (kind: TrafficRuleKind, ruleName: string): string => {
+  return kind === 'configurator' ? encodeURIComponent(ruleName) : ruleName
+}
+
+export const listRuleVersionsAPI = (
+  kind: TrafficRuleKind,
+  ruleName: string
+): Promise<{ code: string; data: RuleVersionList }> => {
+  return request({
+    url: `/${kind}/${ruleNameForPath(kind, ruleName)}/versions`,
+    method: 'get'
+  })
+}
+
+export const getRuleVersionAPI = (
+  kind: TrafficRuleKind,
+  ruleName: string,
+  versionNo: number
+): Promise<{ code: string; data: RuleVersion }> => {
+  return request({
+    url: `/${kind}/${ruleNameForPath(kind, ruleName)}/versions/${versionNo}`,
+    method: 'get'
+  })
+}
+
+export const diffRuleVersionAPI = (
+  kind: TrafficRuleKind,
+  ruleName: string,
+  versionNo: number,
+  against: 'current' | 'previous' | number = 'current'
+): Promise<{ code: string; data: RuleVersionDiff }> => {
+  return request({
+    url: `/${kind}/${ruleNameForPath(kind, ruleName)}/versions/${versionNo}/diff`,
+    method: 'get',
+    params: { against }
+  })
+}
+
+export const rollbackRuleVersionAPI = (
+  kind: TrafficRuleKind,
+  ruleName: string,
+  versionNo: number,
+  reason: string
+): Promise<{ code: string; data: RollbackRuleVersionResult }> => {
+  return request({
+    url: `/${kind}/${ruleNameForPath(kind, ruleName)}/versions/${versionNo}/rollback`,
+    method: 'post',
+    data: { reason }
+  })
+}
+
 export const searchRoutingRule = (params: any): Promise<any> => {
   return request({
     url: '/condition-rule/search',
@@ -149,5 +243,3 @@ export const delConfiguratorDetail = (params: any): Promise<any> => {
     method: 'delete'
   })
 }
-
-// TODO Perform front-end and back-end joint debugging

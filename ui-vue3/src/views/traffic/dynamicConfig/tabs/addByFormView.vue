@@ -243,7 +243,7 @@ import type { ComponentInternalInstance } from 'vue'
 import { getCurrentInstance, nextTick, onMounted, reactive, ref } from 'vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import useClipboard from 'vue-clipboard3'
-import { FormInstance, message, Modal } from 'ant-design-vue'
+import { type FormInstance, message, Modal } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
 import { addConfiguratorDetail, saveConfiguratorDetail } from '@/api/service/traffic'
 import gsap from 'gsap'
@@ -323,7 +323,7 @@ const sideOptions = [
   }
 ]
 const baseInfoRef = ref<FormInstance>()
-const delConfig = (idx) => {
+const delConfig = (idx: number) => {
   Modal.confirm({
     title: '确认删除该配置么？',
     onOk() {
@@ -372,7 +372,7 @@ const handleChange = (index: number, name: string, keys: string) => {
 
 function transApiData(data: any) {
   if (data) {
-    formViewData.basicInfo.configVerison = data.configVerison
+    formViewData.basicInfo.configVersion = data.configVersion
     formViewData.basicInfo.scope = data.scope
     formViewData.basicInfo.key = data.key
     formViewData.basicInfo.enabled = data.enabled

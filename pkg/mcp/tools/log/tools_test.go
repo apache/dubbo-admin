@@ -30,6 +30,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/console/counter"
 	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/apache/dubbo-admin/pkg/core/manager"
+	"github.com/apache/dubbo-admin/pkg/core/versioning"
 )
 
 func TestLogToolPropertiesAreAvailable(t *testing.T) {
@@ -436,5 +437,9 @@ func (c *logToolTestContext) AppContext() context.Context {
 }
 
 func (c *logToolTestContext) LockManager() lock.Lock {
+	return nil
+}
+
+func (c *logToolTestContext) RuleVersioning() *versioning.Service {
 	return nil
 }
