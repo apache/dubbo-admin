@@ -55,11 +55,6 @@ type TracingSpec struct {
 	CaptureContent string  `yaml:"capture_content"`
 }
 
-type Spec struct {
-	Logging LoggingSpec `yaml:"logging"`
-	Tracing TracingSpec `yaml:"tracing"`
-}
-
 type Component struct {
 	instanceName string
 	spec         Spec
@@ -86,21 +81,23 @@ func (c *Component) Name() string {
 func (c *Component) SetName(name string) { c.instanceName = name }
 
 func (c *Component) Validate() error {
-	if !c.spec.Tracing.Enabled {
-		return nil
-	}
-	if c.spec.Tracing.ServiceName == "" {
+	_, err := c.spec.normalizedHooks()
+	return err
+}
+
+func (s TracingSpec) validate() error {
+	if s.ServiceName == "" {
 		return fmt.Errorf("tracing service_name is required")
 	}
-	if c.spec.Tracing.SampleRatio < 0 || c.spec.Tracing.SampleRatio > 1 {
+	if s.SampleRatio < 0 || s.SampleRatio > 1 {
 		return fmt.Errorf("tracing sample_ratio must be between 0 and 1")
 	}
-	switch c.spec.Tracing.exportProtocol() {
+	switch s.exportProtocol() {
 	case ProtocolGRPC, ProtocolHTTP:
 	default:
 		return fmt.Errorf("tracing protocol must be %q or %q", ProtocolGRPC, ProtocolHTTP)
 	}
-	switch c.spec.Tracing.CaptureContent {
+	switch s.CaptureContent {
 	case CaptureNone, CaptureTruncated, CaptureFull:
 		return nil
 	default:
@@ -112,40 +109,53 @@ func (c *Component) Init(rt *runtime.Runtime) error {
 	if rt == nil {
 		return fmt.Errorf("runtime is required")
 	}
+	entries, err := c.spec.normalizedHooks()
+	if err != nil {
+		return err
+	}
 	c.manager = NewManager(rt.GetLogger())
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		propagation.TraceContext{},
-		propagation.Baggage{},
+		propagation.TraceContext{}, propagation.Baggage{},
 	))
-	if c.spec.Logging.Enabled {
-		if err := c.manager.Register(Registration{
-			Events: AllEvents(),
-			Tools:  []string{AllTools},
-			Hook:   NewLoggingHook(rt.GetLogger()),
-		}); err != nil {
-			return fmt.Errorf("register logging hook: %w", err)
+	for _, entry := range entries {
+		if !entry.enabled {
+			continue
+		}
+		switch entry.kind {
+		case "logging":
+			if err := c.manager.Register(Registration{
+				Events: entry.events, Tools: entry.tools,
+				Hook: newLoggingHook(rt.GetLogger().With("hook", entry.name), entry.level),
+			}); err != nil {
+				return fmt.Errorf("register logging hook %q: %w", entry.name, err)
+			}
+		case "tracing":
+			if err := c.initTracing(rt, entry.tracing); err != nil {
+				return fmt.Errorf("register tracing hook %q: %w", entry.name, err)
+			}
 		}
 	}
-	if c.spec.Tracing.Enabled {
-		exporter, err := newTraceExporter(rt.GetContext(), c.spec.Tracing.exportProtocol())
-		if err != nil {
-			return fmt.Errorf("create OTLP trace exporter: %w", err)
-		}
-		res := resource.NewSchemaless(attribute.String("service.name", c.spec.Tracing.ServiceName))
-		c.provider = sdktrace.NewTracerProvider(
-			sdktrace.WithBatcher(exporter),
-			sdktrace.WithResource(res),
-			sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(c.spec.Tracing.SampleRatio))),
-		)
-		otel.SetTracerProvider(c.provider)
-		registration := NewTracingRegistration(
-			c.provider.Tracer("dubbo-admin-ai/hooks"),
-			c.spec.Tracing.CaptureContent,
-		)
-		if err := c.manager.Register(registration); err != nil {
-			return fmt.Errorf("register tracing hook: %w", err)
-		}
+	return nil
+}
+
+func (c *Component) initTracing(rt *runtime.Runtime, spec TracingSpec) error {
+	exporter, err := newTraceExporter(rt.GetContext(), spec.exportProtocol())
+	if err != nil {
+		return fmt.Errorf("create OTLP trace exporter: %w", err)
 	}
+	res := resource.NewSchemaless(attribute.String("service.name", spec.ServiceName))
+	provider := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exporter), sdktrace.WithResource(res),
+		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(spec.SampleRatio))),
+	)
+	registration := NewTracingRegistration(provider.Tracer("dubbo-admin-ai/hooks"), spec.CaptureContent)
+	if err := c.manager.Register(registration); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		return errors.Join(err, provider.Shutdown(ctx))
+	}
+	c.provider = provider
+	otel.SetTracerProvider(provider)
 	return nil
 }
 
@@ -199,6 +209,10 @@ func (c *Component) GetActiveManager() *Manager {
 }
 
 func NewLoggingHook(logger *slog.Logger) Hook {
+	return newLoggingHook(logger, slog.LevelInfo)
+}
+
+func newLoggingHook(logger *slog.Logger, level slog.Level) Hook {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -221,7 +235,7 @@ func NewLoggingHook(logger *slog.Logger) Hook {
 		if state.Error != "" {
 			attrs = append(attrs, "error", state.Error)
 		}
-		logger.InfoContext(ctx, "Agent hook event", attrs...)
+		logger.Log(ctx, level, "Agent hook event", attrs...)
 		return ctx
 	}
 }

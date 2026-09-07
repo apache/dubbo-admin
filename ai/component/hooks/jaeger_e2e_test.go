@@ -19,17 +19,21 @@ package hooks
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"dubbo-admin-ai/config"
+	"dubbo-admin-ai/runtime"
+
+	"go.opentelemetry.io/otel"
 )
 
 func TestJaegerOTLPEndToEnd(t *testing.T) {
@@ -39,20 +43,62 @@ func TestJaegerOTLPEndToEnd(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	exporter, err := newTraceExporter(ctx, ProtocolGRPC)
+	protocol := os.Getenv("DUBBO_ADMIN_OTEL_E2E_PROTOCOL")
+	if protocol == "" {
+		protocol = ProtocolGRPC
+	}
+	var logs strings.Builder
+	oldLogger := slog.Default()
+	oldProvider, oldPropagator := otel.GetTracerProvider(), otel.GetTextMapPropagator()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+	t.Cleanup(func() {
+		slog.SetDefault(oldLogger)
+		otel.SetTracerProvider(oldProvider)
+		otel.SetTextMapPropagator(oldPropagator)
+	})
+	dir := t.TempDir()
+	schemaDir, err := filepath.Abs("../../schema/json")
 	if err != nil {
-		t.Fatalf("create exporter: %v", err)
+		t.Fatal(err)
 	}
-	provider := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exporter),
-		sdktrace.WithResource(resource.NewSchemaless(attribute.String("service.name", "dubbo-admin-ai-e2e"))),
-	)
-	defer func() { _ = provider.Shutdown(context.Background()) }()
-
-	manager := testManager()
-	if err := manager.Register(NewTracingRegistration(provider.Tracer("dubbo-admin-ai/hooks/e2e"), CaptureNone)); err != nil {
-		t.Fatalf("register tracing hook: %v", err)
+	t.Setenv("SCHEMA_DIR", schemaDir)
+	configYAML := fmt.Sprintf(`type: hooks
+spec:
+  hooks:
+    - name: selected-tool
+      type: logging
+      events: [tool_call.end]
+      tools: [lookup_service]
+      config: {level: warn}
+    - name: disabled-log
+      type: logging
+      enabled: false
+    - name: jaeger
+      type: tracing
+      config:
+        protocol: %q
+        service_name: dubbo-admin-ai-e2e
+`, protocol)
+	if err := os.WriteFile(filepath.Join(dir, "hooks.yaml"), []byte(configYAML), 0600); err != nil {
+		t.Fatal(err)
 	}
+	loaded, err := config.NewLoader(filepath.Join(dir, "config.yaml")).LoadComponent("hooks.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := HookFactory(&loaded.Spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	component := raw.(*Component)
+	if err := component.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if err := component.Init(runtime.NewRuntime()); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = component.Stop() })
+	manager := component.GetActiveManager()
 
 	interaction := manager.Emit(context.Background(), State{
 		Event: EventInteractionStart, InteractionID: "jaeger-e2e", SessionID: "jaeger-session",
@@ -82,8 +128,13 @@ func TestJaegerOTLPEndToEnd(t *testing.T) {
 	manager.Emit(interaction, State{
 		Event: EventInteractionEnd, InteractionID: "jaeger-e2e", SessionID: "jaeger-session",
 	})
-	if err := provider.ForceFlush(ctx); err != nil {
-		t.Fatalf("flush traces: %v", err)
+	// Shutdown must flush the actual batch exporter before querying Jaeger.
+	if err := component.Stop(); err != nil {
+		t.Fatalf("stop and flush traces: %v", err)
+	}
+	lines := strings.Split(strings.TrimSpace(logs.String()), "\n")
+	if len(lines) != 1 || !strings.Contains(lines[0], `"hook":"selected-tool"`) || !strings.Contains(lines[0], `"level":"WARN"`) {
+		t.Fatalf("unexpected configured logging output: %s", logs.String())
 	}
 
 	queryURL := strings.TrimRight(os.Getenv("JAEGER_QUERY_URL"), "/")
@@ -103,7 +154,8 @@ func TestJaegerOTLPEndToEnd(t *testing.T) {
 				}
 			}
 			if missing == "" {
-				t.Logf("verified Jaeger trace %s", traceID)
+				verifyJaegerSpanTree(t, body)
+				t.Logf("verified configured %s export, log filtering and shutdown flush; Jaeger trace %s", protocol, traceID)
 				return
 			}
 			queryErr = fmt.Errorf("trace is missing %q", missing)
@@ -112,6 +164,39 @@ func TestJaegerOTLPEndToEnd(t *testing.T) {
 			t.Fatalf("query Jaeger trace %s: %v", traceID, queryErr)
 		}
 		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+func verifyJaegerSpanTree(t *testing.T, body string) {
+	t.Helper()
+	var result struct {
+		Data []struct {
+			Spans []struct {
+				SpanID        string `json:"spanID"`
+				OperationName string `json:"operationName"`
+				References    []struct {
+					RefType string `json:"refType"`
+					SpanID  string `json:"spanID"`
+				} `json:"references"`
+			} `json:"spans"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(body), &result); err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Data) != 1 || len(result.Data[0].Spans) != 4 {
+		t.Fatalf("expected one trace with four spans: %s", body)
+	}
+	ids := make(map[string]string)
+	for _, span := range result.Data[0].Spans {
+		ids[span.OperationName] = span.SpanID
+	}
+	parents := map[string]string{"agent.stage reasonAct": "invoke_agent", "chat qwen-max": "agent.stage reasonAct", "execute_tool lookup_service": "agent.stage reasonAct"}
+	for _, span := range result.Data[0].Spans {
+		parent, child := parents[span.OperationName]
+		if child && (len(span.References) != 1 || span.References[0].RefType != "CHILD_OF" || span.References[0].SpanID != ids[parent]) {
+			t.Fatalf("wrong parent for %s: %+v", span.OperationName, span.References)
+		}
 	}
 }
 

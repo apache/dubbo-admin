@@ -4,59 +4,271 @@
   "title": "Hooks Component Config",
   "type": "object",
   "additionalProperties": false,
-  "required": ["type", "spec"],
+  "required": [
+    "type",
+    "spec"
+  ],
   "properties": {
     "type": {
       "const": "hooks"
     },
     "spec": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "logging": {
+      "oneOf": [
+        {
           "type": "object",
           "additionalProperties": false,
-          "default": {},
           "properties": {
-            "enabled": {
-              "type": "boolean",
-              "default": true
+            "logging": {
+              "type": "object",
+              "additionalProperties": false,
+              "default": {},
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": true
+                }
+              }
+            },
+            "tracing": {
+              "type": "object",
+              "additionalProperties": false,
+              "default": {},
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "protocol": {
+                  "type": "string",
+                  "enum": [
+                    "grpc",
+                    "http/protobuf"
+                  ],
+                  "default": "grpc"
+                },
+                "service_name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "default": "dubbo-admin-ai"
+                },
+                "sample_ratio": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "default": 1.0
+                },
+                "capture_content": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "truncated",
+                    "full"
+                  ],
+                  "default": "none"
+                }
+              }
             }
           }
         },
-        "tracing": {
+        {
           "type": "object",
           "additionalProperties": false,
-          "default": {},
+          "required": [
+            "hooks"
+          ],
           "properties": {
-            "enabled": {
-              "type": "boolean",
-              "default": false
-            },
-            "protocol": {
-              "type": "string",
-              "enum": ["grpc", "http/protobuf"],
-              "default": "grpc"
-            },
-            "service_name": {
-              "type": "string",
-              "minLength": 1,
-              "default": "dubbo-admin-ai"
-            },
-            "sample_ratio": {
-              "type": "number",
-              "minimum": 0,
-              "maximum": 1,
-              "default": 1.0
-            },
-            "capture_content": {
-              "type": "string",
-              "enum": ["none", "truncated", "full"],
-              "default": "none"
+            "hooks": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/registration"
+              }
             }
           }
         }
+      ]
+    }
+  },
+  "$defs": {
+    "event": {
+      "type": "string",
+      "enum": [
+        "interaction.start",
+        "interaction.error",
+        "interaction.cancel",
+        "interaction.degrade",
+        "interaction.end",
+        "iteration.start",
+        "iteration.end",
+        "stage.start",
+        "stage.error",
+        "stage.end",
+        "model_call.start",
+        "model_call.error",
+        "model_call.end",
+        "tool_call.start",
+        "tool_call.error",
+        "tool_call.end"
+      ]
+    },
+    "logging_config": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": [
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ],
+          "default": "info"
+        }
       }
+    },
+    "tracing_config": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "protocol": {
+          "type": "string",
+          "enum": [
+            "grpc",
+            "http/protobuf"
+          ],
+          "default": "grpc"
+        },
+        "service_name": {
+          "type": "string",
+          "minLength": 1,
+          "default": "dubbo-admin-ai"
+        },
+        "sample_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 1.0
+        },
+        "capture_content": {
+          "type": "string",
+          "enum": [
+            "none",
+            "truncated",
+            "full"
+          ],
+          "default": "none"
+        }
+      }
+    },
+    "registration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "logging",
+            "tracing"
+          ]
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "events": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "default": [
+            "interaction.start",
+            "interaction.error",
+            "interaction.cancel",
+            "interaction.degrade",
+            "interaction.end",
+            "iteration.start",
+            "iteration.end",
+            "stage.start",
+            "stage.error",
+            "stage.end",
+            "model_call.start",
+            "model_call.error",
+            "model_call.end",
+            "tool_call.start",
+            "tool_call.error",
+            "tool_call.end"
+          ],
+          "items": {
+            "$ref": "#/$defs/event"
+          }
+        },
+        "tools": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "default": [
+            "*"
+          ],
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        },
+        "config": {
+          "default": {},
+          "anyOf": [
+            {
+              "$ref": "#/$defs/logging_config"
+            },
+            {
+              "$ref": "#/$defs/tracing_config"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "logging"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "config": {
+                "$ref": "#/$defs/logging_config"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "tracing"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "config": {
+                "$ref": "#/$defs/tracing_config"
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }
