@@ -1,0 +1,63 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Example OAuth/OIDC configuration. Replace every placeholder before use.
+console:
+  port: 8888
+  ginMode: release
+  auth:
+    methods:
+      - password
+    user: admin
+    password: replace-with-admin-password
+    expirationTime: 3600
+    sessionSecret: replace-with-a-random-secret-at-least-32-bytes
+    sessionCookieSecure: true
+    providers:
+      github:
+        type: github
+        displayName: GitHub
+        clientId: replace-with-github-client-id
+        clientSecret: replace-with-github-client-secret
+        redirectUrl: https://admin.example.com/api/v1/auth/providers/github/callback
+        postLoginRedirectUrl: https://admin.example.com/admin/
+        scopes:
+          - read:user
+          - user:email
+      google:
+        type: oidc
+        displayName: Google
+        issuer: https://accounts.google.com
+        clientId: replace-with-google-client-id
+        clientSecret: replace-with-google-client-secret
+        redirectUrl: https://admin.example.com/api/v1/auth/providers/google/callback
+        postLoginRedirectUrl: https://admin.example.com/admin/
+        scopes:
+          - openid
+          - profile
+          - email
+
+store:
+  type: memory
+
+discovery:
+  - type: mock
+    id: mock
+    name: mockRegistry
+
+engine:
+  id: mock
+  name: mock
+  type: mock
