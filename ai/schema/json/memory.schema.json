@@ -13,6 +13,11 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "backend": {
+          "type": "string",
+          "enum": ["memory", "gorm"],
+          "default": "memory"
+        },
         "history_key": {
           "type": "string",
           "enum": ["chat_history", "system_memory", "core_memory"],
@@ -22,8 +27,46 @@
           "type": "integer",
           "minimum": 1,
           "default": 100
+        },
+        "database": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["driver", "dsn"],
+          "properties": {
+            "driver": {
+              "type": "string",
+              "enum": ["mysql", "postgres"]
+            },
+            "dsn": {
+              "type": "string",
+              "minLength": 1
+            },
+            "max_open_conns": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 100
+            },
+            "max_idle_conns": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 10
+            }
+          }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "backend": {"const": "gorm"}
+            },
+            "required": ["backend"]
+          },
+          "then": {
+            "required": ["database"]
+          }
+        }
+      ]
     }
   }
 }

@@ -25,8 +25,14 @@ This document defines required-field policy for configuration schemas.
 |---|---|---|
 | `type` | yes | Must be `memory`. |
 | `spec` | yes | Object. |
+| `spec.backend` | no | Default: `memory`; supported values: `memory`, `gorm`. |
 | `spec.history_key` | no | Default: `chat_history`. |
 | `spec.max_turns` | no | Default: `100`, must be `>= 1` when set. |
+| `spec.database` | conditional | Required when `spec.backend=gorm`. |
+| `spec.database.driver` | conditional | Required for Gorm; `mysql` or `postgres`. |
+| `spec.database.dsn` | conditional | Required for Gorm; non-empty string. |
+| `spec.database.max_open_conns` | no | Default: `100`, must be `>= 1`. |
+| `spec.database.max_idle_conns` | no | Default: `10`, must be `>= 1` and no greater than `max_open_conns`. |
 
 ## Models Component (`component/models/models.yaml`)
 

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"dubbo-admin-ai/component/agent/react"
+	"dubbo-admin-ai/component/memory"
 	"dubbo-admin-ai/component/server"
 	"dubbo-admin-ai/config"
 )
@@ -262,6 +263,23 @@ spec:
 				}
 			},
 		},
+		{
+			name:         "memory_gorm",
+			fileName:     "memory.yaml",
+			componentYML: "type: memory\nspec:\n  backend: gorm\n  database:\n    driver: mysql\n    dsn: test-dsn\n",
+			assertFn: func(t *testing.T, cfg *config.Config) {
+				var spec memory.MemorySpec
+				if err := cfg.Spec.Decode(&spec); err != nil {
+					t.Fatalf("decode memory spec: %v", err)
+				}
+				if spec.Backend != "gorm" || spec.Database == nil {
+					t.Fatalf("memory gorm config = %+v, want backend and database", spec)
+				}
+				if spec.Database.MaxOpenConns != 100 || spec.Database.MaxIdleConns != 10 {
+					t.Fatalf("database defaults = %+v, want 100/10", spec.Database)
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -277,6 +295,15 @@ spec:
 			tt.assertFn(t, cfg)
 		})
 	}
+}
+
+func TestLoader_MemoryGormRequiresDatabase(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("SCHEMA_DIR", repoSchemaDir(t))
+	writeFile(t, filepath.Join(dir, "memory.yaml"), "type: memory\nspec:\n  backend: gorm\n")
+	loader := config.NewLoader(filepath.Join(dir, "config.yaml"))
+	_, err := loader.LoadComponent("memory.yaml")
+	mustContain(t, err, "structural error")
 }
 
 func TestLoader_Component_ConditionalRequired(t *testing.T) {

@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package engine
 
 import (
@@ -5,6 +22,7 @@ import (
 	"dubbo-admin-ai/component/memory"
 	compRag "dubbo-admin-ai/component/rag"
 	"dubbo-admin-ai/runtime"
+	conversationstore "dubbo-admin-ai/store"
 	"fmt"
 
 	"github.com/firebase/genkit/go/ai"
@@ -91,8 +109,6 @@ type ToolManager interface {
 	ToolRefs() []ai.ToolRef
 }
 
-type ToolDefineFunc func(*runtime.Runtime) []ai.Tool
-
 type InternalToolManager struct {
 	registry *genkit.Genkit
 	tools    []ai.Tool
@@ -117,8 +133,13 @@ func NewInternalToolManager(rt *runtime.Runtime) (*InternalToolManager, error) {
 	if !ok {
 		return nil, fmt.Errorf("invalid memory component type")
 	}
-	if _, err := memComp.GetMemory(); err != nil {
-		return nil, fmt.Errorf("failed to get history from memory component: %w", err)
+	conversationStore, err := memComp.GetStore()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get conversation store: %w", err)
+	}
+	messageStore, ok := conversationStore.(conversationstore.MessageStore)
+	if !ok {
+		return nil, fmt.Errorf("conversation store does not implement MessageStore")
 	}
 
 	ragCompRaw, err := rt.GetComponent("rag")
@@ -134,13 +155,7 @@ func NewInternalToolManager(rt *runtime.Runtime) (*InternalToolManager, error) {
 		return nil, fmt.Errorf("rag system is not initialized")
 	}
 
-	toolDefiners := []ToolDefineFunc{
-		defineMemoryTools,
-	}
-	var tools []ai.Tool
-	for _, defineTools := range toolDefiners {
-		tools = append(tools, defineTools(rt)...)
-	}
+	tools := defineMemoryTools(rt, messageStore)
 	return &InternalToolManager{
 		registry: g,
 		tools:    tools,

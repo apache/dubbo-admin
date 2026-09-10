@@ -17,14 +17,85 @@
 
 package memory
 
+import (
+	"fmt"
+	"strings"
+)
+
+const (
+	DefaultBackend      = "memory"
+	DefaultMaxOpenConns = 100
+	DefaultMaxIdleConns = 10
+)
+
 type MemorySpec struct {
-	HistoryKey HistoryKey `yaml:"history_key"` // History key name
-	MaxTurns   int        `yaml:"max_turns"`   // Maximum conversation turns
+	Backend    string        `yaml:"backend"`
+	HistoryKey HistoryKey    `yaml:"history_key"` // History key name
+	MaxTurns   int           `yaml:"max_turns"`   // Maximum conversation turns
+	Database   *DatabaseSpec `yaml:"database"`
+}
+
+type DatabaseSpec struct {
+	Driver       string `yaml:"driver"`
+	DSN          string `yaml:"dsn"`
+	MaxOpenConns int    `yaml:"max_open_conns"`
+	MaxIdleConns int    `yaml:"max_idle_conns"`
 }
 
 func DefaultMemorySpec() *MemorySpec {
 	return &MemorySpec{
+		Backend:    DefaultBackend,
 		HistoryKey: ChatHistoryKey,
 		MaxTurns:   100,
+	}
+}
+
+func (s MemorySpec) Validate() error {
+	backend := strings.ToLower(strings.TrimSpace(s.Backend))
+	if backend == "" {
+		backend = DefaultBackend
+	}
+	if backend != "memory" && backend != "gorm" {
+		return fmt.Errorf("unsupported memory backend %q", s.Backend)
+	}
+	if s.MaxTurns <= 0 {
+		return fmt.Errorf("max_turns must be greater than 0")
+	}
+	if s.Database == nil {
+		if backend == "gorm" {
+			return fmt.Errorf("database is required for gorm backend")
+		}
+		return nil
+	}
+	if backend != "gorm" {
+		return nil
+	}
+
+	database := *s.Database
+	database.applyDefaults()
+	if strings.ToLower(strings.TrimSpace(database.Driver)) != "mysql" && strings.ToLower(strings.TrimSpace(database.Driver)) != "postgres" {
+		return fmt.Errorf("unsupported database driver %q", s.Database.Driver)
+	}
+	if strings.TrimSpace(database.DSN) == "" {
+		return fmt.Errorf("database dsn is required")
+	}
+	if database.MaxOpenConns <= 0 {
+		return fmt.Errorf("max_open_conns must be greater than 0")
+	}
+	if database.MaxIdleConns <= 0 {
+		return fmt.Errorf("max_idle_conns must be greater than 0")
+	}
+	if database.MaxIdleConns > database.MaxOpenConns {
+		return fmt.Errorf("max_idle_conns must not exceed max_open_conns")
+	}
+	return nil
+}
+
+func (d *DatabaseSpec) applyDefaults() {
+	if d.MaxOpenConns == 0 {
+		d.MaxOpenConns = DefaultMaxOpenConns
+	}
+	if d.MaxIdleConns == 0 {
+		d.MaxIdleConns = DefaultMaxIdleConns
 	}
 }

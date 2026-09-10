@@ -2,14 +2,18 @@ package toolstest
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	compMemory "dubbo-admin-ai/component/memory"
 	compRag "dubbo-admin-ai/component/rag"
 	toolEngine "dubbo-admin-ai/component/tools/engine"
 	"dubbo-admin-ai/runtime"
+	conversationstore "dubbo-admin-ai/store"
 
+	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
 )
 
@@ -77,5 +81,58 @@ func TestNewInternalToolManager_Success(t *testing.T) {
 	}
 	if len(mgr.ToolRefs()) == 0 {
 		t.Fatalf("expected non-empty tool refs")
+	}
+}
+
+func TestMemoryToolReadsInjectedStore(t *testing.T) {
+	rt := newRuntimeWithMemoryForEngine(t)
+	rt.RegisterComponent(&compRag.RAGComponent{Rag: &compRag.RAG{}})
+
+	memoryComponentRaw, err := rt.GetComponent("memory")
+	if err != nil {
+		t.Fatalf("GetComponent(memory) error = %v", err)
+	}
+	memoryComponent := memoryComponentRaw.(*compMemory.MemoryComponent)
+	store, err := memoryComponent.GetStore()
+	if err != nil {
+		t.Fatalf("GetStore() error = %v", err)
+	}
+	now := time.Now()
+	session := &conversationstore.Session{ID: "memory-tool-session", CreatedAt: now, UpdatedAt: now, Status: "active"}
+	if err := store.Create(context.Background(), session); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	turnID, err := store.BeginTurn(context.Background(), session.ID)
+	if err != nil {
+		t.Fatalf("BeginTurn() error = %v", err)
+	}
+	if err := store.AddHistoryToTurn(context.Background(), session.ID, turnID, ai.NewUserTextMessage("from shared store")); err != nil {
+		t.Fatalf("AddHistory() error = %v", err)
+	}
+
+	if _, err := toolEngine.NewInternalToolManager(rt); err != nil {
+		t.Fatalf("NewInternalToolManager() error = %v", err)
+	}
+	output, err := toolEngine.Call(context.Background(), rt.GetGenkitRegistry(), toolEngine.GetAllMemoryTool, map[string]any{
+		"session_id": session.ID,
+	})
+	if err != nil {
+		t.Fatalf("Call(memory tool) error = %v", err)
+	}
+	result, ok := output.Result.([]interface{})
+	if !ok || len(result) != 1 {
+		t.Fatalf("memory tool result = %#v, want shared-store message", output.Result)
+	}
+	message, ok := result[0].(map[string]interface{})
+	if !ok {
+		t.Fatalf("memory tool result = %#v, want shared-store message", output.Result)
+	}
+	content, ok := message["content"].([]interface{})
+	if !ok || len(content) != 1 {
+		t.Fatalf("memory tool content = %#v, want one content item", message["content"])
+	}
+	part, ok := content[0].(map[string]interface{})
+	if !ok || fmt.Sprint(part["text"]) != "from shared store" {
+		t.Fatalf("memory tool content = %#v, want shared-store message", content[0])
 	}
 }

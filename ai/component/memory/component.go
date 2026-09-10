@@ -19,19 +19,32 @@ package memory
 
 import (
 	"context"
-	"dubbo-admin-ai/runtime"
 	"fmt"
+	"strings"
+	"sync"
+
+	"dubbo-admin-ai/runtime"
+	conversationstore "dubbo-admin-ai/store"
+	gormstore "dubbo-admin-ai/store/gorm"
+	memorystore "dubbo-admin-ai/store/memory"
+	"gorm.io/gorm"
 )
 
-// MemoryComponent implements the memory component
-// TODO(memory, 2026-02-24): Inject unified memory interface to support different memory implementations
-// Current implementation uses HistoryMemory directly
+// MemoryComponent owns the single conversation Store shared by runtime
+// consumers. The legacy HistoryMemory accessors remain for compatibility, but
+// are initialized only when explicitly requested and are not a production data
+// source.
 type MemoryComponent struct {
 	instanceName string
+	spec         MemorySpec
 	historyKey   HistoryKey
 	maxTurns     int
+	legacyOnce   sync.Once
+	legacyErr    error
 	memoryCtx    context.Context
 	memory       *HistoryMemory
+	store        conversationstore.Store
+	gormStore    *gormstore.GormStore
 }
 
 func NewMemoryComponent(historyKey HistoryKey, maxTurns ...int) (runtime.Component, error) {
@@ -40,8 +53,36 @@ func NewMemoryComponent(historyKey HistoryKey, maxTurns ...int) (runtime.Compone
 		limit = maxTurns[0]
 	}
 	return &MemoryComponent{
+		spec: MemorySpec{
+			Backend:    DefaultBackend,
+			HistoryKey: historyKey,
+			MaxTurns:   limit,
+		},
 		historyKey: historyKey,
 		maxTurns:   limit,
+	}, nil
+}
+
+// NewMemoryComponentFromSpec creates a memory component from the complete
+// configuration decoded by the runtime factory.
+func NewMemoryComponentFromSpec(spec MemorySpec) (runtime.Component, error) {
+	spec.Backend = strings.ToLower(strings.TrimSpace(spec.Backend))
+	if spec.Backend == "" {
+		spec.Backend = DefaultBackend
+	}
+	if spec.HistoryKey == "" {
+		spec.HistoryKey = ChatHistoryKey
+	}
+	if spec.MaxTurns == 0 {
+		spec.MaxTurns = DefaultMemorySpec().MaxTurns
+	}
+	if spec.Database != nil {
+		spec.Database.applyDefaults()
+	}
+	return &MemoryComponent{
+		spec:       spec,
+		historyKey: spec.HistoryKey,
+		maxTurns:   spec.MaxTurns,
 	}, nil
 }
 
@@ -57,20 +98,48 @@ func (m *MemoryComponent) SetName(name string) {
 }
 
 func (m *MemoryComponent) Validate() error {
-	if m.maxTurns <= 0 {
-		return fmt.Errorf("max_turns must be greater than 0")
-	}
-	return nil
+	return m.spec.Validate()
 }
 
 func (m *MemoryComponent) Init(rt *runtime.Runtime) error {
-	m.memoryCtx = NewMemoryContext(m.historyKey)
-	history, err := GetHistoryMemory(m.memoryCtx, m.historyKey)
-	if err != nil {
-		return fmt.Errorf("failed to initialize history: %w", err)
+	backend := m.spec.Backend
+	if backend == "" {
+		backend = DefaultBackend
 	}
-	m.memory = history
-
+	switch backend {
+	case "memory":
+		m.store = memorystore.NewMemoryStore(m.maxTurns)
+	case "gorm":
+		if m.spec.Database == nil {
+			return fmt.Errorf("database is required for gorm backend")
+		}
+		db, err := gormstore.Open(m.spec.Database.Driver, m.spec.Database.DSN, &gorm.Config{})
+		if err != nil {
+			return fmt.Errorf("failed to open conversation database: %w", err)
+		}
+		sqlDB, err := db.DB()
+		if err != nil {
+			if closeDB, closeErr := db.DB(); closeErr == nil {
+				_ = closeDB.Close()
+			}
+			return fmt.Errorf("failed to access conversation database: %w", err)
+		}
+		sqlDB.SetMaxOpenConns(m.spec.Database.MaxOpenConns)
+		sqlDB.SetMaxIdleConns(m.spec.Database.MaxIdleConns)
+		gormStore, err := gormstore.NewGormStore(db, m.maxTurns)
+		if err != nil {
+			_ = sqlDB.Close()
+			return fmt.Errorf("failed to create gorm conversation store: %w", err)
+		}
+		if err := gormStore.Migrate(context.Background()); err != nil {
+			_ = gormStore.Close()
+			return fmt.Errorf("failed to migrate conversation database: %w", err)
+		}
+		m.gormStore = gormStore
+		m.store = gormStore
+	default:
+		return fmt.Errorf("unsupported memory backend %q", backend)
+	}
 	rt.GetLogger().Info("Memory component initialized",
 		"history_key", m.historyKey)
 
@@ -82,19 +151,39 @@ func (m *MemoryComponent) Start() error {
 }
 
 func (m *MemoryComponent) Stop() error {
+	if m.gormStore != nil {
+		err := m.gormStore.Close()
+		m.gormStore = nil
+		return err
+	}
 	return nil
 }
 
-// GetContext returns the memory context
+// initLegacyMemory initializes the deprecated context-backed memory only when
+// a legacy caller explicitly requests it.
+func (m *MemoryComponent) initLegacyMemory() {
+	m.legacyOnce.Do(func() {
+		m.memoryCtx = NewMemoryContext(m.historyKey)
+		m.memory, m.legacyErr = GetHistoryMemory(m.memoryCtx, m.historyKey)
+	})
+}
+
+// GetContext returns the deprecated context-backed memory context.
 func (m *MemoryComponent) GetContext() context.Context {
+	m.initLegacyMemory()
 	return m.memoryCtx
 }
 
-// TODO(memory, 2026-02-24): Provide unified interface for different memory types (HistoryMemory, VectorMemory, etc.)
-// GetMemory returns the underlying HistoryMemory instance
-func (m *MemoryComponent) GetMemory() (*HistoryMemory, error) {
-	if m.memory == nil {
-		return nil, fmt.Errorf("history not initialized")
+// GetStore returns the single conversation Store shared by runtime consumers.
+func (m *MemoryComponent) GetStore() (conversationstore.Store, error) {
+	if m.store == nil {
+		return nil, fmt.Errorf("store not initialized")
 	}
-	return m.memory, nil
+	return m.store, nil
+}
+
+// GetMemory returns the deprecated HistoryMemory instance for compatibility.
+func (m *MemoryComponent) GetMemory() (*HistoryMemory, error) {
+	m.initLegacyMemory()
+	return m.memory, m.legacyErr
 }

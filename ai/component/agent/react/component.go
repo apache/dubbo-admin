@@ -20,8 +20,10 @@ package react
 import (
 	"fmt"
 
+	"dubbo-admin-ai/component/memory"
 	"dubbo-admin-ai/component/tools"
 	"dubbo-admin-ai/runtime"
+	conversationstore "dubbo-admin-ai/store"
 )
 
 // AgentComponent is the runtime.Component wrapper around a ReActAgent: it holds
@@ -60,6 +62,23 @@ func (a *AgentComponent) Validate() error {
 // Init resolves the tools dependency from the runtime and constructs the
 // underlying ReActAgent, wiring tool references and per-tool timeouts.
 func (a *AgentComponent) Init(rt *runtime.Runtime) error {
+	memoryComp, err := rt.GetComponent("memory")
+	if err != nil {
+		return fmt.Errorf("memory component not found: %w", err)
+	}
+	memoryComponent, ok := memoryComp.(*memory.MemoryComponent)
+	if !ok {
+		return fmt.Errorf("invalid memory component type")
+	}
+	conversationStore, err := memoryComponent.GetStore()
+	if err != nil {
+		return fmt.Errorf("failed to get conversation store: %w", err)
+	}
+	messageStore, ok := conversationStore.(conversationstore.MessageStore)
+	if !ok {
+		return fmt.Errorf("conversation store does not implement MessageStore")
+	}
+
 	toolsComp, err := rt.GetComponent("tools")
 	if err != nil {
 		return fmt.Errorf("tools component not found: %w", err)
@@ -70,7 +89,7 @@ func (a *AgentComponent) Init(rt *runtime.Runtime) error {
 	}
 	toolRefs := tools.GetToolRefs()
 	toolTimeouts := newToolTimeoutResolver(defaultToolTimeoutSeconds, a.spec.ToolTimeouts)
-	reactAgent, err := NewReActAgent(rt.GetGenkitRegistry(), &a.spec, toolTimeouts, toolRefs)
+	reactAgent, err := NewReActAgentWithStore(rt.GetGenkitRegistry(), messageStore, &a.spec, toolTimeouts, toolRefs)
 	if err != nil {
 		return fmt.Errorf("failed to create ReAct agent: %w", err)
 	}

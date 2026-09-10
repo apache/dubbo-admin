@@ -15,33 +15,23 @@
  * limitations under the License.
  */
 
-package memory
+package store
 
-import (
-	"fmt"
+import "time"
 
-	"dubbo-admin-ai/runtime"
+// Session is the persisted conversation session metadata.
+type Session struct {
+	ID        string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Status    string
+}
 
-	"gopkg.in/yaml.v3"
-)
-
-// MemoryFactory creates a memory component (explicit registration, no init)
-func MemoryFactory(spec *yaml.Node) (runtime.Component, error) {
-	var cfg MemorySpec
-	if err := spec.Decode(&cfg); err != nil {
-		return nil, fmt.Errorf("failed to decode memory spec: %w", err)
-	}
-	if cfg.Backend == "" {
-		cfg.Backend = DefaultBackend
-	}
-	if cfg.HistoryKey == "" {
-		cfg.HistoryKey = ChatHistoryKey
-	}
-	if cfg.MaxTurns == 0 {
-		cfg.MaxTurns = DefaultMemorySpec().MaxTurns
-	}
-	if cfg.Database != nil {
-		cfg.Database.applyDefaults()
-	}
-	return NewMemoryComponentFromSpec(cfg)
+// Turn describes one conversation turn. A nil CompletedAt identifies the
+// active turn.
+type Turn struct {
+	ID          uint64
+	SessionID   string
+	CreatedAt   time.Time
+	CompletedAt *time.Time
 }

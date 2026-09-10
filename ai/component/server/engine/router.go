@@ -1,8 +1,26 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package engine
 
 import (
-	"dubbo-admin-ai/component/agent/react"
+	"dubbo-admin-ai/component/agent"
 	"dubbo-admin-ai/component/server/engine/session"
+	conversationstore "dubbo-admin-ai/store"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,8 +31,8 @@ type Router struct {
 	sessionMgr *session.Manager
 }
 
-func NewRouter(agent *react.ReActAgent) *Router {
-	sessionMgr := session.NewManager()
+func NewRouter(agent agent.Agent, sessionStore conversationstore.SessionStore) *Router {
+	sessionMgr := session.NewManager(sessionStore)
 	handler := NewAgentHandler(agent, sessionMgr)
 
 	router := &Router{
@@ -48,6 +66,15 @@ func (r *Router) setupRoutes() {
 // GetEngine returns the Gin engine
 func (r *Router) GetEngine() *gin.Engine {
 	return r.engine
+}
+
+// Close stops the session manager cleanup loop without closing the shared
+// Store, whose lifetime is owned by the Memory component.
+func (r *Router) Close() error {
+	if r == nil || r.sessionMgr == nil {
+		return nil
+	}
+	return r.sessionMgr.Close()
 }
 
 // corsMiddleware provides CORS middleware
