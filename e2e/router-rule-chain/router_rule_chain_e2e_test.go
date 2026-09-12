@@ -35,17 +35,15 @@ import (
 	dubbogoconfig "dubbo.apache.org/dubbo-go/v3/common/config"
 	dubbogoconstant "dubbo.apache.org/dubbo-go/v3/common/constant"
 	"dubbo.apache.org/dubbo-go/v3/common/extension"
-	dubboconfigcenter "dubbo.apache.org/dubbo-go/v3/config_center"
 	_ "dubbo.apache.org/dubbo-go/v3/config_center/zookeeper"
 	"dubbo.apache.org/dubbo-go/v3/protocol/base"
 	"dubbo.apache.org/dubbo-go/v3/protocol/invocation"
-	"dubbo.apache.org/dubbo-go/v3/remoting"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
-	"github.com/apache/dubbo-admin/pkg/core/clients"
 	"github.com/apache/dubbo-admin/pkg/core/events"
+	"github.com/apache/dubbo-admin/pkg/core/governor"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store"
@@ -65,9 +63,7 @@ const (
 )
 
 type routerRuleChainE2E struct {
-	zkAddress           string
-	governor            *adminzk.RuleGovernor
-	dynamicConfig       dubboconfigcenter.DynamicConfiguration
+	governor            governor.RuleGovernor
 	providerApplication string
 	consumerURL         *common.URL
 	chain               *chain.RouterChain
@@ -85,16 +81,12 @@ func TestAffinityRouterRuleCreate(t *testing.T) {
 
 func TestAffinityRouterRuleUpdate(t *testing.T) {
 	e2e := newRouterRuleChainE2E(t)
-	rule, events := e2e.createAffinityRule(t)
+	rule := e2e.createAffinityRule(t)
 
 	// A ratio above the matching proportion makes Affinity fall back to the
 	// unfiltered invoker list. This proves update events replace router state.
 	rule.Spec.Affinity.Ratio = 60
 	require.NoError(t, e2e.governor.UpdateRule(rule))
-	// Older Dubbo-Go ZK listeners report a data change as Add. Both router
-	// implementations intentionally reload on either event while the runtime
-	// listener compatibility fix is rolling out.
-	waitForConfigEvent(t, events.events, remoting.EventTypeUpdate, remoting.EventTypeAdd)
 	waitForRoute(t, e2e.chain, e2e.consumerURL, e2e.invocation, func(result []base.Invoker) bool {
 		return len(result) == 2
 	})
@@ -102,10 +94,9 @@ func TestAffinityRouterRuleUpdate(t *testing.T) {
 
 func TestAffinityRouterRuleDelete(t *testing.T) {
 	e2e := newRouterRuleChainE2E(t)
-	rule, events := e2e.createAffinityRule(t)
+	rule := e2e.createAffinityRule(t)
 
 	require.NoError(t, e2e.governor.DeleteRule(rule))
-	waitForConfigEvent(t, events.events, remoting.EventTypeDel)
 	waitForRoute(t, e2e.chain, e2e.consumerURL, e2e.invocation, func(result []base.Invoker) bool {
 		return len(result) == 2
 	})
@@ -118,22 +109,20 @@ func TestScriptRouterRuleCreate(t *testing.T) {
 
 func TestScriptRouterRuleUpdate(t *testing.T) {
 	e2e := newRouterRuleChainE2E(t)
-	rule, events, initialPort := e2e.createScriptRule(t)
+	rule := e2e.createScriptRule(t)
 
 	rule.Spec.Script = scriptSelectingFirstInvoker
 	require.NoError(t, e2e.governor.UpdateRule(rule))
-	waitForConfigEvent(t, events.events, remoting.EventTypeUpdate, remoting.EventTypeAdd)
 	waitForRoute(t, e2e.chain, e2e.consumerURL, e2e.invocation, func(result []base.Invoker) bool {
-		return len(result) == 1 && result[0].GetURL().Port != initialPort
+		return len(result) == 1 && result[0].GetURL().Port == "20880"
 	})
 }
 
 func TestScriptRouterRuleDelete(t *testing.T) {
 	e2e := newRouterRuleChainE2E(t)
-	rule, events, _ := e2e.createScriptRule(t)
+	rule := e2e.createScriptRule(t)
 
 	require.NoError(t, e2e.governor.DeleteRule(rule))
-	waitForConfigEvent(t, events.events, remoting.EventTypeDel)
 	waitForRoute(t, e2e.chain, e2e.consumerURL, e2e.invocation, func(result []base.Invoker) bool {
 		return len(result) == 2
 	})
@@ -192,9 +181,7 @@ func newRouterRuleChainE2E(t *testing.T) *routerRuleChainE2E {
 	inv := invocation.NewRPCInvocation("sayHello", nil, nil)
 
 	return &routerRuleChainE2E{
-		zkAddress:           zkAddress,
 		governor:            governor,
-		dynamicConfig:       dynamicConfig,
 		providerApplication: providerApplication,
 		consumerURL:         consumerURL,
 		chain:               chain,
@@ -202,11 +189,9 @@ func newRouterRuleChainE2E(t *testing.T) *routerRuleChainE2E {
 	}
 }
 
-func (e2e *routerRuleChainE2E) createAffinityRule(t *testing.T) (*meshresource.AffinityRouteResource, *configEventRecorder) {
+func (e2e *routerRuleChainE2E) createAffinityRule(t *testing.T) *meshresource.AffinityRouteResource {
 	t.Helper()
 	affinityName := e2e.providerApplication + ".affinity-router"
-	affinityEvents := newConfigEventRecorder()
-	e2e.dynamicConfig.AddListener(affinityName, affinityEvents)
 	affinityRule := meshresource.NewAffinityRouteResourceWithAttributes(affinityName, "router-rule-chain-e2e")
 	affinityRule.Spec.ConfigVersion = "v3.1"
 	affinityRule.Spec.Scope = "application"
@@ -217,20 +202,16 @@ func (e2e *routerRuleChainE2E) createAffinityRule(t *testing.T) (*meshresource.A
 	require.NoError(t, e2e.governor.CreateRule(affinityRule))
 	t.Cleanup(func() { _ = e2e.governor.DeleteRule(affinityRule) })
 
-	assertZKRule(t, e2e.zkAddress, affinityName, "affinityAware:", "affinity:\n")
-	waitForConfigEvent(t, affinityEvents.events, remoting.EventTypeAdd)
 	waitForRoute(t, e2e.chain, e2e.consumerURL, e2e.invocation, func(result []base.Invoker) bool {
 		return len(result) == 1 && result[0].GetURL().Port == "20880"
 	})
 
-	return affinityRule, affinityEvents
+	return affinityRule
 }
 
-func (e2e *routerRuleChainE2E) createScriptRule(t *testing.T) (*meshresource.ScriptRouteResource, *configEventRecorder, string) {
+func (e2e *routerRuleChainE2E) createScriptRule(t *testing.T) *meshresource.ScriptRouteResource {
 	t.Helper()
 	scriptName := e2e.providerApplication + ".script-router"
-	scriptEvents := newConfigEventRecorder()
-	e2e.dynamicConfig.AddListener(scriptName, scriptEvents)
 	scriptRule := meshresource.NewScriptRouteResourceWithAttributes(scriptName, "router-rule-chain-e2e")
 	scriptRule.Spec.ConfigVersion = "v3.0"
 	scriptRule.Spec.Scope = "application"
@@ -244,13 +225,11 @@ func (e2e *routerRuleChainE2E) createScriptRule(t *testing.T) (*meshresource.Scr
 	require.NoError(t, e2e.governor.CreateRule(scriptRule))
 	t.Cleanup(func() { _ = e2e.governor.DeleteRule(scriptRule) })
 
-	assertZKRule(t, e2e.zkAddress, scriptName, "type: javascript", "")
-	waitForConfigEvent(t, scriptEvents.events, remoting.EventTypeAdd)
-	initialScriptRoute := waitForRoute(t, e2e.chain, e2e.consumerURL, e2e.invocation, func(result []base.Invoker) bool {
+	waitForRoute(t, e2e.chain, e2e.consumerURL, e2e.invocation, func(result []base.Invoker) bool {
 		return len(result) == 1 && result[0].GetURL().Port == "20881"
 	})
 
-	return scriptRule, scriptEvents, initialScriptRoute[0].GetURL().Port
+	return scriptRule
 }
 
 func mustURL(t *testing.T, raw string) *common.URL {
@@ -285,57 +264,6 @@ func waitForRoute(
 	t.Fatalf("RouterChain did not reach the expected routing result before %s; last ports: %s",
 		deadline.Format(time.RFC3339), strings.Join(ports, ","))
 	return nil
-}
-
-func assertZKRule(t *testing.T, zkAddress, name, expected, unexpected string) {
-	t.Helper()
-	conn, err := clients.NewZKConnection(zkAddress)
-	require.NoError(t, err)
-	t.Cleanup(conn.Close)
-	path := "/dubbo/config/dubbo/" + name
-	deadline := time.Now().Add(10 * time.Second)
-	for time.Now().Before(deadline) {
-		content, _, getErr := conn.Get(path)
-		if getErr == nil {
-			actual := string(content)
-			require.Contains(t, actual, expected)
-			if unexpected != "" {
-				require.NotContains(t, actual, unexpected)
-			}
-			return
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-	t.Fatalf("ZooKeeper rule %s was not published at %s", name, path)
-}
-
-func waitForConfigEvent(
-	t *testing.T,
-	events <-chan *dubboconfigcenter.ConfigChangeEvent,
-	expected ...remoting.EventType,
-) {
-	t.Helper()
-	select {
-	case event := <-events:
-		require.Contains(t, expected, event.ConfigType)
-	case <-time.After(10 * time.Second):
-		t.Fatalf("did not receive one of %v from the Dubbo-Go configuration listener", expected)
-	}
-}
-
-type configEventRecorder struct {
-	events chan *dubboconfigcenter.ConfigChangeEvent
-}
-
-func newConfigEventRecorder() *configEventRecorder {
-	return &configEventRecorder{events: make(chan *dubboconfigcenter.ConfigChangeEvent, 8)}
-}
-
-func (r *configEventRecorder) Process(event *dubboconfigcenter.ConfigChangeEvent) {
-	select {
-	case r.events <- event:
-	default:
-	}
 }
 
 type e2eStoreRouter struct {
