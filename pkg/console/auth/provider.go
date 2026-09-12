@@ -15,22 +15,22 @@
  * limitations under the License.
  */
 
-import { http, type HttpHandler } from 'msw'
-import { success, base } from '../utils'
+package auth
 
-export const loginHandlers: HttpHandler[] = [
-  http.get(`${base}/auth/providers`, () => success({ methods: ['password'], providers: [] })),
-  http.get(`${base}/auth/userinfo`, () =>
-    success({
-      subject: 'local:admin',
-      username: 'admin',
-      email: '',
-      groups: [],
-      roles: [],
-      authType: 'password',
-      provider: 'local'
-    })
-  ),
-  http.post(`${base}/auth/login`, () => success(null)),
-  http.post(`${base}/auth/logout`, () => success(null))
-]
+import "context"
+
+type Provider interface {
+	ID() string
+	DisplayName() string
+	IconURL() string
+	NeedsNonce() bool
+	PostLoginRedirectURL() string
+	AuthorizationURL(transaction OAuthTransaction) string
+	Authenticate(ctx context.Context, code, codeVerifier, nonce string) (Principal, error)
+}
+
+type PublicProvider struct {
+	ID          string `json:"id"`
+	DisplayName string `json:"displayName"`
+	IconURL     string `json:"iconUrl,omitempty"`
+}

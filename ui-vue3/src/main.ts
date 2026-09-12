@@ -28,8 +28,9 @@ import 'vue3-colorpicker/style.css'
 import 'nprogress/nprogress.css'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 
-import { getAuthState, updateAuthState } from '@/utils/AuthUtil'
+import { updateAuthState } from '@/utils/AuthUtil'
 import { createPinia } from 'pinia'
+import { loadAuthConfiguration, syncAuthenticatedPrincipal } from '@/auth/session'
 
 async function bootstrap() {
   if (import.meta.env.VITE_MOCK_ENABLED === 'true') {
@@ -45,16 +46,18 @@ async function bootstrap() {
 
   pinia.use(piniaPluginPersistedstate)
 
-  app.use(Antd).use(Vue3ColorPicker).use(pinia).use(i18n).use(router).mount('#app')
-
-  router.beforeEach((to, from, next) => {
-    const authState = getAuthState()
-    if (authState?.state || to.path.startsWith('/login')) {
-      next()
-    } else {
-      next({ path: `/login?redirect=${to.path}` })
+  router.beforeEach(async (to) => {
+    await loadAuthConfiguration()
+    if (to.path.startsWith('/login')) return true
+    try {
+      await syncAuthenticatedPrincipal()
+      return true
+    } catch {
+      return { path: '/login', query: { redirect: to.fullPath } }
     }
   })
+
+  app.use(Antd).use(Vue3ColorPicker).use(pinia).use(i18n).use(router).mount('#app')
 }
 
 bootstrap()

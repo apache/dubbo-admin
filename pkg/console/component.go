@@ -32,10 +32,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	ui "github.com/apache/dubbo-admin/app/dubbo-ui"
-	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/config/console"
+	configauth "github.com/apache/dubbo-admin/pkg/config/console/auth"
+	consoleauth "github.com/apache/dubbo-admin/pkg/console/auth"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
-	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/router"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
@@ -83,9 +83,10 @@ func (c *consoleWebServer) Init(ctx runtime.BuilderContext) error {
 			"status": "UP",
 		})
 	})
-	store := cookie.NewStore([]byte("secret"))
+	store := cookie.NewStore([]byte(c.cfg.Auth.SessionSecret))
+	store.Options(adminSessionOptions(c.cfg.Auth))
 	r.Use(sessions.Sessions("session", store))
-	r.Use(c.authMiddleware())
+	r.Use(consoleauth.SessionMiddleware())
 	r.Use(ginzap.Ginzap(logger.Logger(), time.RFC3339, true))
 	r.Use(ginzap.RecoveryWithZap(logger.Logger(), true))
 	c.Engine = r
@@ -93,10 +94,22 @@ func (c *consoleWebServer) Init(ctx runtime.BuilderContext) error {
 	return nil
 }
 
+func adminSessionOptions(cfg *configauth.Config) sessions.Options {
+	return sessions.Options{
+		Path:     "/",
+		MaxAge:   cfg.ExpirationTime,
+		Secure:   cfg.SessionCookieSecure,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	}
+}
+
 func (c *consoleWebServer) Start(coreRt runtime.Runtime, stop <-chan struct{}) error {
 	errChan := make(chan error)
 	c.cs = consolectx.NewConsoleContext(coreRt)
-	router.InitRouter(c.Engine, c.cs)
+	if err := router.InitRouter(c.Engine, c.cs); err != nil {
+		return err
+	}
 	httpServer := c.startHttpServer(errChan)
 	select {
 	case <-stop:
@@ -130,24 +143,4 @@ func (c *consoleWebServer) startHttpServer(errChan chan error) *http.Server {
 	}()
 
 	return server
-}
-
-func (c *consoleWebServer) authMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// skip login api
-		requestPath := c.Request.URL.Path
-		if strings.HasSuffix(requestPath, "/login") {
-			c.Next()
-			return
-		}
-		session := sessions.Default(c)
-		user := session.Get("user")
-		if user == nil {
-			authErr := bizerror.New(bizerror.Unauthorized, "no access, please login")
-			c.JSON(http.StatusUnauthorized, model.NewBizErrorResp(authErr))
-			c.Abort()
-			return
-		}
-		c.Next()
-	}
 }

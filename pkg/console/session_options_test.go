@@ -15,22 +15,19 @@
  * limitations under the License.
  */
 
-import { http, type HttpHandler } from 'msw'
-import { success, base } from '../utils'
+package console
 
-export const loginHandlers: HttpHandler[] = [
-  http.get(`${base}/auth/providers`, () => success({ methods: ['password'], providers: [] })),
-  http.get(`${base}/auth/userinfo`, () =>
-    success({
-      subject: 'local:admin',
-      username: 'admin',
-      email: '',
-      groups: [],
-      roles: [],
-      authType: 'password',
-      provider: 'local'
-    })
-  ),
-  http.post(`${base}/auth/login`, () => success(null)),
-  http.post(`${base}/auth/logout`, () => success(null))
-]
+import (
+	"net/http"
+	"testing"
+
+	configauth "github.com/apache/dubbo-admin/pkg/config/console/auth"
+)
+
+func TestAdminSessionOptions(t *testing.T) {
+	cfg := &configauth.Config{ExpirationTime: 3600, SessionCookieSecure: true}
+	got := adminSessionOptions(cfg)
+	if !got.HttpOnly || !got.Secure || got.SameSite != http.SameSiteLaxMode || got.Path != "/" || got.MaxAge != 3600 {
+		t.Fatalf("adminSessionOptions() = %+v", got)
+	}
+}
