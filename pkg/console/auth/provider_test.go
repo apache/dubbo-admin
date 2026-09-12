@@ -31,12 +31,14 @@ import (
 type stubProvider struct {
 	id            string
 	displayName   string
+	iconURL       string
 	needsNonce    bool
 	authenticated int
 }
 
 func (p *stubProvider) ID() string                   { return p.id }
 func (p *stubProvider) DisplayName() string          { return p.displayName }
+func (p *stubProvider) IconURL() string              { return p.iconURL }
 func (p *stubProvider) NeedsNonce() bool             { return p.needsNonce }
 func (p *stubProvider) PostLoginRedirectURL() string { return "https://admin.example/admin/" }
 func (p *stubProvider) AuthorizationURL(transaction OAuthTransaction) string {
@@ -50,7 +52,7 @@ func (p *stubProvider) Authenticate(_ context.Context, _, _, _ string) (Principa
 func TestServicePublicProvidersAreSorted(t *testing.T) {
 	service, err := newService([]Provider{
 		&stubProvider{id: "zeta", displayName: "Zeta"},
-		&stubProvider{id: "alpha", displayName: "Alpha"},
+		&stubProvider{id: "alpha", displayName: "Alpha", iconURL: "/admin/auth-providers/alpha.svg"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -58,6 +60,9 @@ func TestServicePublicProvidersAreSorted(t *testing.T) {
 	providers := service.PublicProviders()
 	if len(providers) != 2 || providers[0].ID != "alpha" || providers[1].ID != "zeta" {
 		t.Fatalf("PublicProviders() = %+v", providers)
+	}
+	if providers[0].IconURL != "/admin/auth-providers/alpha.svg" {
+		t.Fatalf("PublicProviders()[0].IconURL = %q", providers[0].IconURL)
 	}
 }
 

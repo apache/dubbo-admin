@@ -29,6 +29,7 @@ console:
       github:
         type: github
         displayName: GitHub
+        iconUrl: /admin/auth-providers/github.svg
         clientId: replace-with-github-client-id
         clientSecret: replace-with-github-client-secret
         redirectUrl: https://admin.example.com/api/v1/auth/providers/github/callback
@@ -39,6 +40,7 @@ console:
       google:
         type: oidc
         displayName: Google
+        iconUrl: /admin/auth-providers/google.svg
         issuer: https://accounts.google.com
         clientId: replace-with-google-client-id
         clientSecret: replace-with-google-client-secret

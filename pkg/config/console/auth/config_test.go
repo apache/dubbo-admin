@@ -92,6 +92,37 @@ func TestConfigValidateAllowsLoopbackHTTPForOIDCDevelopment(t *testing.T) {
 	}
 }
 
+func TestConfigValidateProviderIconURL(t *testing.T) {
+	tests := []struct {
+		name    string
+		iconURL string
+		wantErr bool
+	}{
+		{name: "project asset", iconURL: "/admin/auth-providers/github.svg"},
+		{name: "HTTPS asset", iconURL: "https://cdn.example/github.svg"},
+		{name: "loopback development asset", iconURL: "http://localhost:8881/admin/auth-providers/github.svg"},
+		{name: "insecure remote asset", iconURL: "http://cdn.example/github.svg", wantErr: true},
+		{name: "non-HTTP scheme", iconURL: "javascript:alert(1)", wantErr: true},
+		{name: "relative path", iconURL: "github.svg", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := validConfig()
+			provider := validGitHubProvider("github")
+			provider.IconURL = tt.iconURL
+			cfg.Providers = map[string]ProviderConfig{"github": provider}
+			err := cfg.Validate()
+			if tt.wantErr && (err == nil || !strings.Contains(err.Error(), "iconUrl")) {
+				t.Fatalf("Validate() error = %v, want iconUrl error", err)
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("Validate() error = %v", err)
+			}
+		})
+	}
+}
+
 func TestConfigValidateProviderScopeDefaults(t *testing.T) {
 	cfg := validConfig()
 	cfg.Providers = map[string]ProviderConfig{

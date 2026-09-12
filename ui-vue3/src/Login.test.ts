@@ -59,7 +59,13 @@ describe('Login', () => {
   it('renders password and configured Provider login methods', async () => {
     loadAuthConfiguration.mockResolvedValue({
       methods: ['password'],
-      providers: [{ id: 'github', displayName: 'GitHub' }]
+      providers: [
+        {
+          id: 'github',
+          displayName: 'GitHub',
+          iconUrl: '/admin/auth-providers/github.svg'
+        }
+      ]
     })
     const wrapper = mount(Login, {
       global: {
@@ -71,6 +77,7 @@ describe('Login', () => {
     await flushPromises()
     expect(wrapper.find('.password-form').exists()).toBe(true)
     expect(wrapper.text()).toContain('GitHub')
+    expect(wrapper.get('.provider-icon').attributes('src')).toBe('/admin/auth-providers/github.svg')
   })
 
   it('hides password form when the method is disabled', async () => {

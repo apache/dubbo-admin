@@ -83,7 +83,7 @@ function providerLogin(providerID: string) {
       <a-row class="title">
         <div>用户登录</div>
       </a-row>
-      <a-row v-if="passwordEnabled">
+      <a-row v-if="passwordEnabled" class="password-method">
         <a-form class="password-form" layout="vertical" :model="userinfo" ref="login-form-ref">
           <a-form-item
             class="item"
@@ -116,7 +116,14 @@ function providerLogin(providerID: string) {
           class="provider-btn"
           @click="providerLogin(provider.id)"
         >
-          {{ provider.displayName }}
+          <img
+            v-if="provider.iconUrl"
+            class="provider-icon"
+            :src="provider.iconUrl"
+            alt=""
+            aria-hidden="true"
+          />
+          <span class="provider-label">{{ provider.displayName }}</span>
         </a-button>
       </a-row>
     </a-card>
@@ -154,10 +161,29 @@ function providerLogin(providerID: string) {
       width: 100%;
     }
 
+    .password-method,
+    .password-form,
+    .provider-list {
+      width: 100%;
+    }
+
     .provider-list {
       display: grid;
       gap: 12px;
       margin-top: 12px;
+    }
+
+    .provider-btn {
+      position: relative;
+    }
+
+    .provider-icon {
+      position: absolute;
+      top: 50%;
+      left: 16px;
+      width: 20px;
+      height: 20px;
+      transform: translateY(-50%);
     }
   }
 }

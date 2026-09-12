@@ -20,6 +20,7 @@ import request from '@/base/http/request'
 export interface AuthProvider {
   id: string
   displayName: string
+  iconUrl?: string
 }
 
 export interface AuthConfiguration {

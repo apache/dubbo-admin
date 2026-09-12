@@ -43,6 +43,7 @@ var providerIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
 type ProviderConfig struct {
 	Type                 string   `json:"type" yaml:"type"`
 	DisplayName          string   `json:"displayName" yaml:"displayName"`
+	IconURL              string   `json:"iconUrl,omitempty" yaml:"iconUrl,omitempty"`
 	Issuer               string   `json:"issuer,omitempty" yaml:"issuer,omitempty"`
 	ClientID             string   `json:"clientId" yaml:"clientId"`
 	ClientSecret         string   `json:"clientSecret" yaml:"clientSecret"`
@@ -110,6 +111,9 @@ func validateProvider(id string, provider *ProviderConfig) error {
 	if provider.DisplayName == "" {
 		provider.DisplayName = id
 	}
+	if err := validateIconURL(provider.IconURL); err != nil {
+		return fmt.Errorf("auth provider %q: invalid iconUrl: %w", id, err)
+	}
 	if provider.ClientID == "" || provider.ClientSecret == "" {
 		return fmt.Errorf("auth provider %q: clientId and clientSecret are required", id)
 	}
@@ -140,6 +144,26 @@ func validateProvider(id string, provider *ProviderConfig) error {
 		if !slices.Contains(provider.Scopes, "openid") {
 			return fmt.Errorf("auth provider %q: OIDC scopes must include openid", id)
 		}
+	}
+	return nil
+}
+
+func validateIconURL(raw string) error {
+	if raw == "" {
+		return nil
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return err
+	}
+	if parsed.Scheme == "" {
+		if parsed.Host == "" && strings.HasPrefix(parsed.Path, "/") {
+			return nil
+		}
+		return errors.New("must be a root-relative project path or an absolute HTTPS URL")
+	}
+	if _, err := validateOIDCURL(raw); err != nil {
+		return err
 	}
 	return nil
 }

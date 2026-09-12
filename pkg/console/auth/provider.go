@@ -22,6 +22,7 @@ import "context"
 type Provider interface {
 	ID() string
 	DisplayName() string
+	IconURL() string
 	NeedsNonce() bool
 	PostLoginRedirectURL() string
 	AuthorizationURL(transaction OAuthTransaction) string
@@ -31,4 +32,5 @@ type Provider interface {
 type PublicProvider struct {
 	ID          string `json:"id"`
 	DisplayName string `json:"displayName"`
+	IconURL     string `json:"iconUrl,omitempty"`
 }

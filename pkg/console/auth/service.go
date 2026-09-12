@@ -92,7 +92,9 @@ func newService(providers []Provider) (*Service, error) {
 			return nil, fmt.Errorf("duplicate authentication provider %q", provider.ID())
 		}
 		service.providers[provider.ID()] = provider
-		service.public = append(service.public, PublicProvider{ID: provider.ID(), DisplayName: provider.DisplayName()})
+		service.public = append(service.public, PublicProvider{
+			ID: provider.ID(), DisplayName: provider.DisplayName(), IconURL: provider.IconURL(),
+		})
 	}
 	sort.Slice(service.public, func(i, j int) bool { return service.public[i].ID < service.public[j].ID })
 	return service, nil

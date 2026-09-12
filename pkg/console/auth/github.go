@@ -41,6 +41,7 @@ type githubEndpoints struct {
 type githubProvider struct {
 	id                   string
 	displayName          string
+	iconURL              string
 	postLoginRedirectURL string
 	oauth                oauth2.Config
 	apiBaseURL           string
@@ -68,6 +69,7 @@ func newGitHubProvider(id string, cfg configauth.ProviderConfig, endpoints githu
 	return &githubProvider{
 		id:                   id,
 		displayName:          cfg.DisplayName,
+		iconURL:              cfg.IconURL,
 		postLoginRedirectURL: cfg.PostLoginRedirectURL,
 		oauth: oauth2.Config{
 			ClientID: cfg.ClientID, ClientSecret: cfg.ClientSecret, RedirectURL: cfg.RedirectURL,
@@ -81,6 +83,7 @@ func newGitHubProvider(id string, cfg configauth.ProviderConfig, endpoints githu
 
 func (p *githubProvider) ID() string                   { return p.id }
 func (p *githubProvider) DisplayName() string          { return p.displayName }
+func (p *githubProvider) IconURL() string              { return p.iconURL }
 func (p *githubProvider) NeedsNonce() bool             { return false }
 func (p *githubProvider) PostLoginRedirectURL() string { return p.postLoginRedirectURL }
 func (p *githubProvider) AuthorizationURL(transaction OAuthTransaction) string {

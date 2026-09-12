@@ -63,6 +63,7 @@ type oidcProfile struct {
 type oidcProvider struct {
 	id                   string
 	displayName          string
+	iconURL              string
 	clientID             string
 	postLoginRedirectURL string
 	oauth                oauth2.Config
@@ -101,7 +102,7 @@ func NewOIDCProvider(ctx context.Context, id string, cfg configauth.ProviderConf
 	}
 
 	provider := &oidcProvider{
-		id: id, displayName: cfg.DisplayName, clientID: cfg.ClientID,
+		id: id, displayName: cfg.DisplayName, iconURL: cfg.IconURL, clientID: cfg.ClientID,
 		postLoginRedirectURL: cfg.PostLoginRedirectURL, provider: discoveredProvider, httpClient: client,
 		jwksURI: discovery.JWKSURI,
 	}
@@ -117,6 +118,7 @@ func NewOIDCProvider(ctx context.Context, id string, cfg configauth.ProviderConf
 
 func (p *oidcProvider) ID() string                   { return p.id }
 func (p *oidcProvider) DisplayName() string          { return p.displayName }
+func (p *oidcProvider) IconURL() string              { return p.iconURL }
 func (p *oidcProvider) NeedsNonce() bool             { return true }
 func (p *oidcProvider) PostLoginRedirectURL() string { return p.postLoginRedirectURL }
 func (p *oidcProvider) AuthorizationURL(transaction OAuthTransaction) string {

@@ -39,6 +39,7 @@ type handlerProvider struct {
 
 func (p *handlerProvider) ID() string                   { return "github" }
 func (p *handlerProvider) DisplayName() string          { return "GitHub" }
+func (p *handlerProvider) IconURL() string              { return "/admin/auth-providers/github.svg" }
 func (p *handlerProvider) NeedsNonce() bool             { return false }
 func (p *handlerProvider) PostLoginRedirectURL() string { return "https://admin.example/admin/" }
 func (p *handlerProvider) AuthorizationURL(tx consoleauth.OAuthTransaction) string {
@@ -75,7 +76,7 @@ func TestAuthHandlerPasswordLoginAndUserInfo(t *testing.T) {
 
 func TestAuthHandlerProviderListDoesNotLeakConfiguration(t *testing.T) {
 	cfg := &configauth.Config{Methods: []string{configauth.MethodPassword}, Providers: map[string]configauth.ProviderConfig{
-		"github": {Type: configauth.ProviderTypeGitHub, DisplayName: "GitHub", ClientID: "client", ClientSecret: "top-secret", RedirectURL: "https://admin.example/api/v1/auth/providers/github/callback", PostLoginRedirectURL: "https://admin.example/admin/", Scopes: []string{"read:user"}},
+		"github": {Type: configauth.ProviderTypeGitHub, DisplayName: "GitHub", IconURL: "/admin/auth-providers/github.svg", ClientID: "client", ClientSecret: "top-secret", RedirectURL: "https://admin.example/api/v1/auth/providers/github/callback", PostLoginRedirectURL: "https://admin.example/admin/", Scopes: []string{"read:user"}},
 	}}
 	service, err := consoleauth.NewService(context.Background(), cfg.Providers, nil)
 	if err != nil {
@@ -86,6 +87,9 @@ func TestAuthHandlerProviderListDoesNotLeakConfiguration(t *testing.T) {
 	resp := doAuthRequest(router, http.MethodGet, "/api/v1/auth/providers", nil)
 	if resp.Code != http.StatusOK || !strings.Contains(resp.Body.String(), `"id":"github"`) {
 		t.Fatalf("status = %d, body = %s", resp.Code, resp.Body.String())
+	}
+	if !strings.Contains(resp.Body.String(), `"iconUrl":"/admin/auth-providers/github.svg"`) {
+		t.Fatalf("provider response missing icon URL: %s", resp.Body.String())
 	}
 	for _, secret := range []string{"top-secret", "client", "redirectUrl", "scopes", "issuer"} {
 		if strings.Contains(resp.Body.String(), secret) {
