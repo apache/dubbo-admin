@@ -115,6 +115,22 @@ func ResourceFromSpecJSON(kind coremodel.ResourceKind, mesh, ruleName, specJSON 
 		}
 		res.Spec = &spec
 		return res, nil
+	case meshresource.AffinityRouteKind:
+		res := meshresource.NewAffinityRouteResourceWithAttributes(ruleName, mesh)
+		var spec meshproto.AffinityRoute
+		if err := unmarshalSpec(specJSON, &spec); err != nil {
+			return nil, err
+		}
+		res.Spec = &spec
+		return res, nil
+	case meshresource.ScriptRouteKind:
+		res := meshresource.NewScriptRouteResourceWithAttributes(ruleName, mesh)
+		var spec meshproto.ScriptRoute
+		if err := unmarshalSpec(specJSON, &spec); err != nil {
+			return nil, err
+		}
+		res.Spec = &spec
+		return res, nil
 	default:
 		return nil, bizerror.New(bizerror.InvalidArgument, "unsupported rule kind")
 	}
