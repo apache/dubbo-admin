@@ -1,0 +1,298 @@
+//go:build e2e
+
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package routerrulechain_test
+
+import (
+	"fmt"
+	"os"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+
+	_ "dubbo.apache.org/dubbo-go/v3/cluster/router/affinity"
+	"dubbo.apache.org/dubbo-go/v3/cluster/router/chain"
+	scriptrouter "dubbo.apache.org/dubbo-go/v3/cluster/router/script"
+	"dubbo.apache.org/dubbo-go/v3/common"
+	dubbogoconfig "dubbo.apache.org/dubbo-go/v3/common/config"
+	dubbogoconstant "dubbo.apache.org/dubbo-go/v3/common/constant"
+	"dubbo.apache.org/dubbo-go/v3/common/extension"
+	_ "dubbo.apache.org/dubbo-go/v3/config_center/zookeeper"
+	"dubbo.apache.org/dubbo-go/v3/protocol/base"
+	"dubbo.apache.org/dubbo-go/v3/protocol/invocation"
+
+	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
+	"github.com/apache/dubbo-admin/pkg/core/events"
+	"github.com/apache/dubbo-admin/pkg/core/governor"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
+	"github.com/apache/dubbo-admin/pkg/core/store"
+	adminzk "github.com/apache/dubbo-admin/pkg/governor/zk"
+	memoryst "github.com/apache/dubbo-admin/pkg/store/memory"
+)
+
+const e2eZKAddressEnv = "DUBBO_ADMIN_E2E_ZK_ADDR"
+
+const (
+	scriptSelectingFirstInvoker = `(function (invokers, invocation, context) {
+  return [invokers[0]];
+})(invokers, invocation, context);`
+	scriptSelectingSecondInvoker = `(function (invokers, invocation, context) {
+  return [invokers[1]];
+})(invokers, invocation, context);`
+)
+
+type routerRuleChainE2E struct {
+	governor            governor.RuleGovernor
+	providerApplication string
+	consumerURL         *common.URL
+	chain               *chain.RouterChain
+	invocation          base.Invocation
+}
+
+// Each lifecycle operation is a separate test so that a failure identifies
+// the affected rule and operation directly. They deliberately do not use
+// t.Parallel because Dubbo-Go keeps the dynamic configuration in a process
+// global environment.
+func TestAffinityRouterRuleCreate(t *testing.T) {
+	e2e := newRouterRuleChainE2E(t)
+	e2e.createAffinityRule(t)
+}
+
+func TestAffinityRouterRuleUpdate(t *testing.T) {
+	e2e := newRouterRuleChainE2E(t)
+	rule := e2e.createAffinityRule(t)
+
+	// A ratio above the matching proportion makes Affinity fall back to the
+	// unfiltered invoker list. This proves update events replace router state.
+	rule.Spec.Affinity.Ratio = 60
+	require.NoError(t, e2e.governor.UpdateRule(rule))
+	waitForRoute(t, e2e.chain, e2e.consumerURL, e2e.invocation, func(result []base.Invoker) bool {
+		return len(result) == 2
+	})
+}
+
+func TestAffinityRouterRuleDelete(t *testing.T) {
+	e2e := newRouterRuleChainE2E(t)
+	rule := e2e.createAffinityRule(t)
+
+	require.NoError(t, e2e.governor.DeleteRule(rule))
+	waitForRoute(t, e2e.chain, e2e.consumerURL, e2e.invocation, func(result []base.Invoker) bool {
+		return len(result) == 2
+	})
+}
+
+func TestScriptRouterRuleCreate(t *testing.T) {
+	e2e := newRouterRuleChainE2E(t)
+	e2e.createScriptRule(t)
+}
+
+func TestScriptRouterRuleUpdate(t *testing.T) {
+	e2e := newRouterRuleChainE2E(t)
+	rule := e2e.createScriptRule(t)
+
+	rule.Spec.Script = scriptSelectingFirstInvoker
+	require.NoError(t, e2e.governor.UpdateRule(rule))
+	waitForRoute(t, e2e.chain, e2e.consumerURL, e2e.invocation, func(result []base.Invoker) bool {
+		return len(result) == 1 && result[0].GetURL().Port == "20880"
+	})
+}
+
+func TestScriptRouterRuleDelete(t *testing.T) {
+	e2e := newRouterRuleChainE2E(t)
+	rule := e2e.createScriptRule(t)
+
+	require.NoError(t, e2e.governor.DeleteRule(rule))
+	waitForRoute(t, e2e.chain, e2e.consumerURL, e2e.invocation, func(result []base.Invoker) bool {
+		return len(result) == 2
+	})
+}
+
+// newRouterRuleChainE2E builds the production-direction test fixture:
+// Admin governor -> ZooKeeper -> Dubbo-Go listener -> RouterChain.
+func newRouterRuleChainE2E(t *testing.T) *routerRuleChainE2E {
+	t.Helper()
+	zkAddress := os.Getenv(e2eZKAddressEnv)
+	if zkAddress == "" {
+		t.Skipf("set %s to run the ZooKeeper integration test", e2eZKAddressEnv)
+	}
+	// The Admin module currently pins a Dubbo-Go version in which the Script
+	// factory is intentionally opt-in. Register it explicitly so this test
+	// reflects a consumer that enables Script Router; current Dubbo-Go builds
+	// register the same factory during normal imports.
+	extension.SetRouterFactory(dubbogoconstant.ScriptRouterFactoryKey, scriptrouter.NewScriptRouterFactory)
+
+	storeRouter := newE2EStoreRouter(t)
+	governor, err := adminzk.NewZKRuleGovernor(&discoverycfg.Config{
+		ID:   "router-rule-chain-e2e",
+		Name: "router-rule-chain-e2e",
+		Type: discoverycfg.Zookeeper,
+		Address: discoverycfg.AddressConfig{
+			Registry:     zkAddress,
+			ConfigCenter: zkAddress,
+		},
+	}, storeRouter, discardEmitter{})
+	require.NoError(t, err)
+
+	configURL, err := common.NewURL(zkAddress)
+	require.NoError(t, err)
+	dynamicConfigFactory, err := extension.GetConfigCenterFactory("zookeeper")
+	require.NoError(t, err)
+	dynamicConfig, err := dynamicConfigFactory.GetDynamicConfiguration(configURL)
+	require.NoError(t, err)
+	oldDynamicConfig := dubbogoconfig.GetEnvInstance().GetDynamicConfiguration()
+	dubbogoconfig.GetEnvInstance().SetDynamicConfiguration(dynamicConfig)
+	t.Cleanup(func() {
+		dubbogoconfig.GetEnvInstance().SetDynamicConfiguration(oldDynamicConfig)
+	})
+
+	providerApplication := fmt.Sprintf("router-rule-e2e-%d", time.Now().UnixNano())
+	consumerURL := mustURL(t, fmt.Sprintf(
+		"consumer://127.0.0.1:20000/com.example.RouterRuleE2E?application=consumer-%s&region=beijing",
+		providerApplication))
+	chain, err := chain.NewRouterChain(consumerURL)
+	require.NoError(t, err)
+	chain.SetInvokers([]base.Invoker{
+		base.NewBaseInvoker(mustURL(t, fmt.Sprintf(
+			"dubbo://127.0.0.1:20880/com.example.RouterRuleE2E?application=%s&region=beijing", providerApplication))),
+		base.NewBaseInvoker(mustURL(t, fmt.Sprintf(
+			"dubbo://127.0.0.1:20881/com.example.RouterRuleE2E?application=%s&region=shanghai", providerApplication))),
+	})
+	inv := invocation.NewRPCInvocation("sayHello", nil, nil)
+
+	return &routerRuleChainE2E{
+		governor:            governor,
+		providerApplication: providerApplication,
+		consumerURL:         consumerURL,
+		chain:               chain,
+		invocation:          inv,
+	}
+}
+
+func (e2e *routerRuleChainE2E) createAffinityRule(t *testing.T) *meshresource.AffinityRouteResource {
+	t.Helper()
+	affinityName := e2e.providerApplication + ".affinity-router"
+	affinityRule := meshresource.NewAffinityRouteResourceWithAttributes(affinityName, "router-rule-chain-e2e")
+	affinityRule.Spec.ConfigVersion = "v3.1"
+	affinityRule.Spec.Scope = "application"
+	affinityRule.Spec.Key = e2e.providerApplication
+	affinityRule.Spec.Runtime = true
+	affinityRule.Spec.Enabled = true
+	affinityRule.Spec.Affinity = &meshproto.AffinityAware{Key: "region", Ratio: 50}
+	require.NoError(t, e2e.governor.CreateRule(affinityRule))
+	t.Cleanup(func() { _ = e2e.governor.DeleteRule(affinityRule) })
+
+	waitForRoute(t, e2e.chain, e2e.consumerURL, e2e.invocation, func(result []base.Invoker) bool {
+		return len(result) == 1 && result[0].GetURL().Port == "20880"
+	})
+
+	return affinityRule
+}
+
+func (e2e *routerRuleChainE2E) createScriptRule(t *testing.T) *meshresource.ScriptRouteResource {
+	t.Helper()
+	scriptName := e2e.providerApplication + ".script-router"
+	scriptRule := meshresource.NewScriptRouteResourceWithAttributes(scriptName, "router-rule-chain-e2e")
+	scriptRule.Spec.ConfigVersion = "v3.0"
+	scriptRule.Spec.Scope = "application"
+	scriptRule.Spec.Key = e2e.providerApplication
+	scriptRule.Spec.Enabled = true
+	scriptRule.Spec.Type = "javascript"
+	// Keep the script deliberately small and use the Router's documented
+	// invoker-array contract. The selected invoker makes the assertion below
+	// independent of JavaScript reflection details on common.URL.
+	scriptRule.Spec.Script = scriptSelectingSecondInvoker
+	require.NoError(t, e2e.governor.CreateRule(scriptRule))
+	t.Cleanup(func() { _ = e2e.governor.DeleteRule(scriptRule) })
+
+	waitForRoute(t, e2e.chain, e2e.consumerURL, e2e.invocation, func(result []base.Invoker) bool {
+		return len(result) == 1 && result[0].GetURL().Port == "20881"
+	})
+
+	return scriptRule
+}
+
+func mustURL(t *testing.T, raw string) *common.URL {
+	t.Helper()
+	url, err := common.NewURL(raw)
+	require.NoError(t, err)
+	return url
+}
+
+func waitForRoute(
+	t *testing.T,
+	routerChain *chain.RouterChain,
+	consumerURL *common.URL,
+	invocation base.Invocation,
+	match func([]base.Invoker) bool,
+) []base.Invoker {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	var last []base.Invoker
+	for time.Now().Before(deadline) {
+		if routed := routerChain.Route(consumerURL, invocation); match(routed) {
+			return routed
+		} else {
+			last = routed
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	ports := make([]string, 0, len(last))
+	for _, item := range last {
+		ports = append(ports, item.GetURL().Port)
+	}
+	t.Fatalf("RouterChain did not reach the expected routing result before %s; last ports: %s",
+		deadline.Format(time.RFC3339), strings.Join(ports, ","))
+	return nil
+}
+
+type e2eStoreRouter struct {
+	stores map[coremodel.ResourceKind]store.ResourceStore
+}
+
+func newE2EStoreRouter(t *testing.T) *e2eStoreRouter {
+	t.Helper()
+	stores := make(map[coremodel.ResourceKind]store.ResourceStore)
+	for _, kind := range []coremodel.ResourceKind{meshresource.AffinityRouteKind, meshresource.ScriptRouteKind} {
+		resourceStore := memoryst.NewMemoryResourceStore(kind)
+		require.NoError(t, resourceStore.Init(nil))
+		stores[kind] = resourceStore
+	}
+	return &e2eStoreRouter{stores: stores}
+}
+
+func (r *e2eStoreRouter) ResourceRoute(resource coremodel.Resource) (store.ResourceStore, error) {
+	return r.ResourceKindRoute(resource.ResourceKind())
+}
+
+func (r *e2eStoreRouter) ResourceKindRoute(kind coremodel.ResourceKind) (store.ResourceStore, error) {
+	resourceStore, ok := r.stores[kind]
+	if !ok {
+		return nil, bizerror.New(bizerror.InvalidArgument, "no E2E store for resource kind "+string(kind))
+	}
+	return resourceStore, nil
+}
+
+type discardEmitter struct{}
+
+func (discardEmitter) Send(events.Event) {}

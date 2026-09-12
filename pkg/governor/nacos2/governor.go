@@ -65,7 +65,7 @@ func NewNacos2Governor(
 }
 
 func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
-	rawContent, err := yaml.Marshal(r.ResourceSpec())
+	rawContent, err := marshalRule(r)
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.NacosError,
 			fmt.Sprintf("failed to marshal resource spec, res: %s", r.String()))
@@ -140,6 +140,14 @@ func (g *RuleGovernor) GetConfigAndUpdateStore(r coremodel.Resource) {
 		res = meshresource.ToConditionRouteResource(r.ResourceMesh(), r.ResourceMeta().Name, content)
 	case meshresource.TagRouteKind:
 		res = meshresource.ToTagRouteResource(r.ResourceMesh(), r.ResourceMeta().Name, content)
+	case meshresource.AffinityRouteKind:
+		res = meshresource.ToAffinityRouteResource(r.ResourceMesh(), r.ResourceMeta().Name, content)
+	case meshresource.ScriptRouteKind:
+		res = meshresource.ToScriptRouteResource(r.ResourceMesh(), r.ResourceMeta().Name, content)
+	}
+	if res == nil {
+		logger.Errorf("failed to decode config in %s, res: %s", r.String(), r.ResourceMesh())
+		return
 	}
 	obj, exists, err := st.GetByKey(r.ResourceKey())
 	if err != nil {
@@ -168,6 +176,13 @@ func (g *RuleGovernor) GetConfigAndUpdateStore(r coremodel.Resource) {
 		return
 	}
 	g.emitter.Send(events.NewResourceChangedEvent(cache.Added, nil, res))
+}
+
+func marshalRule(r coremodel.Resource) ([]byte, error) {
+	if r.ResourceKind() == meshresource.AffinityRouteKind || r.ResourceKind() == meshresource.ScriptRouteKind {
+		return meshresource.EncodeRule(r)
+	}
+	return yaml.Marshal(r.ResourceSpec())
 }
 
 func (g *RuleGovernor) mesh() string {
