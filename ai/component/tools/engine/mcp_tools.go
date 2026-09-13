@@ -13,6 +13,8 @@ import (
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 // HTTPMCPClient HTTP MCP 客户端
@@ -74,7 +76,7 @@ type MCPTool struct {
 // CallToolResult 调用工具结果
 type CallToolResult struct {
 	Content []interface{} `json:"content"`
-	IsError bool           `json:"isError,omitempty"`
+	IsError bool          `json:"isError,omitempty"`
 }
 
 // ListTools 列出所有工具
@@ -132,7 +134,7 @@ func isRetriableError(err error) bool {
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr ||
 		len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr ||
-		containsIgnoreCase(s, substr)))
+			containsIgnoreCase(s, substr)))
 }
 
 func containsIgnoreCase(s, substr string) bool {
@@ -213,6 +215,7 @@ func (c *HTTPMCPClient) sendRequest(ctx context.Context, req JSONRPCRequest) (*J
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(httpReq.Header))
 
 	// Add API Key if provided
 	if c.apiKey != "" {

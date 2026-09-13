@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -14,6 +15,8 @@ import (
 	conversationstore "dubbo-admin-ai/store"
 
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 // AgentHandler handles AI Agent requests
@@ -67,11 +70,20 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 	// Set response headers and error recovery
 	defer func() {
 		if r := recover(); r != nil {
+			if channels != nil {
+				go discardAgentOutput(channels)
+			}
 			sseHandler.HandleError("internal_error", fmt.Sprintf("internal error: %v", r))
 		}
 	}()
 
-	channels = h.agent.Interact(requestCtx, &schema.UserInput{Content: req.Message}, sessionID)
+	// Preserve inbound tracing values while allowing the interaction to finish
+	// after a client disconnects. The agent cancels and drains it on shutdown.
+	extractedCtx := otel.GetTextMapPropagator().Extract(requestCtx, propagation.HeaderCarrier(c.Request.Header))
+	channels = h.agent.Interact(context.WithoutCancel(extractedCtx), &schema.UserInput{Content: req.Message}, sessionID)
+	if traceID := channels.TraceID(); traceID != "" {
+		c.Header("X-Trace-ID", traceID)
+	}
 	var (
 		feedback *schema.StreamFeedback
 		ok       bool
@@ -115,10 +127,24 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 
 		case <-requestCtx.Done():
 			rt.GetLogger().Info("Client disconnected from stream")
+			go discardAgentOutput(channels)
 			return
 		case <-channels.Done():
 			rt.GetLogger().Info("Channels closed, draining remaining messages", "session_id", sessionID)
 			h.drainAndFinish(sseHandler, channels, sessionID)
+			return
+		}
+	}
+}
+
+// discardAgentOutput keeps detached interactions from blocking on their
+// bounded response channels after the SSE consumer disconnects.
+func discardAgentOutput(channels *agent.Channels) {
+	for {
+		select {
+		case <-channels.UserRespChan:
+		case <-channels.ErrorChan:
+		case <-channels.Done():
 			return
 		}
 	}

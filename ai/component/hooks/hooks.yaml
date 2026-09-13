@@ -1,0 +1,38 @@
+# Built-in hook instances are registered once at startup.
+# Omit events/tools to subscribe to all supported events/tools.
+# Use enabled: false for an instance, or spec: {hooks: []} to disable all.
+type: hooks
+spec:
+  hooks:
+    - name: lifecycle-log
+      type: logging
+      enabled: true
+      events:
+        - interaction.start
+        - interaction.error
+        - interaction.cancel
+        - interaction.degrade
+        - interaction.end
+        - iteration.start
+        - iteration.end
+        - stage.start
+        - stage.error
+        - stage.end
+        - model_call.start
+        - model_call.error
+        - model_call.end
+        - tool_call.start
+        - tool_call.error
+        - tool_call.end
+      tools: ["*"]
+      config:
+        level: info
+    - name: otel-tracing
+      type: tracing
+      enabled: false
+      # Tracing always subscribes to all lifecycle events and all tools.
+      config:
+        protocol: grpc
+        service_name: dubbo-admin-ai
+        sample_ratio: 1.0
+        capture_content: none

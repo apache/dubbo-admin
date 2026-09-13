@@ -91,8 +91,6 @@ func NewStreamWriter(c *gin.Context) (*StreamWriter, error) {
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
-	c.Header("Access-Control-Allow-Headers", "Content-Type")
 
 	flusher, ok := c.Writer.(http.Flusher)
 	if !ok {

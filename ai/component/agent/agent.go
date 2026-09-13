@@ -35,6 +35,7 @@ type Channels struct {
 	closeOnce sync.Once
 	done      chan struct{}
 	nextIndex int
+	traceID   string
 
 	UserRespChan chan *schema.StreamFeedback
 	ErrorChan    chan error
@@ -77,6 +78,11 @@ func (chans *Channels) Done() <-chan struct{} {
 	}
 	return chans.done
 }
+
+// SetTraceID attaches the interaction trace before the channels are returned.
+func (chans *Channels) SetTraceID(traceID string) { chans.traceID = traceID }
+
+func (chans *Channels) TraceID() string { return chans.traceID }
 
 // Send assigns the next content-block index to the feedback and forwards it to
 // the consumer. Sends for one interaction run sequentially (the strategy drives

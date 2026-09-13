@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"dubbo-admin-ai/component/agent/react"
+	"dubbo-admin-ai/component/hooks"
 	"dubbo-admin-ai/component/logger"
 	"dubbo-admin-ai/component/memory"
 	"dubbo-admin-ai/component/models"
@@ -27,6 +28,9 @@ func registerFactorys(rt *runtime.Runtime) {
 	rt.RegisterFactory("logger", logger.LoggerFactory)
 	rt.RegisterFactory("memory", memory.MemoryFactory)
 
+	// Hook components initialize tracing before Genkit models are created.
+	rt.RegisterFactory("hooks", hooks.HookFactory)
+
 	// Model components (depend on logger)
 	rt.RegisterFactory("models", models.ModelsFactory)
 
@@ -36,11 +40,12 @@ func registerFactorys(rt *runtime.Runtime) {
 	// Tools components (depend on models, memory, rag)
 	rt.RegisterFactory("tools", tools.ToolsFactory)
 
-	// Server components (depend on all other components)
-	rt.RegisterFactory("server", server.ServerFactory)
-
 	// Agent components (depend on tools, rag)
 	rt.RegisterFactory("agent", react.AgentFactory)
+
+	// Server starts after the agent and stops before it, preventing new
+	// interactions while the agent drains active work during shutdown.
+	rt.RegisterFactory("server", server.ServerFactory)
 }
 
 func main() {
@@ -69,7 +74,7 @@ func main() {
 }
 
 func stopComponents(rt *runtime.Runtime) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
 	done := make(chan error)
