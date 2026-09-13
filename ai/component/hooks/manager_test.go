@@ -20,11 +20,13 @@ package hooks
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func testManager() *Manager {
@@ -330,5 +332,136 @@ func BenchmarkEmptyManagerFastPath(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
 		ctx = manager.Emit(ctx, state)
+	}
+}
+
+func TestManagerConcurrentRegisterEmitAndNeedsContent(t *testing.T) {
+	manager := testManager()
+	var baseline atomic.Int64
+	if err := manager.Register(Registration{
+		Events: []Event{EventToolCallStart}, Tools: []string{"lookup"}, CaptureContent: true,
+		Hook: func(ctx context.Context, _ State) context.Context { baseline.Add(1); return ctx },
+	}); err != nil {
+		t.Fatal(err)
+	}
+	const workers, iterations = 8, 32
+	var added [workers]atomic.Int64
+	start := make(chan struct{})
+	failures := make(chan error, workers*2)
+	var wg sync.WaitGroup
+	for i := range workers {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			<-start
+			if err := manager.Register(Registration{
+				Events: []Event{EventToolCallStart}, Tools: []string{"lookup"}, CaptureContent: true,
+				Hook: func(ctx context.Context, _ State) context.Context { added[i].Add(1); return ctx },
+			}); err != nil {
+				failures <- err
+			}
+		}()
+		go func() {
+			defer wg.Done()
+			<-start
+			for range iterations {
+				if !manager.NeedsContent(EventToolCallStart, "lookup") || manager.NeedsContent(EventToolCallStart, "other") {
+					failures <- fmt.Errorf("content selectors changed during concurrent registration")
+					return
+				}
+				manager.Emit(context.Background(), State{Event: EventToolCallStart, ToolName: "lookup"})
+			}
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(failures)
+	for err := range failures {
+		t.Error(err)
+	}
+	if got := baseline.Load(); got != workers*iterations {
+		t.Fatalf("baseline calls = %d, want %d", got, workers*iterations)
+	}
+	var before [workers]int64
+	for i := range workers {
+		before[i] = added[i].Load()
+	}
+	manager.Emit(context.Background(), State{Event: EventToolCallStart, ToolName: "lookup"})
+	for i := range workers {
+		if got := added[i].Load(); got != before[i]+1 {
+			t.Errorf("registration %d calls = %d, want %d", i, got, before[i]+1)
+		}
+	}
+}
+
+func TestManagerReentrantRegistrationUsesNextSnapshot(t *testing.T) {
+	manager := testManager()
+	var first, tail, late atomic.Int64
+	registrationResult := make(chan error, 1)
+	if err := manager.Register(Registration{
+		Events: []Event{EventModelCallStart},
+		Hook: func(ctx context.Context, _ State) context.Context {
+			if first.Add(1) == 1 {
+				err := manager.Register(Registration{
+					Events: []Event{EventModelCallStart}, CaptureContent: true,
+					Hook: func(ctx context.Context, _ State) context.Context { late.Add(1); return ctx },
+				})
+				if err == nil && !manager.NeedsContent(EventModelCallStart, "") {
+					err = fmt.Errorf("callback cannot see the registration it just added")
+				}
+				registrationResult <- err
+			}
+			return ctx
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Register(Registration{
+		Events: []Event{EventModelCallStart},
+		Hook:   func(ctx context.Context, _ State) context.Context { tail.Add(1); return ctx },
+	}); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan struct{})
+	go func() {
+		manager.Emit(context.Background(), State{Event: EventModelCallStart})
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("Emit deadlocked when a callback registered another hook")
+	}
+	if err := <-registrationResult; err != nil {
+		t.Fatal(err)
+	}
+	if first.Load() != 1 || tail.Load() != 1 || late.Load() != 0 {
+		t.Fatalf("first snapshot calls = %d/%d/%d, want 1/1/0", first.Load(), tail.Load(), late.Load())
+	}
+	manager.Emit(context.Background(), State{Event: EventModelCallStart})
+	if first.Load() != 2 || tail.Load() != 2 || late.Load() != 1 {
+		t.Fatalf("second snapshot calls = %d/%d/%d, want 2/2/1", first.Load(), tail.Load(), late.Load())
+	}
+}
+
+func BenchmarkManagerEmitWithRegistrations(b *testing.B) {
+	for _, count := range []int{1, 4, 16} {
+		b.Run(fmt.Sprintf("hooks=%d", count), func(b *testing.B) {
+			manager := testManager()
+			for range count {
+				if err := manager.Register(Registration{
+					Events: []Event{EventInteractionStart},
+					Hook:   func(ctx context.Context, _ State) context.Context { return ctx },
+				}); err != nil {
+					b.Fatal(err)
+				}
+			}
+			ctx := context.Background()
+			state := State{Event: EventInteractionStart}
+			b.ReportAllocs()
+			for b.Loop() {
+				manager.Emit(ctx, state)
+			}
+		})
 	}
 }

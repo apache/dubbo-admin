@@ -1,9 +1,26 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package engine
 
 import (
-	"dubbo-admin-ai/component/memory"
 	compRag "dubbo-admin-ai/component/rag"
 	"dubbo-admin-ai/runtime"
+	conversationstore "dubbo-admin-ai/store"
 	"fmt"
 
 	"github.com/firebase/genkit/go/ai"
@@ -32,7 +49,7 @@ type MemoryToolInput struct {
 // getAllMemoryBySession creates a tool for retrieving conversation history.
 // Use when: User references previous context or current question lacks prior context.
 // Tool: memory_all_by_session_id
-func getAllMemoryBySession(rt *runtime.Runtime) ai.Tool {
+func getAllMemoryBySession(rt *runtime.Runtime, messageStore conversationstore.MessageStore) ai.Tool {
 	g := rt.GetGenkitRegistry()
 	return genkit.DefineTool(
 		g, GetAllMemoryTool, "Retrieve conversation history for a specific session. Use this when user references previous context (e.g., 'previous', 'earlier', 'that config', 'my setup') or when current question cannot be answered without missing prior context.",
@@ -41,29 +58,19 @@ func getAllMemoryBySession(rt *runtime.Runtime) ai.Tool {
 				return ToolOutput{}, fmt.Errorf("sessionID is required")
 			}
 
-			memoryComp, err := rt.GetComponent("memory")
+			history, err := messageStore.AllMemory(ctx, input.SessionID)
 			if err != nil {
-				return ToolOutput{}, fmt.Errorf("memory component not found: %w", err)
+				return ToolOutput{}, fmt.Errorf("failed to load conversation history: %w", err)
 			}
-			memComp, ok := memoryComp.(*memory.MemoryComponent)
-			if !ok {
-				return ToolOutput{}, fmt.Errorf("invalid memory component type")
-			}
-			history, err := memComp.GetMemory()
-			if err != nil {
-				return ToolOutput{}, fmt.Errorf("failed to get history from memory component: %w", err)
-			}
-
-			if history.IsEmpty(input.SessionID) {
+			if len(history) == 0 {
 				return ToolOutput{
 					ToolName: GetAllMemoryTool,
 					Summary:  "No memory available",
 				}, nil
 			}
-
 			return ToolOutput{
 				ToolName: GetAllMemoryTool,
-				Result:   history.AllMemory(input.SessionID),
+				Result:   history,
 				Summary:  "",
 			}, nil
 		},
@@ -97,9 +104,9 @@ func (K8SRAGToolOptions) Default() K8SRAGToolOptions {
 	}
 }
 
-func defineMemoryTools(rt *runtime.Runtime) []ai.Tool {
+func defineMemoryTools(rt *runtime.Runtime, messageStore conversationstore.MessageStore) []ai.Tool {
 	tools := []ai.Tool{
-		getAllMemoryBySession(rt),
+		getAllMemoryBySession(rt, messageStore),
 		queryKnowledgeBase(rt),
 		RetrieveBasicConceptFromK8SDoc(rt),
 	}

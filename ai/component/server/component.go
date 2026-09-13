@@ -20,8 +20,10 @@ package server
 import (
 	"context"
 	"dubbo-admin-ai/component/agent/react"
+	"dubbo-admin-ai/component/memory"
 	"dubbo-admin-ai/component/server/engine"
 	"dubbo-admin-ai/runtime"
+	conversationstore "dubbo-admin-ai/store"
 	"fmt"
 	"net/http"
 	"time"
@@ -33,6 +35,7 @@ import (
 type ServerComponent struct {
 	rt           *runtime.Runtime
 	srv          *http.Server
+	router       *engine.Router
 	instanceName string
 
 	port         int
@@ -125,6 +128,23 @@ func (s *ServerComponent) Start() error {
 		return fmt.Errorf("agent component is not an AgentComponent")
 	}
 
+	memoryComp, err := s.rt.GetComponent("memory")
+	if err != nil {
+		return fmt.Errorf("failed to get memory component: %w", err)
+	}
+	memoryComponent, ok := memoryComp.(*memory.MemoryComponent)
+	if !ok {
+		return fmt.Errorf("memory component is not a MemoryComponent")
+	}
+	conversationStore, err := memoryComponent.GetStore()
+	if err != nil {
+		return fmt.Errorf("failed to get conversation store: %w", err)
+	}
+	sessionStore, ok := conversationStore.(conversationstore.SessionStore)
+	if !ok {
+		return fmt.Errorf("conversation store does not implement SessionStore")
+	}
+
 	// Configure Gin mode
 	if !s.debug {
 		gin.SetMode(gin.ReleaseMode)
@@ -133,7 +153,8 @@ func (s *ServerComponent) Start() error {
 	}
 
 	// Create router with AI interface
-	router := engine.NewRouter(agentComponent.Agent)
+	router := engine.NewRouter(agentComponent.Agent, sessionStore)
+	s.router = router
 
 	// Add health check endpoint
 	router.GetEngine().GET("/health", func(c *gin.Context) {
@@ -163,6 +184,14 @@ func (s *ServerComponent) Start() error {
 }
 
 func (s *ServerComponent) Stop() error {
+	if s.router != nil {
+		defer func() {
+			s.router = nil
+		}()
+		if err := s.router.Close(); err != nil {
+			return err
+		}
+	}
 	if s.srv != nil {
 		s.rt.GetLogger().Info("Server shutting down")
 

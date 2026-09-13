@@ -23,6 +23,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -278,6 +279,93 @@ func TestTracingSpecializedEventsKeepSpanOpenUntilEnd(t *testing.T) {
 			}
 			if !found {
 				t.Fatalf("missing %s span event", tt.special)
+			}
+		})
+	}
+}
+
+func TestTracingLargeMultibyteContent(t *testing.T) {
+	// Reuse one 10 MiB payload across cases; providers expose it only on demand.
+	const payloadBytes = 10 * 1024 * 1024
+	payload := strings.Repeat("界🙂", payloadBytes/len("界🙂")+1)
+	for _, tc := range []struct {
+		name    string
+		policy  string
+		sampled bool
+	}{
+		{"none", CaptureNone, true},
+		{"truncated", CaptureTruncated, true},
+		{"unsampled truncated", CaptureTruncated, false},
+		{"unsampled full", CaptureFull, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			sampler := sdktrace.AlwaysSample()
+			if !tc.sampled {
+				sampler = sdktrace.NeverSample()
+			}
+			recorder := tracetest.NewSpanRecorder()
+			provider := sdktrace.NewTracerProvider(sdktrace.WithSampler(sampler), sdktrace.WithSpanProcessor(recorder))
+			t.Cleanup(func() { _ = provider.Shutdown(context.Background()) })
+			manager := testManager()
+			if err := manager.Register(NewTracingRegistration(provider.Tracer("large-payload"), tc.policy)); err != nil {
+				t.Fatal(err)
+			}
+			inputCalls, outputCalls := 0, 0
+			messages := func(role string) any {
+				return []map[string]any{{"role": role, "parts": []map[string]string{{"type": "text", "content": payload}}}}
+			}
+			start := State{Event: EventModelCallStart, Model: "test/model"}.WithInputContent(func() any {
+				inputCalls++
+				return messages("user")
+			})
+			end := State{Event: EventModelCallEnd, Model: "test/model"}.WithOutputContent(func() any {
+				outputCalls++
+				return messages("assistant")
+			})
+			ctx := manager.Emit(context.Background(), start)
+			manager.Emit(ctx, end)
+			wantCalls := 0
+			if tc.sampled && tc.policy != CaptureNone {
+				wantCalls = 1
+			}
+			if inputCalls != wantCalls || outputCalls != wantCalls {
+				t.Fatalf("content provider calls = %d/%d, want %d each", inputCalls, outputCalls, wantCalls)
+			}
+			spans := recorder.Ended()
+			if !tc.sampled {
+				if len(spans) != 0 {
+					t.Fatalf("unsampled ended spans = %d, want 0", len(spans))
+				}
+				return
+			}
+			if len(spans) != 1 {
+				t.Fatalf("ended spans = %d, want 1", len(spans))
+			}
+			for _, key := range []string{"gen_ai.input.messages", "gen_ai.output.messages"} {
+				var value string
+				found := false
+				for _, attr := range spans[0].Attributes() {
+					if string(attr.Key) == key {
+						value, found = attr.Value.AsString(), true
+						break
+					}
+				}
+				if tc.policy == CaptureNone {
+					if found {
+						t.Fatalf("capture none emitted %s (%d bytes)", key, len(value))
+					}
+					continue
+				}
+				if !found || len(value) > truncatedContentLimit || !utf8.ValidString(value) || !json.Valid([]byte(value)) {
+					t.Fatalf("%s: found=%v, bytes=%d, valid UTF-8=%v, valid JSON=%v", key, found, len(value), utf8.ValidString(value), json.Valid([]byte(value)))
+				}
+				var decoded []struct{ Parts []struct{ Content string } }
+				if err := json.Unmarshal([]byte(value), &decoded); err != nil {
+					t.Fatal(err)
+				}
+				if len(decoded) != 1 || len(decoded[0].Parts) != 1 || !strings.HasSuffix(decoded[0].Parts[0].Content, "…") {
+					t.Fatalf("%s did not preserve a truncated message and its text part", key)
+				}
 			}
 		})
 	}

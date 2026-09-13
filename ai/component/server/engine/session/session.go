@@ -1,188 +1,162 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package session
 
 import (
-	"errors"
+	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	rt "dubbo-admin-ai/runtime"
+	conversationstore "dubbo-admin-ai/store"
 
 	"github.com/google/uuid"
 )
 
 var (
-	ErrSessionNotFound = errors.New("session not found")
-	ErrSessionExpired  = errors.New("session expired")
+	ErrSessionNotFound = conversationstore.ErrSessionNotFound
+	ErrSessionExpired  = conversationstore.ErrSessionExpired
 )
 
-// Session is a simplified session instance, does not manage history
-type Session struct {
-	ID        string       `json:"id"`         // Session ID
-	CreatedAt time.Time    `json:"created_at"` // Creation time
-	UpdatedAt time.Time    `json:"updated_at"` // Last update time
-	Status    string       `json:"status"`     // Session status: "active", "closed"
-	mu        sync.RWMutex `json:"-"`          // Read-write lock
-}
+// Session is kept as an alias for callers that use the session package. The
+// Store package owns the persisted session fields and snapshot semantics.
+type Session = conversationstore.Session
 
-// UpdateActivity updates session activity time
-func (s *Session) UpdateActivity() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.UpdatedAt = time.Now()
-}
-
-// Close closes the session
-func (s *Session) Close() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.Status = "closed"
-}
-
-// IsExpired checks if session is expired (24 hours)
-func (s *Session) IsExpired() bool {
-	return time.Since(s.UpdatedAt) > 24*time.Hour
-}
-
-// ToSessionInfo converts to API response format
-func (s *Session) ToSessionInfo() map[string]any {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	return map[string]any{
-		"session_id": s.ID,
-		"created_at": s.CreatedAt,
-		"updated_at": s.UpdatedAt,
-		"status":     s.Status,
-	}
-}
-
-// Manager manages sessions
+// Manager coordinates SessionStore operations and periodic expiration cleanup.
 type Manager struct {
-	sessions map[string]*Session
-	mu       sync.RWMutex
+	store conversationstore.SessionStore
+
+	cleanupCtx    context.Context
+	cleanupCancel context.CancelFunc
+	cleanupWG     sync.WaitGroup
+	closeOnce     sync.Once
 }
 
-// NewManager creates a session manager
-func NewManager() *Manager {
+// NewManager creates a session manager backed by the supplied SessionStore.
+func NewManager(sessionStore conversationstore.SessionStore) *Manager {
+	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
 	m := &Manager{
-		sessions: make(map[string]*Session),
+		store:         sessionStore,
+		cleanupCtx:    cleanupCtx,
+		cleanupCancel: cleanupCancel,
 	}
-
-	// Start goroutine to periodically cleanup expired sessions
-	go m.cleanupExpiredSessions()
-
+	if sessionStore != nil {
+		m.cleanupWG.Add(1)
+		go m.cleanupExpiredSessions()
+	}
 	return m
 }
 
-func (m *Manager) CreateMockSession() *Session {
+// CreateSession creates a new active session in the configured Store.
+func (m *Manager) CreateSession(ctx context.Context) (*Session, error) {
+	if err := m.requireStore(); err != nil {
+		return nil, err
+	}
+	now := time.Now()
 	session := &Session{
-		ID:        "session_test",
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		ID:        generateSessionID(),
+		CreatedAt: now,
+		UpdatedAt: now,
 		Status:    "active",
 	}
-	m.sessions[session.ID] = session
+	if err := m.store.Create(ctx, session); err != nil {
+		return nil, err
+	}
 	rt.GetLogger().Info("Session created", "session_id", session.ID)
-	return session
-}
-
-// CreateSession creates a new session
-func (m *Manager) CreateSession() *Session {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	sessionID := generateSessionID()
-	session := &Session{
-		ID:        sessionID,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Status:    "active",
-	}
-
-	m.sessions[sessionID] = session
-
-	rt.GetLogger().Info("Session created", "session_id", sessionID)
-	return session
-}
-
-// GetSession retrieves a session
-func (m *Manager) GetSession(sessionID string) (*Session, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	session, exists := m.sessions[sessionID]
-	if !exists {
-		return nil, ErrSessionNotFound
-	}
-
-	if session.IsExpired() {
-		return nil, ErrSessionExpired
-	}
-
 	return session, nil
 }
 
-// DeleteSession deletes a session
-func (m *Manager) DeleteSession(sessionID string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	session, exists := m.sessions[sessionID]
-	if !exists {
-		return ErrSessionNotFound
+// GetSession retrieves a session snapshot from the configured Store.
+func (m *Manager) GetSession(ctx context.Context, sessionID string) (*Session, error) {
+	if err := m.requireStore(); err != nil {
+		return nil, err
 	}
+	return m.store.Get(ctx, sessionID)
+}
 
-	session.Close()
-	delete(m.sessions, sessionID)
+// TouchSession records activity for an active session.
+func (m *Manager) TouchSession(ctx context.Context, sessionID string) error {
+	if err := m.requireStore(); err != nil {
+		return err
+	}
+	return m.store.Touch(ctx, sessionID, time.Now())
+}
 
+// DeleteSession removes a session and its conversation history.
+func (m *Manager) DeleteSession(ctx context.Context, sessionID string) error {
+	if err := m.requireStore(); err != nil {
+		return err
+	}
+	if err := m.store.Delete(ctx, sessionID); err != nil {
+		return err
+	}
 	rt.GetLogger().Info("Session deleted", "session_id", sessionID)
 	return nil
 }
 
-// ListSessions lists all active sessions
-func (m *Manager) ListSessions() []map[string]any {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	var sessions []map[string]any
-	for _, session := range m.sessions {
-		if session.Status == "active" && !session.IsExpired() {
-			sessions = append(sessions, session.ToSessionInfo())
-		}
+// ListSessions returns active, non-expired session snapshots.
+func (m *Manager) ListSessions(ctx context.Context) ([]*Session, error) {
+	if err := m.requireStore(); err != nil {
+		return nil, err
 	}
-
-	return sessions
+	return m.store.List(ctx)
 }
 
-// cleanupExpiredSessions periodically cleans up expired sessions
+// Close stops expiration cleanup. It does not close the underlying Store.
+func (m *Manager) Close() error {
+	m.closeOnce.Do(func() {
+		m.cleanupCancel()
+		m.cleanupWG.Wait()
+	})
+	return nil
+}
+
 func (m *Manager) cleanupExpiredSessions() {
-	ticker := time.NewTicker(1 * time.Hour) // Cleanup every hour
+	defer m.cleanupWG.Done()
+	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		m.mu.Lock()
-		var expiredSessions []string
-
-		for sessionID, session := range m.sessions {
-			if session.IsExpired() {
-				expiredSessions = append(expiredSessions, sessionID)
+	for {
+		select {
+		case <-ticker.C:
+			deleted, err := m.store.DeleteExpired(m.cleanupCtx, time.Now())
+			if err != nil {
+				rt.GetLogger().Error("Failed to clean expired sessions", "error", err)
+				continue
 			}
+			if deleted > 0 {
+				rt.GetLogger().Info("Cleaned up expired sessions", "count", deleted)
+			}
+		case <-m.cleanupCtx.Done():
+			return
 		}
-
-		for _, sessionID := range expiredSessions {
-			m.sessions[sessionID].Close()
-			delete(m.sessions, sessionID)
-		}
-
-		if len(expiredSessions) > 0 {
-			rt.GetLogger().Info("Cleaned up expired sessions", "count", len(expiredSessions))
-		}
-
-		m.mu.Unlock()
 	}
 }
 
-// generateSessionID generates a session ID
+func (m *Manager) requireStore() error {
+	if m == nil || m.store == nil {
+		return fmt.Errorf("session store is not configured")
+	}
+	return nil
+}
+
+// generateSessionID generates a session ID.
 func generateSessionID() string {
 	return "session_" + uuid.New().String()
 }

@@ -119,9 +119,9 @@ for `events`; Go callers use the `Event` constants or `AllEvents()`:
 
 `model_call.chunk` is reserved and is not emitted or accepted in subscriptions.
 
-Error events (`*.error`) are emitted when an operation fails, before its 
+Error events (`*.error`) are emitted when an operation fails, before its
 corresponding `.end` event. Cancel events are emitted when a context cancellation
-causes an interaction to abort. Degrade events signal that an interaction 
+causes an interaction to abort. Degrade events signal that an interaction
 completed with degraded quality (tool failure or fallback model response).
 
 The single ReAct loop emits one iteration and one stage per model call.

@@ -49,12 +49,28 @@ const fallbackAnswer = "抱歉，我暂时无法生成回答，请稍后再试�
 // run streams the answer itself and returns the interaction's accumulated token
 // usage; the caller emits the final usage marker and closes the channels.
 func (ra *ReActAgent) run(ctx context.Context, chans *agent.Channels, s *interactionTrace) (*ai.GenerationUsage, error) {
-	history, sessionID, err := historyFromCtx(ctx)
+	sessionID, err := sessionIDFromCtx(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if history.IsEmpty(sessionID) {
-		return nil, fmt.Errorf("history is empty")
+	turnID, _ := ctx.Value(turnIDContextKey).(uint64)
+	var history *memory.HistoryMemory
+	if ra.messageStore == nil {
+		history, _, err = historyFromCtx(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if history.IsEmpty(sessionID) {
+			return nil, fmt.Errorf("history is empty")
+		}
+	} else {
+		empty, err := ra.messageStore.IsTurnEmpty(ctx, sessionID, turnID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to inspect history: %w", err)
+		}
+		if empty {
+			return nil, fmt.Errorf("history is empty")
+		}
 	}
 
 	if s.Usage == nil {
@@ -112,7 +128,16 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 	if err := ctx.Err(); err != nil {
 		return false, err
 	}
-	messages := history.WindowMemory(s.Session)
+	var messages []*ai.Message
+	turnID, _ := ctx.Value(turnIDContextKey).(uint64)
+	if ra.messageStore != nil {
+		messages, err = ra.messageStore.WindowMemoryForTurn(ctx, s.Session, turnID)
+	} else {
+		messages = history.WindowMemory(s.Session)
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to load conversation history: %w", err)
+	}
 	// Model and tool deadlines are independent; cancellation still propagates.
 	resp, err := func() (*ai.ModelResponse, error) {
 		lctx, cancel := withTimeout(ctx, ra.callTimeout)
@@ -144,7 +169,9 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 		runtime.GetLogger().Warn("react: empty forced answer, using fallback")
 		answer = fallbackAnswer
 	}
-	ra.finish(chans, history, s.Session, answer)
+	if err := ra.finish(ctx, chans, history, s.Session, turnID, answer); err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
@@ -179,23 +206,40 @@ func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemo
 	runtime.GetLogger().Debug("react: recorded tool results", "count", len(parts))
 	// ai.RoleTool messages are ignored by ai.WithMessages, so tool results are
 	// recorded as a model message.
-	history.AddHistory(s.Session, ai.NewMessage(ai.RoleModel, nil, parts...))
+	message := ai.NewMessage(ai.RoleModel, nil, parts...)
+	if ra.messageStore != nil {
+		turnID, _ := ctx.Value(turnIDContextKey).(uint64)
+		if err := ra.messageStore.AddHistoryToTurn(persistenceContext(ctx), s.Session, turnID, message); err != nil {
+			return fmt.Errorf("failed to record tool output: %w", err)
+		}
+	} else {
+		history.AddHistory(s.Session, message)
+	}
 	return nil
 }
 
 // finish records the answer into history and streams it to the user, closing the
 // content block exactly once.
-func (ra *ReActAgent) finish(chans *agent.Channels, history *memory.HistoryMemory, sessionID, answer string) {
+
+func (ra *ReActAgent) finish(ctx context.Context, chans *agent.Channels, history *memory.HistoryMemory, sessionID string, turnID uint64, answer string) error {
 	if answer != "" {
-		history.AddHistory(sessionID, ai.NewMessage(ai.RoleModel, nil, ai.NewTextPart(answer)))
+		message := ai.NewMessage(ai.RoleModel, nil, ai.NewTextPart(answer))
+		if ra.messageStore != nil {
+			if err := ra.messageStore.AddHistoryToTurn(persistenceContext(ctx), sessionID, turnID, message); err != nil {
+				return fmt.Errorf("failed to persist final answer: %w", err)
+			}
+		} else {
+			history.AddHistory(sessionID, message)
+		}
 	}
 	if chans == nil {
-		return
+		return nil
 	}
 	if answer != "" {
 		chans.Send(schema.NewStreamFeedback(answer + "\n"))
 	}
 	chans.Send(schema.StreamEnd())
+	return nil
 }
 
 // historyFromCtx pulls the session-scoped history out of ctx.
@@ -209,6 +253,23 @@ func historyFromCtx(ctx context.Context) (*memory.HistoryMemory, string, error) 
 		return nil, "", fmt.Errorf("session id not found in context")
 	}
 	return history, sessionID, nil
+}
+
+func sessionIDFromCtx(ctx context.Context) (string, error) {
+	if sessionID, ok := ctx.Value(sessionIDContextKey).(string); ok && sessionID != "" {
+		return sessionID, nil
+	}
+	if sessionID, ok := ctx.Value(memory.SessionIDKey).(string); ok && sessionID != "" {
+		return sessionID, nil
+	}
+	return "", fmt.Errorf("session id not found in context")
+}
+
+func persistenceContext(ctx context.Context) context.Context {
+	if state, ok := ctx.Value(persistenceContextKey).(context.Context); ok && state != nil {
+		return state
+	}
+	return ctx
 }
 
 // withTimeout wraps ctx with a deadline when timeout > 0; otherwise it returns

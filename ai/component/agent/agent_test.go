@@ -15,33 +15,31 @@
  * limitations under the License.
  */
 
-package memory
+package agent
 
 import (
-	"fmt"
-
-	"dubbo-admin-ai/runtime"
-
-	"gopkg.in/yaml.v3"
+	"sync"
+	"testing"
 )
 
-// MemoryFactory creates a memory component (explicit registration, no init)
-func MemoryFactory(spec *yaml.Node) (runtime.Component, error) {
-	var cfg MemorySpec
-	if err := spec.Decode(&cfg); err != nil {
-		return nil, fmt.Errorf("failed to decode memory spec: %w", err)
+func TestChannelsCloseNotifiesDone(t *testing.T) {
+	channels := NewChannels(1)
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			channels.Close()
+		}()
 	}
-	if cfg.Backend == "" {
-		cfg.Backend = DefaultBackend
+	wg.Wait()
+
+	if !channels.Closed() {
+		t.Fatal("Closed() = false, want true")
 	}
-	if cfg.HistoryKey == "" {
-		cfg.HistoryKey = ChatHistoryKey
+	select {
+	case <-channels.Done():
+	default:
+		t.Fatal("Done() was not closed")
 	}
-	if cfg.MaxTurns == 0 {
-		cfg.MaxTurns = DefaultMemorySpec().MaxTurns
-	}
-	if cfg.Database != nil {
-		cfg.Database.applyDefaults()
-	}
-	return NewMemoryComponentFromSpec(cfg)
 }

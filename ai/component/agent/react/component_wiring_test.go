@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"dubbo-admin-ai/component/hooks"
+	"dubbo-admin-ai/component/memory"
 	"dubbo-admin-ai/component/tools"
 	"dubbo-admin-ai/runtime"
 
@@ -31,6 +32,15 @@ import (
 func TestAgentComponentKeepsEmptyManagerForLateHookRegistration(t *testing.T) {
 	rt := runtime.NewRuntime()
 	rt.SetGenkitRegistry(genkit.Init(context.Background()))
+	memoryComponent, err := memory.NewMemoryComponentFromSpec(*memory.DefaultMemorySpec())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := memoryComponent.Init(rt); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = memoryComponent.Stop() })
+	rt.RegisterComponent(memoryComponent)
 	toolsComponent, err := tools.NewToolsComponent(tools.ToolConfig{})
 	if err != nil {
 		t.Fatalf("create tools component: %v", err)

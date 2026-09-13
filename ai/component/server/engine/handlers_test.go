@@ -27,9 +27,9 @@ import (
 	"time"
 
 	"dubbo-admin-ai/component/agent"
-	"dubbo-admin-ai/component/memory"
 	"dubbo-admin-ai/component/server/engine/session"
 	"dubbo-admin-ai/schema"
+	memorystore "dubbo-admin-ai/store/memory"
 
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/otel"
@@ -72,24 +72,25 @@ func (a *captureAgent) Interact(ctx context.Context, input *schema.UserInput, _ 
 
 type requestContextKey struct{}
 
-func (a *captureAgent) GetMemory() *memory.HistoryMemory {
-	return nil
-}
-
 func TestStreamChatContextContract(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	previousPropagator := otel.GetTextMapPropagator()
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 	t.Cleanup(func() { otel.SetTextMapPropagator(previousPropagator) })
 	capturedAgent := &captureAgent{}
-	sessionManager := session.NewManager()
+	sessionManager := session.NewManager(memorystore.NewMemoryStore(2))
+	t.Cleanup(func() { _ = sessionManager.Close() })
+	created, err := sessionManager.CreateSession(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	handler := NewAgentHandler(capturedAgent, sessionManager)
 	router := gin.New()
 	router.POST("/api/v1/ai/chat/stream", handler.StreamChat)
 
 	requestBody := map[string]any{
 		"message":   "hello",
-		"sessionID": "session_test",
+		"sessionID": created.ID,
 	}
 	body, err := json.Marshal(requestBody)
 	if err != nil {
@@ -173,12 +174,15 @@ func (a *blockingAgent) Interact(_ context.Context, _ *schema.UserInput, _ strin
 	return a.channels
 }
 
-func (a *blockingAgent) GetMemory() *memory.HistoryMemory { return nil }
-
 func TestStreamChatDrainsChannelsOnPanic(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	blocked := &blockingAgent{}
-	sessionManager := session.NewManager()
+	sessionManager := session.NewManager(memorystore.NewMemoryStore(2))
+	t.Cleanup(func() { _ = sessionManager.Close() })
+	created, err := sessionManager.CreateSession(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	handler := NewAgentHandler(blocked, sessionManager)
 	router := gin.New()
 	router.POST("/api/v1/ai/chat/stream", func(c *gin.Context) {
@@ -186,7 +190,7 @@ func TestStreamChatDrainsChannelsOnPanic(t *testing.T) {
 		handler.StreamChat(c)
 	})
 
-	body, err := json.Marshal(map[string]any{"message": "hello", "sessionID": "session_test"})
+	body, err := json.Marshal(map[string]any{"message": "hello", "sessionID": created.ID})
 	if err != nil {
 		t.Fatalf("marshal request: %v", err)
 	}

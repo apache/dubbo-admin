@@ -28,7 +28,9 @@ import (
 	"dubbo-admin-ai/component/agent"
 	"dubbo-admin-ai/component/hooks"
 	"dubbo-admin-ai/component/memory"
+	rt "dubbo-admin-ai/runtime"
 	"dubbo-admin-ai/schema"
+	conversationstore "dubbo-admin-ai/store"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
@@ -41,8 +43,9 @@ import (
 // per-interaction state lives in the Channels/history reached through Interact,
 // not on the agent.
 type ReActAgent struct {
-	registry  *genkit.Genkit
-	memoryCtx context.Context
+	registry     *genkit.Genkit
+	memoryCtx    context.Context
+	messageStore conversationstore.MessageStore
 
 	actPrompt    ai.Prompt // reasons with tools available (native function calling)
 	answerPrompt ai.Prompt // tool-less; forces a final answer when the budget is exhausted
@@ -63,21 +66,42 @@ var interactionSequence atomic.Uint64
 
 var ErrAgentStopping = errors.New("agent is stopping")
 
+const persistenceTimeout = 30 * time.Second
+
+type interactionState struct {
+	turnID        uint64
+	persistCtx    context.Context
+	persistCancel context.CancelFunc
+}
+
+func (s *interactionState) cancelPersistence() {
+	if s != nil && s.persistCancel != nil {
+		s.persistCancel()
+	}
+}
+
 // NewReActAgent builds a ReActAgent, assembling its prompts up front so the
 // per-interaction hot path only executes them. It returns an error if the
 // configured prompt file is missing.
 func NewReActAgent(g *genkit.Genkit, spec *AgentSpec, toolTimeouts toolTimeoutResolver, hookManager *hooks.Manager, toolRefs []ai.ToolRef) (*ReActAgent, error) {
-	memoryCtx := memory.NewMemoryContext(memory.ChatHistoryKey)
+	return NewReActAgentWithStore(g, nil, spec, toolTimeouts, hookManager, toolRefs)
+}
 
+// NewReActAgentWithStore shares conversation storage with memory and tools.
+func NewReActAgentWithStore(g *genkit.Genkit, messageStore conversationstore.MessageStore, spec *AgentSpec, toolTimeouts toolTimeoutResolver, hookManager *hooks.Manager, toolRefs []ai.ToolRef) (*ReActAgent, error) {
 	ra := &ReActAgent{
 		registry:      g,
-		memoryCtx:     memoryCtx,
+		messageStore:  messageStore,
 		toolTimeouts:  toolTimeouts,
 		hookManager:   hookManager,
 		model:         spec.Model,
 		maxIterations: spec.MaxIterations,
 		callTimeout:   time.Duration(spec.Timeout) * time.Second,
 		bufferSize:    max(spec.ChannelBufferSize, 1),
+	}
+
+	if messageStore == nil {
+		ra.memoryCtx = memory.NewMemoryContext(memory.ChatHistoryKey)
 	}
 
 	act, answer, err := ra.buildPrompts(g, spec, spec.Model, toolRefs)
@@ -113,7 +137,6 @@ func (ra *ReActAgent) Interact(parent context.Context, input *schema.UserInput, 
 	go func() {
 		defer ra.finishInteraction(interactionID)
 		var (
-			history          *memory.HistoryMemory
 			interactionState *interactionTrace
 			interactionErr   error
 		)
@@ -181,18 +204,26 @@ func (ra *ReActAgent) Interact(parent context.Context, input *schema.UserInput, 
 			}
 			emitHook(ra.hookManager, interactionCtx, endState)
 			chans.Close()
-			if history != nil {
-				history.NextTurn(sessionID)
-			}
 		}()
 
-		ctx, interactionHistory, err := ra.newInteraction(interactionCtx, input, sessionID)
-		history = interactionHistory
+		ctx, state, err := ra.newInteraction(interactionCtx, input, sessionID)
 		if err != nil {
 			interactionErr = err
 			chans.ErrorChan <- err
 			return
 		}
+		completed := false
+		defer func() {
+			if ra.messageStore != nil && !completed {
+				cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(interactionCtx), persistenceTimeout)
+				if abortErr := ra.messageStore.AbortTurnForTurn(cleanupCtx, sessionID, state.turnID); abortErr != nil && !errors.Is(abortErr, conversationstore.ErrTurnNotFound) {
+					rt.GetLogger().Error("Failed to abort AI interaction turn", "session_id", sessionID, "turn_id", state.turnID, "error", abortErr)
+				}
+				cancel()
+			}
+			state.cancelPersistence()
+		}()
+
 		interactionState = &interactionTrace{
 			InteractionID: interactionID, Session: sessionID,
 			Model: ra.model, hookManager: ra.hookManager, Usage: &ai.GenerationUsage{},
@@ -201,6 +232,20 @@ func (ra *ReActAgent) Interact(parent context.Context, input *schema.UserInput, 
 		if err != nil {
 			interactionErr = err
 			chans.ErrorChan <- err
+			return
+		}
+		if ra.messageStore != nil {
+			if err := ra.messageStore.NextTurnForTurn(state.persistCtx, sessionID, state.turnID); err != nil {
+				interactionErr = fmt.Errorf("failed to complete turn: %w", err)
+				chans.ErrorChan <- interactionErr
+				return
+			}
+			completed = true
+		} else if history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.HistoryMemory); ok {
+			history.NextTurn(sessionID)
+		}
+		if usage == nil {
+			usage = &ai.GenerationUsage{}
 		}
 		chans.Send(schema.StreamFinal(&schema.Observation{UsageInfo: usage}))
 
@@ -255,14 +300,40 @@ func (ra *ReActAgent) Stop() {
 	ra.activeWG.Wait()
 }
 
-// newInteraction records the user input into history and returns a session-scoped
-// context plus the history store.
-func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserInput, sessionID string) (context.Context, *memory.HistoryMemory, error) {
+// newInteraction records the user input and returns a session-scoped context
+// plus the interaction's turn/persistence state.
+func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserInput, sessionID string) (context.Context, *interactionState, error) {
+	if parent == nil {
+		parent = context.Background()
+	}
 	if input == nil {
 		return nil, nil, errors.New("nil input")
 	}
-	if parent == nil {
-		parent = context.Background()
+	if ra.messageStore != nil {
+		turnID, err := ra.messageStore.BeginTurn(parent, sessionID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to begin turn: %w", err)
+		}
+		persistCtx, persistCancel := context.WithTimeout(context.WithoutCancel(parent), persistenceTimeout)
+		if err := ra.messageStore.AddHistoryToTurn(parent, sessionID, turnID, ai.NewUserMessage(ai.NewTextPart(input.Content))); err != nil {
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(parent), persistenceTimeout)
+			abortErr := ra.messageStore.AbortTurnForTurn(cleanupCtx, sessionID, turnID)
+			cancel()
+			persistCancel()
+			if abortErr != nil && !errors.Is(abortErr, conversationstore.ErrTurnNotFound) {
+				return nil, nil, fmt.Errorf("failed to record user message: %w (also failed to abort turn: %v)", err, abortErr)
+			}
+			return nil, nil, fmt.Errorf("failed to record user message: %w", err)
+		}
+		ctx := context.WithValue(parent, sessionIDContextKey, sessionID)
+		ctx = context.WithValue(ctx, turnIDContextKey, turnID)
+		ctx = context.WithValue(ctx, persistenceContextKey, persistCtx)
+		return ctx, &interactionState{turnID: turnID, persistCtx: persistCtx, persistCancel: persistCancel}, nil
+	}
+
+	// Compatibility path for callers that construct ReActAgent directly in tests.
+	if ra.memoryCtx == nil {
+		ra.memoryCtx = memory.NewMemoryContext(memory.ChatHistoryKey)
 	}
 	history, err := memory.GetHistoryMemory(ra.memoryCtx, memory.ChatHistoryKey)
 	if err != nil {
@@ -276,12 +347,23 @@ func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserI
 
 	ctx := context.WithValue(parent, memory.ChatHistoryKey, history)
 	ctx = context.WithValue(ctx, memory.SessionIDKey, sessionID)
-	return ctx, history, nil
+	return ctx, &interactionState{}, nil
 }
+
+type contextKey string
+
+const (
+	sessionIDContextKey   contextKey = "session"
+	turnIDContextKey      contextKey = "turn"
+	persistenceContextKey contextKey = "persistence"
+)
 
 // GetMemory returns the agent's chat history store, or nil if it cannot be
 // resolved from the agent's memory context.
 func (ra *ReActAgent) GetMemory() *memory.HistoryMemory {
+	if ra.memoryCtx == nil {
+		return nil
+	}
 	h, err := memory.GetHistoryMemory(ra.memoryCtx, memory.ChatHistoryKey)
 	if err != nil {
 		return nil

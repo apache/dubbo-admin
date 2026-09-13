@@ -15,33 +15,26 @@
  * limitations under the License.
  */
 
-package memory
+package gormstore
 
 import (
+	"encoding/json"
 	"fmt"
 
-	"dubbo-admin-ai/runtime"
-
-	"gopkg.in/yaml.v3"
+	"github.com/firebase/genkit/go/ai"
 )
 
-// MemoryFactory creates a memory component (explicit registration, no init)
-func MemoryFactory(spec *yaml.Node) (runtime.Component, error) {
-	var cfg MemorySpec
-	if err := spec.Decode(&cfg); err != nil {
-		return nil, fmt.Errorf("failed to decode memory spec: %w", err)
+func encodeMessage(message *ai.Message) ([]byte, error) {
+	if message == nil {
+		return nil, fmt.Errorf("message is nil")
 	}
-	if cfg.Backend == "" {
-		cfg.Backend = DefaultBackend
+	return json.Marshal(message)
+}
+
+func decodeMessage(id uint64, payload []byte) (*ai.Message, error) {
+	var message ai.Message
+	if err := json.Unmarshal(payload, &message); err != nil {
+		return nil, fmt.Errorf("failed to decode message %d: %w", id, err)
 	}
-	if cfg.HistoryKey == "" {
-		cfg.HistoryKey = ChatHistoryKey
-	}
-	if cfg.MaxTurns == 0 {
-		cfg.MaxTurns = DefaultMemorySpec().MaxTurns
-	}
-	if cfg.Database != nil {
-		cfg.Database.applyDefaults()
-	}
-	return NewMemoryComponentFromSpec(cfg)
+	return &message, nil
 }

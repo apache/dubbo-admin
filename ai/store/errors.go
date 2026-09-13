@@ -15,33 +15,14 @@
  * limitations under the License.
  */
 
-package memory
+package store
 
-import (
-	"fmt"
+import "errors"
 
-	"dubbo-admin-ai/runtime"
-
-	"gopkg.in/yaml.v3"
+var (
+	ErrSessionNotFound  = errors.New("session not found")
+	ErrSessionExpired   = errors.New("session expired")
+	ErrNoActiveTurn     = errors.New("no active turn")
+	ErrTurnNotFound     = errors.New("turn not found")
+	ErrTurnLimitReached = errors.New("conversation turn limit reached")
 )
-
-// MemoryFactory creates a memory component (explicit registration, no init)
-func MemoryFactory(spec *yaml.Node) (runtime.Component, error) {
-	var cfg MemorySpec
-	if err := spec.Decode(&cfg); err != nil {
-		return nil, fmt.Errorf("failed to decode memory spec: %w", err)
-	}
-	if cfg.Backend == "" {
-		cfg.Backend = DefaultBackend
-	}
-	if cfg.HistoryKey == "" {
-		cfg.HistoryKey = ChatHistoryKey
-	}
-	if cfg.MaxTurns == 0 {
-		cfg.MaxTurns = DefaultMemorySpec().MaxTurns
-	}
-	if cfg.Database != nil {
-		cfg.Database.applyDefaults()
-	}
-	return NewMemoryComponentFromSpec(cfg)
-}
