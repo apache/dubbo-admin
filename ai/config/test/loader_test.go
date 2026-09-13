@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"dubbo-admin-ai/component/agent/react"
+	"dubbo-admin-ai/component/hooks"
 	"dubbo-admin-ai/component/server"
 	"dubbo-admin-ai/config"
 )
@@ -238,6 +239,26 @@ spec:
 				}
 				if _, exists := splitterSpec["headers"]; exists {
 					t.Fatalf("unexpected markdown defaults injected: %+v", splitterSpec)
+				}
+			},
+		},
+		{
+			name:     "hooks",
+			fileName: "hooks.yaml",
+			componentYML: `type: hooks
+spec:
+  logging: {}
+`,
+			assertFn: func(t *testing.T, cfg *config.Config) {
+				var spec hooks.Spec
+				if err := cfg.Spec.Decode(&spec); err != nil {
+					t.Fatalf("decode hooks spec: %v", err)
+				}
+				if !spec.Logging.Enabled {
+					t.Fatal("hooks logging default was not injected")
+				}
+				if spec.Tracing.ServiceName != "dubbo-admin-ai" || spec.Tracing.SampleRatio != 1 || spec.Tracing.CaptureContent != hooks.CaptureNone {
+					t.Fatalf("hooks tracing defaults not injected: %+v", spec.Tracing)
 				}
 			},
 		},

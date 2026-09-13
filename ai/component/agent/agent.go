@@ -1,12 +1,16 @@
 package agent
 
 import (
+	"context"
+	"sync"
+	"sync/atomic"
+
 	"dubbo-admin-ai/component/memory"
 	"dubbo-admin-ai/schema"
 )
 
 type Agent interface {
-	Interact(*schema.UserInput, string) *Channels
+	Interact(context.Context, *schema.UserInput, string) *Channels
 	GetMemory() *memory.HistoryMemory
 }
 
@@ -14,16 +18,23 @@ type Agent interface {
 // UserRespChan streams user-facing text/progress and the final answer;
 // ErrorChan surfaces failures. A fresh Channels is created per interaction.
 type Channels struct {
-	closed    bool
+	closed    atomic.Bool
+	closeOnce sync.Once
+	done      chan struct{}
 	nextIndex int
+	traceID   string
 
 	UserRespChan chan *schema.StreamFeedback
 	ErrorChan    chan error
 }
 
+func (chans *Channels) SetTraceID(traceID string) { chans.traceID = traceID }
+
+func (chans *Channels) TraceID() string { return chans.traceID }
+
 func NewChannels(bufferSize int) *Channels {
 	return &Channels{
-		closed:       false,
+		done:         make(chan struct{}),
 		UserRespChan: make(chan *schema.StreamFeedback, bufferSize),
 		ErrorChan:    make(chan error, bufferSize),
 	}
@@ -32,12 +43,17 @@ func NewChannels(bufferSize int) *Channels {
 // Close marks the Channels as finished without tearing down the underlying
 // channels, so the consumer can drain any buffered messages.
 func (chans *Channels) Close() {
-	chans.closed = true
+	chans.closeOnce.Do(func() {
+		chans.closed.Store(true)
+		close(chans.done)
+	})
 }
 
 func (chans *Channels) Closed() bool {
-	return chans.closed
+	return chans.closed.Load()
 }
+
+func (chans *Channels) Done() <-chan struct{} { return chans.done }
 
 // Send assigns the next content-block index to the feedback and forwards it to
 // the consumer. Sends for one interaction run sequentially (the strategy drives
