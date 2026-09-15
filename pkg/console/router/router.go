@@ -20,26 +20,41 @@ package router
 import (
 	"github.com/gin-gonic/gin"
 
+	consoleauth "github.com/apache/dubbo-admin/pkg/console/auth"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/handler"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 )
 
-func InitRouter(r *gin.Engine, ctx consolectx.Context) {
-	router := r.Group("/api/v1")
+func InitRouter(r *gin.Engine, ctx consolectx.Context) error {
+	authHandler, err := handler.NewAuthHandler(ctx)
+	if err != nil {
+		return err
+	}
+	api := r.Group("/api/v1")
 	{
-		prometheus := router.Group("/promQL")
+		auth := api.Group("/auth")
+		auth.POST("/login", authHandler.Login)
+		auth.GET("/providers", authHandler.Providers)
+		auth.GET("/providers/:provider/login", authHandler.ProviderLogin)
+		auth.GET("/providers/:provider/callback", authHandler.ProviderCallback)
+	}
+
+	protected := api.Group("")
+	protected.Use(consoleauth.RequireLogin())
+	{
+		auth := protected.Group("/auth")
+		auth.POST("/logout", authHandler.Logout)
+		auth.GET("/userinfo", authHandler.UserInfo)
+	}
+
+	{
+		prometheus := protected.Group("/promQL")
 		prometheus.GET("/query", handler.PromQL(ctx))
 	}
 
 	{
-		auth := router.Group("/auth")
-		auth.POST("/login", handler.Login(ctx))
-		auth.POST("/logout", handler.Logout(ctx))
-	}
-
-	{
-		instance := router.Group("/instance")
+		instance := protected.Group("/instance")
 		instance.GET("/search", handler.SearchInstances(ctx))
 		instance.GET("/detail", handler.GetInstanceDetail(ctx))
 		{
@@ -57,7 +72,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 	}
 
 	{
-		application := router.Group("/application")
+		application := protected.Group("/application")
 		application.GET("/detail", handler.GetApplicationDetail(ctx))
 		application.GET("/instance/info", handler.GetApplicationTabInstanceInfo(ctx))
 		application.GET("/service/form", handler.GetApplicationServiceForm(ctx))
@@ -80,7 +95,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 	}
 
 	{
-		service := router.Group("/service")
+		service := protected.Group("/service")
 		{
 			serviceConfig := service.Group("/config")
 			serviceConfig.GET("/timeout", handler.ServiceConfigTimeoutGET(ctx))
@@ -100,7 +115,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 	}
 
 	{
-		service := router.Group("/service")
+		service := protected.Group("/service")
 		service.POST("/generic/invoke", handler.ServiceGenericInvoke(ctx))
 		service.GET("/method/detail", handler.GetServiceMethodDetail(ctx))
 		service.GET("/distribution", handler.GetServiceTabDistribution(ctx))
@@ -114,7 +129,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 	}
 
 	{
-		configuration := router.Group("/configurator")
+		configuration := protected.Group("/configurator")
 		configuration.GET("/search", handler.ConfiguratorSearch(ctx))
 		configuration.GET("/:ruleName/versions", handler.ListRuleVersions(ctx, meshresource.DynamicConfigKind))
 		configuration.GET("/:ruleName/versions/:versionNo", handler.GetRuleVersion(ctx, meshresource.DynamicConfigKind))
@@ -127,7 +142,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 	}
 
 	{
-		conditionRule := router.Group("/condition-rule")
+		conditionRule := protected.Group("/condition-rule")
 		conditionRule.GET("/search", handler.ConditionRuleSearch(ctx))
 		conditionRule.GET("/:ruleName/versions", handler.ListRuleVersions(ctx, meshresource.ConditionRouteKind))
 		conditionRule.GET("/:ruleName/versions/:versionNo", handler.GetRuleVersion(ctx, meshresource.ConditionRouteKind))
@@ -140,7 +155,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 	}
 
 	{
-		tagRule := router.Group("/tag-rule")
+		tagRule := protected.Group("/tag-rule")
 		tagRule.GET("/search", handler.TagRuleSearch(ctx))
 		tagRule.GET("/:ruleName/versions", handler.ListRuleVersions(ctx, meshresource.TagRouteKind))
 		tagRule.GET("/:ruleName/versions/:versionNo", handler.GetRuleVersion(ctx, meshresource.TagRouteKind))
@@ -152,9 +167,10 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 		tagRule.DELETE("/:ruleName", handler.DeleteTagRuleWithRuleName(ctx))
 	}
 
-	router.GET("/prometheus", handler.GetPrometheus(ctx))
-	router.GET("/search", handler.BannerGlobalSearch(ctx))
-	router.GET("/overview", handler.ClusterOverview(ctx))
-	router.GET("/metadata", handler.AdminMetadata(ctx))
-	router.GET("/meshes", handler.ListMeshes(ctx))
+	protected.GET("/prometheus", handler.GetPrometheus(ctx))
+	protected.GET("/search", handler.BannerGlobalSearch(ctx))
+	protected.GET("/overview", handler.ClusterOverview(ctx))
+	protected.GET("/metadata", handler.AdminMetadata(ctx))
+	protected.GET("/meshes", handler.ListMeshes(ctx))
+	return nil
 }

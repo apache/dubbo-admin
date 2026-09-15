@@ -7,7 +7,6 @@
  * the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,22 +14,11 @@
  * limitations under the License.
  */
 
-import { http, type HttpHandler } from 'msw'
-import { success, base } from '../utils'
+import { describe, expect, it } from 'vitest'
+import { providerLoginURL } from './session'
 
-export const loginHandlers: HttpHandler[] = [
-  http.get(`${base}/auth/providers`, () => success({ methods: ['password'], providers: [] })),
-  http.get(`${base}/auth/userinfo`, () =>
-    success({
-      subject: 'local:admin',
-      username: 'admin',
-      email: '',
-      groups: [],
-      roles: [],
-      authType: 'password',
-      provider: 'local'
-    })
-  ),
-  http.post(`${base}/auth/login`, () => success(null)),
-  http.post(`${base}/auth/logout`, () => success(null))
-]
+describe('providerLoginURL', () => {
+  it('encodes the configured provider ID as one path segment', () => {
+    expect(providerLoginURL('company sso')).toBe('/api/v1/auth/providers/company%20sso/login')
+  })
+})

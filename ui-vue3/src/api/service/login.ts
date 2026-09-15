@@ -17,6 +17,27 @@
 
 import request from '@/base/http/request'
 
+export interface AuthProvider {
+  id: string
+  displayName: string
+  iconUrl?: string
+}
+
+export interface AuthConfiguration {
+  methods: string[]
+  providers: AuthProvider[]
+}
+
+export interface Principal {
+  subject: string
+  username: string
+  email: string
+  groups: string[]
+  roles: string[]
+  authType: string
+  provider: string
+}
+
 export const login = (data: any): Promise<any> => {
   return request({
     url: '/auth/login',
@@ -31,3 +52,9 @@ export const logout = (): Promise<any> => {
     method: 'post'
   })
 }
+
+export const getAuthProviders = (): Promise<{ data: AuthConfiguration }> =>
+  request({ url: '/auth/providers', method: 'get' })
+
+export const getUserInfo = (): Promise<{ data: Principal }> =>
+  request({ url: '/auth/userinfo', method: 'get' })
