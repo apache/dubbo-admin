@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dubbo.mesh.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
+
+import "api/mesh/options.proto";
+
+message ScriptRoute {
+  option (dubbo.mesh.resource).name = "ScriptRoute";
+  option (dubbo.mesh.resource).plural_name = "ScriptRoutes";
+  option (dubbo.mesh.resource).package = "mesh";
+  option (dubbo.mesh.resource).is_experimental = false;
+
+  string configVersion = 1;
+  string scope = 2;
+  string key = 3;
+  bool enabled = 4;
+  string type = 5;
+  string script = 6;
+}
