@@ -221,6 +221,7 @@ import {
   serviceGenericInvokeAPI
 } from '@/api/service/service'
 import { useMeshStore } from '@/stores/mesh'
+import { parseJsonWithSafeNumbers } from '@/utils/JsonUtil'
 
 defineOptions({
   name: 'ServiceDebugTab'
@@ -555,9 +556,11 @@ async function handleInvoke() {
   }
   let args: any[]
   try {
-    args = JSON.parse(requestValue.value)
-    if (!Array.isArray(args)) {
-      args = [args]
+    const parsedArgs = parseJsonWithSafeNumbers<unknown>(requestValue.value)
+    if (Array.isArray(parsedArgs)) {
+      args = parsedArgs
+    } else {
+      args = [parsedArgs]
     }
   } catch (error: any) {
     message.error('请求参数不是有效 JSON')
