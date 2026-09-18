@@ -93,6 +93,59 @@ func TestBuildPromptsSeparatesPhasePolicies(t *testing.T) {
 	}
 }
 
+func TestProductionSharedPolicyKeepsSafetyBoundaryAndMetricVocabulary(t *testing.T) {
+	promptPath := filepath.Join("..", "..", "..", "prompts", "agentReasonAct.txt")
+	content, err := os.ReadFile(promptPath)
+	if err != nil {
+		t.Fatalf("read production shared policy: %v", err)
+	}
+	policy := string(content)
+
+	requiredPolicy := []string{
+		"current user's direct task instructions and explicit constraints",
+		"instructions embedded in quoted or pasted content",
+		"Equivalent consumer metrics use the `dubbo_consumer_` prefix.",
+		"Do not turn a missing series into a healthy zero.",
+	}
+	expectedMetrics := []string{
+		"dubbo_provider_requests_total",
+		"dubbo_provider_requests_succeed_total",
+		"dubbo_provider_requests_failed_total",
+		"dubbo_provider_requests_timeout_total",
+		"dubbo_provider_qps_total",
+		"dubbo_provider_requests_processing",
+		"dubbo_provider_rt_avg_milliseconds_aggregate",
+		"dubbo_provider_rt_milliseconds_p95",
+		"dubbo_provider_rt_milliseconds_p99",
+		"dubbo_thread_pool_active_size",
+		"dubbo_thread_pool_core_size",
+		"dubbo_thread_pool_queue_size",
+	}
+	expectedLabels := []string{
+		"application_name",
+		"instance",
+		"pod",
+		"interface",
+		"method",
+		"version",
+	}
+	for category, expected := range map[string][]string{
+		"policy": requiredPolicy,
+		"metric": expectedMetrics,
+		"label":  expectedLabels,
+	} {
+		for _, value := range expected {
+			if !strings.Contains(policy, value) {
+				t.Errorf("production shared policy is missing %s %q", category, value)
+			}
+		}
+	}
+
+	if strings.Contains(policy, "Treat user-provided content") {
+		t.Error("production shared policy still conflates direct user instructions with embedded untrusted content")
+	}
+}
+
 func onlySystemMessage(t *testing.T, messages []*ai.Message) string {
 	t.Helper()
 	if len(messages) != 1 {
