@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# Create the session secret before applying this manifest:
+# kubectl -n dubbo-system create secret generic dubbo-admin-auth --from-literal=session-secret="$(openssl rand -base64 32)"
 
 apiVersion: apps/v1
 kind: Deployment
@@ -41,6 +43,12 @@ spec:
         - name: dubbo-admin
           image: apache/dubbo-admin:0.7.0
           imagePullPolicy: IfNotPresent
+          env:
+            - name: DUBBO_ADMIN_SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: dubbo-admin-auth
+                  key: session-secret
           volumeMounts:
             - mountPath: /etc/dubbo-admin
               name: dubbo-admin-config
@@ -100,6 +108,7 @@ data:
       auth:
         user: admin
         password: dubbo@2025
+        # sessionSecret is injected through DUBBO_ADMIN_SESSION_SECRET.
         expirationTime: 3600
     ruleVersioning:
       maxVersionsPerRule: 20

@@ -43,6 +43,18 @@ func TestReleaseProviderRequiresStrongSessionSecret(t *testing.T) {
 	}
 }
 
+func TestPasswordAuthenticationRequiresStrongSessionSecret(t *testing.T) {
+	cfg := DefaultConsoleConfig()
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "sessionSecret") {
+		t.Fatalf("Validate() error = %v, want sessionSecret error", err)
+	}
+
+	cfg.Auth.SessionSecret = "a-long-deployment-specific-session-secret"
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate() with strong secret error = %v", err)
+	}
+}
+
 func TestReleaseProviderRejectsShortSessionSecret(t *testing.T) {
 	cfg := DefaultConsoleConfig()
 	cfg.Auth.Providers = map[string]auth.ProviderConfig{
@@ -57,16 +69,17 @@ func TestReleaseProviderRejectsShortSessionSecret(t *testing.T) {
 	}
 }
 
-func TestDebugProviderAllowsLegacySessionSecret(t *testing.T) {
+func TestDebugProviderRejectsShortSessionSecret(t *testing.T) {
 	cfg := DefaultConsoleConfig()
 	cfg.GinMode = DebugMode
+	cfg.Auth.SessionSecret = "short"
 	cfg.Auth.Providers = map[string]auth.ProviderConfig{
 		"github": {
 			Type: auth.ProviderTypeGitHub, ClientID: "id", ClientSecret: "secret",
 			RedirectURL: "http://localhost:8888/api/v1/auth/providers/github/callback", PostLoginRedirectURL: "http://localhost:8881/admin/",
 		},
 	}
-	if err := cfg.Validate(); err != nil {
-		t.Fatalf("Validate() error = %v", err)
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "32 bytes") {
+		t.Fatalf("Validate() error = %v, want minimum sessionSecret length error", err)
 	}
 }

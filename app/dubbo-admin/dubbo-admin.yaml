@@ -53,6 +53,9 @@ console:
   auth:
     user: admin
     password: dubbo@2025
+    # Required. Set a deployment-specific random value, for example:
+    # openssl rand -base64 32
+    sessionSecret: ""
     expirationTime: 3600
 
 # [Optional] config for data storage, default is memory
