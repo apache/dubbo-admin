@@ -47,7 +47,7 @@ const fallbackAnswer = "抱歉，我暂时无法生成回答，请稍后再试�
 //
 // run streams the answer itself and returns the interaction's accumulated token
 // usage; the caller emits the final usage marker and closes the channels.
-func (ra *ReActAgent) run(ctx context.Context, chans *agent.Channels) (*ai.GenerationUsage, error) {
+func (ra *ReActAgent) run(ctx context.Context, chans *agent.Channels, state *interactionState) (*ai.GenerationUsage, error) {
 	sessionID, err := sessionIDFromCtx(ctx)
 	if err != nil {
 		return nil, err
@@ -88,7 +88,11 @@ func (ra *ReActAgent) run(ctx context.Context, chans *agent.Channels) (*ai.Gener
 		lctx, cancel := withTimeout(ctx, ra.callTimeout)
 		var messages []*ai.Message
 		if ra.messageStore != nil {
-			messages, err = ra.messageStore.WindowMemoryForTurn(ctx, sessionID, turnID)
+			if state == nil {
+				cancel()
+				return usage, fmt.Errorf("interaction context snapshot not found")
+			}
+			messages = state.messages
 		} else {
 			messages = history.WindowMemory(sessionID)
 		}
@@ -107,8 +111,12 @@ func (ra *ReActAgent) run(ctx context.Context, chans *agent.Channels) (*ai.Gener
 			if reqs := resp.ToolRequests(); len(reqs) > 0 {
 				runtime.GetLogger().Debug("react: model requested tools", "count", len(reqs))
 				agent.EmitProgress(chans, "🔍 分析问题并调用工具中...\n")
-				if err := ra.execTools(ctx, history, sessionID, turnID, reqs); err != nil {
+				message, err := ra.execTools(ctx, history, sessionID, turnID, reqs)
+				if err != nil {
 					return usage, err
+				}
+				if state != nil {
+					state.messages = append(state.messages, message)
 				}
 				continue
 			}
@@ -143,7 +151,7 @@ func (ra *ReActAgent) run(ctx context.Context, chans *agent.Channels) (*ai.Gener
 // A failed tool degrades (its error is recorded as the tool's output) rather
 // than aborting the interaction, so the model can still answer from whatever
 // other tools returned.
-func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemory, sessionID string, turnID uint64, reqs []*ai.ToolRequest) error {
+func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemory, sessionID string, turnID uint64, reqs []*ai.ToolRequest) (*ai.Message, error) {
 	var parts []*ai.Part
 	for _, req := range reqs {
 		tctx, cancel := withTimeout(ctx, ra.toolTimeouts.For(req.Name))
@@ -159,7 +167,7 @@ func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemo
 		}
 		outputJSON, err := json.Marshal(output)
 		if err != nil {
-			return fmt.Errorf("failed to marshal output: %w", err)
+			return nil, fmt.Errorf("failed to marshal output: %w", err)
 		}
 		parts = append(parts, ai.NewJSONPart(string(outputJSON)))
 	}
@@ -169,12 +177,12 @@ func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemo
 	message := ai.NewMessage(ai.RoleModel, nil, parts...)
 	if ra.messageStore != nil {
 		if err := ra.messageStore.AddHistoryToTurn(persistenceContext(ctx), sessionID, turnID, message); err != nil {
-			return fmt.Errorf("failed to record tool output: %w", err)
+			return nil, fmt.Errorf("failed to record tool output: %w", err)
 		}
 	} else {
 		history.AddHistory(sessionID, message)
 	}
-	return nil
+	return message, nil
 }
 
 // finish records the answer into history and streams it to the user, closing the

@@ -255,7 +255,7 @@ spec:
 				if err := cfg.Spec.Decode(&spec); err != nil {
 					t.Fatalf("decode agent spec: %v", err)
 				}
-				if spec.PromptFile == "" || spec.MaxIterations == 0 {
+				if spec.PromptFile == "" || spec.MaxIterations == 0 || spec.ContextWindowTurns != 10 {
 					t.Fatalf("agent defaults not injected: %+v", spec)
 				}
 				if spec.Temperature == 0 || spec.TopP == 0 || spec.MaxTokens == 0 || spec.Timeout == 0 {

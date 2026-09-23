@@ -44,6 +44,12 @@
           "minimum": 1,
           "default": 5
         },
+        "context_window_turns": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 10,
+          "description": "Maximum number of completed turns included before the current active turn."
+        },
         "tool_timeouts": {
           "type": "object",
           "description": "Per-tool execution timeout overrides in seconds, keyed by tool name. Tools without an entry use the built-in 30s default.",

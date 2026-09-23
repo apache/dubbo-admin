@@ -48,15 +48,17 @@ type ReActAgent struct {
 	answerPrompt ai.Prompt // tool-less; forces a final answer when the budget is exhausted
 	toolTimeouts toolTimeoutResolver
 
-	maxIterations int
-	callTimeout   time.Duration
-	bufferSize    int
+	maxIterations      int
+	contextWindowTurns int
+	callTimeout        time.Duration
+	bufferSize         int
 }
 
 const persistenceTimeout = 30 * time.Second
 
 type interactionState struct {
 	turnID        uint64
+	messages      []*ai.Message
 	persistCtx    context.Context
 	persistCancel context.CancelFunc
 }
@@ -80,13 +82,18 @@ func NewReActAgent(g *genkit.Genkit, spec *AgentSpec, toolTimeouts toolTimeoutRe
 // NewReActAgentWithStore constructs an agent backed by the shared conversation
 // store used by the memory, session, and tool components.
 func NewReActAgentWithStore(g *genkit.Genkit, messageStore conversationstore.MessageStore, spec *AgentSpec, toolTimeouts toolTimeoutResolver, toolRefs []ai.ToolRef) (*ReActAgent, error) {
+	contextWindowTurns := spec.ContextWindowTurns
+	if contextWindowTurns <= 0 {
+		contextWindowTurns = defaultContextWindowTurns
+	}
 	ra := &ReActAgent{
-		registry:      g,
-		messageStore:  messageStore,
-		toolTimeouts:  toolTimeouts,
-		maxIterations: spec.MaxIterations,
-		callTimeout:   time.Duration(spec.Timeout) * time.Second,
-		bufferSize:    spec.ChannelBufferSize,
+		registry:           g,
+		messageStore:       messageStore,
+		toolTimeouts:       toolTimeouts,
+		maxIterations:      spec.MaxIterations,
+		contextWindowTurns: contextWindowTurns,
+		callTimeout:        time.Duration(spec.Timeout) * time.Second,
+		bufferSize:         spec.ChannelBufferSize,
 	}
 	if messageStore == nil {
 		ra.memoryCtx = memory.NewMemoryContext(memory.ChatHistoryKey)
@@ -128,7 +135,7 @@ func (ra *ReActAgent) Interact(parent context.Context, input *schema.UserInput, 
 			state.cancelPersistence()
 		}()
 
-		usage, err := ra.run(ctx, chans)
+		usage, err := ra.run(ctx, chans, state)
 		if err != nil {
 			chans.ErrorChan <- err
 			chans.Close()
@@ -183,10 +190,22 @@ func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserI
 			}
 			return nil, nil, fmt.Errorf("failed to record user message: %w", err)
 		}
+		messages, err := ra.messageStore.ContextWindowForTurn(parent, sessionID, turnID, ra.contextWindowTurns)
+		if err != nil {
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(parent), persistenceTimeout)
+			abortErr := ra.messageStore.AbortTurnForTurn(cleanupCtx, sessionID, turnID)
+			cancel()
+			persistCancel()
+			if abortErr != nil && !errors.Is(abortErr, conversationstore.ErrTurnNotFound) {
+				return nil, nil, fmt.Errorf("failed to load conversation context: %w (also failed to abort turn: %v)", err, abortErr)
+			}
+			return nil, nil, fmt.Errorf("failed to load conversation context: %w", err)
+		}
+		state := &interactionState{turnID: turnID, messages: messages, persistCtx: persistCtx, persistCancel: persistCancel}
 		ctx := context.WithValue(parent, sessionIDContextKey, sessionID)
 		ctx = context.WithValue(ctx, turnIDContextKey, turnID)
 		ctx = context.WithValue(ctx, persistenceContextKey, persistCtx)
-		return ctx, &interactionState{turnID: turnID, persistCtx: persistCtx, persistCancel: persistCancel}, nil
+		return ctx, state, nil
 	}
 
 	// Compatibility path for callers that construct ReActAgent directly in tests.

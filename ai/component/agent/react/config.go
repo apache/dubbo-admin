@@ -27,6 +27,8 @@ const AgentTypeReAct = "react"
 // configurable — override individual tools via tool_timeouts instead.
 const defaultToolTimeoutSeconds = 30
 
+const defaultContextWindowTurns = 10
+
 // AgentSpec is the YAML-decoded configuration for a ReAct agent component.
 //
 // A ReAct agent runs a single reason-and-act loop: one model call per iteration
@@ -41,13 +43,14 @@ type AgentSpec struct {
 	// MaxIterations bounds the reason-act loop. The last iteration always forces a
 	// tool-less answer, so the effective number of tool rounds is
 	// MaxIterations - 1; a value of 1 means "answer directly, never call tools".
-	MaxIterations     int            `yaml:"max_iterations"`
-	ChannelBufferSize int            `yaml:"channel_buffer_size"`
-	ToolTimeouts      map[string]int `yaml:"tool_timeouts,omitempty"` // per-tool timeout overrides (seconds), keyed by tool name; defaults to defaultToolTimeoutSeconds
-	Temperature       float64        `yaml:"temperature"`
-	TopP              float64        `yaml:"top_p,omitempty"` // 0 means "unset" — the provider default is used
-	MaxTokens         int            `yaml:"max_tokens"`
-	Timeout           int            `yaml:"timeout"` // per model-call timeout (seconds)
+	MaxIterations      int            `yaml:"max_iterations"`
+	ChannelBufferSize  int            `yaml:"channel_buffer_size"`
+	ContextWindowTurns int            `yaml:"context_window_turns"`
+	ToolTimeouts       map[string]int `yaml:"tool_timeouts,omitempty"` // per-tool timeout overrides (seconds), keyed by tool name; defaults to defaultToolTimeoutSeconds
+	Temperature        float64        `yaml:"temperature"`
+	TopP               float64        `yaml:"top_p,omitempty"` // 0 means "unset" — the provider default is used
+	MaxTokens          int            `yaml:"max_tokens"`
+	Timeout            int            `yaml:"timeout"` // per model-call timeout (seconds)
 }
 
 // Validate validates the configuration.
@@ -69,6 +72,9 @@ func (c *AgentSpec) Validate() error {
 	}
 	if c.ChannelBufferSize <= 0 {
 		return fmt.Errorf("channel_buffer_size must be greater than 0")
+	}
+	if c.ContextWindowTurns <= 0 {
+		return fmt.Errorf("context_window_turns must be greater than 0")
 	}
 	for name, t := range c.ToolTimeouts {
 		if t <= 0 {
