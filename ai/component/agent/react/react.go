@@ -21,9 +21,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"dubbo-admin-ai/component/agent"
+	"dubbo-admin-ai/component/hooks"
 	"dubbo-admin-ai/component/memory"
 	rt "dubbo-admin-ai/runtime"
 	"dubbo-admin-ai/schema"
@@ -47,11 +50,21 @@ type ReActAgent struct {
 	actPrompt    ai.Prompt // reasons with tools available (native function calling)
 	answerPrompt ai.Prompt // tool-less; forces a final answer when the budget is exhausted
 	toolTimeouts toolTimeoutResolver
+	hookManager  *hooks.Manager
+	model        string
 
 	maxIterations int
 	callTimeout   time.Duration
 	bufferSize    int
+	lifecycleMu   sync.Mutex
+	stopping      bool
+	active        map[string]context.CancelFunc
+	activeWG      sync.WaitGroup
 }
+
+var interactionSequence atomic.Uint64
+
+var ErrAgentStopping = errors.New("agent is stopping")
 
 const persistenceTimeout = 30 * time.Second
 
@@ -70,24 +83,23 @@ func (s *interactionState) cancelPersistence() {
 // NewReActAgent builds a ReActAgent, assembling its prompts up front so the
 // per-interaction hot path only executes them. It returns an error if the
 // configured prompt file is missing.
-// NewReActAgent preserves the upstream constructor for callers that still use
-// the compatibility HistoryMemory path. Runtime components should use
-// NewReActAgentWithStore so all conversation data shares one Store instance.
-func NewReActAgent(g *genkit.Genkit, spec *AgentSpec, toolTimeouts toolTimeoutResolver, toolRefs []ai.ToolRef) (*ReActAgent, error) {
-	return NewReActAgentWithStore(g, nil, spec, toolTimeouts, toolRefs)
+func NewReActAgent(g *genkit.Genkit, spec *AgentSpec, toolTimeouts toolTimeoutResolver, hookManager *hooks.Manager, toolRefs []ai.ToolRef) (*ReActAgent, error) {
+	return NewReActAgentWithStore(g, nil, spec, toolTimeouts, hookManager, toolRefs)
 }
 
-// NewReActAgentWithStore constructs an agent backed by the shared conversation
-// store used by the memory, session, and tool components.
-func NewReActAgentWithStore(g *genkit.Genkit, messageStore conversationstore.MessageStore, spec *AgentSpec, toolTimeouts toolTimeoutResolver, toolRefs []ai.ToolRef) (*ReActAgent, error) {
+// NewReActAgentWithStore shares conversation storage with memory and tools.
+func NewReActAgentWithStore(g *genkit.Genkit, messageStore conversationstore.MessageStore, spec *AgentSpec, toolTimeouts toolTimeoutResolver, hookManager *hooks.Manager, toolRefs []ai.ToolRef) (*ReActAgent, error) {
 	ra := &ReActAgent{
 		registry:      g,
 		messageStore:  messageStore,
 		toolTimeouts:  toolTimeouts,
+		hookManager:   hookManager,
+		model:         spec.Model,
 		maxIterations: spec.MaxIterations,
 		callTimeout:   time.Duration(spec.Timeout) * time.Second,
-		bufferSize:    spec.ChannelBufferSize,
+		bufferSize:    max(spec.ChannelBufferSize, 1),
 	}
+
 	if messageStore == nil {
 		ra.memoryCtx = memory.NewMemoryContext(memory.ChatHistoryKey)
 	}
@@ -105,21 +117,105 @@ func NewReActAgentWithStore(g *genkit.Genkit, messageStore conversationstore.Mes
 // Channels the caller streams from. The loop, final answer emission, and channel
 // close all happen on a background goroutine; the caller owns draining Channels.
 func (ra *ReActAgent) Interact(parent context.Context, input *schema.UserInput, sessionID string) *agent.Channels {
-	chans := agent.NewChannels(ra.bufferSize)
+	chans := agent.NewChannels(max(ra.bufferSize, 1))
+	interactionID := fmt.Sprintf("interaction-%d", interactionSequence.Add(1))
+	interactionCtx, ok := ra.beginInteraction(parent, interactionID)
+	if !ok {
+		chans.ErrorChan <- ErrAgentStopping
+		chans.Close()
+		return chans
+	}
+	interactionStartedAt := time.Now()
+	interactionCtx = emitHook(ra.hookManager, interactionCtx, hooks.State{
+		Event:         hooks.EventInteractionStart,
+		InteractionID: interactionID,
+		SessionID:     sessionID,
+		Iteration:     0,
+		StartedAt:     interactionStartedAt,
+	})
+	chans.SetTraceID(hooks.TraceIDFromContext(interactionCtx))
 	go func() {
-		if parent == nil {
-			parent = context.Background()
-		}
-		ctx, state, err := ra.newInteraction(parent, input, sessionID)
-		if err != nil {
-			chans.ErrorChan <- err
+		defer ra.finishInteraction(interactionID)
+		var (
+			interactionState *interactionTrace
+			interactionErr   error
+		)
+		defer func() {
+			endedAt := time.Now()
+			if recovered := recover(); recovered != nil {
+				interactionErr = fmt.Errorf("agent interaction panicked: %v", recovered)
+				chans.ErrorChan <- interactionErr
+			}
+
+			// Emit specialized events before the final interaction.end
+			if interactionErr != nil {
+				errorEvent := hooks.EventInteractionError
+				if errors.Is(interactionErr, context.Canceled) {
+					errorEvent = hooks.EventInteractionCancel
+				}
+				errorState := hooks.State{
+					Event:         errorEvent,
+					InteractionID: interactionID,
+					SessionID:     sessionID,
+					Error:         hooks.ErrorMessage(interactionErr),
+					ErrorType:     hooks.ErrorType(interactionErr),
+					StartedAt:     interactionStartedAt,
+					EndedAt:       endedAt,
+				}
+				if interactionState != nil && interactionState.Usage != nil {
+					errorState.InputTokens = interactionState.Usage.InputTokens
+					errorState.OutputTokens = interactionState.Usage.OutputTokens
+					errorState.TotalTokens = interactionState.Usage.TotalTokens
+				}
+				emitHook(ra.hookManager, interactionCtx, errorState)
+			} else if interactionState != nil && (interactionState.FallbackUsed || interactionState.Degraded) {
+				// Emit degrade event if fallback was used or any tool degraded
+				degradeState := hooks.State{
+					Event:          hooks.EventInteractionDegrade,
+					InteractionID:  interactionID,
+					SessionID:      sessionID,
+					FallbackUsed:   interactionState.FallbackUsed,
+					FallbackReason: interactionState.FallbackReason,
+					Degraded:       interactionState.Degraded,
+					StartedAt:      interactionStartedAt,
+					EndedAt:        endedAt,
+				}
+				if interactionState.Usage != nil {
+					degradeState.InputTokens = interactionState.Usage.InputTokens
+					degradeState.OutputTokens = interactionState.Usage.OutputTokens
+					degradeState.TotalTokens = interactionState.Usage.TotalTokens
+				}
+				emitHook(ra.hookManager, interactionCtx, degradeState)
+			}
+
+			endState := hooks.State{
+				Event:         hooks.EventInteractionEnd,
+				InteractionID: interactionID,
+				SessionID:     sessionID,
+				Error:         hooks.ErrorMessage(interactionErr),
+				ErrorType:     hooks.ErrorType(interactionErr),
+				StartedAt:     interactionStartedAt,
+				EndedAt:       endedAt,
+			}
+			if interactionState != nil && interactionState.Usage != nil {
+				endState.InputTokens = interactionState.Usage.InputTokens
+				endState.OutputTokens = interactionState.Usage.OutputTokens
+				endState.TotalTokens = interactionState.Usage.TotalTokens
+			}
+			emitHook(ra.hookManager, interactionCtx, endState)
 			chans.Close()
+		}()
+
+		ctx, state, err := ra.newInteraction(interactionCtx, input, sessionID)
+		if err != nil {
+			interactionErr = err
+			chans.ErrorChan <- err
 			return
 		}
 		completed := false
 		defer func() {
 			if ra.messageStore != nil && !completed {
-				cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(parent), persistenceTimeout)
+				cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(interactionCtx), persistenceTimeout)
 				if abortErr := ra.messageStore.AbortTurnForTurn(cleanupCtx, sessionID, state.turnID); abortErr != nil && !errors.Is(abortErr, conversationstore.ErrTurnNotFound) {
 					rt.GetLogger().Error("Failed to abort AI interaction turn", "session_id", sessionID, "turn_id", state.turnID, "error", abortErr)
 				}
@@ -128,44 +224,90 @@ func (ra *ReActAgent) Interact(parent context.Context, input *schema.UserInput, 
 			state.cancelPersistence()
 		}()
 
-		usage, err := ra.run(ctx, chans)
+		interactionState = &interactionTrace{
+			InteractionID: interactionID, Session: sessionID,
+			Model: ra.model, hookManager: ra.hookManager, Usage: &ai.GenerationUsage{},
+		}
+		usage, err := ra.run(ctx, chans, interactionState)
 		if err != nil {
+			interactionErr = err
 			chans.ErrorChan <- err
-			chans.Close()
 			return
 		}
 		if ra.messageStore != nil {
 			if err := ra.messageStore.NextTurnForTurn(state.persistCtx, sessionID, state.turnID); err != nil {
-				chans.ErrorChan <- fmt.Errorf("failed to complete turn: %w", err)
-				chans.Close()
+				interactionErr = fmt.Errorf("failed to complete turn: %w", err)
+				chans.ErrorChan <- interactionErr
 				return
 			}
 			completed = true
+		} else if history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.HistoryMemory); ok {
+			history.NextTurn(sessionID)
 		}
 		if usage == nil {
 			usage = &ai.GenerationUsage{}
 		}
-
-		// Emit the final marker for the SSE layer; it carries the accumulated
-		// usage the MessageDelta needs. The answer text itself was already
-		// streamed by run.
 		chans.Send(schema.StreamFinal(&schema.Observation{UsageInfo: usage}))
 
-		chans.Close()
-		if ra.messageStore == nil {
-			if history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.HistoryMemory); ok {
-				history.NextTurn(sessionID)
-			}
-		}
 	}()
 	return chans
+}
+
+func (ra *ReActAgent) beginInteraction(parent context.Context, interactionID string) (context.Context, bool) {
+	if parent == nil {
+		parent = context.Background()
+	}
+	ra.lifecycleMu.Lock()
+	defer ra.lifecycleMu.Unlock()
+	if ra.stopping {
+		return nil, false
+	}
+	ctx, cancel := context.WithCancel(parent)
+	if ra.active == nil {
+		ra.active = make(map[string]context.CancelFunc)
+	}
+	ra.active[interactionID] = cancel
+	ra.activeWG.Add(1)
+	return ctx, true
+}
+
+func (ra *ReActAgent) finishInteraction(interactionID string) {
+	ra.lifecycleMu.Lock()
+	cancel := ra.active[interactionID]
+	delete(ra.active, interactionID)
+	ra.lifecycleMu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+	ra.activeWG.Done()
+}
+
+// Stop prevents new interactions, cancels active work, and waits until all
+// interaction end hooks have run. Runtime shutdown calls this before stopping
+// the hooks component, so the tracer provider can flush every tail span.
+func (ra *ReActAgent) Stop() {
+	ra.lifecycleMu.Lock()
+	ra.stopping = true
+	cancels := make([]context.CancelFunc, 0, len(ra.active))
+	for _, cancel := range ra.active {
+		cancels = append(cancels, cancel)
+	}
+	ra.lifecycleMu.Unlock()
+
+	for _, cancel := range cancels {
+		cancel()
+	}
+	ra.activeWG.Wait()
 }
 
 // newInteraction records the user input and returns a session-scoped context
 // plus the interaction's turn/persistence state.
 func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserInput, sessionID string) (context.Context, *interactionState, error) {
+	if parent == nil {
+		parent = context.Background()
+	}
 	if input == nil {
-		return nil, nil, fmt.Errorf("user input is nil")
+		return nil, nil, errors.New("nil input")
 	}
 	if ra.messageStore != nil {
 		turnID, err := ra.messageStore.BeginTurn(parent, sessionID)
@@ -203,7 +345,8 @@ func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserI
 	// JSON envelope the model would otherwise have to read through.
 	history.AddHistory(sessionID, ai.NewUserMessage(ai.NewTextPart(input.Content)))
 
-	ctx := context.WithValue(ra.memoryCtx, memory.SessionIDKey, sessionID)
+	ctx := context.WithValue(parent, memory.ChatHistoryKey, history)
+	ctx = context.WithValue(ctx, memory.SessionIDKey, sessionID)
 	return ctx, &interactionState{}, nil
 }
 
