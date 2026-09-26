@@ -18,11 +18,15 @@
 package app
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/apache/dubbo-admin/pkg/config"
+	configauth "github.com/apache/dubbo-admin/pkg/config/console/auth"
 	"github.com/apache/dubbo-admin/pkg/config/versioning"
 )
 
@@ -34,4 +38,23 @@ func TestAdminConfigSanitizeRetainsDefaultRuleVersioning(t *testing.T) {
 
 	require.NotNil(t, cfg.RuleVersioning)
 	assert.Equal(t, versioning.DefaultMaxVersionsPerRule, cfg.RuleVersioning.MaxVersionsPerRule)
+}
+
+func TestAdminConfigValidateRejectsMissingSecretInDefaultConsole(t *testing.T) {
+	t.Setenv(configauth.SessionSecretEnvVar, "")
+	cfg := DefaultAdminConfig()
+	cfg.Console = nil
+
+	err := cfg.Validate()
+	require.ErrorContains(t, err, "sessionSecret")
+}
+
+func TestConfigLoadRejectsNullConsoleWithoutPanicking(t *testing.T) {
+	t.Setenv(configauth.SessionSecretEnvVar, "")
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("console: null\n"), 0600))
+
+	cfg := DefaultAdminConfig()
+	err := config.Load(path, &cfg)
+	require.ErrorContains(t, err, "sessionSecret")
 }

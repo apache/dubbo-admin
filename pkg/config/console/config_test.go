@@ -25,6 +25,7 @@ import (
 )
 
 func TestReleaseProviderRequiresStrongSessionSecret(t *testing.T) {
+	t.Setenv(auth.SessionSecretEnvVar, "")
 	cfg := DefaultConsoleConfig()
 	cfg.Auth.Providers = map[string]auth.ProviderConfig{
 		"github": {
@@ -44,6 +45,7 @@ func TestReleaseProviderRequiresStrongSessionSecret(t *testing.T) {
 }
 
 func TestPasswordAuthenticationRequiresStrongSessionSecret(t *testing.T) {
+	t.Setenv(auth.SessionSecretEnvVar, "")
 	cfg := DefaultConsoleConfig()
 	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "sessionSecret") {
 		t.Fatalf("Validate() error = %v, want sessionSecret error", err)

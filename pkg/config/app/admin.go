@@ -79,7 +79,9 @@ func (c *AdminConfig) Sanitize() {
 		d.Sanitize()
 	}
 	c.Store.Sanitize()
-	c.Console.Sanitize()
+	if c.Console != nil {
+		c.Console.Sanitize()
+	}
 	c.Observability.Sanitize()
 	c.Diagnostics.Sanitize()
 	c.Log.Sanitize()
@@ -90,6 +92,7 @@ func (c *AdminConfig) Sanitize() {
 }
 
 func (c *AdminConfig) PreProcess() error {
+	c.ensureConsoleConfig()
 	discoveryPreProcess := func() error {
 		for _, d := range c.Discovery {
 			if err := d.PreProcess(); err != nil {
@@ -114,6 +117,7 @@ func (c *AdminConfig) PreProcess() error {
 }
 
 func (c *AdminConfig) PostProcess() error {
+	c.ensureConsoleConfig()
 	discoveryPostProcess := func() error {
 		for _, d := range c.Discovery {
 			if err := d.PostProcess(); err != nil {
@@ -153,9 +157,8 @@ func (c *AdminConfig) Validate() error {
 	} else if err := c.Diagnostics.Validate(); err != nil {
 		return bizerror.Wrap(err, bizerror.ConfigError, "diagnostics config validation failed")
 	}
-	if c.Console == nil {
-		c.Console = console.DefaultConsoleConfig()
-	} else if err := c.Console.Validate(); err != nil {
+	c.ensureConsoleConfig()
+	if err := c.Console.Validate(); err != nil {
 		return bizerror.Wrap(err, bizerror.ConfigError, "console config validation failed")
 	}
 	if c.Observability == nil {
@@ -194,6 +197,12 @@ func (c *AdminConfig) Validate() error {
 		return bizerror.Wrap(err, bizerror.ConfigError, "versioning config validation failed")
 	}
 	return nil
+}
+
+func (c *AdminConfig) ensureConsoleConfig() {
+	if c.Console == nil {
+		c.Console = console.DefaultConsoleConfig()
+	}
 }
 
 // FindDiscovery finds the DiscoveryConfig by id, returns nil if not found

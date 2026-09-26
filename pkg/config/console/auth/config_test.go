@@ -45,6 +45,7 @@ func TestConfigValidatePasswordOnly(t *testing.T) {
 }
 
 func TestConfigValidateRequiresSessionSecret(t *testing.T) {
+	t.Setenv(SessionSecretEnvVar, "")
 	cfg := validConfig()
 	cfg.SessionSecret = ""
 	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "sessionSecret") {
