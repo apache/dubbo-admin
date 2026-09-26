@@ -41,7 +41,7 @@ func TestAdminConfigSanitizeRetainsDefaultRuleVersioning(t *testing.T) {
 }
 
 func TestAdminConfigValidateRejectsMissingConsole(t *testing.T) {
-	t.Setenv(configauth.SessionSecretEnvVar, "")
+	t.Setenv(configauth.SessionSecretEnvVar, "0123456789abcdef0123456789abcdef")
 	cfg := DefaultAdminConfig()
 
 	err := cfg.Validate()
@@ -69,4 +69,51 @@ func TestConfigLoadFailsClosedForMissingOrEmptyConsole(t *testing.T) {
 			require.ErrorContains(t, err, tt.wantError)
 		})
 	}
+}
+
+func TestConfigLoadUsesSessionSecretFromEnvironment(t *testing.T) {
+	secret := "0123456789abcdef0123456789abcdef"
+	t.Setenv(configauth.SessionSecretEnvVar, secret)
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	contents := `console:
+  ginMode: release
+  port: 8888
+  auth:
+    user: admin
+    password: test-password
+    expirationTime: 3600
+    sessionSecret: ""
+discovery:
+  - id: test
+    name: test
+    type: mock
+`
+	require.NoError(t, os.WriteFile(path, []byte(contents), 0600))
+
+	cfg := DefaultAdminConfig()
+	require.NoError(t, config.Load(path, &cfg))
+	assert.Equal(t, secret, cfg.Console.Auth.SessionSecret)
+}
+
+func TestConfigLoadRejectsMissingSessionSecret(t *testing.T) {
+	t.Setenv(configauth.SessionSecretEnvVar, "")
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	contents := `console:
+  ginMode: release
+  port: 8888
+  auth:
+    user: admin
+    password: test-password
+    expirationTime: 3600
+    sessionSecret: ""
+discovery:
+  - id: test
+    name: test
+    type: mock
+`
+	require.NoError(t, os.WriteFile(path, []byte(contents), 0600))
+
+	cfg := DefaultAdminConfig()
+	err := config.Load(path, &cfg)
+	require.ErrorContains(t, err, "sessionSecret")
 }
