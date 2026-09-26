@@ -40,21 +40,33 @@ func TestAdminConfigSanitizeRetainsDefaultRuleVersioning(t *testing.T) {
 	assert.Equal(t, versioning.DefaultMaxVersionsPerRule, cfg.RuleVersioning.MaxVersionsPerRule)
 }
 
-func TestAdminConfigValidateRejectsMissingSecretInDefaultConsole(t *testing.T) {
+func TestAdminConfigValidateRejectsMissingConsole(t *testing.T) {
 	t.Setenv(configauth.SessionSecretEnvVar, "")
 	cfg := DefaultAdminConfig()
-	cfg.Console = nil
 
 	err := cfg.Validate()
-	require.ErrorContains(t, err, "sessionSecret")
+	require.ErrorContains(t, err, "console config is needed")
 }
 
-func TestConfigLoadRejectsNullConsoleWithoutPanicking(t *testing.T) {
-	t.Setenv(configauth.SessionSecretEnvVar, "")
-	path := filepath.Join(t.TempDir(), "config.yaml")
-	require.NoError(t, os.WriteFile(path, []byte("console: null\n"), 0600))
+func TestConfigLoadFailsClosedForMissingOrEmptyConsole(t *testing.T) {
+	t.Setenv(configauth.SessionSecretEnvVar, "0123456789abcdef0123456789abcdef")
+	tests := []struct {
+		name      string
+		contents  string
+		wantError string
+	}{
+		{name: "missing", contents: "discovery: []\n", wantError: "console config is needed"},
+		{name: "null", contents: "console: null\n", wantError: "console config is needed"},
+		{name: "empty object", contents: "console: {}\n", wantError: "invalid gin mode"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "config.yaml")
+			require.NoError(t, os.WriteFile(path, []byte(tt.contents), 0600))
 
-	cfg := DefaultAdminConfig()
-	err := config.Load(path, &cfg)
-	require.ErrorContains(t, err, "sessionSecret")
+			cfg := DefaultAdminConfig()
+			err := config.Load(path, &cfg)
+			require.ErrorContains(t, err, tt.wantError)
+		})
+	}
 }
