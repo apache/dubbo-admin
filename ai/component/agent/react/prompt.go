@@ -18,59 +18,72 @@
 package react
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path"
-
-	"dubbo-admin-ai/runtime"
+	"strings"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/openai/openai-go"
 )
 
-// answerDirective nudges the model to commit to a final answer from whatever it
-// has already gathered. It is only attached to the tool-less answer prompt,
-// which the loop uses once the iteration budget is exhausted.
-const answerDirective = "Provide your final answer now, using the information already gathered. Do not request any more tools."
+const actPolicy = `# Act Phase
+Tools are available in this phase through their provided names, descriptions,
+and input schemas.
 
-// buildPrompts assembles the two genkit prompts a ReAct agent needs, both from
-// the single configured system prompt:
+- Call a tool only when its result could materially improve or change the answer.
+- Select tools from their provided descriptions and supply only supported input.
+- If no tool is needed, answer the user directly.
+- When calling tools, emit only the native tool call. Independent calls may be
+  made together.
+- After results arrive, reassess the evidence. Call another tool only to resolve
+  a material remaining gap or test a stated hypothesis; otherwise answer.
+- Do not repeat an identical call unless retrying a transient failure is
+  justified. If a tool fails, times out, is unavailable, or returns no useful
+  data, use other available evidence and follow the shared incomplete-evidence
+  rules.`
+
+const finalAnswerPolicy = `# Final-Answer Phase
+No tools are available in this phase. Produce the final user-facing answer now
+using only evidence already present in the conversation.
+
+- Do not emit or request a tool call.
+- Do not claim that a check, lookup, or verification occurred unless its result
+  is present in the conversation.
+- If the available evidence is insufficient, state the uncertainty and the next
+  verification step rather than guessing.`
+
+// buildPrompts assembles the two genkit prompts a ReAct agent needs from a
+// shared policy and separate phase policies:
 //   - act reasons with tools available (native function calling); each iteration
 //     either calls tools or answers directly.
-//   - answer is the same system prompt without tools, used to force a final
-//     answer when the iteration budget is exhausted.
+//   - answer has an explicit tool-less policy and forces a final answer when the
+//     iteration budget is exhausted.
 //
-// They share every model setting; only the tool binding (and answer's synthesis
-// directive) differ.
+// They share every model setting and the phase-independent policy loaded from
+// the configured prompt file.
 func (ra *ReActAgent) buildPrompts(g *genkit.Genkit, spec *AgentSpec, model string, toolRefs []ai.ToolRef) (act, answer ai.Prompt, err error) {
 	promptPath := path.Join(spec.PromptBasePath, spec.PromptFile)
-	systemPrompt, err := os.ReadFile(promptPath)
+	sharedPolicy, err := os.ReadFile(promptPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to read prompt file %s: %w", promptPath, err)
 	}
 
-	// Advertise the available tool names to the model.
-	toolNames := make([]string, 0, len(toolRefs))
-	for _, toolRef := range toolRefs {
-		toolNames = append(toolNames, toolRef.Name())
-	}
-	toolsJSON, err := json.Marshal(toolNames)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to marshal tool names: %w", err)
-	}
-	extraPrompt := fmt.Sprintf("available tools: %s", string(toolsJSON))
-	runtime.GetLogger().Debug("Tool details", "extraPrompt", extraPrompt)
-
-	act = buildPrompt(g, "react_act", string(systemPrompt), spec, model, extraPrompt, toolRefs)
-	answer = buildPrompt(g, "react_answer", string(systemPrompt), spec, model, answerDirective, nil)
+	actSystemPrompt := assembleSystemPrompt(string(sharedPolicy), actPolicy)
+	answerSystemPrompt := assembleSystemPrompt(string(sharedPolicy), finalAnswerPolicy)
+	act = buildPrompt(g, "react_act", actSystemPrompt, spec, model, toolRefs)
+	answer = buildPrompt(g, "react_answer", answerSystemPrompt, spec, model, nil)
 	return act, answer, nil
+}
+
+func assembleSystemPrompt(sharedPolicy, phasePolicy string) string {
+	return strings.TrimSpace(sharedPolicy) + "\n\n" + strings.TrimSpace(phasePolicy)
 }
 
 // buildPrompt assembles a genkit prompt from the shared model settings, binding
 // the given tool set when one is provided.
-func buildPrompt(registry *genkit.Genkit, tag, systemPrompt string, spec *AgentSpec, model, extraPrompt string, tools []ai.ToolRef) ai.Prompt {
+func buildPrompt(registry *genkit.Genkit, tag, systemPrompt string, spec *AgentSpec, model string, tools []ai.ToolRef) ai.Prompt {
 	cfg := &openai.ChatCompletionNewParams{
 		Temperature: openai.Float(spec.Temperature),
 	}
@@ -82,12 +95,9 @@ func buildPrompt(registry *genkit.Genkit, tag, systemPrompt string, spec *AgentS
 	}
 
 	opts := []ai.PromptOption{
-		ai.WithSystem(systemPrompt),
+		ai.WithSystem("%s", systemPrompt),
 		ai.WithConfig(cfg),
 		ai.WithModelName(model),
-	}
-	if extraPrompt != "" {
-		opts = append(opts, ai.WithPrompt(extraPrompt))
 	}
 	if len(tools) > 0 {
 		opts = append(opts, ai.WithTools(tools...), ai.WithReturnToolRequests(true))

@@ -158,7 +158,7 @@ func TestRunAppendsToolOutputToContextSnapshotWithoutReloading(t *testing.T) {
 	defer state.cancelPersistence()
 	defer func() { _ = baseStore.AbortTurnForTurn(context.Background(), "tool-snapshot-session", state.turnID) }()
 
-	if _, err := ra.run(interactionCtx, nil, state); err != nil {
+	if _, err := ra.run(interactionCtx, nil, state, &interactionTrace{}); err != nil {
 		t.Fatalf("run() error = %v", err)
 	}
 	if store.calls.Load() != 1 {

@@ -136,7 +136,7 @@ func TestRun_AnswersDirectly(t *testing.T) {
 	ra := testAgent(g, 3, script)
 	ctx, history := contextWithHistory("s1")
 
-	usage, err := ra.run(ctx, nil, nil)
+	usage, err := ra.run(ctx, nil, nil, &interactionTrace{})
 	if err != nil {
 		t.Fatalf("run error: %v", err)
 	}
@@ -163,7 +163,7 @@ func TestRun_CallsToolThenAnswers(t *testing.T) {
 	ra := testAgent(g, 2, script)
 	ctx, history := contextWithHistory("s2")
 
-	if _, err := ra.run(ctx, nil, nil); err != nil {
+	if _, err := ra.run(ctx, nil, nil, &interactionTrace{}); err != nil {
 		t.Fatalf("run error: %v", err)
 	}
 	if script.calls != 2 {
@@ -190,7 +190,7 @@ func TestRun_ToolErrorDegradesNotAborts(t *testing.T) {
 	ra := testAgent(g, 2, script)
 	ctx, history := contextWithHistory("s3")
 
-	if _, err := ra.run(ctx, nil, nil); err != nil {
+	if _, err := ra.run(ctx, nil, nil, &interactionTrace{}); err != nil {
 		t.Fatalf("a failing tool must not abort the interaction, got: %v", err)
 	}
 	text := historyText(history, "s3")
@@ -205,7 +205,7 @@ func TestRun_PropagatesExecuteError(t *testing.T) {
 	ra := testAgent(g, 3, script)
 	ctx, _ := contextWithHistory("s4")
 
-	_, err := ra.run(ctx, nil, nil)
+	_, err := ra.run(ctx, nil, nil, &interactionTrace{})
 	if err == nil || !strings.Contains(err.Error(), "failed to execute react prompt") {
 		t.Fatalf("expected wrapped execute error, got %v", err)
 	}
@@ -232,7 +232,7 @@ func TestRun_ForcedFinalIterationUsesAnswerPrompt(t *testing.T) {
 	ra.answerPrompt = answer
 	ctx, history := contextWithHistory("s5")
 
-	if _, err := ra.run(ctx, nil, nil); err != nil {
+	if _, err := ra.run(ctx, nil, nil, &interactionTrace{}); err != nil {
 		t.Fatalf("run error: %v", err)
 	}
 	if act.calls != 2 {
@@ -254,7 +254,7 @@ func TestRun_EmptyResponseRetries(t *testing.T) {
 	ra := testAgent(g, 2, script)
 	ctx, history := contextWithHistory("s6")
 
-	if _, err := ra.run(ctx, nil, nil); err != nil {
+	if _, err := ra.run(ctx, nil, nil, &interactionTrace{}); err != nil {
 		t.Fatalf("run error: %v", err)
 	}
 	if script.calls != 2 {
@@ -274,7 +274,7 @@ func TestRun_EmptyForcedAnswerFallsBack(t *testing.T) {
 	ra := testAgent(g, 1, script)
 	ctx, history := contextWithHistory("s7")
 
-	if _, err := ra.run(ctx, nil, nil); err != nil {
+	if _, err := ra.run(ctx, nil, nil, &interactionTrace{}); err != nil {
 		t.Fatalf("run error: %v", err)
 	}
 	if !strings.Contains(historyText(history, "s7"), fallbackAnswer) {

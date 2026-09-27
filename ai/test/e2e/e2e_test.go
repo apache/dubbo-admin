@@ -33,8 +33,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/joho/godotenv"
 	"dubbo-admin-ai/component/agent/react"
+	"dubbo-admin-ai/component/hooks"
 	"dubbo-admin-ai/component/logger"
 	"dubbo-admin-ai/component/memory"
 	"dubbo-admin-ai/component/models"
@@ -42,6 +42,7 @@ import (
 	"dubbo-admin-ai/component/server"
 	"dubbo-admin-ai/component/tools"
 	appruntime "dubbo-admin-ai/runtime"
+	"github.com/joho/godotenv"
 )
 
 func init() {
@@ -222,7 +223,7 @@ func TestComponentIntegration(t *testing.T) {
 		t.Logf("Components loaded: %s", formatComponents(components))
 
 		// Check critical components
-		criticalTypes := []string{"logger", "memory", "models", "rag", "tools", "server", "agent"}
+		criticalTypes := []string{"logger", "memory", "models", "rag", "tools", "hooks", "server", "agent"}
 		for _, compType := range criticalTypes {
 			comps, err := rt.GetComponentByType(compType)
 			if err != nil {
@@ -410,6 +411,7 @@ components:
   models: %s
   server: %s
   tools: %s
+  hooks: %s
   rag: %s
   agent: %s
 `,
@@ -418,6 +420,7 @@ components:
 			toSlash(filepath.Join(aiDir, "component", "models", "models.yaml")),
 			toSlash(filepath.Join(aiDir, "component", "server", "server.yaml")),
 			toSlash(filepath.Join(aiDir, "component", "tools", "tools.yaml")),
+			toSlash(filepath.Join(aiDir, "component", "hooks", "hooks.yaml")),
 			toSlash(filepath.Join(aiDir, "component", "rag", "rag.yaml")),
 			toSlash(filepath.Join(aiDir, "component", "agent", "agent.yaml")),
 		)
@@ -472,6 +475,7 @@ components:
 func registerFactories(rt *appruntime.Runtime) {
 	rt.RegisterFactory("logger", logger.LoggerFactory)
 	rt.RegisterFactory("memory", memory.MemoryFactory)
+	rt.RegisterFactory("hooks", hooks.HookFactory)
 	rt.RegisterFactory("models", models.ModelsFactory)
 	rt.RegisterFactory("rag", compRag.RAGFactory)
 	rt.RegisterFactory("tools", tools.ToolsFactory)
@@ -507,6 +511,7 @@ components:
   models: %s
   server: %s
   tools: %s
+  hooks: %s
   rag: %s
   agent: %s
 `,
@@ -515,6 +520,7 @@ components:
 		toSlash(filepath.Join(aiDir, "component", "models", "models.yaml")),
 		toSlash(filepath.Join(aiDir, "component", "server", "server.yaml")),
 		toSlash(filepath.Join(aiDir, "component", "tools", "tools.yaml")),
+		toSlash(filepath.Join(aiDir, "component", "hooks", "hooks.yaml")),
 		toSlash(filepath.Join(aiDir, "component", "rag", "rag.yaml")),
 		toSlash(agentConfigPath),
 	)

@@ -6,5 +6,6 @@ components:
   server: component/server/server.yaml
   memory: component/memory/memory.yaml
   tools: component/tools/tools.yaml
+  hooks: component/hooks/hooks.yaml
   rag: component/rag/rag.yaml
   agent: component/agent/agent.yaml
