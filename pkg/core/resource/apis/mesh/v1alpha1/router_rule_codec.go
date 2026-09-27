@@ -29,6 +29,15 @@ import (
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
+// The rule protobufs use scalar bools, so annotations retain field presence
+// from config-center YAML without changing generated resource types. Metadata
+// is copied and persisted by the existing resource store implementations.
+const (
+	affinityRuntimeOmittedAnnotation = "dubbo.apache.org/affinity-runtime-omitted"
+	affinityEnabledOmittedAnnotation = "dubbo.apache.org/affinity-enabled-omitted"
+	scriptEnabledOmittedAnnotation   = "dubbo.apache.org/script-enabled-omitted"
+)
+
 // The protobuf field is named affinity for historical/internal reasons. The
 // public Dubbo 3 contract is affinityAware, so never marshal the protobuf
 // message directly for these resources.
@@ -36,8 +45,8 @@ type affinityRouteYAML struct {
 	ConfigVersion string             `json:"configVersion"`
 	Scope         string             `json:"scope"`
 	Key           string             `json:"key"`
-	Runtime       bool               `json:"runtime"`
-	Enabled       bool               `json:"enabled"`
+	Runtime       *bool              `json:"runtime,omitempty"`
+	Enabled       *bool              `json:"enabled,omitempty"`
 	AffinityAware *affinityAwareYAML `json:"affinityAware"`
 }
 
@@ -50,7 +59,7 @@ type scriptRouteYAML struct {
 	ConfigVersion string `json:"configVersion"`
 	Scope         string `json:"scope"`
 	Key           string `json:"key"`
-	Enabled       bool   `json:"enabled"`
+	Enabled       *bool  `json:"enabled,omitempty"`
 	Type          string `json:"type"`
 	Script        string `json:"script"`
 }
@@ -74,8 +83,8 @@ func EncodeRule(r coremodel.Resource) ([]byte, error) {
 			ConfigVersion: typed.Spec.ConfigVersion,
 			Scope:         typed.Spec.Scope,
 			Key:           typed.Spec.Key,
-			Runtime:       typed.Spec.Runtime,
-			Enabled:       typed.Spec.Enabled,
+			Runtime:       optionalRuleBool(typed.Spec.Runtime, typed.Annotations, affinityRuntimeOmittedAnnotation),
+			Enabled:       optionalRuleBool(typed.Spec.Enabled, typed.Annotations, affinityEnabledOmittedAnnotation),
 			AffinityAware: aware,
 		}
 	case *ScriptRouteResource:
@@ -83,7 +92,7 @@ func EncodeRule(r coremodel.Resource) ([]byte, error) {
 			ConfigVersion: typed.Spec.ConfigVersion,
 			Scope:         typed.Spec.Scope,
 			Key:           typed.Spec.Key,
-			Enabled:       typed.Spec.Enabled,
+			Enabled:       optionalRuleBool(typed.Spec.Enabled, typed.Annotations, scriptEnabledOmittedAnnotation),
 			Type:          typed.Spec.Type,
 			Script:        typed.Spec.Script,
 		}
@@ -127,8 +136,21 @@ func DecodeRule(kind coremodel.ResourceKind, mesh, name, data string) (coremodel
 		res.Spec.ConfigVersion = external.ConfigVersion
 		res.Spec.Scope = external.Scope
 		res.Spec.Key = external.Key
-		res.Spec.Runtime = external.Runtime
-		res.Spec.Enabled = external.Enabled
+		if external.Runtime != nil {
+			res.Spec.Runtime = *external.Runtime
+			clearRuleBooleanOmitted(&res.Annotations, affinityRuntimeOmittedAnnotation)
+		} else {
+			markRuleBooleanOmitted(&res.Annotations, affinityRuntimeOmittedAnnotation)
+		}
+		if external.Enabled != nil {
+			res.Spec.Enabled = *external.Enabled
+			clearRuleBooleanOmitted(&res.Annotations, affinityEnabledOmittedAnnotation)
+		} else {
+			markRuleBooleanOmitted(&res.Annotations, affinityEnabledOmittedAnnotation)
+		}
+		if err := ValidateRule(res); err != nil {
+			return nil, err
+		}
 		return res, nil
 	case ScriptRouteKind:
 		external := scriptRouteYAML{}
@@ -139,9 +161,17 @@ func DecodeRule(kind coremodel.ResourceKind, mesh, name, data string) (coremodel
 		res.Spec.ConfigVersion = external.ConfigVersion
 		res.Spec.Scope = external.Scope
 		res.Spec.Key = external.Key
-		res.Spec.Enabled = external.Enabled
+		if external.Enabled != nil {
+			res.Spec.Enabled = *external.Enabled
+			clearRuleBooleanOmitted(&res.Annotations, scriptEnabledOmittedAnnotation)
+		} else {
+			markRuleBooleanOmitted(&res.Annotations, scriptEnabledOmittedAnnotation)
+		}
 		res.Spec.Type = external.Type
 		res.Spec.Script = external.Script
+		if err := ValidateRule(res); err != nil {
+			return nil, err
+		}
 		return res, nil
 	default:
 		res, err := coremodel.ResourceSchemaRegistry().NewResourceFunc(kind)
@@ -153,6 +183,27 @@ func DecodeRule(kind coremodel.ResourceKind, mesh, name, data string) (coremodel
 			return nil, ruleYAMLError(name, err)
 		}
 		return r, nil
+	}
+}
+
+func optionalRuleBool(value bool, annotations map[string]string, omittedAnnotation string) *bool {
+	if !value && annotations[omittedAnnotation] == "true" {
+		return nil
+	}
+	return &value
+}
+
+func markRuleBooleanOmitted(annotations *map[string]string, key string) {
+	if *annotations == nil {
+		*annotations = make(map[string]string)
+	}
+	(*annotations)[key] = "true"
+}
+
+func clearRuleBooleanOmitted(annotations *map[string]string, key string) {
+	delete(*annotations, key)
+	if len(*annotations) == 0 {
+		*annotations = nil
 	}
 }
 
