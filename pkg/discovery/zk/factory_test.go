@@ -7,7 +7,6 @@
  * the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,29 +14,30 @@
  * limitations under the License.
  */
 
-package governor
+package zk
 
 import (
-	set "github.com/duke-git/lancet/v2/datastructure/set"
+	"testing"
 
-	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
-	"github.com/apache/dubbo-admin/pkg/core/resource/model"
+	"github.com/stretchr/testify/require"
 )
 
-var RuleResourceKinds = set.New(
-	meshresource.DynamicConfigKind,
-	meshresource.ConditionRouteKind,
-	meshresource.TagRouteKind,
-	meshresource.AffinityRouteKind,
-	meshresource.ScriptRouteKind,
-)
-
-// RuleGovernor makes the rule operations effective
-type RuleGovernor interface {
-	// CreateRule creates a resource in the registry
-	CreateRule(model.Resource) error
-	// UpdateRule updates a resource in the registry
-	UpdateRule(model.Resource) error
-	// DeleteRule deletes a resource from the registry
-	DeleteRule(model.Resource) error
+func TestZKConfigNameSupportsGroupedAndLegacyPaths(t *testing.T) {
+	tests := []struct {
+		path string
+		name string
+		ok   bool
+	}{
+		{"/dubbo/config/dubbo/provider.affinity-router", "provider.affinity-router", true},
+		{"/dubbo/config/dubbo/provider.script-router", "provider.script-router", true},
+		{"/dubbo/config/provider.tag-router", "provider.tag-router", true},
+		{"/dubbo/config", "", false},
+		{"/dubbo/config/dubbo", "", false},
+		{"/dubbo/config/other/group", "", false},
+	}
+	for _, tt := range tests {
+		name, ok := zkConfigName(tt.path)
+		require.Equal(t, tt.ok, ok, tt.path)
+		require.Equal(t, tt.name, name, tt.path)
+	}
 }
