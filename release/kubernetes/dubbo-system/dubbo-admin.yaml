@@ -12,8 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# Create the session secret before applying this manifest:
-# kubectl -n dubbo-system create secret generic dubbo-admin-auth --from-literal=session-secret="$(openssl rand -base64 32)"
+# Run ./deploy.sh to create a persistent session Secret and apply this directory.
+# Direct kubectl apply requires the dubbo-admin-auth Secret to exist first.
 
 apiVersion: apps/v1
 kind: Deployment
