@@ -102,7 +102,7 @@ metadata:
 data:
   dubbo-admin.yaml: |
     observability:
-      grafana: http://grafana.monitoringg.svc:3000
+      grafana: http://grafana.monitoring.svc:3000
       prometheus: http://prometheus-k8s.monitoring.svc:9090/
     console:
       port: 8888
