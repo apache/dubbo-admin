@@ -9783,7 +9783,7 @@ items:
                   "queryType": "search",
                   "refId": "A",
                   "service": "${application}",
-                  "tags": "net.peer.name=${instance}"
+                  "tags": "k8s.pod.ip=${instance}"
                 }
               ],
               "title": "Panel Title",
