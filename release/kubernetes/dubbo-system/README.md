@@ -26,9 +26,17 @@ From the repository root, run:
 The script creates the `dubbo-system` namespace if needed, generates a random
 `session-secret` in the `dubbo-admin-auth` Kubernetes Secret on first install,
 and applies the manifests in this directory. It keeps the existing Secret on
-later runs, so the signing key remains stable across upgrades.
+later runs, so the signing key remains stable across upgrades. An existing
+Secret without `session-secret`, or with a value shorter than 32 bytes, stops
+deployment instead of silently changing the key.
 
 This command requires `kubectl` access to create the namespace, Secret, and
 manifest resources, plus `openssl` for the initial key generation. To apply the
 manifests directly with `kubectl apply -f`, create `dubbo-admin-auth` with a
 `session-secret` key in the `dubbo-system` namespace first.
+
+The manifest currently references `apache/dubbo-admin:0.7.0`, which predates
+the session-secret validation in this change. When publishing the fix, update
+that image tag to a release built from the fixed source. Until then, use an
+image built from this branch for deployment testing; merely injecting a Secret
+into the old image does not fix its cookie-signing behavior.

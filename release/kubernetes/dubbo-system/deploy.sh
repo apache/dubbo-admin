@@ -20,6 +20,13 @@ namespace=dubbo-system
 secret_name=dubbo-admin-auth
 manifest_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+for command in kubectl openssl; do
+  if ! command -v "$command" >/dev/null 2>&1; then
+    printf 'Required command not found: %s\n' "$command" >&2
+    exit 1
+  fi
+done
+
 if ! kubectl get namespace "$namespace" >/dev/null 2>&1; then
   kubectl create namespace "$namespace"
 fi
@@ -30,8 +37,13 @@ if kubectl -n "$namespace" get secret "$secret_name" >/dev/null 2>&1; then
     printf 'Secret %s/%s is missing session-secret. Fix it before deploying.\n' "$namespace" "$secret_name" >&2
     exit 1
   fi
+  secret_length="$(printf '%s' "$secret_value" | openssl base64 -d -A | wc -c | tr -d '[:space:]')"
+  if (( secret_length < 32 )); then
+    printf 'Secret %s/%s has a session-secret shorter than 32 bytes. Replace it before deploying.\n' "$namespace" "$secret_name" >&2
+    exit 1
+  fi
 else
-  generated_secret="$(openssl rand -base64 48 | tr -d '\r\n')"
+  generated_secret="$(openssl rand -hex 32)"
   printf '%s' "$generated_secret" | kubectl -n "$namespace" create secret generic "$secret_name" --from-file=session-secret=/dev/stdin
 fi
 
