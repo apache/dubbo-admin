@@ -100,14 +100,9 @@ func GetInstanceDashboard(ctx consolectx.Context, baseURL *url.URL, req *model.I
 }
 
 func GetInstanceDashboardVariables(ctx consolectx.Context, req *model.InstanceDashboardReq) (map[string]string, error) {
-	resKey := coremodel.BuildResourceKey(req.Mesh, req.InstanceName)
-	res, exists, err := manager.GetByKey[*meshresource.InstanceResource](ctx.ResourceManager(), meshresource.InstanceKind, resKey)
+	res, err := getInstanceDashboardResource(ctx, req)
 	if err != nil {
 		return nil, err
-	}
-	if !exists {
-		return nil, bizerror.New(bizerror.NotFoundError,
-			fmt.Sprintf("instance %s not found", req.InstanceName))
 	}
 	var instanceValue string
 	if res.Spec.QosPort != 0 {
@@ -120,6 +115,42 @@ func GetInstanceDashboardVariables(ctx consolectx.Context, req *model.InstanceDa
 		"var-application": res.Spec.AppName,
 		"var-instance":    instanceValue,
 	}, nil
+}
+
+func GetInstanceTraceDashboard(ctx consolectx.Context, baseURL *url.URL, req *model.InstanceDashboardReq) (string, error) {
+	if baseURL == nil {
+		return "", bizerror.New(bizerror.NotFoundError, "grafana url is not configured")
+	}
+	variables, err := GetInstanceTraceDashboardVariables(ctx, req)
+	if err != nil {
+		return "", err
+	}
+	traceURL := *baseURL
+	return concatURLWithQueryVars(&traceURL, variables), nil
+}
+
+func GetInstanceTraceDashboardVariables(ctx consolectx.Context, req *model.InstanceDashboardReq) (map[string]string, error) {
+	res, err := getInstanceDashboardResource(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]string{
+		"var-application": res.Spec.AppName,
+		"var-instance":    res.Spec.Ip,
+	}, nil
+}
+
+func getInstanceDashboardResource(ctx consolectx.Context, req *model.InstanceDashboardReq) (*meshresource.InstanceResource, error) {
+	resKey := coremodel.BuildResourceKey(req.Mesh, req.InstanceName)
+	res, exists, err := manager.GetByKey[*meshresource.InstanceResource](ctx.ResourceManager(), meshresource.InstanceKind, resKey)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, bizerror.New(bizerror.NotFoundError,
+			fmt.Sprintf("instance %s not found", req.InstanceName))
+	}
+	return res, nil
 }
 
 func concatURLWithQueryVars(baseURL *url.URL, vars map[string]string) string {
