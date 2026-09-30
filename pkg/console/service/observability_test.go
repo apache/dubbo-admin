@@ -39,6 +39,87 @@ func dashboardTestContext(t *testing.T) (*testContext, store.ResourceStore) {
 	return &testContext{rm: manager.NewResourceManager(&testRouter{stores: map[coremodel.ResourceKind]store.ResourceStore{meshresource.ServiceProviderMetadataKind: s}}, nil)}, s
 }
 
+func instanceDashboardTestContext(t *testing.T) (*testContext, store.ResourceStore) {
+	t.Helper()
+	s := memoryst.NewMemoryResourceStore(meshresource.InstanceKind)
+	require.NoError(t, s.Init(nil))
+	return &testContext{rm: manager.NewResourceManager(&testRouter{stores: map[coremodel.ResourceKind]store.ResourceStore{meshresource.InstanceKind: s}}, nil)}, s
+}
+
+func TestInstanceMetricAndTraceDashboardVariables(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		qosPort        int64
+		metricInstance string
+	}{
+		{name: "explicit QoS port", qosPort: 22222, metricInstance: "10.42.1.10:22222"},
+		{name: "default QoS port", qosPort: 0, metricInstance: "10.42.1.10:22222"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, s := instanceDashboardTestContext(t)
+			instance := meshresource.NewInstanceResourceWithAttributes("instance", "mesh")
+			instance.Spec.AppName = "shop-user"
+			instance.Spec.Ip = "10.42.1.10"
+			instance.Spec.QosPort = tc.qosPort
+			require.NoError(t, s.Add(instance))
+			req := &model.InstanceDashboardReq{Mesh: "mesh", InstanceName: "instance"}
+
+			metric, err := GetInstanceDashboardVariables(ctx, req)
+			require.NoError(t, err)
+			require.Equal(t, "shop-user", metric["var-application"])
+			require.Equal(t, tc.metricInstance, metric["var-instance"])
+
+			trace, err := GetInstanceTraceDashboardVariables(ctx, req)
+			require.NoError(t, err)
+			require.Equal(t, "shop-user", trace["var-application"])
+			require.Equal(t, "10.42.1.10", trace["var-instance"])
+			require.NotEqual(t, metric["var-instance"], trace["var-instance"])
+		})
+	}
+}
+
+func TestInstanceTraceDashboardURL(t *testing.T) {
+	ctx, s := instanceDashboardTestContext(t)
+	instance := meshresource.NewInstanceResourceWithAttributes("instance", "mesh")
+	instance.Spec.AppName = "shop-user"
+	instance.Spec.Ip = "10.42.1.10"
+	instance.Spec.QosPort = 22222
+	require.NoError(t, s.Add(instance))
+	base, err := url.Parse("http://grafana/d/instance?kiosk=1")
+	require.NoError(t, err)
+
+	result, err := GetInstanceTraceDashboard(ctx, base, &model.InstanceDashboardReq{Mesh: "mesh", InstanceName: "instance"})
+	require.NoError(t, err)
+	parsed, err := url.Parse(result)
+	require.NoError(t, err)
+	require.Equal(t, url.Values{
+		"kiosk":           {"1"},
+		"var-application": {"shop-user"},
+		"var-instance":    {"10.42.1.10"},
+	}, parsed.Query())
+	require.Equal(t, "kiosk=1", base.RawQuery)
+}
+
+func TestInstanceTraceDashboardErrors(t *testing.T) {
+	ctx, _ := instanceDashboardTestContext(t)
+	req := &model.InstanceDashboardReq{Mesh: "mesh", InstanceName: "missing"}
+
+	result, err := GetInstanceTraceDashboard(ctx, nil, req)
+	require.ErrorContains(t, err, "grafana url is not configured")
+	require.Empty(t, result)
+
+	base, parseErr := url.Parse("http://grafana/d/instance")
+	require.NoError(t, parseErr)
+	result, err = GetInstanceTraceDashboard(ctx, base, req)
+	require.ErrorContains(t, err, "instance missing not found")
+	require.Empty(t, result)
+
+	lookupFailureCtx := &testContext{rm: manager.NewResourceManager(&testRouter{stores: map[coremodel.ResourceKind]store.ResourceStore{}}, nil)}
+	result, err = GetInstanceTraceDashboard(lookupFailureCtx, base, req)
+	require.Error(t, err)
+	require.Empty(t, result)
+}
+
 func TestServiceTraceDashboardProviderApplications(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
