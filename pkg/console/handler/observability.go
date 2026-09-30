@@ -81,7 +81,11 @@ func GetGrafanaDashboard(ctx consolectx.Context, dim Dimension, dashboardType Da
 			if err = c.ShouldBindQuery(&req); err != nil {
 				break
 			}
-			fullURL, err = service.GetServiceDashboard(grafanaDashboards.ServiceDashboardURL, &req)
+			if dashboardType == TraceDashboard {
+				fullURL, err = service.GetServiceTraceDashboard(ctx, grafanaDashboards.ServiceDashboardURL, &req)
+			} else {
+				fullURL, err = service.GetServiceDashboard(grafanaDashboards.ServiceDashboardURL, &req)
+			}
 		}
 
 		if err != nil {

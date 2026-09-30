@@ -20,6 +20,7 @@ package service
 import (
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/duke-git/lancet/v2/maputil"
 
@@ -50,6 +51,41 @@ func GetServiceDashboard(baseURL *url.URL, req *model.ServiceDashboardReq) (stri
 		"var-service": req.ServiceName,
 	}
 	return concatURLWithQueryVars(baseURL, variables), nil
+}
+
+// GetServiceTraceDashboard requires an unambiguous provider application.
+func GetServiceTraceDashboard(ctx consolectx.Context, baseURL *url.URL, req *model.ServiceDashboardReq) (string, error) {
+	if baseURL == nil {
+		return "", bizerror.New(bizerror.NotFoundError, "grafana url is not configured")
+	}
+	metadata, err := listProviderMeta(ctx, model.BaseServiceReq{
+		Mesh: req.Mesh, ServiceName: req.ServiceName, Group: req.Group, Version: req.Version,
+	})
+	if err != nil {
+		return "", err
+	}
+	applications := make(map[string]struct{})
+	for _, provider := range metadata {
+		if provider == nil || provider.Spec == nil || strings.TrimSpace(provider.Spec.ProviderAppName) == "" {
+			continue
+		}
+		applications[provider.Spec.ProviderAppName] = struct{}{}
+	}
+	if len(applications) == 0 {
+		return "", bizerror.New(bizerror.NotFoundError, fmt.Sprintf("no provider application found for service %s", req.ServiceName))
+	}
+	if len(applications) != 1 {
+		return "", bizerror.New(bizerror.InvalidArgument, fmt.Sprintf("multiple provider applications found for service %s", req.ServiceName))
+	}
+	var application string
+	for name := range applications {
+		application = name
+	}
+	traceURL := *baseURL
+	return concatURLWithQueryVars(&traceURL, map[string]string{
+		"var-application": application,
+		"var-service":     req.ServiceName,
+	}), nil
 }
 
 func GetInstanceDashboard(ctx consolectx.Context, baseURL *url.URL, req *model.InstanceDashboardReq) (string, error) {
