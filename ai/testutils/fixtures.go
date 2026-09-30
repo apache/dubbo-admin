@@ -194,16 +194,17 @@ func (f *ConfigFixture) ValidRAGConfig() *yaml.Node {
 func (f *ConfigFixture) ValidAgentConfig() *yaml.Node {
 	var node yaml.Node
 	node.Encode(map[string]any{
-		"agent_type":          "react",
-		"model":               "qwen-max",
-		"prompt_base_path":    "./prompts",
-		"prompt_file":         "agentReasonAct.txt",
-		"max_iterations":      3,
-		"channel_buffer_size": 5,
-		"temperature":         0.7,
-		"top_p":               0.9,
-		"max_tokens":          3000,
-		"timeout":             90,
+		"agent_type":           "react",
+		"model":                "qwen-max",
+		"prompt_base_path":     "./prompts",
+		"prompt_file":          "agentReasonAct.txt",
+		"max_iterations":       3,
+		"channel_buffer_size":  5,
+		"context_window_turns": 10,
+		"temperature":          0.7,
+		"top_p":                0.9,
+		"max_tokens":           3000,
+		"timeout":              90,
 	})
 	return &node
 }

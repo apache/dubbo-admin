@@ -9,16 +9,17 @@ import (
 
 func validAgentSpec() *compReact.AgentSpec {
 	return &compReact.AgentSpec{
-		AgentType:         compReact.AgentTypeReAct,
-		Model:             "qwen-max",
-		PromptBasePath:    "./prompts",
-		PromptFile:        "agentReasonAct.txt",
-		MaxIterations:     5,
-		ChannelBufferSize: 2,
-		Temperature:       0.7,
-		TopP:              0.9,
-		MaxTokens:         1000,
-		Timeout:           30,
+		AgentType:          compReact.AgentTypeReAct,
+		Model:              "qwen-max",
+		PromptBasePath:     "./prompts",
+		PromptFile:         "agentReasonAct.txt",
+		MaxIterations:      5,
+		ChannelBufferSize:  2,
+		ContextWindowTurns: 10,
+		Temperature:        0.7,
+		TopP:               0.9,
+		MaxTokens:          1000,
+		Timeout:            30,
 	}
 }
 
@@ -29,6 +30,7 @@ func TestAgentSpec_Validate(t *testing.T) {
 		errContain string
 	}{
 		{name: "prompt_required", mutate: func(c *compReact.AgentSpec) { c.PromptFile = "" }, errContain: "prompt_file is required"},
+		{name: "context_window_turns_negative", mutate: func(c *compReact.AgentSpec) { c.ContextWindowTurns = -1 }, errContain: "context_window_turns must not be negative"},
 		{name: "temperature_out_of_range", mutate: func(c *compReact.AgentSpec) { c.Temperature = 3 }, errContain: "temperature must be in"},
 		{name: "top_p_out_of_range", mutate: func(c *compReact.AgentSpec) { c.TopP = 2 }, errContain: "top_p must be in"},
 		{name: "max_tokens_required", mutate: func(c *compReact.AgentSpec) { c.MaxTokens = 0 }, errContain: "max_tokens must be greater than 0"},
@@ -43,6 +45,19 @@ func TestAgentSpec_Validate(t *testing.T) {
 				t.Fatalf("expected error containing %q, got %v", tt.errContain, err)
 			}
 		})
+	}
+}
+
+func TestAgentSpec_ApplyDefaults_ContextWindowTurns(t *testing.T) {
+	cfg := validAgentSpec()
+	cfg.ContextWindowTurns = 0
+	cfg.ApplyDefaults()
+
+	if cfg.ContextWindowTurns != 10 {
+		t.Fatalf("context_window_turns = %d, want 10", cfg.ContextWindowTurns)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("defaulted config should validate, got %v", err)
 	}
 }
 

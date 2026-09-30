@@ -39,6 +39,7 @@ type MessageStore interface {
 	BeginTurn(ctx context.Context, sessionID string) (uint64, error)
 	AddHistoryToTurn(ctx context.Context, sessionID string, turnID uint64, messages ...*ai.Message) error
 	IsTurnEmpty(ctx context.Context, sessionID string, turnID uint64) (bool, error)
+	ContextWindowForTurn(ctx context.Context, sessionID string, turnID uint64, completedLimit int) ([]*ai.Message, error)
 	WindowMemoryForTurn(ctx context.Context, sessionID string, turnID uint64) ([]*ai.Message, error)
 	AllMemory(ctx context.Context, sessionID string) ([]*ai.Message, error)
 	NextTurnForTurn(ctx context.Context, sessionID string, turnID uint64) error

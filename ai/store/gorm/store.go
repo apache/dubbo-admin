@@ -19,6 +19,7 @@ package gormstore
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -332,20 +333,53 @@ func (s *GormStore) IsTurnEmpty(ctx context.Context, sessionID string, turnID ui
 }
 
 func (s *GormStore) WindowMemoryForTurn(ctx context.Context, sessionID string, turnID uint64) ([]*ai.Message, error) {
+	return s.ContextWindowForTurn(ctx, sessionID, turnID, 0)
+}
+
+// ContextWindowForTurn returns the most recent completed turns in chronological
+// order followed by the selected active turn. The transaction makes the set of
+// turns and their messages a consistent snapshot for this interaction.
+func (s *GormStore) ContextWindowForTurn(ctx context.Context, sessionID string, turnID uint64, completedLimit int) ([]*ai.Message, error) {
 	if err := s.checkContext(ctx); err != nil {
 		return nil, err
 	}
-	var turn TurnModel
-	err := s.db.WithContext(normalizeContext(ctx)).
-		Where("id = ? AND session_id = ? AND completed_at IS NULL", turnID, sessionID).
-		First(&turn).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, conversationstore.ErrTurnNotFound
+	if completedLimit < 0 {
+		return nil, fmt.Errorf("completed turn limit must not be negative")
 	}
-	if err != nil {
-		return nil, err
-	}
-	return readTurnMessages(s.db, normalizeContext(ctx), turn.ID)
+
+	var result []*ai.Message
+	err := s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
+		var active TurnModel
+		err := tx.Where("id = ? AND session_id = ? AND completed_at IS NULL", turnID, sessionID).
+			First(&active).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return conversationstore.ErrTurnNotFound
+		}
+		if err != nil {
+			return err
+		}
+
+		var completed []TurnModel
+		if completedLimit > 0 {
+			if err := tx.Where("session_id = ? AND completed_at IS NOT NULL", sessionID).
+				Order("completed_at DESC").Order("id DESC").Limit(completedLimit).Find(&completed).Error; err != nil {
+				return err
+			}
+		}
+		for left, right := 0, len(completed)-1; left < right; left, right = left+1, right-1 {
+			completed[left], completed[right] = completed[right], completed[left]
+		}
+		completed = append(completed, active)
+		for i := range completed {
+			messages, err := readTurnMessages(tx, normalizeContext(ctx), completed[i].ID)
+			if err != nil {
+				return err
+			}
+			result = append(result, messages...)
+		}
+		return nil
+	}, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
+	return result, err
 }
 
 func (s *GormStore) AllMemory(ctx context.Context, sessionID string) ([]*ai.Message, error) {
@@ -560,31 +594,21 @@ func readTurnMessages(db *gorm.DB, ctx context.Context, turnID uint64) ([]*ai.Me
 	if err := db.WithContext(normalizeContext(ctx)).Where("turn_id = ?", turnID).Order("sequence ASC").Find(&models).Error; err != nil {
 		return nil, err
 	}
-	return decodeGrouped(models)
+	return decodeMessages(models)
 }
 
-func decodeGrouped(models []MessageModel) ([]*ai.Message, error) {
-	system := make([]*ai.Message, 0, len(models))
-	user := make([]*ai.Message, 0, len(models))
-	model := make([]*ai.Message, 0, len(models))
+func decodeMessages(models []MessageModel) ([]*ai.Message, error) {
+	result := make([]*ai.Message, 0, len(models))
 	for i := range models {
 		message, err := decodeMessage(models[i].ID, models[i].Payload)
 		if err != nil {
 			return nil, err
 		}
 		switch message.Role {
-		case ai.RoleSystem:
-			system = append(system, message)
-		case ai.RoleUser:
-			user = append(user, message)
-		case ai.RoleModel:
-			model = append(model, message)
+		case ai.RoleSystem, ai.RoleUser, ai.RoleModel:
+			result = append(result, message)
 		}
 	}
-	result := make([]*ai.Message, 0, len(system)+len(user)+len(model))
-	result = append(result, system...)
-	result = append(result, user...)
-	result = append(result, model...)
 	return result, nil
 }
 

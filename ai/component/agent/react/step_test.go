@@ -20,6 +20,7 @@ package react
 import (
 	"context"
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -35,14 +36,20 @@ import (
 // calls are consumed in the exact order run() makes them; tests that must tell
 // the two prompts apart override answerPrompt with a second instance.
 type scriptPrompt struct {
-	resps []*ai.ModelResponse
-	errs  []error
-	calls int
+	resps    []*ai.ModelResponse
+	errs     []error
+	calls    int
+	messages [][]*ai.Message
 }
 
 func (s *scriptPrompt) Name() string { return "script" }
 
 func (s *scriptPrompt) Execute(ctx context.Context, opts ...ai.PromptExecuteOption) (*ai.ModelResponse, error) {
+	for _, opt := range opts {
+		if messages := messagesFromPromptOption(ctx, opt); messages != nil {
+			s.messages = append(s.messages, messages)
+		}
+	}
 	i := s.calls
 	s.calls++
 	var err error
@@ -54,6 +61,29 @@ func (s *scriptPrompt) Execute(ctx context.Context, opts ...ai.PromptExecuteOpti
 		resp = s.resps[i]
 	}
 	return resp, err
+}
+
+// messagesFromPromptOption inspects Genkit's concrete WithMessages option in
+// tests. The production path still uses the public option API; this makes the
+// test fail if the agent stops passing the actual messages to Prompt.Execute.
+func messagesFromPromptOption(ctx context.Context, opt ai.PromptExecuteOption) []*ai.Message {
+	v := reflect.ValueOf(opt)
+	if !v.IsValid() || v.Kind() != reflect.Ptr || v.IsNil() {
+		return nil
+	}
+	field := v.Elem().FieldByName("MessagesFn")
+	if !field.IsValid() || field.IsNil() || !field.CanInterface() {
+		return nil
+	}
+	fn, ok := field.Interface().(func(context.Context, any) ([]*ai.Message, error))
+	if !ok {
+		return nil
+	}
+	messages, err := fn(ctx, nil)
+	if err != nil {
+		return nil
+	}
+	return messages
 }
 
 func (s *scriptPrompt) Render(ctx context.Context, input any) (*ai.GenerateActionOptions, error) {
@@ -106,7 +136,7 @@ func TestRun_AnswersDirectly(t *testing.T) {
 	ra := testAgent(g, 3, script)
 	ctx, history := contextWithHistory("s1")
 
-	usage, err := ra.run(ctx, nil, &interactionTrace{})
+	usage, err := ra.run(ctx, nil, nil, &interactionTrace{})
 	if err != nil {
 		t.Fatalf("run error: %v", err)
 	}
@@ -133,7 +163,7 @@ func TestRun_CallsToolThenAnswers(t *testing.T) {
 	ra := testAgent(g, 2, script)
 	ctx, history := contextWithHistory("s2")
 
-	if _, err := ra.run(ctx, nil, &interactionTrace{}); err != nil {
+	if _, err := ra.run(ctx, nil, nil, &interactionTrace{}); err != nil {
 		t.Fatalf("run error: %v", err)
 	}
 	if script.calls != 2 {
@@ -160,7 +190,7 @@ func TestRun_ToolErrorDegradesNotAborts(t *testing.T) {
 	ra := testAgent(g, 2, script)
 	ctx, history := contextWithHistory("s3")
 
-	if _, err := ra.run(ctx, nil, &interactionTrace{}); err != nil {
+	if _, err := ra.run(ctx, nil, nil, &interactionTrace{}); err != nil {
 		t.Fatalf("a failing tool must not abort the interaction, got: %v", err)
 	}
 	text := historyText(history, "s3")
@@ -175,7 +205,7 @@ func TestRun_PropagatesExecuteError(t *testing.T) {
 	ra := testAgent(g, 3, script)
 	ctx, _ := contextWithHistory("s4")
 
-	_, err := ra.run(ctx, nil, &interactionTrace{})
+	_, err := ra.run(ctx, nil, nil, &interactionTrace{})
 	if err == nil || !strings.Contains(err.Error(), "failed to execute react prompt") {
 		t.Fatalf("expected wrapped execute error, got %v", err)
 	}
@@ -202,7 +232,7 @@ func TestRun_ForcedFinalIterationUsesAnswerPrompt(t *testing.T) {
 	ra.answerPrompt = answer
 	ctx, history := contextWithHistory("s5")
 
-	if _, err := ra.run(ctx, nil, &interactionTrace{}); err != nil {
+	if _, err := ra.run(ctx, nil, nil, &interactionTrace{}); err != nil {
 		t.Fatalf("run error: %v", err)
 	}
 	if act.calls != 2 {
@@ -224,7 +254,7 @@ func TestRun_EmptyResponseRetries(t *testing.T) {
 	ra := testAgent(g, 2, script)
 	ctx, history := contextWithHistory("s6")
 
-	if _, err := ra.run(ctx, nil, &interactionTrace{}); err != nil {
+	if _, err := ra.run(ctx, nil, nil, &interactionTrace{}); err != nil {
 		t.Fatalf("run error: %v", err)
 	}
 	if script.calls != 2 {
@@ -244,7 +274,7 @@ func TestRun_EmptyForcedAnswerFallsBack(t *testing.T) {
 	ra := testAgent(g, 1, script)
 	ctx, history := contextWithHistory("s7")
 
-	if _, err := ra.run(ctx, nil, &interactionTrace{}); err != nil {
+	if _, err := ra.run(ctx, nil, nil, &interactionTrace{}); err != nil {
 		t.Fatalf("run error: %v", err)
 	}
 	if !strings.Contains(historyText(history, "s7"), fallbackAnswer) {
