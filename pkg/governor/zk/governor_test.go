@@ -7,7 +7,6 @@
  * the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,29 +14,28 @@
  * limitations under the License.
  */
 
-package governor
+package zk
 
 import (
-	set "github.com/duke-git/lancet/v2/datastructure/set"
+	"testing"
 
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
-	"github.com/apache/dubbo-admin/pkg/core/resource/model"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
-var RuleResourceKinds = set.New(
-	meshresource.DynamicConfigKind,
-	meshresource.ConditionRouteKind,
-	meshresource.TagRouteKind,
-	meshresource.AffinityRouteKind,
-	meshresource.ScriptRouteKind,
-)
-
-// RuleGovernor makes the rule operations effective
-type RuleGovernor interface {
-	// CreateRule creates a resource in the registry
-	CreateRule(model.Resource) error
-	// UpdateRule updates a resource in the registry
-	UpdateRule(model.Resource) error
-	// DeleteRule deletes a resource from the registry
-	DeleteRule(model.Resource) error
+func TestRuleConfigPathsPreserveExistingRuleContracts(t *testing.T) {
+	paths := []struct {
+		name string
+		res  coremodel.Resource
+		want string
+	}{
+		{"affinity", meshresource.NewAffinityRouteResourceWithAttributes("provider.affinity-router", "mesh"), "/dubbo/config/dubbo/provider.affinity-router"},
+		{"script", meshresource.NewScriptRouteResourceWithAttributes("provider.script-router", "mesh"), "/dubbo/config/dubbo/provider.script-router"},
+		{"condition", meshresource.NewConditionRouteResourceWithAttributes("provider.condition-router", "mesh"), "/dubbo/config/provider.condition-router"},
+	}
+	for _, tt := range paths {
+		if got := ruleConfigPath(tt.res); got != tt.want {
+			t.Fatalf("%s ruleConfigPath() = %q, want %q", tt.name, got, tt.want)
+		}
+	}
 }
