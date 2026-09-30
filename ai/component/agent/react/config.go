@@ -53,6 +53,14 @@ type AgentSpec struct {
 	Timeout            int            `yaml:"timeout"` // per model-call timeout (seconds)
 }
 
+// ApplyDefaults fills values that are optional when AgentSpec is constructed
+// directly in Go. Schema-loaded configurations already receive these defaults.
+func (c *AgentSpec) ApplyDefaults() {
+	if c.ContextWindowTurns == 0 {
+		c.ContextWindowTurns = defaultContextWindowTurns
+	}
+}
+
 // Validate validates the configuration.
 func (c *AgentSpec) Validate() error {
 	if c.AgentType == "" {
@@ -73,8 +81,8 @@ func (c *AgentSpec) Validate() error {
 	if c.ChannelBufferSize <= 0 {
 		return fmt.Errorf("channel_buffer_size must be greater than 0")
 	}
-	if c.ContextWindowTurns <= 0 {
-		return fmt.Errorf("context_window_turns must be greater than 0")
+	if c.ContextWindowTurns < 0 {
+		return fmt.Errorf("context_window_turns must not be negative")
 	}
 	for name, t := range c.ToolTimeouts {
 		if t <= 0 {
