@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
 	"sync"
 
 	"gorm.io/gorm"
@@ -48,6 +49,7 @@ type GormStore struct {
 }
 
 var _ store.ManagedResourceStore = &GormStore{}
+var _ store.ConditionalResourceStore = &GormStore{}
 
 // NewGormStore creates a new GORM store for the specified resource kind
 func NewGormStore(kind model.ResourceKind, address string, pool *ConnectionPool) *GormStore {
@@ -64,8 +66,13 @@ func NewGormStore(kind model.ResourceKind, address string, pool *ConnectionPool)
 func (gs *GormStore) Init(_ runtime.BuilderContext) error {
 	// Perform table migration
 	db := gs.pool.GetDB()
-	// Use Scopes to set the table name dynamically for migration
-	if err := db.Scopes(TableScope(gs.kind.ToString())).AutoMigrate(&ResourceModel{}); err != nil {
+	// Use Scopes to set the table name dynamically for migration. Only resource
+	// kinds that opt into conditional writes receive the version column.
+	migrationModel := any(&ResourceModel{})
+	if store.IsVersionedResourceKind(gs.kind) {
+		migrationModel = &VersionedResourceModel{}
+	}
+	if err := db.Scopes(TableScope(gs.kind.ToString())).AutoMigrate(migrationModel); err != nil {
 		return fmt.Errorf("failed to migrate schema for %s: %w", gs.kind.ToString(), err)
 	}
 
@@ -125,6 +132,13 @@ func (gs *GormStore) Add(obj interface{}) error {
 	if resource.ResourceKind() != gs.kind {
 		return fmt.Errorf("resource kind mismatch: expected %s, got %s", gs.kind, resource.ResourceKind())
 	}
+	if versioned, ok := resource.(store.VersionedResource); ok {
+		candidate := versioned.DeepCopyObject().(store.VersionedResource)
+		if err := store.PrepareInitialVersion(candidate); err != nil {
+			return err
+		}
+		resource = candidate
+	}
 
 	var count int64
 	db := gs.pool.GetDB()
@@ -147,8 +161,12 @@ func (gs *GormStore) Add(obj interface{}) error {
 		return err
 	}
 
-	return db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Scopes(TableScope(gs.kind.ToString())).Create(m).Error; err != nil {
+	err = db.Transaction(func(tx *gorm.DB) error {
+		modelToCreate := any(m)
+		if _, ok := resource.(store.VersionedResource); ok {
+			modelToCreate = &VersionedResourceModel{ResourceModel: *m, Version: 1}
+		}
+		if err := tx.Scopes(TableScope(gs.kind.ToString())).Create(modelToCreate).Error; err != nil {
 			return err
 		}
 		if err := gs.persistIndexEntriesTx(tx, resource, nil); err != nil {
@@ -156,6 +174,12 @@ func (gs *GormStore) Add(obj interface{}) error {
 		}
 		return nil
 	})
+	if err == nil {
+		if versioned, ok := obj.(store.VersionedResource); ok {
+			versioned.SetResourceVersion(resource.ResourceMeta().ResourceVersion)
+		}
+	}
+	return err
 }
 
 // Update modifies an existing resource in the database
@@ -167,6 +191,9 @@ func (gs *GormStore) Update(obj interface{}) error {
 
 	if resource.ResourceKind() != gs.kind {
 		return fmt.Errorf("resource kind mismatch: expected %s, got %s", gs.kind, resource.ResourceKind())
+	}
+	if _, ok := resource.(store.VersionedResource); ok {
+		return &store.PreconditionError{Reason: "versioned resources require CompareAndSwap"}
 	}
 
 	// Get old resource for index update
@@ -222,6 +249,9 @@ func (gs *GormStore) Delete(obj interface{}) error {
 	if !ok {
 		return bizerror.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
 	}
+	if _, ok := resource.(store.VersionedResource); ok {
+		return &store.PreconditionError{Reason: "versioned resources require CompareAndDelete"}
+	}
 
 	db := gs.pool.GetDB()
 	return db.Transaction(func(tx *gorm.DB) error {
@@ -246,16 +276,133 @@ func (gs *GormStore) Delete(obj interface{}) error {
 	})
 }
 
+func (gs *GormStore) CompareAndSwap(obj model.Resource, expectedVersion string) error {
+	if obj.ResourceKind() != gs.kind {
+		return fmt.Errorf("resource kind mismatch: expected %s, got %s", gs.kind, obj.ResourceKind())
+	}
+	nextVersion, err := store.NextResourceVersion(obj, expectedVersion)
+	if err != nil {
+		return err
+	}
+	expected, _ := strconv.ParseUint(expectedVersion, 10, 64)
+
+	db := gs.pool.GetDB()
+	err = db.Transaction(func(tx *gorm.DB) error {
+		var current VersionedResourceModel
+		err := tx.Scopes(TableScope(gs.kind.ToString())).
+			Where("resource_key = ?", obj.ResourceKey()).
+			First(&current).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return store.ErrorResourceNotFound(obj.ResourceKind().ToString(), obj.ResourceMeta().Name, obj.ResourceMesh())
+		}
+		if err != nil {
+			return err
+		}
+		if current.Version != expected {
+			return store.ErrorResourceConflict(obj.ResourceKind().ToString(), obj.ResourceMeta().Name, obj.ResourceMesh())
+		}
+
+		oldResource, err := current.ResourceModel.ToResource()
+		if err != nil {
+			return err
+		}
+		candidate, ok := obj.DeepCopyObject().(model.Resource)
+		if !ok {
+			return bizerror.NewAssertionError("Resource", reflect.TypeOf(obj.DeepCopyObject()).Name())
+		}
+		candidateVersioned, ok := candidate.(store.VersionedResource)
+		if !ok {
+			return &store.PreconditionError{Reason: "resource does not support conditional mutations"}
+		}
+		candidateVersioned.SetResourceVersion(nextVersion)
+		updated, err := FromResource(candidate)
+		if err != nil {
+			return err
+		}
+
+		result := tx.Scopes(TableScope(gs.kind.ToString())).Model(&VersionedResourceModel{}).
+			Where("resource_key = ? AND version = ?", obj.ResourceKey(), expected).
+			Updates(map[string]interface{}{
+				"name":    updated.Name,
+				"mesh":    updated.Mesh,
+				"data":    updated.Data,
+				"version": expected + 1,
+			})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return store.ErrorResourceConflict(obj.ResourceKind().ToString(), obj.ResourceMeta().Name, obj.ResourceMesh())
+		}
+		if err := gs.persistIndexEntriesTx(tx, candidate, oldResource); err != nil {
+			return fmt.Errorf("failed to persist index entries for %s: %w", candidate.ResourceKey(), err)
+		}
+		return nil
+	})
+	if err == nil {
+		obj.(store.VersionedResource).SetResourceVersion(nextVersion)
+	}
+	return err
+}
+
+func (gs *GormStore) CompareAndDelete(obj model.Resource, expectedVersion string) error {
+	if obj.ResourceKind() != gs.kind {
+		return fmt.Errorf("resource kind mismatch: expected %s, got %s", gs.kind, obj.ResourceKind())
+	}
+	if _, err := store.NextResourceVersion(obj, expectedVersion); err != nil {
+		return err
+	}
+	expected, _ := strconv.ParseUint(expectedVersion, 10, 64)
+
+	db := gs.pool.GetDB()
+	return db.Transaction(func(tx *gorm.DB) error {
+		result := tx.Scopes(TableScope(gs.kind.ToString())).
+			Where("resource_key = ? AND version = ?", obj.ResourceKey(), expected).
+			Delete(&VersionedResourceModel{})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			var count int64
+			if err := tx.Scopes(TableScope(gs.kind.ToString())).Model(&VersionedResourceModel{}).
+				Where("resource_key = ?", obj.ResourceKey()).Count(&count).Error; err != nil {
+				return err
+			}
+			if count == 0 {
+				return store.ErrorResourceNotFound(obj.ResourceKind().ToString(), obj.ResourceMeta().Name, obj.ResourceMesh())
+			}
+			return store.ErrorResourceConflict(obj.ResourceKind().ToString(), obj.ResourceMeta().Name, obj.ResourceMesh())
+		}
+		return tx.Where("resource_kind = ? AND resource_key = ?", gs.kind.ToString(), obj.ResourceKey()).
+			Delete(&ResourceIndexModel{}).Error
+	})
+}
+
 // List returns all resources of the configured kind from the database
 func (gs *GormStore) List() []interface{} {
-	var models []ResourceModel
 	db := gs.pool.GetDB()
+	result := make([]interface{}, 0)
+	if store.IsVersionedResourceKind(gs.kind) {
+		var models []VersionedResourceModel
+		if err := db.Scopes(TableScope(gs.kind.ToString())).Model(&VersionedResourceModel{}).Find(&models).Error; err != nil {
+			logger.Errorf("failed to list resources: %v", err)
+			return result
+		}
+		for _, m := range models {
+			resource, err := m.ResourceModel.ToResourceWithVersion(m.Version)
+			if err != nil {
+				logger.Errorf("failed to deserialize resource: %v", err)
+				continue
+			}
+			result = append(result, resource)
+		}
+		return result
+	}
+	var models []ResourceModel
 	if err := db.Scopes(TableScope(gs.kind.ToString())).Model(&ResourceModel{}).Find(&models).Error; err != nil {
 		logger.Errorf("failed to list resources: %v", err)
-		return []interface{}{}
+		return result
 	}
-
-	result := make([]interface{}, 0, len(models))
 	for _, m := range models {
 		resource, err := m.ToResource()
 		if err != nil {
@@ -289,6 +436,23 @@ func (gs *GormStore) Get(obj interface{}) (item interface{}, exists bool, err er
 
 // GetByKey retrieves a resource by its unique key
 func (gs *GormStore) GetByKey(key string) (item interface{}, exists bool, err error) {
+	if store.IsVersionedResourceKind(gs.kind) {
+		var m VersionedResourceModel
+		result := gs.pool.GetDB().Scopes(TableScope(gs.kind.ToString())).
+			Where("resource_key = ?", key).
+			First(&m)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return nil, false, nil
+			}
+			return nil, false, result.Error
+		}
+		resource, err := m.ResourceModel.ToResourceWithVersion(m.Version)
+		if err != nil {
+			return nil, false, err
+		}
+		return resource, true, nil
+	}
 	var m ResourceModel
 	db := gs.pool.GetDB()
 	result := db.Scopes(TableScope(gs.kind.ToString())).
@@ -312,6 +476,9 @@ func (gs *GormStore) GetByKey(key string) (item interface{}, exists bool, err er
 
 // Replace atomically replaces all resources in the database with the provided list
 func (gs *GormStore) Replace(list []interface{}, _ string) error {
+	if store.IsVersionedResourceKind(gs.kind) {
+		return &store.PreconditionError{Reason: "versioned resources require conditional mutations"}
+	}
 	db := gs.pool.GetDB()
 	return db.Transaction(func(tx *gorm.DB) error {
 		// Delete all existing records for this resource kind
@@ -482,16 +649,28 @@ func (gs *GormStore) GetByKeys(keys []string) ([]model.Resource, error) {
 		return []model.Resource{}, nil
 	}
 
-	var models []ResourceModel
 	db := gs.pool.GetDB()
-	err := db.Scopes(TableScope(gs.kind.ToString())).Model(&ResourceModel{}).
-		Where("resource_key IN ?", keys).
-		Find(&models).Error
-	if err != nil {
+	resources := make([]model.Resource, 0, len(keys))
+	if store.IsVersionedResourceKind(gs.kind) {
+		var models []VersionedResourceModel
+		if err := db.Scopes(TableScope(gs.kind.ToString())).Model(&VersionedResourceModel{}).
+			Where("resource_key IN ?", keys).Find(&models).Error; err != nil {
+			return nil, err
+		}
+		for _, m := range models {
+			resource, err := m.ResourceModel.ToResourceWithVersion(m.Version)
+			if err != nil {
+				return nil, err
+			}
+			resources = append(resources, resource)
+		}
+		return resources, nil
+	}
+	var models []ResourceModel
+	if err := db.Scopes(TableScope(gs.kind.ToString())).Model(&ResourceModel{}).
+		Where("resource_key IN ?", keys).Find(&models).Error; err != nil {
 		return nil, err
 	}
-
-	resources := make([]model.Resource, 0, len(models))
 	for _, m := range models {
 		resource, err := m.ToResource()
 		if err != nil {
@@ -499,7 +678,6 @@ func (gs *GormStore) GetByKeys(keys []string) ([]model.Resource, error) {
 		}
 		resources = append(resources, resource)
 	}
-
 	return resources, nil
 }
 
