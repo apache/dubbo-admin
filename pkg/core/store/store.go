@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	. "k8s.io/client-go/tools/cache"
@@ -48,6 +49,56 @@ type ResourceStore interface {
 type ManagedResourceStore interface {
 	runtime.Lifecycle
 	ResourceStore
+}
+
+// VersionedResource is implemented by resources that opt into optimistic
+// concurrency. Existing resources keep their current store semantics.
+type VersionedResource interface {
+	model.Resource
+	SetResourceVersion(string)
+	SupportsConditionalMutations() bool
+}
+
+// ConditionalResourceStore is an optional store capability for resources that
+// require atomic compare-and-swap mutations.
+type ConditionalResourceStore interface {
+	CompareAndSwap(obj model.Resource, expectedVersion string) error
+	CompareAndDelete(obj model.Resource, expectedVersion string) error
+}
+
+func IsVersionedResourceKind(kind model.ResourceKind) bool {
+	newResource, err := model.ResourceSchemaRegistry().NewResourceFunc(kind)
+	if err != nil {
+		return false
+	}
+	_, ok := newResource().(VersionedResource)
+	return ok
+}
+
+func PrepareInitialVersion(resource model.Resource) error {
+	versioned, ok := resource.(VersionedResource)
+	if !ok {
+		return nil
+	}
+	if resource.ResourceMeta().ResourceVersion != "" {
+		return &PreconditionError{Reason: "resourceVersion must be empty when creating a resource"}
+	}
+	versioned.SetResourceVersion("1")
+	return nil
+}
+
+func NextResourceVersion(resource model.Resource, expectedVersion string) (string, error) {
+	if _, ok := resource.(VersionedResource); !ok {
+		return "", &PreconditionError{Reason: "resource does not support conditional mutations"}
+	}
+	expected, err := strconv.ParseUint(expectedVersion, 10, 64)
+	if err != nil || expected == 0 {
+		return "", &PreconditionError{Reason: "expected resourceVersion must be a positive integer"}
+	}
+	if expected == ^uint64(0) {
+		return "", &PreconditionError{Reason: "resourceVersion overflow"}
+	}
+	return strconv.FormatUint(expected+1, 10), nil
 }
 
 type ResourceConflictError struct {

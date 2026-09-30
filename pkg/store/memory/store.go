@@ -40,10 +40,19 @@ type resourceStore struct {
 	rk          coremodel.ResourceKind
 	storeProxy  cache.Indexer
 	prefixTrees map[string]*radix.Tree
+	mutationMu  sync.Mutex
 	treesMu     sync.RWMutex
 }
 
 var _ store.ManagedResourceStore = &resourceStore{}
+var _ store.ConditionalResourceStore = &resourceStore{}
+
+func copyVersionedResource(obj interface{}) interface{} {
+	if resource, ok := obj.(store.VersionedResource); ok {
+		return resource.DeepCopyObject()
+	}
+	return obj
+}
 
 func NewMemoryResourceStore(rk coremodel.ResourceKind) store.ManagedResourceStore {
 	return &resourceStore{rk: rk}
@@ -74,6 +83,31 @@ func (rs *resourceStore) Start(_ runtime.Runtime, _ <-chan struct{}) error {
 }
 
 func (rs *resourceStore) Add(obj interface{}) error {
+	rs.mutationMu.Lock()
+	defer rs.mutationMu.Unlock()
+
+	if resource, ok := obj.(store.VersionedResource); ok {
+		candidate := resource.DeepCopyObject().(store.VersionedResource)
+		if err := store.PrepareInitialVersion(candidate); err != nil {
+			return err
+		}
+		if err := rs.add(candidate); err != nil {
+			return err
+		}
+		resource.SetResourceVersion(candidate.ResourceMeta().ResourceVersion)
+		return nil
+	}
+	return rs.add(obj)
+}
+
+func (rs *resourceStore) add(obj interface{}) error {
+	if resource, ok := obj.(store.VersionedResource); ok {
+		if _, exists, err := rs.storeProxy.GetByKey(resource.ResourceKey()); err != nil {
+			return err
+		} else if exists {
+			return store.ErrorResourceAlreadyExists(resource.ResourceKind().ToString(), resource.ResourceMeta().Name, resource.ResourceMesh())
+		}
+	}
 	if err := rs.storeProxy.Add(obj); err != nil {
 		return err
 	}
@@ -85,6 +119,18 @@ func (rs *resourceStore) Add(obj interface{}) error {
 }
 
 func (rs *resourceStore) Update(obj interface{}) error {
+	if _, ok := obj.(store.VersionedResource); ok {
+		return &store.PreconditionError{Reason: "versioned resources require CompareAndSwap"}
+	}
+	rs.mutationMu.Lock()
+	defer rs.mutationMu.Unlock()
+	return rs.update(obj)
+}
+
+func (rs *resourceStore) update(obj interface{}) error {
+	if resource, ok := obj.(store.VersionedResource); ok {
+		obj = resource.DeepCopyObject()
+	}
 	r, ok := obj.(coremodel.Resource)
 	var oldRes coremodel.Resource
 	if ok {
@@ -108,6 +154,15 @@ func (rs *resourceStore) Update(obj interface{}) error {
 }
 
 func (rs *resourceStore) Delete(obj interface{}) error {
+	if _, ok := obj.(store.VersionedResource); ok {
+		return &store.PreconditionError{Reason: "versioned resources require CompareAndDelete"}
+	}
+	rs.mutationMu.Lock()
+	defer rs.mutationMu.Unlock()
+	return rs.delete(obj)
+}
+
+func (rs *resourceStore) delete(obj interface{}) error {
 	if err := rs.storeProxy.Delete(obj); err != nil {
 		return err
 	}
@@ -118,7 +173,11 @@ func (rs *resourceStore) Delete(obj interface{}) error {
 }
 
 func (rs *resourceStore) List() []interface{} {
-	return rs.storeProxy.List()
+	items := rs.storeProxy.List()
+	for i, item := range items {
+		items[i] = copyVersionedResource(item)
+	}
+	return items
 }
 
 func (rs *resourceStore) ListKeys() []string {
@@ -126,14 +185,22 @@ func (rs *resourceStore) ListKeys() []string {
 }
 
 func (rs *resourceStore) Get(obj interface{}) (item interface{}, exists bool, err error) {
-	return rs.storeProxy.Get(obj)
+	item, exists, err = rs.storeProxy.Get(obj)
+	return copyVersionedResource(item), exists, err
 }
 
 func (rs *resourceStore) GetByKey(key string) (item interface{}, exists bool, err error) {
-	return rs.storeProxy.GetByKey(key)
+	item, exists, err = rs.storeProxy.GetByKey(key)
+	return copyVersionedResource(item), exists, err
 }
 
 func (rs *resourceStore) Replace(i []interface{}, s string) error {
+	if store.IsVersionedResourceKind(rs.rk) {
+		return &store.PreconditionError{Reason: "versioned resources require conditional mutations"}
+	}
+	rs.mutationMu.Lock()
+	defer rs.mutationMu.Unlock()
+
 	// Clear all trees before replace
 	rs.treesMu.Lock()
 	for indexName := range rs.prefixTrees {
@@ -155,12 +222,78 @@ func (rs *resourceStore) Replace(i []interface{}, s string) error {
 	return nil
 }
 
+func (rs *resourceStore) CompareAndSwap(obj coremodel.Resource, expectedVersion string) error {
+	rs.mutationMu.Lock()
+	defer rs.mutationMu.Unlock()
+
+	currentObj, exists, err := rs.storeProxy.GetByKey(obj.ResourceKey())
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return store.ErrorResourceNotFound(obj.ResourceKind().ToString(), obj.ResourceMeta().Name, obj.ResourceMesh())
+	}
+	current, ok := currentObj.(coremodel.Resource)
+	if !ok {
+		return bizerror.NewAssertionError("Resource", reflect.TypeOf(currentObj).Name())
+	}
+	if current.ResourceMeta().ResourceVersion != expectedVersion {
+		return store.ErrorResourceConflict(obj.ResourceKind().ToString(), obj.ResourceMeta().Name, obj.ResourceMesh())
+	}
+	nextVersion, err := store.NextResourceVersion(obj, expectedVersion)
+	if err != nil {
+		return err
+	}
+	candidate, ok := obj.DeepCopyObject().(coremodel.Resource)
+	if !ok {
+		return bizerror.NewAssertionError("Resource", reflect.TypeOf(obj.DeepCopyObject()).Name())
+	}
+	candidateVersioned, ok := candidate.(store.VersionedResource)
+	if !ok {
+		return &store.PreconditionError{Reason: "resource does not support conditional mutations"}
+	}
+	candidateVersioned.SetResourceVersion(nextVersion)
+	if err := rs.update(candidate); err != nil {
+		return err
+	}
+	obj.(store.VersionedResource).SetResourceVersion(nextVersion)
+	return nil
+}
+
+func (rs *resourceStore) CompareAndDelete(obj coremodel.Resource, expectedVersion string) error {
+	rs.mutationMu.Lock()
+	defer rs.mutationMu.Unlock()
+
+	currentObj, exists, err := rs.storeProxy.GetByKey(obj.ResourceKey())
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return store.ErrorResourceNotFound(obj.ResourceKind().ToString(), obj.ResourceMeta().Name, obj.ResourceMesh())
+	}
+	current, ok := currentObj.(coremodel.Resource)
+	if !ok {
+		return bizerror.NewAssertionError("Resource", reflect.TypeOf(currentObj).Name())
+	}
+	if current.ResourceMeta().ResourceVersion != expectedVersion {
+		return store.ErrorResourceConflict(obj.ResourceKind().ToString(), obj.ResourceMeta().Name, obj.ResourceMesh())
+	}
+	if _, err := store.NextResourceVersion(obj, expectedVersion); err != nil {
+		return err
+	}
+	return rs.delete(current)
+}
+
 func (rs *resourceStore) Resync() error {
 	return rs.storeProxy.Resync()
 }
 
 func (rs *resourceStore) Index(indexName string, obj interface{}) ([]interface{}, error) {
-	return rs.storeProxy.Index(indexName, obj)
+	items, err := rs.storeProxy.Index(indexName, obj)
+	for i, item := range items {
+		items[i] = copyVersionedResource(item)
+	}
+	return items, err
 }
 
 func (rs *resourceStore) IndexKeys(indexName, indexedValue string) ([]string, error) {
@@ -172,7 +305,11 @@ func (rs *resourceStore) ListIndexFuncValues(indexName string) []string {
 }
 
 func (rs *resourceStore) ByIndex(indexName, indexedValue string) ([]interface{}, error) {
-	return rs.storeProxy.ByIndex(indexName, indexedValue)
+	items, err := rs.storeProxy.ByIndex(indexName, indexedValue)
+	for i, item := range items {
+		items[i] = copyVersionedResource(item)
+	}
+	return items, err
 }
 
 func (rs *resourceStore) GetIndexers() cache.Indexers {
@@ -210,7 +347,7 @@ func (rs *resourceStore) GetByKeys(keys []string) ([]coremodel.Resource, error) 
 		if !ok {
 			return nil, bizerror.NewAssertionError("Resource", reflect.TypeOf(r).Name())
 		}
-		resources = append(resources, res)
+		resources = append(resources, copyVersionedResource(res).(coremodel.Resource))
 	}
 	return resources, nil
 }
@@ -251,7 +388,7 @@ func (rs *resourceStore) PageListByIndexes(indexes []index.IndexCondition, pq co
 		if !ok {
 			return nil, bizerror.NewAssertionError("Resource", reflect.TypeOf(r).Name())
 		}
-		resources = append(resources, res)
+		resources = append(resources, copyVersionedResource(res).(coremodel.Resource))
 	}
 	pageData := coremodel.NewPageData(total, pq.PageOffset, pq.PageSize, resources)
 	return pageData, nil
