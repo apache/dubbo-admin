@@ -123,10 +123,11 @@ func GetInstanceDashboardVariables(ctx consolectx.Context, req *model.InstanceDa
 }
 
 func concatURLWithQueryVars(baseURL *url.URL, vars map[string]string) string {
-	q := baseURL.Query()
+	result := *baseURL
+	q := result.Query()
 	maputil.ForEach(vars, func(key string, value string) {
 		q.Set(key, value)
 	})
-	baseURL.RawQuery = q.Encode()
-	return baseURL.String()
+	result.RawQuery = q.Encode()
+	return result.String()
 }

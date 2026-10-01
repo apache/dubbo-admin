@@ -20,6 +20,7 @@ package service
 import (
 	"fmt"
 	"net/url"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -126,4 +127,45 @@ func TestApplicationDashboardUnchanged(t *testing.T) {
 	parsed, err := url.Parse(result)
 	require.NoError(t, err)
 	require.Equal(t, url.Values{"kiosk": {"1"}, "var-application": {"provider"}}, parsed.Query())
+}
+
+func TestDashboardURLDoesNotMutateSharedBase(t *testing.T) {
+	base, err := url.Parse("http://grafana/d/application?kiosk=1&var-application=default")
+	require.NoError(t, err)
+	original := base.String()
+
+	for _, app := range []string{"first", "second"} {
+		result, err := GetAppDashboard(base, &model.AppDashboardReq{AppName: app})
+		require.NoError(t, err)
+		parsed, err := url.Parse(result)
+		require.NoError(t, err)
+		require.Equal(t, app, parsed.Query().Get("var-application"))
+		require.Equal(t, "1", parsed.Query().Get("kiosk"))
+		require.Equal(t, original, base.String())
+	}
+}
+
+func TestDashboardURLConcurrentRequestsKeepOwnVariables(t *testing.T) {
+	base, err := url.Parse("http://grafana/d/application?kiosk=1")
+	require.NoError(t, err)
+	const count = 100
+	results := make([]string, count)
+	errors := make([]error, count)
+	var workers sync.WaitGroup
+	workers.Add(count)
+	for i := 0; i < count; i++ {
+		go func(i int) {
+			defer workers.Done()
+			results[i], errors[i] = GetAppDashboard(base, &model.AppDashboardReq{AppName: fmt.Sprintf("app-%d", i)})
+		}(i)
+	}
+	workers.Wait()
+	for i := 0; i < count; i++ {
+		require.NoError(t, errors[i])
+		parsed, err := url.Parse(results[i])
+		require.NoError(t, err)
+		require.Equal(t, fmt.Sprintf("app-%d", i), parsed.Query().Get("var-application"))
+		require.Equal(t, "1", parsed.Query().Get("kiosk"))
+	}
+	require.Equal(t, "kiosk=1", base.RawQuery)
 }
