@@ -36,6 +36,16 @@ stringData:
                 "type": "prometheus",
                 "url": "http://prometheus-k8s.monitoring.svc:9090",
                 "version": 1
+            },
+            {
+                "access": "proxy",
+                "editable": false,
+                "name": "jaeger",
+                "orgId": 1,
+                "type": "jaeger",
+                "uid": "fe670vj54q48wc",
+                "url": "http://jaeger.monitoring.svc:16686",
+                "version": 1
             }
         ]
     }
