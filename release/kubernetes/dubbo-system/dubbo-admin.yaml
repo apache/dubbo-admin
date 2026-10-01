@@ -12,8 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# Run ./deploy.sh to create a persistent session Secret and apply this directory.
-# Direct kubectl apply requires the dubbo-admin-auth Secret to exist first.
+# Run ./deploy.sh with DUBBO_ADMIN_IMAGE set to a fixed image. Do not apply
+# this file directly: the pinned 0.7.0 image predates the session-secret fix.
 
 apiVersion: apps/v1
 kind: Deployment

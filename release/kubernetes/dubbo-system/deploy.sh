@@ -19,6 +19,30 @@ set -euo pipefail
 namespace=dubbo-system
 secret_name=dubbo-admin-auth
 manifest_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+image="${DUBBO_ADMIN_IMAGE:-}"
+
+if [[ -z "$image" ]]; then
+  printf 'Set DUBBO_ADMIN_IMAGE to an image built with the session-secret fix; the bundled 0.7.0 image is vulnerable.\n' >&2
+  exit 1
+fi
+
+if [[ "$image" == *@sha256:* ]]; then
+  image_name="${image%@sha256:*}"
+  image_digest="${image##*@sha256:}"
+  if [[ ! "$image_name" =~ ^[A-Za-z0-9._:/-]+$ || ! "$image_digest" =~ ^[a-fA-F0-9]{64}$ ]]; then
+    printf 'DUBBO_ADMIN_IMAGE must be a valid image reference with a sha256 digest.\n' >&2
+    exit 1
+  fi
+  image_override="    digest: sha256:$image_digest"
+else
+  image_name="${image%:*}"
+  image_tag="${image##*:}"
+  if [[ "$image_name" == "$image" || ! "$image_name" =~ ^[A-Za-z0-9._:/-]+$ || ! "$image_tag" =~ ^[A-Za-z0-9_.-]+$ || "$image_tag" == 0.7.0 || "$image_tag" == latest ]]; then
+    printf 'DUBBO_ADMIN_IMAGE must use an explicit fixed-image tag other than 0.7.0 or latest.\n' >&2
+    exit 1
+  fi
+  image_override="    newTag: $image_tag"
+fi
 
 for command in kubectl openssl; do
   if ! command -v "$command" >/dev/null 2>&1; then
@@ -26,6 +50,18 @@ for command in kubectl openssl; do
     exit 1
   fi
 done
+
+render_dir="$(mktemp -d)"
+trap 'rm -rf "$render_dir"' EXIT
+cp "$manifest_dir"/*.yaml "$render_dir"/
+{
+  printf 'apiVersion: kustomize.config.k8s.io/v1beta1\nkind: Kustomization\nresources:\n'
+  for manifest in "$manifest_dir"/*.yaml; do
+    printf '  - %s\n' "$(basename "$manifest")"
+  done
+  printf 'images:\n  - name: apache/dubbo-admin\n    newName: %s\n%s\n' "$image_name" "$image_override"
+} > "$render_dir/kustomization.yaml"
+rendered_manifest="$(kubectl kustomize "$render_dir")"
 
 if ! kubectl get namespace "$namespace" >/dev/null 2>&1; then
   kubectl create namespace "$namespace"
@@ -47,4 +83,4 @@ else
   printf '%s' "$generated_secret" | kubectl -n "$namespace" create secret generic "$secret_name" --from-file=session-secret=/dev/stdin
 fi
 
-kubectl apply -f "$manifest_dir"
+printf '%s\n' "$rendered_manifest" | kubectl apply -f -
