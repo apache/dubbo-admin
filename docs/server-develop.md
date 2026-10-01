@@ -43,6 +43,7 @@ If you're using GoLand, you can run it locally by following steps:
 2. Fill the block with the config that screenshot shows below:
 ![ide_configuration.png](./static/images/ide-config.png)
 3. Modify the config file(app/dubbo-admin/dubbo-admin.yaml), make sure that the discovery, engine, store is configured.
+   Configure `console.auth.sessionSecret` with a unique random value before starting the server. For deployments that use a secret manager or Kubernetes Secret, the value can instead be provided through `DUBBO_ADMIN_SESSION_SECRET`. Generate a value with `openssl rand -base64 32`; the server refuses to start when the value is missing or shorter than 32 bytes.
    Traffic-rule version history records RuleVersion audit entries for history, diff, and rollback material. Supported governance rule mutations fail closed if the version ledger is unavailable or cannot record the mutation.
 4. Run the application, you can open the browser and visit localhost:8888/admin if everything works.
 

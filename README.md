@@ -19,6 +19,8 @@ The main code repositories of Dubbo Admin include:
 ## Quick Start
 Please refer to [official website](https://cn.dubbo.apache.org/zh-cn/overview/home/).
 
+For the Kubernetes manifests, see [Kubernetes deployment](release/kubernetes/dubbo-system/README.md).
+
 ## Roadmap
 Please refer to [RoadMap](https://github.com/apache/dubbo-admin/discussions/1300).
 

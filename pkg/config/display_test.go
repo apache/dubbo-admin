@@ -22,11 +22,13 @@ import (
 
 	"github.com/apache/dubbo-admin/pkg/config"
 	"github.com/apache/dubbo-admin/pkg/config/app"
+	"github.com/apache/dubbo-admin/pkg/config/console"
 	configauth "github.com/apache/dubbo-admin/pkg/config/console/auth"
 )
 
 func TestConfigForDisplaySanitizesConsoleAuthenticationSecrets(t *testing.T) {
 	cfg := app.DefaultAdminConfig()
+	cfg.Console = console.DefaultConsoleConfig()
 	cfg.Console.Auth.Password = "password-secret"
 	cfg.Console.Auth.SessionSecret = "session-secret"
 	cfg.Console.Auth.Providers = map[string]configauth.ProviderConfig{

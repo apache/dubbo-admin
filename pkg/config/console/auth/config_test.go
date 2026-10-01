@@ -23,10 +23,15 @@ import (
 )
 
 func validConfig() *Config {
-	return &Config{User: "admin", Password: "secret", ExpirationTime: 3600}
+	return &Config{
+		User:           "admin",
+		Password:       "secret",
+		ExpirationTime: 3600,
+		SessionSecret:  strings.Repeat("s", MinimumSessionSecretLength),
+	}
 }
 
-func TestConfigValidateDefaultsPasswordOnly(t *testing.T) {
+func TestConfigValidatePasswordOnly(t *testing.T) {
 	cfg := validConfig()
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("Validate() error = %v", err)
@@ -34,8 +39,37 @@ func TestConfigValidateDefaultsPasswordOnly(t *testing.T) {
 	if len(cfg.Methods) != 1 || cfg.Methods[0] != MethodPassword {
 		t.Fatalf("Methods = %v, want [%s]", cfg.Methods, MethodPassword)
 	}
-	if cfg.SessionSecret != DefaultSessionSecret {
-		t.Fatalf("SessionSecret = %q, want legacy default", cfg.SessionSecret)
+	if cfg.SessionSecret != strings.Repeat("s", MinimumSessionSecretLength) {
+		t.Fatalf("SessionSecret = %q, want configured secret", cfg.SessionSecret)
+	}
+}
+
+func TestConfigValidateRequiresSessionSecret(t *testing.T) {
+	t.Setenv(SessionSecretEnvVar, "")
+	cfg := validConfig()
+	cfg.SessionSecret = ""
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "sessionSecret") {
+		t.Fatalf("Validate() error = %v, want missing sessionSecret error", err)
+	}
+}
+
+func TestConfigValidateLoadsSessionSecretFromEnvironment(t *testing.T) {
+	t.Setenv(SessionSecretEnvVar, strings.Repeat("e", MinimumSessionSecretLength))
+	cfg := validConfig()
+	cfg.SessionSecret = ""
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+	if cfg.SessionSecret != strings.Repeat("e", MinimumSessionSecretLength) {
+		t.Fatalf("SessionSecret = %q, want environment value", cfg.SessionSecret)
+	}
+}
+
+func TestConfigValidateRejectsShortSessionSecret(t *testing.T) {
+	cfg := validConfig()
+	cfg.SessionSecret = "short"
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "32 bytes") {
+		t.Fatalf("Validate() error = %v, want minimum sessionSecret length error", err)
 	}
 }
 

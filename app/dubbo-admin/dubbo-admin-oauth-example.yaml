@@ -23,7 +23,8 @@ console:
     user: admin
     password: replace-with-admin-password
     expirationTime: 3600
-    sessionSecret: replace-with-a-random-secret-at-least-32-bytes
+    # Required. Generate a unique value with: openssl rand -base64 32
+    sessionSecret: ""
     sessionCookieSecure: true
     providers:
       github:
