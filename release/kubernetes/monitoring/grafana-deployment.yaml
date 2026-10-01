@@ -98,11 +98,17 @@ spec:
         - mountPath: /grafana-dashboard-definitions/0/dubbo-application-traces
           name: grafana-dashboard-dubbo-application-traces
           readOnly: false
+        - mountPath: /grafana-dashboard-definitions/0/dubbo-application-logs
+          name: grafana-dashboard-dubbo-application-logs
+          readOnly: false
         - mountPath: /grafana-dashboard-definitions/0/dubbo-instance-metrics
           name: grafana-dashboard-dubbo-instance-metrics
           readOnly: false
         - mountPath: /grafana-dashboard-definitions/0/dubbo-instance-traces
           name: grafana-dashboard-dubbo-instance-traces
+          readOnly: false
+        - mountPath: /grafana-dashboard-definitions/0/dubbo-instance-logs
+          name: grafana-dashboard-dubbo-instance-logs
           readOnly: false
         - mountPath: /grafana-dashboard-definitions/0/dubbo-service-metrics
           name: grafana-dashboard-dubbo-service-metrics
@@ -237,11 +243,17 @@ spec:
           name: grafana-dashboard-dubbo-application-traces
         name: grafana-dashboard-dubbo-application-traces
       - configMap:
+          name: grafana-dashboard-dubbo-application-logs
+        name: grafana-dashboard-dubbo-application-logs
+      - configMap:
           name: grafana-dashboard-dubbo-instance-metrics
         name: grafana-dashboard-dubbo-instance-metrics
       - configMap:
           name: grafana-dashboard-dubbo-instance-traces
         name: grafana-dashboard-dubbo-instance-traces
+      - configMap:
+          name: grafana-dashboard-dubbo-instance-logs
+        name: grafana-dashboard-dubbo-instance-logs
       - configMap:
           name: grafana-dashboard-dubbo-service-metrics
         name: grafana-dashboard-dubbo-service-metrics
