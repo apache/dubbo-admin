@@ -20,6 +20,8 @@ package service
 import (
 	"fmt"
 	"net/url"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/duke-git/lancet/v2/maputil"
@@ -41,6 +43,18 @@ func GetAppDashboard(baseURL *url.URL, req *model.AppDashboardReq) (string, erro
 	}
 	fullURL := concatURLWithQueryVars(baseURL, variables)
 	return fullURL, nil
+}
+
+// GetApplicationLogDashboard supplies a literal application matcher for the
+// Log dashboard, whose trace-focused mode also accepts a broad matcher.
+func GetApplicationLogDashboard(baseURL *url.URL, req *model.AppDashboardReq) (string, error) {
+	if baseURL == nil {
+		return "", bizerror.New(bizerror.NotFoundError, "grafana url is not configured")
+	}
+	quoted := strconv.Quote(regexp.QuoteMeta(req.AppName))
+	return concatURLWithQueryVars(baseURL, map[string]string{
+		"var-application": quoted[1 : len(quoted)-1],
+	}), nil
 }
 
 func GetServiceDashboard(baseURL *url.URL, req *model.ServiceDashboardReq) (string, error) {
@@ -120,6 +134,50 @@ func GetInstanceDashboardVariables(ctx consolectx.Context, req *model.InstanceDa
 		"var-application": res.Spec.AppName,
 		"var-instance":    instanceValue,
 	}, nil
+}
+
+func GetInstanceLogDashboard(ctx consolectx.Context, baseURL *url.URL, req *model.InstanceDashboardReq) (string, error) {
+	if baseURL == nil {
+		return "", bizerror.New(bizerror.NotFoundError, "grafana url is not configured")
+	}
+	resKey := coremodel.BuildResourceKey(req.Mesh, req.InstanceName)
+	res, exists, err := manager.GetByKey[*meshresource.InstanceResource](ctx.ResourceManager(), meshresource.InstanceKind, resKey)
+	if err != nil {
+		return "", err
+	}
+	if !exists {
+		return "", bizerror.New(bizerror.NotFoundError,
+			fmt.Sprintf("instance %s not found", req.InstanceName))
+	}
+	return concatURLWithQueryVars(baseURL, map[string]string{
+		"var-application": res.Spec.AppName,
+		"var-instance":    res.Spec.Ip,
+	}), nil
+}
+
+func GetTraceLogDashboard(baseURL *url.URL, req *model.TraceLogDashboardReq) (string, error) {
+	if baseURL == nil {
+		return "", bizerror.New(bizerror.NotFoundError, "trace log dashboard is not configured")
+	}
+	if !traceIDPattern.MatchString(strings.TrimSpace(req.TraceID)) {
+		return "", bizerror.New(bizerror.InvalidArgument, "traceId must be 16 or 32 hexadecimal characters")
+	}
+	if strings.TrimSpace(req.From) == "" || strings.TrimSpace(req.To) == "" {
+		return "", bizerror.New(bizerror.InvalidArgument, "trace log time range is required")
+	}
+	fromText, toText := strings.TrimSpace(req.From), strings.TrimSpace(req.To)
+	from, fromErr := strconv.ParseInt(fromText, 10, 64)
+	to, toErr := strconv.ParseInt(toText, 10, 64)
+	if fromErr != nil || toErr != nil || from < 0 || to <= from || to-from > 10*60*1000 {
+		return "", bizerror.New(bizerror.InvalidArgument, "trace log requires a valid millisecond time range no longer than 10 minutes")
+	}
+	return concatURLWithQueryVars(baseURL, map[string]string{
+		"var-application": ".*",
+		"var-instance":    ".*",
+		"var-traceId":     strings.TrimSpace(req.TraceID),
+		"from":            fromText,
+		"to":              toText,
+	}), nil
 }
 
 func concatURLWithQueryVars(baseURL *url.URL, vars map[string]string) string {

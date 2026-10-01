@@ -68,6 +68,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) error {
 		instance.GET("/event", handler.GetInstanceEvents(ctx))
 		instance.GET("/metric-dashboard", handler.GetGrafanaDashboard(ctx, handler.InstanceDimension, handler.MetricDashboard))
 		instance.GET("/trace-dashboard", handler.GetGrafanaDashboard(ctx, handler.InstanceDimension, handler.TraceDashboard))
+		instance.GET("/log-dashboard", handler.GetGrafanaDashboard(ctx, handler.InstanceDimension, handler.LogDashboard))
 		instance.GET("/metrics-list", handler.GetMetricsList(ctx))
 	}
 
@@ -92,6 +93,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) error {
 		application.GET("/event", handler.GetApplicationEvents(ctx))
 		application.GET("/metric-dashboard", handler.GetGrafanaDashboard(ctx, handler.AppDimension, handler.MetricDashboard))
 		application.GET("/trace-dashboard", handler.GetGrafanaDashboard(ctx, handler.AppDimension, handler.TraceDashboard))
+		application.GET("/log-dashboard", handler.GetGrafanaDashboard(ctx, handler.AppDimension, handler.LogDashboard))
 	}
 
 	{
@@ -168,6 +170,8 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) error {
 	}
 
 	protected.GET("/prometheus", handler.GetPrometheus(ctx))
+	protected.GET("/trace/start-time", handler.GetTraceStartTime(ctx))
+	protected.GET("/trace/log-dashboard", handler.GetTraceLogDashboard(ctx))
 	protected.GET("/search", handler.BannerGlobalSearch(ctx))
 	protected.GET("/overview", handler.ClusterOverview(ctx))
 	protected.GET("/metadata", handler.AdminMetadata(ctx))

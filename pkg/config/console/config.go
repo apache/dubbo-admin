@@ -46,6 +46,7 @@ type Config struct {
 	Port             int                     `json:"port" yaml:"port"`
 	MetricDashboards *GrafanaDashboardConfig `json:"metricDashboards" yaml:"metricDashboards"`
 	TraceDashboards  *GrafanaDashboardConfig `json:"traceDashboards" yaml:"traceDashboards"`
+	LogDashboards    *GrafanaDashboardConfig `json:"logDashboards" yaml:"logDashboards"`
 	Auth             *auth.Config            `json:"auth" yaml:"auth"`
 }
 
@@ -75,6 +76,11 @@ func (c *Config) Validate() error {
 			return err
 		}
 	}
+	if c.LogDashboards != nil {
+		if err := c.LogDashboards.Validate(); err != nil {
+			return err
+		}
+	}
 	if err := c.Auth.Validate(); err != nil {
 		return err
 	}
@@ -93,10 +99,13 @@ type GrafanaDashboardConfig struct {
 	Instance string `json:"instance" yaml:"instance"`
 	// service level metrics panel
 	Service string `json:"service" yaml:"service"`
+	// Trace is the existing application log dashboard used in trace-focused mode.
+	Trace string `json:"trace" yaml:"trace"`
 
 	AppDashboardURL      *url.URL `json:"-" yaml:"-"`
 	InstanceDashboardURL *url.URL `json:"-" yaml:"-"`
 	ServiceDashboardURL  *url.URL `json:"-" yaml:"-"`
+	TraceDashboardURL    *url.URL `json:"-" yaml:"-"`
 }
 
 func (g *GrafanaDashboardConfig) Validate() error {
@@ -123,6 +132,14 @@ func (g *GrafanaDashboardConfig) Validate() error {
 				fmt.Sprintf("invalid service dashboard url: %s", g.Service))
 		}
 		g.ServiceDashboardURL = dashboardURL
+	}
+	if strutil.IsNotBlank(g.Trace) {
+		dashboardURL, err := url.Parse(g.Trace)
+		if err != nil {
+			return bizerror.Wrap(err, bizerror.ConfigError,
+				fmt.Sprintf("invalid trace dashboard url: %s", g.Trace))
+		}
+		g.TraceDashboardURL = dashboardURL
 	}
 	return nil
 }

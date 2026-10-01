@@ -40,6 +40,51 @@ func dashboardTestContext(t *testing.T) (*testContext, store.ResourceStore) {
 	return &testContext{rm: manager.NewResourceManager(&testRouter{stores: map[coremodel.ResourceKind]store.ResourceStore{meshresource.ServiceProviderMetadataKind: s}}, nil)}, s
 }
 
+func instanceLogDashboardTestContext(t *testing.T) (*testContext, store.ResourceStore) {
+	t.Helper()
+	s := memoryst.NewMemoryResourceStore(meshresource.InstanceKind)
+	require.NoError(t, s.Init(nil))
+	return &testContext{rm: manager.NewResourceManager(&testRouter{stores: map[coremodel.ResourceKind]store.ResourceStore{meshresource.InstanceKind: s}}, nil)}, s
+}
+
+func TestInstanceLogDashboardURLUsesBarePodIP(t *testing.T) {
+	ctx, s := instanceLogDashboardTestContext(t)
+	instance := meshresource.NewInstanceResourceWithAttributes("instance", "mesh")
+	instance.Spec.AppName = "shop-user"
+	instance.Spec.Ip = "10.42.1.10"
+	instance.Spec.QosPort = 22222
+	require.NoError(t, s.Add(instance))
+	base, err := url.Parse("http://grafana/d/instance-log?kiosk=1")
+	require.NoError(t, err)
+
+	result, err := GetInstanceLogDashboard(ctx, base, &model.InstanceDashboardReq{Mesh: "mesh", InstanceName: "instance"})
+	require.NoError(t, err)
+	parsed, err := url.Parse(result)
+	require.NoError(t, err)
+	require.Equal(t, "shop-user", parsed.Query().Get("var-application"))
+	require.Equal(t, "10.42.1.10", parsed.Query().Get("var-instance"))
+	require.NotEqual(t, "10.42.1.10:22222", parsed.Query().Get("var-instance"))
+}
+
+func TestInstanceLogDashboardErrors(t *testing.T) {
+	ctx, _ := instanceLogDashboardTestContext(t)
+	req := &model.InstanceDashboardReq{Mesh: "mesh", InstanceName: "missing"}
+	result, err := GetInstanceLogDashboard(ctx, nil, req)
+	require.ErrorContains(t, err, "grafana url is not configured")
+	require.Empty(t, result)
+
+	base, parseErr := url.Parse("http://grafana/d/instance-log")
+	require.NoError(t, parseErr)
+	result, err = GetInstanceLogDashboard(ctx, base, req)
+	require.ErrorContains(t, err, "instance missing not found")
+	require.Empty(t, result)
+
+	lookupFailureCtx := &testContext{rm: manager.NewResourceManager(&testRouter{stores: map[coremodel.ResourceKind]store.ResourceStore{}}, nil)}
+	result, err = GetInstanceLogDashboard(lookupFailureCtx, base, req)
+	require.Error(t, err)
+	require.Empty(t, result)
+}
+
 func TestServiceTraceDashboardProviderApplications(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
@@ -127,6 +172,69 @@ func TestApplicationDashboardUnchanged(t *testing.T) {
 	parsed, err := url.Parse(result)
 	require.NoError(t, err)
 	require.Equal(t, url.Values{"kiosk": {"1"}, "var-application": {"provider"}}, parsed.Query())
+}
+
+func TestApplicationLogDashboardURL(t *testing.T) {
+	base, err := url.Parse("http://grafana/d/application-log?kiosk=1")
+	require.NoError(t, err)
+	result, err := GetApplicationLogDashboard(base, &model.AppDashboardReq{AppName: "shop-user"})
+	require.NoError(t, err)
+	parsed, err := url.Parse(result)
+	require.NoError(t, err)
+	require.Equal(t, "shop-user", parsed.Query().Get("var-application"))
+	result, err = GetApplicationLogDashboard(base, &model.AppDashboardReq{AppName: "shop.user"})
+	require.NoError(t, err)
+	parsed, err = url.Parse(result)
+	require.NoError(t, err)
+	require.Equal(t, `shop\\.user`, parsed.Query().Get("var-application"))
+}
+
+func TestTraceLogDashboardURL(t *testing.T) {
+	base, err := url.Parse("http://grafana/d/dubbo-application-loki-logs?kiosk=1")
+	require.NoError(t, err)
+	result, err := GetTraceLogDashboard(base, &model.TraceLogDashboardReq{
+		TraceID: "0123456789abcdef0123456789abcdef",
+		From:    "1000",
+		To:      "601000",
+	})
+	require.NoError(t, err)
+	parsed, err := url.Parse(result)
+	require.NoError(t, err)
+	require.Equal(t, ".*", parsed.Query().Get("var-application"))
+	require.Equal(t, "0123456789abcdef0123456789abcdef", parsed.Query().Get("var-traceId"))
+	require.Equal(t, "1000", parsed.Query().Get("from"))
+	require.Equal(t, "601000", parsed.Query().Get("to"))
+}
+
+func TestTraceLogDashboardRejectsBroadOrInvalidInput(t *testing.T) {
+	base, err := url.Parse("http://grafana/d/dubbo-application-loki-logs")
+	require.NoError(t, err)
+	_, err = GetTraceLogDashboard(base, &model.TraceLogDashboardReq{TraceID: "bad", From: "1", To: "2"})
+	require.ErrorContains(t, err, "16 or 32 hexadecimal")
+	_, err = GetTraceLogDashboard(base, &model.TraceLogDashboardReq{TraceID: "0123456789abcdef", From: "", To: "2"})
+	require.ErrorContains(t, err, "time range is required")
+	for _, tc := range []struct {
+		name string
+		from string
+		to   string
+	}{
+		{"non-numeric start", "yesterday", "601000"},
+		{"non-numeric end", "1000", "now"},
+		{"fractional milliseconds", "1000.5", "601000"},
+		{"negative start", "-1", "1000"},
+		{"equal boundaries", "1000", "1000"},
+		{"reversed boundaries", "2000", "1000"},
+		{"over ten minutes", "1000", "601001"},
+		{"integer overflow", "1000", "9223372036854775808"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := GetTraceLogDashboard(base, &model.TraceLogDashboardReq{
+				TraceID: "0123456789abcdef", From: tc.from, To: tc.to,
+			})
+			require.ErrorContains(t, err, "valid millisecond time range")
+			require.Empty(t, result)
+		})
+	}
 }
 
 func TestDashboardURLDoesNotMutateSharedBase(t *testing.T) {
