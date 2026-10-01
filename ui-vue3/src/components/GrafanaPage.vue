@@ -15,19 +15,17 @@
   ~ limitations under the License.
 -->
 <template>
-  <div class="__container_tabDemo3">
+  <div ref="pageElement" class="grafana-page">
     <!--    <div class="option">-->
     <!--      <a-button class="btn" @click="refresh"> refresh </a-button>-->
     <!--      <a-button class="btn" @click="newPageForGrafana"> grafana </a-button>-->
     <!--    </div>-->
     <a-spin class="spin" :spinning="!grafana.showIframe">
-      <div class="__container_iframe_container">
+      <div class="grafana-frame-container" :style="{ height: `${frameHeight}px` }">
         <iframe
           v-if="grafana.showIframe"
-          :onload="onIframeLoad"
-          id="grafanaIframe"
-          style="padding-top: 60px"
-          :src="grafana.url"
+          :src="dashboardUrl"
+          title="Grafana dashboard"
           frameborder="0"
         ></iframe>
       </div>
@@ -36,10 +34,11 @@
 </template>
 
 <script setup lang="ts">
-import { inject, onMounted } from 'vue'
+import { computed, inject, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import type { GrafanaState } from '@/types/grafana'
+import { embedDashboardUrl } from './grafanaEmbed'
 
 const grafana = inject<GrafanaState>(PROVIDE_INJECT_KEY.GRAFANA)
 
@@ -47,12 +46,44 @@ if (!grafana) {
   throw new Error('Grafana state not provided')
 }
 
+const pageElement = ref<HTMLElement | null>(null)
+const frameHeight = ref(0)
+const dashboardUrl = computed(() => embedDashboardUrl(grafana.url || ''))
+let resizeObserver: ResizeObserver | undefined
+
+function updateFrameHeight() {
+  const page = pageElement.value
+  if (!page) return
+  const container = page.querySelector('.grafana-frame-container')
+  const boundary = page.closest('#layout-tab-body, .layout-content')
+  if (!container || !boundary) return
+
+  const bottomPadding = boundary.id === 'layout-tab-body' ? 20 : 24
+  frameHeight.value = Math.max(
+    0,
+    Math.floor(
+      boundary.getBoundingClientRect().bottom -
+        container.getBoundingClientRect().top -
+        bottomPadding
+    )
+  )
+}
+
 onMounted(async () => {
+  const boundary = pageElement.value?.closest('#layout-tab-body, .layout-content')
+  if (boundary) {
+    resizeObserver = new ResizeObserver(updateFrameHeight)
+    resizeObserver.observe(boundary)
+  }
+  window.addEventListener('resize', updateFrameHeight)
+  updateFrameHeight()
   try {
     let res = await grafana.api(grafana.params || {})
     if (res?.data?.fullURL) {
       grafana.url = res.data.fullURL
       grafana.showIframe = true
+      await nextTick()
+      updateFrameHeight()
     } else {
       message.error('获取Grafana仪表板URL失败')
     }
@@ -62,60 +93,24 @@ onMounted(async () => {
   }
 })
 
-function tryDo(handle: any) {
-  try {
-    handle()
-  } catch (e) {
-    console.log(e)
-  }
-}
-
-function onIframeLoad() {
-  console.log('The iframe has been loaded.')
-  setTimeout(() => {
-    try {
-      const iframe = document.querySelector('#grafanaIframe') as HTMLIFrameElement
-      const iframeDocument = iframe?.contentDocument
-      if (!iframeDocument) return
-      tryDo(() => {
-        iframeDocument.querySelector('header')?.remove()
-      })
-      tryDo(() => {
-        iframeDocument.querySelector(`[data-testid*='controls']`)?.remove()
-      })
-      setTimeout(() => {
-        tryDo(() => {
-          iframeDocument.querySelector(`[data-testid*='navigation mega-menu']`)?.remove()
-        })
-        tryDo(() => {
-          for (let querySelectorAllElement of iframeDocument.querySelectorAll(
-            `[data-testid*='Panel menu']`
-          )) {
-            querySelectorAllElement?.remove()
-          }
-        })
-      }, 2000)
-    } catch (e) {
-      // Ignore errors when manipulating iframe content
-    }
-    grafana.showIframe = true
-  }, 1000)
-}
+onUnmounted(() => {
+  resizeObserver?.disconnect()
+  window.removeEventListener('resize', updateFrameHeight)
+})
 </script>
 <style lang="less" scoped>
-.__container_iframe_container {
-  z-index: 1;
-  position: relative;
-  width: calc(100vw - 332px);
-  height: calc(100vh - 200px);
-  clip-path: inset(0px 0px);
+.grafana-page,
+.grafana-frame-container,
+.grafana-frame-container iframe {
+  width: 100%;
+}
 
-  #grafanaIframe {
-    z-index: 0;
-    top: -112px;
-    position: absolute;
-    width: calc(100vw - 332px);
-    height: calc(100vh - 200px);
-  }
+.grafana-frame-container {
+  overflow: hidden;
+}
+
+.grafana-frame-container iframe {
+  display: block;
+  height: 100%;
 }
 </style>
