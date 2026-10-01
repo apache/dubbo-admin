@@ -20,7 +20,8 @@
     <!--      <a-button class="btn" @click="refresh"> refresh </a-button>-->
     <!--      <a-button class="btn" @click="newPageForGrafana"> grafana </a-button>-->
     <!--    </div>-->
-    <a-spin class="spin" :spinning="!grafana.showIframe">
+    <a-alert v-if="grafana.error" type="warning" show-icon :message="grafana.error" />
+    <a-spin v-else class="spin" :spinning="!grafana.showIframe">
       <div class="grafana-frame-container" :style="{ height: `${frameHeight}px` }">
         <iframe
           v-if="grafana.showIframe"
@@ -77,17 +78,22 @@ onMounted(async () => {
   }
   window.addEventListener('resize', updateFrameHeight)
   updateFrameHeight()
+  const requestVersion = grafana.requestVersion ?? 0
   try {
     let res = await grafana.api(grafana.params || {})
+    if (requestVersion !== (grafana.requestVersion ?? 0)) return
     if (res?.data?.fullURL) {
       grafana.url = res.data.fullURL
       grafana.showIframe = true
       await nextTick()
       updateFrameHeight()
     } else {
+      grafana.error = 'Grafana dashboard is not configured'
       message.error('获取Grafana仪表板URL失败')
     }
   } catch (error) {
+    if (requestVersion !== (grafana.requestVersion ?? 0)) return
+    grafana.error = 'Grafana dashboard is unavailable'
     console.error('获取Grafana仪表板失败:', error)
     message.error('获取Grafana仪表板失败，请稍后重试')
   }

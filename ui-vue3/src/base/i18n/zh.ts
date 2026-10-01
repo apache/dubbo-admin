@@ -181,6 +181,7 @@ const words: I18nType = {
     loadBalance: '负载均衡',
     monitor: '监控',
     linkTracking: '链路追踪',
+    log: '日志',
     configuration: '场景配置',
     event: '事件',
     healthExamination_k8s: '健康检查(k8s)',
@@ -211,6 +212,11 @@ const words: I18nType = {
     creationTime_k8s: '创建时间(k8s)',
     startTime_k8s: '启动时间(k8s)',
     readyTime_k8s: '就绪时间(k8s)'
+  },
+  traceLog: {
+    traceId: 'Trace ID',
+    traceIdPlaceholder: '输入 16 或 32 位 Trace ID',
+    search: '查询日志'
   },
   serviceDomain: {
     name: '服务名',
@@ -506,6 +512,7 @@ const words: I18nType = {
     service: '服务',
     monitor: '监控',
     tracing: '链路追踪',
+    log: '日志',
     config: '配置',
     event: '事件',
     appName: '应用名',

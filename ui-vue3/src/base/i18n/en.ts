@@ -167,6 +167,7 @@ const words: I18nType = {
     timeout_ms: 'Timeout(ms)',
     monitor: 'Monitor',
     linkTracking: 'LinkTracking',
+    log: 'Log',
     configuration: 'Configuration',
     event: 'Event',
     instanceName: 'InstanceName',
@@ -378,6 +379,11 @@ const words: I18nType = {
     serviceTest: 'Service Test will release later',
     serviceMock: 'Service Mock will release later'
   },
+  traceLog: {
+    traceId: 'Trace ID',
+    traceIdPlaceholder: 'Enter a 16 or 32 character trace ID',
+    search: 'Search logs'
+  },
   by: 'by ',
   $vuetify: {
     dataIterator: {
@@ -531,6 +537,7 @@ const words: I18nType = {
     service: 'Service',
     monitor: 'Monitor',
     tracing: 'Tracing',
+    log: 'Log',
     config: 'Config',
     event: 'Event',
     appName: 'Application Name',
