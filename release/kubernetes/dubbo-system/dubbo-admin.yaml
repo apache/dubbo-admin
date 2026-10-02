@@ -110,6 +110,11 @@ data:
         application: http://grafana.monitoring.svc:3000/d/dubbo-application-loki-logs/dubbo-application-logs?theme=light
         instance: http://grafana.monitoring.svc:3000/d/dubbo-instance-loki-logs/dubbo-instance-logs?theme=light
         trace: http://grafana.monitoring.svc:3000/d/dubbo-application-loki-logs/dubbo-application-logs?theme=light
+        # To select the Elasticsearch provider, replace the three URLs above
+        # with the following dashboards after configuring a Grafana ES datasource:
+        # application: http://grafana.monitoring.svc:3000/d/dubbo-application-elasticsearch-logs/dubbo-application-elasticsearch-logs?theme=light
+        # instance: http://grafana.monitoring.svc:3000/d/dubbo-instance-elasticsearch-logs/dubbo-instance-elasticsearch-logs?theme=light
+        # trace: http://grafana.monitoring.svc:3000/d/dubbo-application-elasticsearch-logs/dubbo-application-elasticsearch-logs?theme=light
       auth:
         user: admin
         password: dubbo@2025

@@ -39127,4 +39127,88 @@ items:
         app.kubernetes.io/version: 12.1.0
       name: grafana-dashboard-dubbo-instance-logs
       namespace: monitoring
+  - apiVersion: v1
+    data:
+      dubbo-application-elasticsearch-logs.json: |-
+        {
+          "annotations": {"list": []},
+          "editable": false,
+          "panels": [{
+            "datasource": {"type": "elasticsearch", "uid": "${datasource}"},
+            "fieldConfig": {"defaults": {}, "overrides": [{"matcher": {"id": "byName", "options": "Level"}, "properties": [{"id": "noValue", "value": "UNKNOWN"}, {"id": "mappings", "value": [{"type": "value", "options": {"null": {"text": "UNKNOWN"}}}]}]}, {"matcher": {"id": "byName", "options": "Trace ID"}, "properties": [{"id": "noValue", "value": "—"}, {"id": "mappings", "value": [{"type": "value", "options": {"null": {"text": "—"}}}]}]}]},
+            "gridPos": {"h": 18, "w": 24, "x": 0, "y": 0},
+            "id": 1,
+            "options": {"cellHeight": "sm", "footer": {"countRows": false, "fields": "", "reducer": ["count"], "show": false}, "showHeader": true},
+            "targets": [{"datasource": {"type": "elasticsearch", "uid": "${datasource}"}, "query": "app.keyword:\"${applicationRaw:raw}\" OR trace_id.keyword:\"${traceId:raw}\"", "timeField": "@timestamp", "metrics": [{"id": "1", "type": "logs", "settings": {"limit": "100"}}], "bucketAggs": [], "refId": "A"}],
+            "title": "Application logs",
+            "transformations": [
+              {"id": "calculateField", "options": {"alias": "Level", "mode": "reduceRow", "reduce": {"include": ["level"], "reducer": "firstNotNull"}}},
+              {"id": "calculateField", "options": {"alias": "Pod", "mode": "reduceRow", "reduce": {"include": ["pod_name", "pod_ip"], "reducer": "firstNotNull"}}},
+              {"id": "calculateField", "options": {"alias": "Trace ID", "mode": "reduceRow", "reduce": {"include": ["trace_id"], "reducer": "firstNotNull"}}},
+              {"id": "convertFieldType", "options": {"conversions": [{"targetField": "Trace ID", "destinationType": "string"}]}},
+              {"id": "filterFieldsByName", "options": {"include": {"names": ["@timestamp", "Level", "Pod", "Trace ID", "Body"]}}},
+              {"id": "organize", "options": {"indexByName": {"@timestamp": 0, "Level": 1, "Pod": 2, "Trace ID": 3, "Body": 4}, "renameByName": {"@timestamp": "Time", "Body": "Message"}}}
+            ],
+            "type": "table"
+          }],
+          "schemaVersion": 41,
+          "tags": ["dubbo", "logs", "elasticsearch"],
+          "templating": {"list": [{"current": {"text": ".*", "value": ".*"}, "hide": 0, "label": "Application", "name": "applicationRaw", "options": [], "query": "", "type": "textbox"}, {"current": {"text": ".*", "value": ".*"}, "hide": 2, "label": "Trace ID", "name": "traceId", "options": [], "query": "", "type": "textbox"}, {"current": {"text": "Elasticsearch", "value": "${datasource}"}, "hide": 0, "label": "Datasource", "name": "datasource", "options": [], "query": "elasticsearch", "refresh": 1, "type": "datasource"}]},
+          "time": {"from": "now-1h", "to": "now"},
+          "timepicker": {},
+          "title": "Application Elasticsearch Log Dashboard",
+          "uid": "dubbo-application-elasticsearch-logs",
+          "version": 1
+        }
+    kind: ConfigMap
+    metadata:
+      labels:
+        app.kubernetes.io/component: grafana
+        app.kubernetes.io/name: grafana
+        app.kubernetes.io/part-of: dubbo-admin
+        app.kubernetes.io/version: 12.1.0
+      name: grafana-dashboard-dubbo-application-elasticsearch-logs
+      namespace: monitoring
+  - apiVersion: v1
+    data:
+      dubbo-instance-elasticsearch-logs.json: |-
+        {
+          "annotations": {"list": []},
+          "editable": false,
+          "panels": [{
+            "datasource": {"type": "elasticsearch", "uid": "${datasource}"},
+            "fieldConfig": {"defaults": {}, "overrides": [{"matcher": {"id": "byName", "options": "Level"}, "properties": [{"id": "noValue", "value": "UNKNOWN"}, {"id": "mappings", "value": [{"type": "value", "options": {"null": {"text": "UNKNOWN"}}}]}]}, {"matcher": {"id": "byName", "options": "Trace ID"}, "properties": [{"id": "noValue", "value": "—"}, {"id": "mappings", "value": [{"type": "value", "options": {"null": {"text": "—"}}}]}]}]},
+            "gridPos": {"h": 18, "w": 24, "x": 0, "y": 0},
+            "id": 1,
+            "options": {"cellHeight": "sm", "footer": {"countRows": false, "fields": "", "reducer": ["count"], "show": false}, "showHeader": true},
+            "targets": [{"datasource": {"type": "elasticsearch", "uid": "${datasource}"}, "query": "(app.keyword:\"${applicationRaw:raw}\" AND pod_ip.keyword:\"${instance:raw}\") OR trace_id.keyword:\"${traceId:raw}\"", "timeField": "@timestamp", "metrics": [{"id": "1", "type": "logs", "settings": {"limit": "100"}}], "bucketAggs": [], "refId": "A"}],
+            "title": "Instance logs",
+            "transformations": [
+              {"id": "calculateField", "options": {"alias": "Level", "mode": "reduceRow", "reduce": {"include": ["level"], "reducer": "firstNotNull"}}},
+              {"id": "calculateField", "options": {"alias": "Pod", "mode": "reduceRow", "reduce": {"include": ["pod_name", "pod_ip"], "reducer": "firstNotNull"}}},
+              {"id": "calculateField", "options": {"alias": "Trace ID", "mode": "reduceRow", "reduce": {"include": ["trace_id"], "reducer": "firstNotNull"}}},
+              {"id": "convertFieldType", "options": {"conversions": [{"targetField": "Trace ID", "destinationType": "string"}]}},
+              {"id": "filterFieldsByName", "options": {"include": {"names": ["@timestamp", "Level", "Pod", "Trace ID", "Body"]}}},
+              {"id": "organize", "options": {"indexByName": {"@timestamp": 0, "Level": 1, "Pod": 2, "Trace ID": 3, "Body": 4}, "renameByName": {"@timestamp": "Time", "Body": "Message"}}}
+            ],
+            "type": "table"
+          }],
+          "schemaVersion": 41,
+          "tags": ["dubbo", "logs", "elasticsearch"],
+          "templating": {"list": [{"current": {"text": ".*", "value": ".*"}, "hide": 0, "label": "Application", "name": "applicationRaw", "options": [], "query": "", "type": "textbox"}, {"current": {"text": ".*", "value": ".*"}, "hide": 0, "label": "Instance", "name": "instance", "options": [], "query": "", "type": "textbox"}, {"current": {"text": ".*", "value": ".*"}, "hide": 2, "label": "Trace ID", "name": "traceId", "options": [], "query": "", "type": "textbox"}, {"current": {"text": "Elasticsearch", "value": "${datasource}"}, "hide": 0, "label": "Datasource", "name": "datasource", "options": [], "query": "elasticsearch", "refresh": 1, "type": "datasource"}]},
+          "time": {"from": "now-1h", "to": "now"},
+          "timepicker": {},
+          "title": "Instance Elasticsearch Log Dashboard",
+          "uid": "dubbo-instance-elasticsearch-logs",
+          "version": 1
+        }
+    kind: ConfigMap
+    metadata:
+      labels:
+        app.kubernetes.io/component: grafana
+        app.kubernetes.io/name: grafana
+        app.kubernetes.io/part-of: dubbo-admin
+        app.kubernetes.io/version: 12.1.0
+      name: grafana-dashboard-dubbo-instance-elasticsearch-logs
+      namespace: monitoring
 kind: ConfigMapList
