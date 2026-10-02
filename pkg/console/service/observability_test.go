@@ -48,22 +48,27 @@ func instanceLogDashboardTestContext(t *testing.T) (*testContext, store.Resource
 }
 
 func TestInstanceLogDashboardURLUsesBarePodIP(t *testing.T) {
-	ctx, s := instanceLogDashboardTestContext(t)
-	instance := meshresource.NewInstanceResourceWithAttributes("instance", "mesh")
-	instance.Spec.AppName = "shop-user"
-	instance.Spec.Ip = "10.42.1.10"
-	instance.Spec.QosPort = 22222
-	require.NoError(t, s.Add(instance))
-	base, err := url.Parse("http://grafana/d/instance-log?kiosk=1")
-	require.NoError(t, err)
+	for _, appName := range []string{"shop-user", "shop.user"} {
+		t.Run(appName, func(t *testing.T) {
+			ctx, s := instanceLogDashboardTestContext(t)
+			instance := meshresource.NewInstanceResourceWithAttributes("instance", "mesh")
+			instance.Spec.AppName = appName
+			instance.Spec.Ip = "10.42.1.10"
+			instance.Spec.QosPort = 22222
+			require.NoError(t, s.Add(instance))
+			base, err := url.Parse("http://grafana/d/instance-log?kiosk=1")
+			require.NoError(t, err)
 
-	result, err := GetInstanceLogDashboard(ctx, base, &model.InstanceDashboardReq{Mesh: "mesh", InstanceName: "instance"})
-	require.NoError(t, err)
-	parsed, err := url.Parse(result)
-	require.NoError(t, err)
-	require.Equal(t, "shop-user", parsed.Query().Get("var-application"))
-	require.Equal(t, "10.42.1.10", parsed.Query().Get("var-instance"))
-	require.NotEqual(t, "10.42.1.10:22222", parsed.Query().Get("var-instance"))
+			result, err := GetInstanceLogDashboard(ctx, base, &model.InstanceDashboardReq{Mesh: "mesh", InstanceName: "instance"})
+			require.NoError(t, err)
+			parsed, err := url.Parse(result)
+			require.NoError(t, err)
+			require.Equal(t, appName, parsed.Query().Get("var-application"))
+			require.Equal(t, appName, parsed.Query().Get("var-applicationRaw"))
+			require.Equal(t, "10.42.1.10", parsed.Query().Get("var-instance"))
+			require.NotEqual(t, "10.42.1.10:22222", parsed.Query().Get("var-instance"))
+		})
+	}
 }
 
 func TestInstanceLogDashboardErrors(t *testing.T) {
@@ -177,16 +182,22 @@ func TestApplicationDashboardUnchanged(t *testing.T) {
 func TestApplicationLogDashboardURL(t *testing.T) {
 	base, err := url.Parse("http://grafana/d/application-log?kiosk=1")
 	require.NoError(t, err)
-	result, err := GetApplicationLogDashboard(base, &model.AppDashboardReq{AppName: "shop-user"})
-	require.NoError(t, err)
-	parsed, err := url.Parse(result)
-	require.NoError(t, err)
-	require.Equal(t, "shop-user", parsed.Query().Get("var-application"))
-	result, err = GetApplicationLogDashboard(base, &model.AppDashboardReq{AppName: "shop.user"})
-	require.NoError(t, err)
-	parsed, err = url.Parse(result)
-	require.NoError(t, err)
-	require.Equal(t, `shop\\.user`, parsed.Query().Get("var-application"))
+	for _, tc := range []struct {
+		appName string
+		escaped string
+	}{
+		{appName: "shop-user", escaped: "shop-user"},
+		{appName: "shop.user", escaped: `shop\\.user`},
+	} {
+		t.Run(tc.appName, func(t *testing.T) {
+			result, err := GetApplicationLogDashboard(base, &model.AppDashboardReq{AppName: tc.appName})
+			require.NoError(t, err)
+			parsed, err := url.Parse(result)
+			require.NoError(t, err)
+			require.Equal(t, tc.escaped, parsed.Query().Get("var-application"))
+			require.Equal(t, tc.appName, parsed.Query().Get("var-applicationRaw"))
+		})
+	}
 }
 
 func TestTraceLogDashboardURL(t *testing.T) {
@@ -201,6 +212,8 @@ func TestTraceLogDashboardURL(t *testing.T) {
 	parsed, err := url.Parse(result)
 	require.NoError(t, err)
 	require.Equal(t, ".*", parsed.Query().Get("var-application"))
+	require.Equal(t, ".*", parsed.Query().Get("var-instance"))
+	require.False(t, parsed.Query().Has("var-applicationRaw"))
 	require.Equal(t, "0123456789abcdef0123456789abcdef", parsed.Query().Get("var-traceId"))
 	require.Equal(t, "1000", parsed.Query().Get("from"))
 	require.Equal(t, "601000", parsed.Query().Get("to"))

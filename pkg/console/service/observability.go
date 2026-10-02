@@ -53,7 +53,8 @@ func GetApplicationLogDashboard(baseURL *url.URL, req *model.AppDashboardReq) (s
 	}
 	quoted := strconv.Quote(regexp.QuoteMeta(req.AppName))
 	return concatURLWithQueryVars(baseURL, map[string]string{
-		"var-application": quoted[1 : len(quoted)-1],
+		"var-application":    quoted[1 : len(quoted)-1],
+		"var-applicationRaw": req.AppName,
 	}), nil
 }
 
@@ -150,8 +151,9 @@ func GetInstanceLogDashboard(ctx consolectx.Context, baseURL *url.URL, req *mode
 			fmt.Sprintf("instance %s not found", req.InstanceName))
 	}
 	return concatURLWithQueryVars(baseURL, map[string]string{
-		"var-application": res.Spec.AppName,
-		"var-instance":    res.Spec.Ip,
+		"var-application":    res.Spec.AppName,
+		"var-applicationRaw": res.Spec.AppName,
+		"var-instance":       res.Spec.Ip,
 	}), nil
 }
 
