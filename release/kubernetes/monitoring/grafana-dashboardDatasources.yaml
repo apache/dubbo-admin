@@ -34,6 +34,7 @@ stringData:
                 "name": "prometheus",
                 "orgId": 1,
                 "type": "prometheus",
+                "uid": "dubbo-admin-prometheus",
                 "url": "http://prometheus-k8s.monitoring.svc:9090",
                 "version": 1
             },
@@ -45,6 +46,22 @@ stringData:
                 "type": "jaeger",
                 "uid": "fe670vj54q48wc",
                 "url": "http://jaeger.monitoring.svc:16686",
+                "jsonData": {
+                    "tracesToMetrics": {
+                        "datasourceUid": "dubbo-admin-prometheus",
+                        "tags": [
+                            {"key": "dubbo.application", "value": "application_name"},
+                            {"key": "dubbo.metric.interface", "value": "interface"},
+                            {"key": "rpc.method", "value": "method"}
+                        ],
+                        "queries": [
+                            {"name": "Provider Request Rate", "query": "sum by (application_name, interface, method) (rate(dubbo_provider_requests_total{$$__tags}[5m]))"},
+                            {"name": "Consumer Request Rate", "query": "sum by (application_name, interface, method) (rate(dubbo_consumer_requests_total{$$__tags}[5m]))"}
+                        ],
+                        "spanStartTimeShift": "-5m",
+                        "spanEndTimeShift": "5m"
+                    }
+                },
                 "version": 1
             }
         ]
