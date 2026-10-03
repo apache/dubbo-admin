@@ -4651,7 +4651,7 @@ items:
                       },
                       "editorMode": "code",
                       "exemplar": false,
-                      "expr": "histogram_quantile(0.9, sum(rate(dubbo_provider_rt_milliseconds_histogram_seconds_bucket{application_name=\"$application\",method=\"getItem\"}[2m])) by (le))",
+                      "expr": "histogram_quantile(0.9, sum(rate(dubbo_provider_rt_milliseconds_histogram_seconds_bucket{application_name=\"$application\"}[2m])) by (le))",
                       "format": "heatmap",
                       "hide": false,
                       "instant": false,
