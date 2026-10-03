@@ -14283,14 +14283,14 @@ items:
                   "type": "prometheus",
                   "uid": "${datasource}"
                 },
-                "definition": "label_values(dubbo_provider_requests_total{},interface)",
+                "definition": "label_values({__name__=~\"dubbo_(provider|consumer)_requests_total\"},interface)",
                 "description": "接口名",
                 "includeAll": false,
                 "label": "service",
                 "name": "service",
                 "options": [],
                 "query": {
-                  "query": "label_values(dubbo_provider_requests_total{},interface)",
+                  "query": "label_values({__name__=~\"dubbo_(provider|consumer)_requests_total\"},interface)",
                   "refId": "PrometheusVariableQueryEditor-VariableQuery"
                 },
                 "refresh": 2,
@@ -14312,13 +14312,13 @@ items:
                   "type": "prometheus",
                   "uid": "${datasource}"
                 },
-                "definition": "label_values(dubbo_provider_requests_total{interface=\"$service\"},method)",
+                "definition": "label_values({__name__=~\"dubbo_(provider|consumer)_requests_total\",interface=\"$service\"},method)",
                 "includeAll": true,
                 "multi": true,
                 "name": "method",
                 "options": [],
                 "query": {
-                  "query": "label_values(dubbo_provider_requests_total{interface=\"$service\"},method)",
+                  "query": "label_values({__name__=~\"dubbo_(provider|consumer)_requests_total\",interface=\"$service\"},method)",
                   "refId": "PrometheusVariableQueryEditor-VariableQuery"
                 },
                 "refresh": 2,
