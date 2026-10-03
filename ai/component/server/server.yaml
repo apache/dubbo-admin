@@ -14,3 +14,8 @@ spec:
     scopes: []
     allow_insecure_static_auth: false
     adopt_legacy_sessions: false
+  auth:
+    enabled: false
+    # jwks_url: "http://dubbo-admin:8888/api/v1/auth/jwks"
+    # issuer: "dubbo-admin"
+    # audience: "dubbo-admin-ai"

@@ -48,32 +48,21 @@ type ServerComponent struct {
 	readTimeout    int
 	writeTimeout   int
 	authentication AuthenticationSpec
+	auth           AuthSpec
+	jwtVerifier    *engine.JWTVerifier
 }
 
-func NewServerComponent(
-	port int,
-	host string,
-	debug bool,
-	corsOrigins []string,
-	timeouts ...int,
-) (runtime.Component, error) {
-	readTimeout := 30
-	writeTimeout := 30
-	if len(timeouts) > 0 {
-		readTimeout = timeouts[0]
-	}
-	if len(timeouts) > 1 {
-		writeTimeout = timeouts[1]
-	}
-	authentication := DefaultServerSpec().Authentication
+func NewServerComponent(spec ServerSpec) (runtime.Component, error) {
+	spec.Authentication.applyDefaults()
 	return &ServerComponent{
-		port:           port,
-		host:           normalizeHost(host),
-		debug:          debug,
-		corsOrigins:    corsOrigins,
-		readTimeout:    readTimeout,
-		writeTimeout:   writeTimeout,
-		authentication: authentication,
+		port:           spec.Port,
+		host:           normalizeHost(spec.Host),
+		debug:          spec.Debug,
+		corsOrigins:    spec.CORSOrigins,
+		readTimeout:    spec.ReadTimeout,
+		writeTimeout:   spec.WriteTimeout,
+		auth:           spec.Auth,
+		authentication: spec.Authentication,
 	}, nil
 }
 
@@ -88,13 +77,11 @@ func NewServerComponentWithAuthentication(
 	writeTimeout int,
 	authentication AuthenticationSpec,
 ) (runtime.Component, error) {
-	authentication.applyDefaults()
-	component, err := NewServerComponent(port, host, debug, corsOrigins, readTimeout, writeTimeout)
-	if err != nil {
-		return nil, err
-	}
-	component.(*ServerComponent).authentication = authentication
-	return component, nil
+	return NewServerComponent(ServerSpec{
+		Port: port, Host: host, Debug: debug, CORSOrigins: corsOrigins,
+		ReadTimeout: readTimeout, WriteTimeout: writeTimeout,
+		Authentication: authentication,
+	})
 }
 
 // Name returns the component name
@@ -121,6 +108,9 @@ func (s *ServerComponent) Validate() error {
 	}
 	if s.writeTimeout <= 0 {
 		return fmt.Errorf("write_timeout must be greater than 0")
+	}
+	if err := s.auth.Validate(); err != nil {
+		return err
 	}
 	if s.authentication.Mode != "static" {
 		return fmt.Errorf("unsupported authentication mode %q", s.authentication.Mode)
@@ -153,6 +143,15 @@ func normalizeHost(host string) string {
 
 func (s *ServerComponent) Init(rt *runtime.Runtime) error {
 	s.rt = rt
+	if s.auth.Enabled {
+		verifier, err := engine.NewJWTVerifier(engine.JWTAuthConfig{
+			JWKSURL: s.auth.JWKSURL, Issuer: s.auth.Issuer, Audience: s.auth.Audience,
+		}, nil)
+		if err != nil {
+			return fmt.Errorf("initialize AI JWT authentication: %w", err)
+		}
+		s.jwtVerifier = verifier
+	}
 	rt.GetLogger().Info("Server component initialized",
 		"port", s.port,
 		"host", s.host)
@@ -220,7 +219,11 @@ func (s *ServerComponent) Start() error {
 	if err := adoptLegacySessions(context.Background(), maintenanceStore, s.authentication.AdoptLegacySessions, subject); err != nil {
 		return fmt.Errorf("failed to adopt legacy sessions: %w", err)
 	}
-	router, err := engine.NewRouterWithCORS(agentComponent.Agent, conversationStore, maintenanceStore, authenticator, s.corsOrigins)
+	var authMiddleware []gin.HandlerFunc
+	if s.jwtVerifier != nil {
+		authMiddleware = append(authMiddleware, s.jwtVerifier.Middleware())
+	}
+	router, err := engine.NewRouterWithCORS(agentComponent.Agent, conversationStore, maintenanceStore, authenticator, s.corsOrigins, authMiddleware...)
 	if err != nil {
 		return fmt.Errorf("failed to create AI router: %w", err)
 	}

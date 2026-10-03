@@ -18,6 +18,9 @@
 package auth
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"net"
@@ -34,6 +37,7 @@ const (
 	DefaultExpirationTime      = 7200
 	MinimumSessionSecretLength = 32
 	SessionSecretEnvVar        = "DUBBO_ADMIN_SESSION_SECRET"
+	DefaultAccessTokenTTL      = 1800 // Access token lifetime in seconds (30 minutes).
 
 	MethodPassword     = "password"
 	ProviderTypeGitHub = "github"
@@ -54,6 +58,16 @@ type ProviderConfig struct {
 	Scopes               []string `json:"scopes,omitempty" yaml:"scopes,omitempty"`
 }
 
+type AccessTokenConfig struct {
+	Enabled        bool            `json:"enabled" yaml:"enabled"`
+	Issuer         string          `json:"issuer" yaml:"issuer"`
+	KeyID          string          `json:"keyId" yaml:"keyId"`
+	PrivateKeyFile string          `json:"privateKeyFile" yaml:"privateKeyFile"`
+	TTL            int             `json:"ttl" yaml:"ttl"`
+	Audiences      []string        `json:"audiences" yaml:"audiences"`
+	PrivateKey     *rsa.PrivateKey `json:"-" yaml:"-"`
+}
+
 // Config AuthConfig configure the valid user and password
 type Config struct {
 	config.BaseConfig
@@ -64,6 +78,7 @@ type Config struct {
 	SessionSecret       string                    `json:"sessionSecret" yaml:"sessionSecret"`
 	SessionCookieSecure bool                      `json:"sessionCookieSecure" yaml:"sessionCookieSecure"`
 	Providers           map[string]ProviderConfig `json:"providers,omitempty" yaml:"providers,omitempty"`
+	AccessToken         *AccessTokenConfig        `json:"accessToken,omitempty" yaml:"accessToken,omitempty"`
 }
 
 func (c *Config) Sanitize() {
@@ -103,7 +118,71 @@ func (c *Config) Validate() error {
 		}
 		c.Providers[id] = provider
 	}
+	if err := c.AccessToken.validate(); err != nil {
+		return err
+	}
 	return nil
+}
+
+func (c *AccessTokenConfig) validate() error {
+	if c == nil || !c.Enabled {
+		return nil
+	}
+	if c.PrivateKeyFile == "" {
+		return errors.New("auth accessToken: privateKeyFile is required when enabled")
+	}
+	if c.Issuer == "" {
+		return errors.New("auth accessToken: issuer is required when enabled")
+	}
+	if c.KeyID == "" {
+		return errors.New("auth accessToken: keyId is required when enabled")
+	}
+	if len(c.Audiences) == 0 {
+		return errors.New("auth accessToken: at least one audience is required when enabled")
+	}
+	for _, audience := range c.Audiences {
+		if strings.TrimSpace(audience) == "" {
+			return errors.New("auth accessToken: audiences must not contain an empty value")
+		}
+	}
+	if c.TTL == 0 {
+		c.TTL = DefaultAccessTokenTTL
+	}
+	if c.TTL < 0 {
+		return errors.New("auth accessToken: ttl must be greater than 0")
+	}
+	encoded, err := os.ReadFile(c.PrivateKeyFile)
+	if err != nil {
+		return fmt.Errorf("auth accessToken: read privateKeyFile: %w", err)
+	}
+	block, _ := pem.Decode(encoded)
+	if block == nil {
+		return errors.New("auth accessToken: privateKeyFile is not a PEM private key")
+	}
+	key, err := parseRSAPrivateKey(block.Bytes)
+	if err != nil {
+		return fmt.Errorf("auth accessToken: parse privateKeyFile: %w", err)
+	}
+	if key.N.BitLen() < 2048 {
+		return errors.New("auth accessToken: RSA private key must be at least 2048 bits")
+	}
+	c.PrivateKey = key
+	return nil
+}
+
+func parseRSAPrivateKey(der []byte) (*rsa.PrivateKey, error) {
+	if key, err := x509.ParsePKCS1PrivateKey(der); err == nil {
+		return key, nil
+	}
+	parsed, err := x509.ParsePKCS8PrivateKey(der)
+	if err != nil {
+		return nil, errors.New("expected a PKCS#1 or PKCS#8 RSA private key")
+	}
+	key, ok := parsed.(*rsa.PrivateKey)
+	if !ok {
+		return nil, errors.New("private key is not RSA")
+	}
+	return key, nil
 }
 
 func validateProvider(id string, provider *ProviderConfig) error {

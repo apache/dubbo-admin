@@ -19,6 +19,8 @@ package handler
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -113,6 +115,62 @@ func TestAuthHandlerPasswordOnlyProviderListUsesEmptyArray(t *testing.T) {
 	}
 }
 
+func TestAuthHandlerAccessTokenAndJWKS(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := &configauth.Config{
+		Methods: []string{configauth.MethodPassword}, User: "admin", Password: "secret", ExpirationTime: 3600,
+		AccessToken: &configauth.AccessTokenConfig{
+			Enabled: true, Issuer: "dubbo-admin", KeyID: "admin-key-1", TTL: 1800,
+			Audiences: []string{"dubbo-admin-ai"}, PrivateKey: key,
+		},
+	}
+	issuer, err := consoleauth.NewTokenIssuer(cfg.AccessToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service, _ := consoleauth.NewServiceFromProviders()
+	router := authTestRouter(newAuthHandler(cfg, service, issuer))
+
+	providers := doAuthRequest(router, http.MethodGet, "/api/v1/auth/providers", nil)
+	if providers.Code != http.StatusOK || !strings.Contains(providers.Body.String(), `"accessTokenEnabled":true`) {
+		t.Fatalf("providers status = %d, body = %s", providers.Code, providers.Body.String())
+	}
+
+	jwks := doAuthRequest(router, http.MethodGet, "/api/v1/auth/jwks", nil)
+	if jwks.Code != http.StatusOK || !strings.Contains(jwks.Body.String(), `"kid":"admin-key-1"`) || strings.Contains(jwks.Body.String(), `"d":`) {
+		t.Fatalf("JWKS status = %d, body = %s", jwks.Code, jwks.Body.String())
+	}
+
+	withoutSession := doAuthRequest(router, http.MethodPost, "/api/v1/auth/token", nil)
+	if withoutSession.Code != http.StatusUnauthorized {
+		t.Fatalf("token without session status = %d, body = %s", withoutSession.Code, withoutSession.Body.String())
+	}
+
+	loginReq := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader("user=admin&password=secret"))
+	loginReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	loginResp := httptest.NewRecorder()
+	router.ServeHTTP(loginResp, loginReq)
+	token := doAuthRequest(router, http.MethodPost, "/api/v1/auth/token", loginResp.Result().Cookies()[0])
+	if token.Code != http.StatusOK || !strings.Contains(token.Body.String(), `"accessToken":`) || !strings.Contains(token.Body.String(), `"tokenType":"Bearer"`) {
+		t.Fatalf("token status = %d, body = %s", token.Code, token.Body.String())
+	}
+}
+
+func TestAuthHandlerDisabledAccessToken(t *testing.T) {
+	service, _ := consoleauth.NewServiceFromProviders()
+	router := authTestRouter(newAuthHandler(&configauth.Config{Methods: []string{configauth.MethodPassword}}, service))
+	providers := doAuthRequest(router, http.MethodGet, "/api/v1/auth/providers", nil)
+	if providers.Code != http.StatusOK || !strings.Contains(providers.Body.String(), `"accessTokenEnabled":false`) {
+		t.Fatalf("providers status = %d, body = %s", providers.Code, providers.Body.String())
+	}
+	if jwks := doAuthRequest(router, http.MethodGet, "/api/v1/auth/jwks", nil); jwks.Code != http.StatusNotFound {
+		t.Fatalf("JWKS status = %d, body = %s", jwks.Code, jwks.Body.String())
+	}
+}
+
 func TestAuthHandlerProviderOnlyMethodListUsesEmptyArray(t *testing.T) {
 	service, err := consoleauth.NewServiceFromProviders()
 	if err != nil {
@@ -176,6 +234,14 @@ func authTestRouter(authHandler *AuthHandler) *gin.Engine {
 	auth.GET("/providers/:provider/login", authHandler.ProviderLogin)
 	auth.GET("/providers/:provider/callback", authHandler.ProviderCallback)
 	auth.GET("/userinfo", authHandler.UserInfo)
+	auth.GET("/jwks", authHandler.JWKS)
+	auth.POST("/token", func(c *gin.Context) {
+		if _, ok := consoleauth.PrincipalFromContext(c); !ok {
+			writeUnauthorized(c)
+			return
+		}
+		authHandler.Token(c)
+	})
 	return r
 }
 
