@@ -533,7 +533,7 @@ items:
                     "uid": "${datasource}"
                   },
                   "editorMode": "code",
-                  "expr": "dubbo_provider_requests_processing{application_name=\"$application\"} or vector(0)",
+                  "expr": "dubbo_provider_requests_processing_total{application_name=\"$application\"} or vector(0)",
                   "instant": false,
                   "legendFormat": "生产者处理并发量",
                   "range": true,
@@ -545,7 +545,7 @@ items:
                     "uid": "${datasource}"
                   },
                   "editorMode": "code",
-                  "expr": "dubbo_consumer_requests_processing{application_name=\"$application\"} or vector(0)",
+                  "expr": "dubbo_consumer_requests_processing_total{application_name=\"$application\"} or vector(0)",
                   "hide": false,
                   "instant": false,
                   "legendFormat": "消费者调用并发量",
@@ -5438,7 +5438,7 @@ items:
                     "uid": "${datasource}"
                   },
                   "editorMode": "code",
-                  "expr": "sum ((dubbo_provider_requests_processing{application_name=\"$application\",ip=\"$instance\"} or (dubbo_provider_requests_processing{application_name=\"$application\"} and on(application_name,instance) dubbo_application_info_total{application_name=\"$application\",ip=\"$instance\"})) ) OR vector (0)",
+                  "expr": "sum ((dubbo_provider_requests_processing_total{application_name=\"$application\",ip=\"$instance\"} or (dubbo_provider_requests_processing_total{application_name=\"$application\"} and on(application_name,instance) dubbo_application_info_total{application_name=\"$application\",ip=\"$instance\"})) ) OR vector (0)",
                   "instant": false,
                   "legendFormat": "生产者处理并发量",
                   "range": true,
@@ -5450,7 +5450,7 @@ items:
                     "uid": "${datasource}"
                   },
                   "editorMode": "code",
-                  "expr": "sum((dubbo_consumer_requests_processing{application_name=\"$application\",ip=\"$instance\"} or (dubbo_consumer_requests_processing{application_name=\"$application\"} and on(application_name,instance) dubbo_application_info_total{application_name=\"$application\",ip=\"$instance\"}))) OR vector (0)",
+                  "expr": "sum((dubbo_consumer_requests_processing_total{application_name=\"$application\",ip=\"$instance\"} or (dubbo_consumer_requests_processing_total{application_name=\"$application\"} and on(application_name,instance) dubbo_application_info_total{application_name=\"$application\",ip=\"$instance\"}))) OR vector (0)",
                   "hide": false,
                   "instant": false,
                   "legendFormat": "消费者调用并发量",
@@ -10385,7 +10385,7 @@ items:
                     "uid": "${datasource}"
                   },
                   "editorMode": "code",
-                  "expr": "sum (dubbo_provider_requests_processing{interface=\"$service\"} ) OR vector (0)",
+                  "expr": "sum (dubbo_provider_requests_processing_total{interface=\"$service\"} ) OR vector (0)",
                   "instant": false,
                   "legendFormat": "生产者处理并发量",
                   "range": true,
@@ -10397,7 +10397,7 @@ items:
                     "uid": "${datasource}"
                   },
                   "editorMode": "code",
-                  "expr": "sum(dubbo_consumer_requests_processing{interface=\"$service\"}) OR vector (0)",
+                  "expr": "sum(dubbo_consumer_requests_processing_total{interface=\"$service\"}) OR vector (0)",
                   "hide": false,
                   "instant": false,
                   "legendFormat": "消费者调用并发量",
