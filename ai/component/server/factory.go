@@ -35,12 +35,5 @@ func ServerFactory(spec *yaml.Node) (runtime.Component, error) {
 		return nil, fmt.Errorf("failed to decode server spec: %w", err)
 	}
 
-	return NewServerComponent(
-		cfg.Port,
-		cfg.Host,
-		cfg.Debug,
-		cfg.CORSOrigins,
-		cfg.ReadTimeout,
-		cfg.WriteTimeout,
-	)
+	return NewServerComponent(cfg)
 }
