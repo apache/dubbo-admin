@@ -51,6 +51,22 @@ type AgentSpec struct {
 	TopP               float64        `yaml:"top_p,omitempty"` // 0 means "unset" — the provider default is used
 	MaxTokens          int            `yaml:"max_tokens"`
 	Timeout            int            `yaml:"timeout"` // per model-call timeout (seconds)
+
+	// ReasoningEffort requests extended thinking. Empty means off. The value
+	// is an abstract level, not an endpoint's own vocabulary: each provider
+	// spells it differently (reasoning_effort, thinking.type, enable_thinking,
+	// reasoning.effort) and the endpoint's spelling is chosen by the model's
+	// compat block, not here.
+	//
+	// Only the spelling of the level is checked at startup. Which levels an
+	// endpoint accepts is a property of that endpoint, so check it before
+	// setting the value — and check that the endpoint accepts it
+	// non-streamed, because some only support it in streaming mode.
+	//
+	// Note that the level only survives on the formats that carry one: a
+	// provider whose switch is a plain boolean receives "thinking on" and
+	// nothing more.
+	ReasoningEffort string `yaml:"reasoning_effort,omitempty"`
 }
 
 // ApplyDefaults fills values that are optional when AgentSpec is constructed
@@ -60,6 +76,15 @@ func (c *AgentSpec) ApplyDefaults() {
 		c.ContextWindowTurns = defaultContextWindowTurns
 	}
 }
+
+// reasoningEffortLevels are the abstract effort levels a model config may
+// request.
+//
+// The check is on the spelling of the level and nothing else. Which levels an
+// endpoint accepts is a property of that endpoint, not of this package: an
+// unsupported level is rejected by the endpoint, in the same way an
+// unsupported value of any other kind is.
+var reasoningEffortLevels = []string{"minimal", "low", "medium", "high", "xhigh"}
 
 // Validate validates the configuration.
 func (c *AgentSpec) Validate() error {
@@ -87,6 +112,19 @@ func (c *AgentSpec) Validate() error {
 	for name, t := range c.ToolTimeouts {
 		if t <= 0 {
 			return fmt.Errorf("tool_timeouts[%q] must be greater than 0", name)
+		}
+	}
+	if c.ReasoningEffort != "" {
+		known := false
+		for _, level := range reasoningEffortLevels {
+			if c.ReasoningEffort == level {
+				known = true
+				break
+			}
+		}
+		if !known {
+			return fmt.Errorf("reasoning_effort must be one of %v or empty to disable, got %q",
+				reasoningEffortLevels, c.ReasoningEffort)
 		}
 	}
 	// temperature 0 is a valid (deterministic) setting, so the lower bound is

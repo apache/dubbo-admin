@@ -31,6 +31,9 @@ type ProviderConfig struct {
 	Models    []ModelInfo    `yaml:"models,omitempty"`
 	Embedders []EmbedderInfo `yaml:"embedders,omitempty"`
 	Config    map[string]any `yaml:"config,omitempty"`
+	// Compat describes the quirks of this endpoint and applies to every model
+	// it serves. A ModelInfo may override individual fields.
+	Compat *Compat `yaml:"compat,omitempty"`
 }
 
 // ModelInfo Model information
@@ -39,6 +42,9 @@ type ModelInfo struct {
 	Key    string         `yaml:"key"`
 	Type   string         `yaml:"type,omitempty"`
 	Config map[string]any `yaml:"config,omitempty"`
+	// Compat overrides the provider-level Compat field by field. Unset fields
+	// keep the provider value.
+	Compat *Compat `yaml:"compat,omitempty"`
 }
 
 // EmbedderInfo Embedder information

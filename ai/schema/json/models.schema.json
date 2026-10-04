@@ -4,7 +4,10 @@
   "title": "Models Component Config",
   "type": "object",
   "additionalProperties": false,
-  "required": ["type", "spec"],
+  "required": [
+    "type",
+    "spec"
+  ],
   "properties": {
     "type": {
       "const": "models"
@@ -12,7 +15,11 @@
     "spec": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["default_model", "default_embedding", "providers"],
+      "required": [
+        "default_model",
+        "default_embedding",
+        "providers"
+      ],
       "properties": {
         "default_model": {
           "type": "string",
@@ -38,7 +45,9 @@
     "provider": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["base_url"],
+      "required": [
+        "base_url"
+      ],
       "properties": {
         "api_key": {
           "type": "string",
@@ -66,13 +75,19 @@
           "type": "object",
           "default": {},
           "additionalProperties": true
+        },
+        "compat": {
+          "$ref": "#/$defs/compat"
         }
       }
     },
     "model_info": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "key"],
+      "required": [
+        "name",
+        "key"
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -84,20 +99,31 @@
         },
         "type": {
           "type": "string",
-          "enum": ["chat", "multimodal", "code"],
+          "enum": [
+            "chat",
+            "multimodal",
+            "code"
+          ],
           "default": "chat"
         },
         "config": {
           "type": "object",
           "default": {},
           "additionalProperties": true
+        },
+        "compat": {
+          "$ref": "#/$defs/compat"
         }
       }
     },
     "embedder_info": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "key", "dimensions"],
+      "required": [
+        "name",
+        "key",
+        "dimensions"
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -109,7 +135,12 @@
         },
         "type": {
           "type": "string",
-          "enum": ["text", "image", "audio", "multimodal"],
+          "enum": [
+            "text",
+            "image",
+            "audio",
+            "multimodal"
+          ],
           "default": "text"
         },
         "dimensions": {
@@ -120,6 +151,122 @@
           "type": "object",
           "default": {},
           "additionalProperties": true
+        }
+      }
+    },
+    "compat": {
+      "type": "object",
+      "default": {},
+      "additionalProperties": false,
+      "description": "Endpoint quirks for one provider or model. The keys that reach the request are applied; the reserved ones describe capabilities that are not wired up yet and are refused at startup. See docs/ai-provider-compat.md.",
+      "properties": {
+        "thinking_format": {
+          "type": "string",
+          "description": "How the thinking switch is spelled on the wire. Applied.",
+          "enum": [
+            "openai",
+            "qwen",
+            "qwen-chat-template",
+            "deepseek",
+            "chat-template",
+            "openrouter",
+            "string-thinking"
+          ]
+        },
+        "thinking_budget_field": {
+          "type": "string",
+          "description": "The top-level key that carries the thinking-token cap. Applied, but only sends anything together with thinking_budget.",
+          "enum": [
+            "thinking_budget",
+            "thinking_token_budget",
+            "thinking_budget_tokens"
+          ]
+        },
+        "thinking_budget": {
+          "type": "integer",
+          "description": "The cap on thinking tokens, in tokens. Applied. 0 means no cap and sends nothing; a positive value needs thinking_budget_field to say which key carries it.",
+          "minimum": 0
+        },
+        "chat_template_key": {
+          "type": "string",
+          "description": "The inner key of chat_template_kwargs that carries the thinking flag. Applied. Defaults to enable_thinking for the qwen-chat-template format, and is required for the chat-template format.",
+          "minLength": 1
+        },
+        "max_tokens_field": {
+          "type": "string",
+          "description": "Which key carries the response length limit. Applied.",
+          "enum": [
+            "max_tokens",
+            "max_completion_tokens"
+          ]
+        },
+        "thinking_field": {
+          "type": "string",
+          "description": "Reserved: not applied to the request yet. Reading thinking content back out of a response is not wired up, because genkit's compat_oai plugin maps only the content and the tool calls. Configuring it is rejected at startup."
+        },
+        "send_back_thinking": {
+          "type": "string",
+          "description": "Reserved: not applied to the request yet. Replaying thinking content on later turns needs the message list, which genkit's compat_oai plugin builds. Configuring it is rejected at startup.",
+          "enum": [
+            "auto",
+            "field",
+            "tags",
+            "never"
+          ]
+        },
+        "thinking_tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Reserved: not applied to the request yet. The delimiters belong to the thinking replay, which is not wired up. Configuring it is rejected at startup."
+        },
+        "ignore_leading_whitespace": {
+          "type": "boolean",
+          "description": "Reserved: not applied to the request yet. The whitespace is dropped while the response is streamed, and the response is streamed by genkit's compat_oai plugin. Configuring it is rejected at startup.",
+          "default": false
+        },
+        "supports_developer_role": {
+          "type": "boolean",
+          "description": "Reserved: not applied to the request yet. The message roles are chosen by genkit's prompt options. Configuring it is rejected at startup.",
+          "default": false
+        },
+        "supports_strict_mode": {
+          "type": "boolean",
+          "description": "Reserved: not applied to the request yet. The tool definitions are built by genkit's tool options, so the strict flag on them is out of reach. Configuring it is rejected at startup.",
+          "default": false
+        },
+        "supports_store": {
+          "type": "boolean",
+          "description": "Reserved: not applied to the request yet. The request is assembled by genkit's compat_oai plugin, which does not expose the store field. Configuring it is rejected at startup.",
+          "default": false
+        },
+        "supports_forced_tool_choice": {
+          "type": "boolean",
+          "description": "Reserved: not applied to the request yet. The agent never forces a tool choice — it lets the endpoint pick — and the tool-choice value belongs to genkit's plugin. Configuring it is rejected at startup.",
+          "default": true
+        },
+        "supports_forced_tool_choice_with_thinking": {
+          "type": "boolean",
+          "description": "Reserved: not applied to the request yet. The agent never forces a tool choice — it lets the endpoint pick — and the tool-choice value belongs to genkit's plugin. Configuring it is rejected at startup.",
+          "default": true
+        },
+        "requires_tool_result_name": {
+          "type": "boolean",
+          "description": "Reserved: not applied to the request yet. The message list is built by genkit's compat_oai plugin. Configuring it is rejected at startup.",
+          "default": false
+        },
+        "requires_assistant_after_tool_result": {
+          "type": "boolean",
+          "description": "Reserved: not applied to the request yet. The message list is built by genkit's compat_oai plugin. Configuring it is rejected at startup.",
+          "default": false
+        },
+        "backfill_thinking_field": {
+          "type": "boolean",
+          "description": "Reserved: not applied to the request yet. The message list is built by genkit's compat_oai plugin. Configuring it is rejected at startup.",
+          "default": false
         }
       }
     }
