@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import { flushPromises, mount } from '@vue/test-utils'
 import { reactive } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -33,7 +50,9 @@ describe('TraceLogSearch', () => {
     vi.clearAllMocks()
     getTraceStartTime.mockResolvedValue({ data: { traceId, startTime: 1790774974677 } })
     getTraceLogDashboard.mockResolvedValue({
-      data: { fullURL: `http://grafana/d/application-logs?var-application=.*&var-traceId=${traceId}` }
+      data: {
+        fullURL: `http://grafana/d/application-logs?var-application=.*&var-traceId=${traceId}`
+      }
     })
   })
 
@@ -111,18 +130,26 @@ describe('TraceLogSearch', () => {
 
   it('does not let the initial dashboard response replace a completed manual search', async () => {
     let finishInitial!: (value: unknown) => void
-    const initialApi = vi.fn(() => new Promise((resolve) => { finishInitial = resolve }))
+    const initialApi = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          finishInitial = resolve
+        })
+    )
     const grafana = reactive({ api: initialApi, params: {}, showIframe: false, url: '', error: '' })
-    const wrapper = mount({
-      components: { TraceLogSearch, GrafanaPage },
-      template: '<div><TraceLogSearch /><GrafanaPage /></div>'
-    }, {
-      global: {
-        provide: { [PROVIDE_INJECT_KEY.GRAFANA]: grafana },
-        mocks: { $t: (key: string) => key },
-        stubs
+    const wrapper = mount(
+      {
+        components: { TraceLogSearch, GrafanaPage },
+        template: '<div><TraceLogSearch /><GrafanaPage /></div>'
+      },
+      {
+        global: {
+          provide: { [PROVIDE_INJECT_KEY.GRAFANA]: grafana },
+          mocks: { $t: (key: string) => key },
+          stubs
+        }
       }
-    })
+    )
 
     expect(initialApi).toHaveBeenCalledOnce()
     await wrapper.get('input').setValue(traceId)
@@ -130,7 +157,9 @@ describe('TraceLogSearch', () => {
     await flushPromises()
     const searchedUrl = grafana.url
 
-    finishInitial({ data: { fullURL: 'http://grafana/d/application-logs?var-application=shop-user' } })
+    finishInitial({
+      data: { fullURL: 'http://grafana/d/application-logs?var-application=shop-user' }
+    })
     await flushPromises()
 
     expect(grafana.url).toBe(searchedUrl)
@@ -139,18 +168,26 @@ describe('TraceLogSearch', () => {
 
   it('does not let a late initial-load failure hide a completed manual search', async () => {
     let failInitial!: (reason: unknown) => void
-    const initialApi = vi.fn(() => new Promise((_resolve, reject) => { failInitial = reject }))
+    const initialApi = vi.fn(
+      () =>
+        new Promise((_resolve, reject) => {
+          failInitial = reject
+        })
+    )
     const grafana = reactive({ api: initialApi, params: {}, showIframe: false, url: '', error: '' })
-    const wrapper = mount({
-      components: { TraceLogSearch, GrafanaPage },
-      template: '<div><TraceLogSearch /><GrafanaPage /></div>'
-    }, {
-      global: {
-        provide: { [PROVIDE_INJECT_KEY.GRAFANA]: grafana },
-        mocks: { $t: (key: string) => key },
-        stubs
+    const wrapper = mount(
+      {
+        components: { TraceLogSearch, GrafanaPage },
+        template: '<div><TraceLogSearch /><GrafanaPage /></div>'
+      },
+      {
+        global: {
+          provide: { [PROVIDE_INJECT_KEY.GRAFANA]: grafana },
+          mocks: { $t: (key: string) => key },
+          stubs
+        }
       }
-    })
+    )
 
     await wrapper.get('input').setValue(traceId)
     await wrapper.get('button').trigger('click')
