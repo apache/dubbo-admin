@@ -12,6 +12,7 @@ import (
 
 	"dubbo-admin-ai/component/agent"
 	"dubbo-admin-ai/schema"
+	"dubbo-admin-ai/security"
 	conversationstore "dubbo-admin-ai/store"
 
 	"github.com/gin-gonic/gin"
@@ -52,11 +53,16 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 
 	sessionID = req.SessionID
 	requestCtx := c.Request.Context()
-	if _, err = h.sessionMgr.GetSession(requestCtx, sessionID); err != nil {
+	access, accessErr := security.AccessContextFromContext(requestCtx)
+	if accessErr != nil {
+		c.JSON(http.StatusUnauthorized, NewAPIErrorResponse("AUTHENTICATION_REQUIRED", "Authentication required"))
+		return
+	}
+	if _, err = h.sessionMgr.GetSession(requestCtx, access, sessionID); err != nil {
 		h.writeSessionError(c, "Invalid session ID", err, http.StatusBadRequest)
 		return
 	}
-	if err = h.sessionMgr.TouchSession(requestCtx, sessionID); err != nil {
+	if err = h.sessionMgr.TouchSession(requestCtx, access, sessionID); err != nil {
 		h.writeSessionError(c, "Invalid session ID", err, http.StatusBadRequest)
 		return
 	}
@@ -108,7 +114,6 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 			}
 			rt.GetLogger().Info("Handler received feedback",
 				"session_id", sessionID,
-				"text", feedback.Text(),
 				"done", feedback.IsDone(),
 				"final", feedback.IsFinal(),
 				"final_nil", feedback.Final() == nil)
@@ -197,7 +202,12 @@ func (h *AgentHandler) MessageDelta(sseHandler *sse.SSEHandler, output schema.Sc
 }
 
 func (h *AgentHandler) CreateSession(c *gin.Context) {
-	sessionObj, err := h.sessionMgr.CreateSession(c.Request.Context())
+	access, err := security.AccessContextFromContext(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, NewAPIErrorResponse("AUTHENTICATION_REQUIRED", "Authentication required"))
+		return
+	}
+	sessionObj, err := h.sessionMgr.CreateSession(c.Request.Context(), access)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, NewErrorResponse("Failed to create session"))
 		return
@@ -212,7 +222,12 @@ func (h *AgentHandler) GetSession(c *gin.Context) {
 		return
 	}
 
-	sessionObj, err := h.sessionMgr.GetSession(c.Request.Context(), sessionID)
+	access, err := security.AccessContextFromContext(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, NewAPIErrorResponse("AUTHENTICATION_REQUIRED", "Authentication required"))
+		return
+	}
+	sessionObj, err := h.sessionMgr.GetSession(c.Request.Context(), access, sessionID)
 	if err != nil {
 		h.writeSessionError(c, "Session not found", err, http.StatusNotFound)
 		return
@@ -221,7 +236,12 @@ func (h *AgentHandler) GetSession(c *gin.Context) {
 }
 
 func (h *AgentHandler) ListSessions(c *gin.Context) {
-	sessionObjs, err := h.sessionMgr.ListSessions(c.Request.Context())
+	access, err := security.AccessContextFromContext(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, NewAPIErrorResponse("AUTHENTICATION_REQUIRED", "Authentication required"))
+		return
+	}
+	sessionObjs, err := h.sessionMgr.ListSessions(c.Request.Context(), access)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, NewErrorResponse("Failed to list sessions"))
 		return
@@ -247,7 +267,12 @@ func (h *AgentHandler) DeleteSession(c *gin.Context) {
 		return
 	}
 
-	err := h.sessionMgr.DeleteSession(c.Request.Context(), sessionID)
+	access, err := security.AccessContextFromContext(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, NewAPIErrorResponse("AUTHENTICATION_REQUIRED", "Authentication required"))
+		return
+	}
+	err = h.sessionMgr.DeleteSession(c.Request.Context(), access, sessionID)
 	if err != nil {
 		h.writeSessionError(c, "Session not found", err, http.StatusNotFound)
 		return
@@ -261,19 +286,27 @@ func (h *AgentHandler) DeleteSession(c *gin.Context) {
 func (h *AgentHandler) writeSessionError(c *gin.Context, message string, err error, invalidStatus int) {
 	status := http.StatusInternalServerError
 	responseMessage := "Session storage unavailable"
-	if errors.Is(err, conversationstore.ErrSessionNotFound) || errors.Is(err, conversationstore.ErrSessionExpired) {
+	if errors.Is(err, conversationstore.ErrSessionNotFound) || errors.Is(err, conversationstore.ErrSessionExpired) || errors.Is(err, security.ErrResourceNotAccessible) {
 		status = invalidStatus
-		responseMessage = message + ": " + err.Error()
+		responseMessage = message
 	}
 	rt.GetLogger().Error("Session store request failed", "error", err)
+	if status == invalidStatus {
+		c.JSON(status, NewAPIErrorResponse("RESOURCE_NOT_ACCESSIBLE", responseMessage))
+		return
+	}
 	c.JSON(status, NewErrorResponse(responseMessage))
 }
 
 func toSessionInfo(sessionObj *session.Session) map[string]any {
 	return map[string]any{
 		"session_id": sessionObj.ID,
+		"tenant_id":  sessionObj.TenantID,
+		"owner_id":   sessionObj.OwnerID,
+		"version":    sessionObj.Version,
 		"created_at": sessionObj.CreatedAt,
 		"updated_at": sessionObj.UpdatedAt,
+		"expires_at": sessionObj.ExpiresAt,
 		"status":     sessionObj.Status,
 	}
 }

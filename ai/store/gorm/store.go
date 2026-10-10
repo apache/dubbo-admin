@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"dubbo-admin-ai/security"
 	conversationstore "dubbo-admin-ai/store"
 
 	"github.com/firebase/genkit/go/ai"
@@ -46,7 +47,7 @@ type GormStore struct {
 	limit int
 }
 
-var _ conversationstore.Store = (*GormStore)(nil)
+var _ conversationstore.BackendStore = (*GormStore)(nil)
 
 // NewGormStore creates a store around an already opened Gorm database. The
 // optional limit exists for runtime configuration and tests; the default
@@ -96,43 +97,56 @@ func (s *GormStore) Close() error {
 	return sqlDB.Close()
 }
 
-func (s *GormStore) Create(ctx context.Context, session *conversationstore.Session) error {
+func (s *GormStore) Create(ctx context.Context, access security.AccessContext, session *conversationstore.Session) error {
 	if err := s.checkContext(ctx); err != nil {
 		return err
 	}
-	if err := validateSession(session); err != nil {
+	if err := access.Validate(); err != nil {
 		return err
+	}
+	if err := conversationstore.ValidateSession(session); err != nil {
+		return err
+	}
+	if !access.CanAccessOwner(session.TenantID, session.OwnerID) {
+		return security.ErrResourceNotAccessible
 	}
 	model := sessionModelFromDomain(session)
 	return s.db.WithContext(normalizeContext(ctx)).Create(&model).Error
 }
 
-func (s *GormStore) Get(ctx context.Context, sessionID string) (*conversationstore.Session, error) {
+func (s *GormStore) Get(ctx context.Context, access security.AccessContext, sessionID string) (*conversationstore.Session, error) {
 	if err := s.checkContext(ctx); err != nil {
 		return nil, err
 	}
+	if err := access.Validate(); err != nil {
+		return nil, err
+	}
 	var model SessionModel
-	err := s.db.WithContext(normalizeContext(ctx)).Where("id = ?", sessionID).First(&model).Error
+	err := scopeSessions(s.db.WithContext(normalizeContext(ctx)), access).Where("id = ?", sessionID).First(&model).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, conversationstore.ErrSessionNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
-	if isExpired(model.UpdatedAt, time.Now()) {
+	if isExpired(&model, time.Now()) {
 		return nil, conversationstore.ErrSessionExpired
 	}
 	return sessionDomainFromModel(&model), nil
 }
 
-func (s *GormStore) List(ctx context.Context) ([]*conversationstore.Session, error) {
+func (s *GormStore) List(ctx context.Context, access security.AccessContext) ([]*conversationstore.Session, error) {
 	if err := s.checkContext(ctx); err != nil {
 		return nil, err
 	}
+	if err := access.Validate(); err != nil {
+		return nil, err
+	}
 	var models []SessionModel
-	cutoff := time.Now().Add(-sessionExpiration)
-	err := s.db.WithContext(normalizeContext(ctx)).
-		Where("status = ? AND updated_at >= ?", "active", cutoff).
+	now := time.Now()
+	cutoff := now.Add(-sessionExpiration)
+	err := scopeSessions(s.db.WithContext(normalizeContext(ctx)), access).
+		Where("status = ? AND ((expires_at IS NOT NULL AND expires_at > ?) OR (expires_at IS NULL AND updated_at >= ?))", "active", now, cutoff).
 		Find(&models).Error
 	if err != nil {
 		return nil, err
@@ -144,40 +158,45 @@ func (s *GormStore) List(ctx context.Context) ([]*conversationstore.Session, err
 	return result, nil
 }
 
-func (s *GormStore) Touch(ctx context.Context, sessionID string, updatedAt time.Time) error {
+func (s *GormStore) Touch(ctx context.Context, access security.AccessContext, sessionID string, updatedAt time.Time) error {
 	if err := s.checkContext(ctx); err != nil {
 		return err
 	}
 	return s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
-		model, err := s.findSession(tx, sessionID, true)
+		_, err := s.findActiveSession(tx, access, sessionID, true)
 		if err != nil {
 			return err
 		}
-		if model.Status != "active" {
-			return fmt.Errorf("session %q is not active", sessionID)
-		}
-		if isExpired(model.UpdatedAt, time.Now()) {
-			return conversationstore.ErrSessionExpired
-		}
-		return tx.Model(&SessionModel{}).Where("id = ?", sessionID).Update("updated_at", updatedAt).Error
+		expiresAt := updatedAt.Add(sessionExpiration)
+		return scopeSessions(tx.Model(&SessionModel{}), access).Where("id = ?", sessionID).Updates(map[string]any{
+			"updated_at": updatedAt,
+			"expires_at": expiresAt,
+			"version":    gorm.Expr("version + 1"),
+		}).Error
 	})
 }
 
-func (s *GormStore) Delete(ctx context.Context, sessionID string) error {
+func (s *GormStore) Delete(ctx context.Context, access security.AccessContext, sessionID string) error {
 	if err := s.checkContext(ctx); err != nil {
 		return err
 	}
 	return s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
-		if _, err := s.findSession(tx, sessionID, true); err != nil {
+		if _, err := s.findSession(tx, access, sessionID, true); err != nil {
 			return err
 		}
 		return deleteSessionData(tx, sessionID)
 	})
 }
 
-func (s *GormStore) DeleteExpired(ctx context.Context, now time.Time) (int, error) {
+func (s *GormStore) DeleteExpired(ctx context.Context, access security.AccessContext, now time.Time) (int, error) {
 	if err := s.checkContext(ctx); err != nil {
 		return 0, err
+	}
+	if err := access.Validate(); err != nil {
+		return 0, err
+	}
+	if !access.IsSystem() {
+		return 0, security.ErrResourceNotAccessible
 	}
 	cutoff := now.Add(-sessionExpiration)
 	deleted := 0
@@ -185,7 +204,7 @@ func (s *GormStore) DeleteExpired(ctx context.Context, now time.Time) (int, erro
 		batchDeleted := 0
 		batchSize := 0
 		err := s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
-			query := tx.Where("updated_at < ?", cutoff).Order("updated_at ASC").Limit(expirationCleanupBatchSize)
+			query := tx.Where("(expires_at IS NOT NULL AND expires_at <= ?) OR (expires_at IS NULL AND updated_at < ?)", now, cutoff).Order("updated_at ASC").Limit(expirationCleanupBatchSize)
 			if supportsRowLock(tx) {
 				query = query.Clauses(clause.Locking{Strength: "UPDATE"})
 			}
@@ -197,14 +216,14 @@ func (s *GormStore) DeleteExpired(ctx context.Context, now time.Time) (int, erro
 			for i := range sessions {
 				// Re-read the row after acquiring the transaction lock. This prevents
 				// cleanup from deleting a session refreshed by another instance.
-				current, err := s.findSession(tx, sessions[i].ID, true)
+				current, err := s.findSession(tx, access, sessions[i].ID, true)
 				if err != nil {
 					if errors.Is(err, conversationstore.ErrSessionNotFound) {
 						continue
 					}
 					return err
 				}
-				if !isExpired(current.UpdatedAt, now) {
+				if !isExpired(current, now) {
 					continue
 				}
 				if err := deleteSessionData(tx, sessions[i].ID); err != nil {
@@ -224,21 +243,64 @@ func (s *GormStore) DeleteExpired(ctx context.Context, now time.Time) (int, erro
 	}
 }
 
-func (s *GormStore) BeginTurn(ctx context.Context, sessionID string) (uint64, error) {
+func (s *GormStore) AdoptLegacySessions(ctx context.Context, access security.AccessContext, tenantID, ownerID string) (int, error) {
+	if err := s.checkContext(ctx); err != nil {
+		return 0, err
+	}
+	if err := access.Validate(); err != nil {
+		return 0, err
+	}
+	if !access.IsSystem() {
+		return 0, security.ErrResourceNotAccessible
+	}
+	if tenantID == "" || ownerID == "" {
+		return 0, errors.New("legacy session target tenant_id and owner_id are required")
+	}
+	var legacy []SessionModel
+	if err := s.db.WithContext(normalizeContext(ctx)).
+		Where("(tenant_id IS NULL OR tenant_id = ?) AND (owner_id IS NULL OR owner_id = ?)", "", "").
+		Find(&legacy).Error; err != nil {
+		return 0, err
+	}
+	updated := 0
+	err := s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
+		for i := range legacy {
+			version := legacy[i].Version
+			if version == 0 {
+				version = 1
+			}
+			expiresAt := legacy[i].ExpiresAt
+			if expiresAt == nil {
+				value := legacy[i].UpdatedAt.Add(sessionExpiration)
+				expiresAt = &value
+			}
+			result := tx.Model(&SessionModel{}).
+				Where("id = ? AND (tenant_id IS NULL OR tenant_id = ?) AND (owner_id IS NULL OR owner_id = ?)", legacy[i].ID, "", "").
+				Updates(map[string]any{
+					"tenant_id":  tenantID,
+					"owner_id":   ownerID,
+					"version":    version,
+					"expires_at": expiresAt,
+				})
+			if result.Error != nil {
+				return result.Error
+			}
+			updated += int(result.RowsAffected)
+		}
+		return nil
+	})
+	return updated, err
+}
+
+func (s *GormStore) BeginTurn(ctx context.Context, access security.AccessContext, sessionID string) (uint64, error) {
 	if err := s.checkContext(ctx); err != nil {
 		return 0, err
 	}
 	var turnID uint64
 	err := s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
-		model, err := s.findSession(tx, sessionID, true)
+		_, err := s.findActiveSession(tx, access, sessionID, true)
 		if err != nil {
 			return err
-		}
-		if model.Status != "active" {
-			return fmt.Errorf("session %q is not active", sessionID)
-		}
-		if isExpired(model.UpdatedAt, time.Now()) {
-			return conversationstore.ErrSessionExpired
 		}
 
 		var turnCount int64
@@ -260,20 +322,14 @@ func (s *GormStore) BeginTurn(ctx context.Context, sessionID string) (uint64, er
 	return turnID, err
 }
 
-func (s *GormStore) AddHistoryToTurn(ctx context.Context, sessionID string, turnID uint64, messages ...*ai.Message) error {
+func (s *GormStore) AddHistoryToTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64, messages ...*ai.Message) error {
 	if err := s.checkContext(ctx); err != nil {
 		return err
 	}
 	err := s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
-		model, err := s.findSession(tx, sessionID, true)
+		_, err := s.findActiveSession(tx, access, sessionID, true)
 		if err != nil {
 			return err
-		}
-		if model.Status != "active" {
-			return fmt.Errorf("session %q is not active", sessionID)
-		}
-		if isExpired(model.UpdatedAt, time.Now()) {
-			return conversationstore.ErrSessionExpired
 		}
 
 		var turn TurnModel
@@ -292,15 +348,15 @@ func (s *GormStore) AddHistoryToTurn(ctx context.Context, sessionID string, turn
 		// BeginTurn is intentionally separate from message persistence. If this
 		// first write failed before any message was stored, remove only the empty
 		// Turn so a failed interaction does not leave an orphan active Turn.
-		_ = s.deleteEmptyTurn(ctx, sessionID, turnID)
+		_ = s.deleteEmptyTurn(ctx, access, sessionID, turnID)
 	}
 	return err
 }
 
-func (s *GormStore) deleteEmptyTurn(ctx context.Context, sessionID string, turnID uint64) error {
+func (s *GormStore) deleteEmptyTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64) error {
 	return s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
-		session, err := s.findSession(tx, sessionID, false)
-		if err != nil || session.Status != "active" || isExpired(session.UpdatedAt, time.Now()) {
+		_, err := s.findActiveSession(tx, access, sessionID, false)
+		if err != nil {
 			return nil
 		}
 		var count int64
@@ -314,8 +370,11 @@ func (s *GormStore) deleteEmptyTurn(ctx context.Context, sessionID string, turnI
 	})
 }
 
-func (s *GormStore) IsTurnEmpty(ctx context.Context, sessionID string, turnID uint64) (bool, error) {
+func (s *GormStore) IsTurnEmpty(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64) (bool, error) {
 	if err := s.checkContext(ctx); err != nil {
+		return false, err
+	}
+	if _, err := s.findActiveSession(s.db.WithContext(normalizeContext(ctx)), access, sessionID, false); err != nil {
 		return false, err
 	}
 	var turn TurnModel
@@ -332,14 +391,14 @@ func (s *GormStore) IsTurnEmpty(ctx context.Context, sessionID string, turnID ui
 	return false, nil
 }
 
-func (s *GormStore) WindowMemoryForTurn(ctx context.Context, sessionID string, turnID uint64) ([]*ai.Message, error) {
-	return s.ContextWindowForTurn(ctx, sessionID, turnID, 0)
+func (s *GormStore) WindowMemoryForTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64) ([]*ai.Message, error) {
+	return s.ContextWindowForTurn(ctx, access, sessionID, turnID, 0)
 }
 
 // ContextWindowForTurn returns the most recent completed turns in chronological
 // order followed by the selected active turn. The transaction makes the set of
 // turns and their messages a consistent snapshot for this interaction.
-func (s *GormStore) ContextWindowForTurn(ctx context.Context, sessionID string, turnID uint64, completedLimit int) ([]*ai.Message, error) {
+func (s *GormStore) ContextWindowForTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64, completedLimit int) ([]*ai.Message, error) {
 	if err := s.checkContext(ctx); err != nil {
 		return nil, err
 	}
@@ -349,6 +408,9 @@ func (s *GormStore) ContextWindowForTurn(ctx context.Context, sessionID string, 
 
 	var result []*ai.Message
 	err := s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
+		if _, err := s.findActiveSession(tx, access, sessionID, false); err != nil {
+			return err
+		}
 		var active TurnModel
 		err := tx.Where("id = ? AND session_id = ? AND completed_at IS NULL", turnID, sessionID).
 			First(&active).Error
@@ -382,12 +444,15 @@ func (s *GormStore) ContextWindowForTurn(ctx context.Context, sessionID string, 
 	return result, err
 }
 
-func (s *GormStore) AllMemory(ctx context.Context, sessionID string) ([]*ai.Message, error) {
+func (s *GormStore) AllMemory(ctx context.Context, access security.AccessContext, sessionID string) ([]*ai.Message, error) {
 	if err := s.checkContext(ctx); err != nil {
 		return nil, err
 	}
 	var result []*ai.Message
 	err := s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
+		if _, err := s.findActiveSession(tx, access, sessionID, false); err != nil {
+			return err
+		}
 		var active []TurnModel
 		if err := tx.Where("session_id = ? AND completed_at IS NULL", sessionID).
 			Order("id ASC").Find(&active).Error; err != nil {
@@ -413,20 +478,14 @@ func (s *GormStore) AllMemory(ctx context.Context, sessionID string) ([]*ai.Mess
 	return result, err
 }
 
-func (s *GormStore) NextTurnForTurn(ctx context.Context, sessionID string, turnID uint64) error {
+func (s *GormStore) NextTurnForTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64) error {
 	if err := s.checkContext(ctx); err != nil {
 		return err
 	}
 	return s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
-		model, err := s.findSession(tx, sessionID, true)
+		_, err := s.findActiveSession(tx, access, sessionID, true)
 		if err != nil {
 			return err
-		}
-		if model.Status != "active" {
-			return fmt.Errorf("session %q is not active", sessionID)
-		}
-		if isExpired(model.UpdatedAt, time.Now()) {
-			return conversationstore.ErrSessionExpired
 		}
 		var active TurnModel
 		if err := tx.Where("id = ? AND session_id = ? AND completed_at IS NULL", turnID, sessionID).First(&active).Error; errors.Is(err, gorm.ErrRecordNotFound) {
@@ -450,12 +509,12 @@ func (s *GormStore) NextTurnForTurn(ctx context.Context, sessionID string, turnI
 
 // AbortTurnForTurn removes an unfinished interaction and its messages in one
 // transaction. Aborted Turns do not count toward the configured limit.
-func (s *GormStore) AbortTurnForTurn(ctx context.Context, sessionID string, turnID uint64) error {
+func (s *GormStore) AbortTurnForTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64) error {
 	if err := s.checkContext(ctx); err != nil {
 		return err
 	}
 	return s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
-		if _, err := s.findSession(tx, sessionID, true); err != nil {
+		if _, err := s.findActiveSession(tx, access, sessionID, true); err != nil {
 			return err
 		}
 		var turn TurnModel
@@ -473,20 +532,14 @@ func (s *GormStore) AbortTurnForTurn(ctx context.Context, sessionID string, turn
 
 // AddHistory is retained for callers of the pre-Store API. Production code
 // must use BeginTurn and AddHistoryToTurn to isolate concurrent interactions.
-func (s *GormStore) AddHistory(ctx context.Context, sessionID string, messages ...*ai.Message) error {
+func (s *GormStore) AddHistory(ctx context.Context, access security.AccessContext, sessionID string, messages ...*ai.Message) error {
 	if err := s.checkContext(ctx); err != nil {
 		return err
 	}
 	return s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
-		model, err := s.findSession(tx, sessionID, true)
+		_, err := s.findActiveSession(tx, access, sessionID, true)
 		if err != nil {
 			return err
-		}
-		if model.Status != "active" {
-			return fmt.Errorf("session %q is not active", sessionID)
-		}
-		if isExpired(model.UpdatedAt, time.Now()) {
-			return conversationstore.ErrSessionExpired
 		}
 		var active []TurnModel
 		if err := tx.Where("session_id = ? AND completed_at IS NULL", sessionID).Order("id ASC").Find(&active).Error; err != nil {
@@ -541,40 +594,43 @@ func insertMessages(tx *gorm.DB, turnID uint64, messages []*ai.Message) error {
 	return nil
 }
 
-func (s *GormStore) IsEmpty(ctx context.Context, sessionID string) (bool, error) {
-	turnID, err := s.activeTurnID(ctx, sessionID)
+func (s *GormStore) IsEmpty(ctx context.Context, access security.AccessContext, sessionID string) (bool, error) {
+	turnID, err := s.activeTurnID(ctx, access, sessionID)
 	if err != nil {
 		if errors.Is(err, conversationstore.ErrNoActiveTurn) {
 			return true, nil
 		}
 		return false, err
 	}
-	if _, err := s.IsTurnEmpty(ctx, sessionID, turnID); err != nil {
+	if _, err := s.IsTurnEmpty(ctx, access, sessionID, turnID); err != nil {
 		return false, err
 	}
 	return false, nil
 }
 
-func (s *GormStore) WindowMemory(ctx context.Context, sessionID string) ([]*ai.Message, error) {
-	turnID, err := s.activeTurnID(ctx, sessionID)
+func (s *GormStore) WindowMemory(ctx context.Context, access security.AccessContext, sessionID string) ([]*ai.Message, error) {
+	turnID, err := s.activeTurnID(ctx, access, sessionID)
 	if err != nil {
 		if errors.Is(err, conversationstore.ErrNoActiveTurn) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return s.WindowMemoryForTurn(ctx, sessionID, turnID)
+	return s.WindowMemoryForTurn(ctx, access, sessionID, turnID)
 }
 
-func (s *GormStore) NextTurn(ctx context.Context, sessionID string) error {
-	turnID, err := s.activeTurnID(ctx, sessionID)
+func (s *GormStore) NextTurn(ctx context.Context, access security.AccessContext, sessionID string) error {
+	turnID, err := s.activeTurnID(ctx, access, sessionID)
 	if err != nil {
 		return err
 	}
-	return s.NextTurnForTurn(ctx, sessionID, turnID)
+	return s.NextTurnForTurn(ctx, access, sessionID, turnID)
 }
 
-func (s *GormStore) activeTurnID(ctx context.Context, sessionID string) (uint64, error) {
+func (s *GormStore) activeTurnID(ctx context.Context, access security.AccessContext, sessionID string) (uint64, error) {
+	if _, err := s.findActiveSession(s.db.WithContext(normalizeContext(ctx)), access, sessionID, false); err != nil {
+		return 0, err
+	}
 	var turns []TurnModel
 	err := s.db.WithContext(normalizeContext(ctx)).Where("session_id = ? AND completed_at IS NULL", sessionID).Order("id ASC").Find(&turns).Error
 	if err != nil {
@@ -612,8 +668,11 @@ func decodeMessages(models []MessageModel) ([]*ai.Message, error) {
 	return result, nil
 }
 
-func (s *GormStore) findSession(tx *gorm.DB, sessionID string, lock bool) (*SessionModel, error) {
-	query := tx.Where("id = ?", sessionID)
+func (s *GormStore) findSession(tx *gorm.DB, access security.AccessContext, sessionID string, lock bool) (*SessionModel, error) {
+	if err := access.Validate(); err != nil {
+		return nil, err
+	}
+	query := scopeSessions(tx, access).Where("id = ?", sessionID)
 	if lock && supportsRowLock(tx) {
 		query = query.Clauses(clause.Locking{Strength: "UPDATE"})
 	}
@@ -624,6 +683,28 @@ func (s *GormStore) findSession(tx *gorm.DB, sessionID string, lock bool) (*Sess
 		return nil, err
 	}
 	return &model, nil
+}
+
+func (s *GormStore) findActiveSession(tx *gorm.DB, access security.AccessContext, sessionID string, lock bool) (*SessionModel, error) {
+	model, err := s.findSession(tx, access, sessionID, lock)
+	if err != nil {
+		return nil, err
+	}
+	if err := conversationstore.ValidateSessionActive(sessionID, model.Status, isExpired(model, time.Now())); err != nil {
+		return nil, err
+	}
+	return model, nil
+}
+
+func scopeSessions(query *gorm.DB, access security.AccessContext) *gorm.DB {
+	if access.IsSystem() {
+		return query
+	}
+	query = query.Where("tenant_id = ?", access.Subject.TenantID)
+	if !access.Subject.HasScope(security.ScopeSessionAdmin) {
+		query = query.Where("owner_id = ?", access.Subject.UserID)
+	}
+	return query
 }
 
 func deleteSessionData(tx *gorm.DB, sessionID string) error {
@@ -646,31 +727,18 @@ func deleteSessionData(tx *gorm.DB, sessionID string) error {
 	return tx.Where("id = ?", sessionID).Delete(&SessionModel{}).Error
 }
 
-func validateSession(session *conversationstore.Session) error {
-	if session == nil {
-		return errors.New("session is nil")
-	}
-	if strings.TrimSpace(session.ID) == "" {
-		return errors.New("session id is required")
-	}
-	if session.CreatedAt.IsZero() {
-		return errors.New("session created_at is required")
-	}
-	if session.UpdatedAt.IsZero() {
-		return errors.New("session updated_at is required")
-	}
-	if session.Status == "" {
-		return errors.New("session status is required")
-	}
-	return nil
-}
-
 func sessionModelFromDomain(session *conversationstore.Session) SessionModel {
-	return SessionModel{ID: session.ID, CreatedAt: session.CreatedAt, UpdatedAt: session.UpdatedAt, Status: session.Status}
+	return SessionModel{
+		ID: session.ID, TenantID: session.TenantID, OwnerID: session.OwnerID, Version: session.Version,
+		CreatedAt: session.CreatedAt, UpdatedAt: session.UpdatedAt, ExpiresAt: session.ExpiresAt, Status: session.Status,
+	}
 }
 
 func sessionDomainFromModel(model *SessionModel) *conversationstore.Session {
-	return &conversationstore.Session{ID: model.ID, CreatedAt: model.CreatedAt, UpdatedAt: model.UpdatedAt, Status: model.Status}
+	return &conversationstore.Session{
+		ID: model.ID, TenantID: model.TenantID, OwnerID: model.OwnerID, Version: model.Version,
+		CreatedAt: model.CreatedAt, UpdatedAt: model.UpdatedAt, ExpiresAt: model.ExpiresAt, Status: model.Status,
+	}
 }
 
 func (s *GormStore) checkContext(ctx context.Context) error {
@@ -701,6 +769,6 @@ func supportedRole(role ai.Role) bool {
 	return role == ai.RoleSystem || role == ai.RoleUser || role == ai.RoleModel
 }
 
-func isExpired(updatedAt, now time.Time) bool {
-	return now.Sub(updatedAt) > sessionExpiration
+func isExpired(session *SessionModel, now time.Time) bool {
+	return conversationstore.IsSessionExpired(session.ExpiresAt, session.UpdatedAt, now, sessionExpiration)
 }
