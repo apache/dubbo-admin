@@ -21,32 +21,48 @@ import (
 	"context"
 	"time"
 
+	"dubbo-admin-ai/security"
+
 	"github.com/firebase/genkit/go/ai"
 )
 
 // SessionStore persists Session metadata.
 type SessionStore interface {
-	Create(ctx context.Context, session *Session) error
-	Get(ctx context.Context, sessionID string) (*Session, error)
-	List(ctx context.Context) ([]*Session, error)
-	Touch(ctx context.Context, sessionID string, updatedAt time.Time) error
-	Delete(ctx context.Context, sessionID string) error
-	DeleteExpired(ctx context.Context, now time.Time) (int, error)
+	Create(ctx context.Context, access security.AccessContext, session *Session) error
+	Get(ctx context.Context, access security.AccessContext, sessionID string) (*Session, error)
+	List(ctx context.Context, access security.AccessContext) ([]*Session, error)
+	Touch(ctx context.Context, access security.AccessContext, sessionID string, updatedAt time.Time) error
+	Delete(ctx context.Context, access security.AccessContext, sessionID string) error
+}
+
+// MaintenanceStore exposes privileged lifecycle operations separately from
+// the business-facing SessionStore contract.
+type MaintenanceStore interface {
+	DeleteExpired(ctx context.Context, access security.AccessContext, now time.Time) (int, error)
+	AdoptLegacySessions(ctx context.Context, access security.AccessContext, tenantID, ownerID string) (int, error)
 }
 
 // MessageStore persists conversation Turns and Genkit messages.
 type MessageStore interface {
-	BeginTurn(ctx context.Context, sessionID string) (uint64, error)
-	AddHistoryToTurn(ctx context.Context, sessionID string, turnID uint64, messages ...*ai.Message) error
-	IsTurnEmpty(ctx context.Context, sessionID string, turnID uint64) (bool, error)
-	WindowMemoryForTurn(ctx context.Context, sessionID string, turnID uint64) ([]*ai.Message, error)
-	AllMemory(ctx context.Context, sessionID string) ([]*ai.Message, error)
-	NextTurnForTurn(ctx context.Context, sessionID string, turnID uint64) error
-	AbortTurnForTurn(ctx context.Context, sessionID string, turnID uint64) error
+	BeginTurn(ctx context.Context, access security.AccessContext, sessionID string) (uint64, error)
+	AddHistoryToTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64, messages ...*ai.Message) error
+	IsTurnEmpty(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64) (bool, error)
+	WindowMemoryForTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64) ([]*ai.Message, error)
+	AllMemory(ctx context.Context, access security.AccessContext, sessionID string) ([]*ai.Message, error)
+	NextTurnForTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64) error
+	AbortTurnForTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64) error
 }
 
-// Store combines the Session and conversation history contracts.
+// Store combines only the business-facing Session and conversation history
+// contracts.
 type Store interface {
 	SessionStore
 	MessageStore
+}
+
+// BackendStore is implemented by concrete storage backends and is used only
+// where both business and privileged lifecycle operations are required.
+type BackendStore interface {
+	Store
+	MaintenanceStore
 }

@@ -26,6 +26,7 @@ import (
 	"sync"
 	"time"
 
+	"dubbo-admin-ai/security"
 	conversationstore "dubbo-admin-ai/store"
 
 	"github.com/firebase/genkit/go/ai"
@@ -67,7 +68,7 @@ type MemoryStore struct {
 	history  map[string]*sessionHistory
 }
 
-var _ conversationstore.Store = (*MemoryStore)(nil)
+var _ conversationstore.BackendStore = (*MemoryStore)(nil)
 
 // NewMemoryStore creates a MemoryStore. The optional limit exists for runtime
 // configuration and tests; the default matches MemorySpec.
@@ -83,24 +84,18 @@ func NewMemoryStore(limits ...int) *MemoryStore {
 	}
 }
 
-func (m *MemoryStore) Create(ctx context.Context, session *conversationstore.Session) error {
+func (m *MemoryStore) Create(ctx context.Context, access security.AccessContext, session *conversationstore.Session) error {
 	if err := checkContext(ctx); err != nil {
 		return err
 	}
-	if session == nil {
-		return errors.New("session is nil")
+	if err := access.Validate(); err != nil {
+		return err
 	}
-	if session.ID == "" {
-		return errors.New("session id is required")
+	if err := conversationstore.ValidateSession(session); err != nil {
+		return err
 	}
-	if session.CreatedAt.IsZero() {
-		return errors.New("session created_at is required")
-	}
-	if session.UpdatedAt.IsZero() {
-		return errors.New("session updated_at is required")
-	}
-	if session.Status == "" {
-		return errors.New("session status is required")
+	if !access.CanAccessOwner(session.TenantID, session.OwnerID) {
+		return security.ErrResourceNotAccessible
 	}
 
 	m.mu.Lock()
@@ -108,30 +103,36 @@ func (m *MemoryStore) Create(ctx context.Context, session *conversationstore.Ses
 	if _, exists := m.sessions[session.ID]; exists {
 		return fmt.Errorf("session %q already exists", session.ID)
 	}
-	m.sessions[session.ID] = *session
+	m.sessions[session.ID] = cloneSession(*session)
 	return nil
 }
 
-func (m *MemoryStore) Get(ctx context.Context, sessionID string) (*conversationstore.Session, error) {
+func (m *MemoryStore) Get(ctx context.Context, access security.AccessContext, sessionID string) (*conversationstore.Session, error) {
 	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
+	if err := access.Validate(); err != nil {
 		return nil, err
 	}
 
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	session, exists := m.sessions[sessionID]
-	if !exists {
+	if !exists || !access.CanAccessOwner(session.TenantID, session.OwnerID) {
 		return nil, conversationstore.ErrSessionNotFound
 	}
-	if isExpired(session.UpdatedAt, time.Now()) {
+	if isExpired(session, time.Now()) {
 		return nil, conversationstore.ErrSessionExpired
 	}
-	copy := session
+	copy := cloneSession(session)
 	return &copy, nil
 }
 
-func (m *MemoryStore) List(ctx context.Context) ([]*conversationstore.Session, error) {
+func (m *MemoryStore) List(ctx context.Context, access security.AccessContext) ([]*conversationstore.Session, error) {
 	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
+	if err := access.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -140,45 +141,55 @@ func (m *MemoryStore) List(ctx context.Context) ([]*conversationstore.Session, e
 	result := make([]*conversationstore.Session, 0, len(m.sessions))
 	now := time.Now()
 	for _, session := range m.sessions {
-		if session.Status != "active" || isExpired(session.UpdatedAt, now) {
+		if !access.CanAccessOwner(session.TenantID, session.OwnerID) || session.Status != "active" || isExpired(session, now) {
 			continue
 		}
-		copy := session
+		copy := cloneSession(session)
 		result = append(result, &copy)
 	}
 	return result, nil
 }
 
-func (m *MemoryStore) Touch(ctx context.Context, sessionID string, updatedAt time.Time) error {
+func (m *MemoryStore) Touch(ctx context.Context, access security.AccessContext, sessionID string, updatedAt time.Time) error {
 	if err := checkContext(ctx); err != nil {
+		return err
+	}
+	if err := access.Validate(); err != nil {
 		return err
 	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	session, exists := m.sessions[sessionID]
-	if !exists {
+	if !exists || !access.CanAccessOwner(session.TenantID, session.OwnerID) {
 		return conversationstore.ErrSessionNotFound
 	}
 	if session.Status != "active" {
 		return fmt.Errorf("session %q is not active", sessionID)
 	}
-	if isExpired(session.UpdatedAt, time.Now()) {
+	if isExpired(session, time.Now()) {
 		return conversationstore.ErrSessionExpired
 	}
 	session.UpdatedAt = updatedAt
+	expiresAt := updatedAt.Add(sessionExpiration)
+	session.ExpiresAt = &expiresAt
+	session.Version++
 	m.sessions[sessionID] = session
 	return nil
 }
 
-func (m *MemoryStore) Delete(ctx context.Context, sessionID string) error {
+func (m *MemoryStore) Delete(ctx context.Context, access security.AccessContext, sessionID string) error {
 	if err := checkContext(ctx); err != nil {
+		return err
+	}
+	if err := access.Validate(); err != nil {
 		return err
 	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if _, exists := m.sessions[sessionID]; !exists {
+	session, exists := m.sessions[sessionID]
+	if !exists || !access.CanAccessOwner(session.TenantID, session.OwnerID) {
 		return conversationstore.ErrSessionNotFound
 	}
 	delete(m.sessions, sessionID)
@@ -186,16 +197,22 @@ func (m *MemoryStore) Delete(ctx context.Context, sessionID string) error {
 	return nil
 }
 
-func (m *MemoryStore) DeleteExpired(ctx context.Context, now time.Time) (int, error) {
+func (m *MemoryStore) DeleteExpired(ctx context.Context, access security.AccessContext, now time.Time) (int, error) {
 	if err := checkContext(ctx); err != nil {
 		return 0, err
+	}
+	if err := access.Validate(); err != nil {
+		return 0, err
+	}
+	if !access.IsSystem() {
+		return 0, security.ErrResourceNotAccessible
 	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	deleted := 0
 	for sessionID, session := range m.sessions {
-		if !isExpired(session.UpdatedAt, now) {
+		if !isExpired(session, now) {
 			continue
 		}
 		delete(m.sessions, sessionID)
@@ -205,14 +222,49 @@ func (m *MemoryStore) DeleteExpired(ctx context.Context, now time.Time) (int, er
 	return deleted, nil
 }
 
-func (m *MemoryStore) BeginTurn(ctx context.Context, sessionID string) (uint64, error) {
+func (m *MemoryStore) AdoptLegacySessions(ctx context.Context, access security.AccessContext, tenantID, ownerID string) (int, error) {
+	if err := checkContext(ctx); err != nil {
+		return 0, err
+	}
+	if err := access.Validate(); err != nil {
+		return 0, err
+	}
+	if !access.IsSystem() {
+		return 0, security.ErrResourceNotAccessible
+	}
+	if tenantID == "" || ownerID == "" {
+		return 0, errors.New("legacy session target tenant_id and owner_id are required")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	updated := 0
+	for id, session := range m.sessions {
+		if session.TenantID != "" || session.OwnerID != "" {
+			continue
+		}
+		session.TenantID = tenantID
+		session.OwnerID = ownerID
+		if session.Version == 0 {
+			session.Version = 1
+		}
+		if session.ExpiresAt == nil {
+			expiresAt := session.UpdatedAt.Add(sessionExpiration)
+			session.ExpiresAt = &expiresAt
+		}
+		m.sessions[id] = session
+		updated++
+	}
+	return updated, nil
+}
+
+func (m *MemoryStore) BeginTurn(ctx context.Context, access security.AccessContext, sessionID string) (uint64, error) {
 	if err := checkContext(ctx); err != nil {
 		return 0, err
 	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if err := m.validateSessionLocked(sessionID); err != nil {
+	if err := m.validateSessionLocked(access, sessionID); err != nil {
 		return 0, err
 	}
 	history := m.ensureHistoryLocked(sessionID)
@@ -225,14 +277,14 @@ func (m *MemoryStore) BeginTurn(ctx context.Context, sessionID string) (uint64, 
 	return turnID, nil
 }
 
-func (m *MemoryStore) AddHistoryToTurn(ctx context.Context, sessionID string, turnID uint64, messages ...*ai.Message) error {
+func (m *MemoryStore) AddHistoryToTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64, messages ...*ai.Message) error {
 	if err := checkContext(ctx); err != nil {
 		return err
 	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if err := m.validateSessionLocked(sessionID); err != nil {
+	if err := m.validateSessionLocked(access, sessionID); err != nil {
 		return err
 	}
 	history := m.history[sessionID]
@@ -252,13 +304,16 @@ func (m *MemoryStore) AddHistoryToTurn(ctx context.Context, sessionID string, tu
 	return nil
 }
 
-func (m *MemoryStore) IsTurnEmpty(ctx context.Context, sessionID string, turnID uint64) (bool, error) {
+func (m *MemoryStore) IsTurnEmpty(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64) (bool, error) {
 	if err := checkContext(ctx); err != nil {
 		return false, err
 	}
 
 	m.mu.RLock()
 	defer m.mu.RUnlock()
+	if err := m.validateSessionLocked(access, sessionID); err != nil {
+		return false, err
+	}
 	history := m.history[sessionID]
 	if history == nil || history.active == nil {
 		return false, conversationstore.ErrTurnNotFound
@@ -272,13 +327,16 @@ func (m *MemoryStore) IsTurnEmpty(ctx context.Context, sessionID string, turnID 
 	return false, nil
 }
 
-func (m *MemoryStore) WindowMemoryForTurn(ctx context.Context, sessionID string, turnID uint64) ([]*ai.Message, error) {
+func (m *MemoryStore) WindowMemoryForTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64) ([]*ai.Message, error) {
 	if err := checkContext(ctx); err != nil {
 		return nil, err
 	}
 
 	m.mu.RLock()
 	defer m.mu.RUnlock()
+	if err := m.validateSessionLocked(access, sessionID); err != nil {
+		return nil, err
+	}
 	history := m.history[sessionID]
 	if history == nil || history.active == nil {
 		return nil, conversationstore.ErrTurnNotFound
@@ -290,13 +348,16 @@ func (m *MemoryStore) WindowMemoryForTurn(ctx context.Context, sessionID string,
 	return cloneTurnList([]*turn{active})
 }
 
-func (m *MemoryStore) AllMemory(ctx context.Context, sessionID string) ([]*ai.Message, error) {
+func (m *MemoryStore) AllMemory(ctx context.Context, access security.AccessContext, sessionID string) ([]*ai.Message, error) {
 	if err := checkContext(ctx); err != nil {
 		return nil, err
 	}
 
 	m.mu.RLock()
 	defer m.mu.RUnlock()
+	if err := m.validateSessionLocked(access, sessionID); err != nil {
+		return nil, err
+	}
 	history := m.history[sessionID]
 	if history == nil || history.active == nil {
 		return nil, nil
@@ -314,14 +375,14 @@ func (m *MemoryStore) AllMemory(ctx context.Context, sessionID string) ([]*ai.Me
 	return cloneTurnList(turns)
 }
 
-func (m *MemoryStore) NextTurnForTurn(ctx context.Context, sessionID string, turnID uint64) error {
+func (m *MemoryStore) NextTurnForTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64) error {
 	if err := checkContext(ctx); err != nil {
 		return err
 	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if err := m.validateSessionLocked(sessionID); err != nil {
+	if err := m.validateSessionLocked(access, sessionID); err != nil {
 		return err
 	}
 	history := m.history[sessionID]
@@ -342,13 +403,16 @@ func (m *MemoryStore) NextTurnForTurn(ctx context.Context, sessionID string, tur
 
 // AbortTurnForTurn removes an unfinished interaction and its messages.
 // Aborted Turns do not count toward the configured conversation limit.
-func (m *MemoryStore) AbortTurnForTurn(ctx context.Context, sessionID string, turnID uint64) error {
+func (m *MemoryStore) AbortTurnForTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64) error {
 	if err := checkContext(ctx); err != nil {
 		return err
 	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.validateSessionLocked(access, sessionID); err != nil {
+		return err
+	}
 	history := m.history[sessionID]
 	if history == nil || history.active == nil {
 		return conversationstore.ErrTurnNotFound
@@ -363,13 +427,13 @@ func (m *MemoryStore) AbortTurnForTurn(ctx context.Context, sessionID string, tu
 // AddHistory is retained for callers of the pre-Store API. Production code
 // must use BeginTurn and AddHistoryToTurn so concurrent interactions cannot
 // share an active Turn.
-func (m *MemoryStore) AddHistory(ctx context.Context, sessionID string, messages ...*ai.Message) error {
+func (m *MemoryStore) AddHistory(ctx context.Context, access security.AccessContext, sessionID string, messages ...*ai.Message) error {
 	if err := checkContext(ctx); err != nil {
 		return err
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if err := m.validateSessionLocked(sessionID); err != nil {
+	if err := m.validateSessionLocked(access, sessionID); err != nil {
 		return err
 	}
 	history := m.ensureHistoryLocked(sessionID)
@@ -391,11 +455,15 @@ func (m *MemoryStore) AddHistory(ctx context.Context, sessionID string, messages
 }
 
 // IsEmpty is retained for compatibility with the pre-Store API.
-func (m *MemoryStore) IsEmpty(ctx context.Context, sessionID string) (bool, error) {
+func (m *MemoryStore) IsEmpty(ctx context.Context, access security.AccessContext, sessionID string) (bool, error) {
 	if err := checkContext(ctx); err != nil {
 		return false, err
 	}
 	m.mu.RLock()
+	if err := m.validateSessionLocked(access, sessionID); err != nil {
+		m.mu.RUnlock()
+		return false, err
+	}
 	history := m.history[sessionID]
 	activeCount := 0
 	if history != nil {
@@ -407,11 +475,15 @@ func (m *MemoryStore) IsEmpty(ctx context.Context, sessionID string) (bool, erro
 
 // WindowMemory is retained for compatibility with the pre-Store API. It is
 // only unambiguous when one active Turn exists.
-func (m *MemoryStore) WindowMemory(ctx context.Context, sessionID string) ([]*ai.Message, error) {
+func (m *MemoryStore) WindowMemory(ctx context.Context, access security.AccessContext, sessionID string) ([]*ai.Message, error) {
 	if err := checkContext(ctx); err != nil {
 		return nil, err
 	}
 	m.mu.RLock()
+	if err := m.validateSessionLocked(access, sessionID); err != nil {
+		m.mu.RUnlock()
+		return nil, err
+	}
 	history := m.history[sessionID]
 	var turnID uint64
 	if history != nil && len(history.active) == 1 {
@@ -423,13 +495,17 @@ func (m *MemoryStore) WindowMemory(ctx context.Context, sessionID string) ([]*ai
 	if turnID == 0 {
 		return nil, nil
 	}
-	return m.WindowMemoryForTurn(ctx, sessionID, turnID)
+	return m.WindowMemoryForTurn(ctx, access, sessionID, turnID)
 }
 
 // NextTurn is retained for compatibility with the pre-Store API. Production
 // code must finalize a specific Turn with NextTurnForTurn.
-func (m *MemoryStore) NextTurn(ctx context.Context, sessionID string) error {
+func (m *MemoryStore) NextTurn(ctx context.Context, access security.AccessContext, sessionID string) error {
 	m.mu.RLock()
+	if err := m.validateSessionLocked(access, sessionID); err != nil {
+		m.mu.RUnlock()
+		return err
+	}
 	history := m.history[sessionID]
 	var turnID uint64
 	if history != nil && len(history.active) == 1 {
@@ -441,21 +517,18 @@ func (m *MemoryStore) NextTurn(ctx context.Context, sessionID string) error {
 	if turnID == 0 {
 		return conversationstore.ErrNoActiveTurn
 	}
-	return m.NextTurnForTurn(ctx, sessionID, turnID)
+	return m.NextTurnForTurn(ctx, access, sessionID, turnID)
 }
 
-func (m *MemoryStore) validateSessionLocked(sessionID string) error {
+func (m *MemoryStore) validateSessionLocked(access security.AccessContext, sessionID string) error {
+	if err := access.Validate(); err != nil {
+		return err
+	}
 	session, exists := m.sessions[sessionID]
-	if !exists {
+	if !exists || !access.CanAccessOwner(session.TenantID, session.OwnerID) {
 		return conversationstore.ErrSessionNotFound
 	}
-	if session.Status != "active" {
-		return fmt.Errorf("session %q is not active", sessionID)
-	}
-	if isExpired(session.UpdatedAt, time.Now()) {
-		return conversationstore.ErrSessionExpired
-	}
-	return nil
+	return conversationstore.ValidateSessionActive(sessionID, session.Status, isExpired(session, time.Now()))
 }
 
 func (m *MemoryStore) ensureHistoryLocked(sessionID string) *sessionHistory {
@@ -482,6 +555,14 @@ func cloneTurnList(turns []*turn) ([]*ai.Message, error) {
 		}
 	}
 	return result, nil
+}
+
+func cloneSession(session conversationstore.Session) conversationstore.Session {
+	if session.ExpiresAt != nil {
+		expiresAt := *session.ExpiresAt
+		session.ExpiresAt = &expiresAt
+	}
+	return session
 }
 
 func appendMessages(active *turn, messages ...*ai.Message) error {
@@ -529,8 +610,8 @@ func supportedRole(role ai.Role) bool {
 	return role == ai.RoleSystem || role == ai.RoleUser || role == ai.RoleModel
 }
 
-func isExpired(updatedAt, now time.Time) bool {
-	return now.Sub(updatedAt) > sessionExpiration
+func isExpired(session conversationstore.Session, now time.Time) bool {
+	return conversationstore.IsSessionExpired(session.ExpiresAt, session.UpdatedAt, now, sessionExpiration)
 }
 
 func checkContext(ctx context.Context) error {

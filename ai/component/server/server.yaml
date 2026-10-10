@@ -1,8 +1,16 @@
 type: server
 spec:
   port: 8880 # Server port
-  host: "0.0.0.0" # Server host
+  host: "127.0.0.1" # Static auth is loopback-only by default
   debug: false # Debug mode
-  cors_origins: ["*"] # CORS origins
+  cors_origins: [] # Explicitly list trusted browser origins when needed
   read_timeout: 30 # Read timeout in seconds
   write_timeout: 30 # Write timeout in seconds
+  authentication:
+    mode: static
+    tenant_id: default
+    user_id: local-user
+    roles: [user]
+    scopes: []
+    allow_insecure_static_auth: false
+    adopt_legacy_sessions: false

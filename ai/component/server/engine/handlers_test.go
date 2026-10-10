@@ -30,6 +30,7 @@ import (
 	"dubbo-admin-ai/component/server/engine/session"
 	"dubbo-admin-ai/schema"
 	memorystore "dubbo-admin-ai/store/memory"
+	"dubbo-admin-ai/testutils"
 
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/otel"
@@ -78,9 +79,11 @@ func TestStreamChatContextContract(t *testing.T) {
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 	t.Cleanup(func() { otel.SetTextMapPropagator(previousPropagator) })
 	capturedAgent := &captureAgent{}
-	sessionManager := session.NewManager(memorystore.NewMemoryStore(2))
+	store := memorystore.NewMemoryStore(2)
+	sessionManager := session.NewManager(store, store)
 	t.Cleanup(func() { _ = sessionManager.Close() })
-	created, err := sessionManager.CreateSession(context.Background())
+	access := testutils.TestAccess()
+	created, err := sessionManager.CreateSession(context.Background(), access)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +103,7 @@ func TestStreamChatContextContract(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/ai/chat/stream", bytes.NewReader(body))
 	requestCtx, cancel := context.WithCancel(context.WithValue(request.Context(), requestContextKey{}, "trace-value"))
 	defer cancel()
-	request = request.WithContext(requestCtx)
+	request = request.WithContext(testutils.ContextWithTestAccess(requestCtx))
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("traceparent", "00-00000000000000000000000000000001-0000000000000002-01")
 	response := httptest.NewRecorder()
@@ -177,9 +180,11 @@ func (a *blockingAgent) Interact(_ context.Context, _ *schema.UserInput, _ strin
 func TestStreamChatDrainsChannelsOnPanic(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	blocked := &blockingAgent{}
-	sessionManager := session.NewManager(memorystore.NewMemoryStore(2))
+	store := memorystore.NewMemoryStore(2)
+	sessionManager := session.NewManager(store, store)
 	t.Cleanup(func() { _ = sessionManager.Close() })
-	created, err := sessionManager.CreateSession(context.Background())
+	access := testutils.TestAccess()
+	created, err := sessionManager.CreateSession(context.Background(), access)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -195,6 +200,7 @@ func TestStreamChatDrainsChannelsOnPanic(t *testing.T) {
 		t.Fatalf("marshal request: %v", err)
 	}
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/ai/chat/stream", bytes.NewReader(body))
+	request = request.WithContext(testutils.ContextWithTestAccess(request.Context()))
 	request.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(httptest.NewRecorder(), request)
 

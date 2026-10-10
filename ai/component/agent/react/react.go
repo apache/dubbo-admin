@@ -30,6 +30,7 @@ import (
 	"dubbo-admin-ai/component/memory"
 	rt "dubbo-admin-ai/runtime"
 	"dubbo-admin-ai/schema"
+	"dubbo-admin-ai/security"
 	conversationstore "dubbo-admin-ai/store"
 
 	"github.com/firebase/genkit/go/ai"
@@ -69,6 +70,7 @@ var ErrAgentStopping = errors.New("agent is stopping")
 const persistenceTimeout = 30 * time.Second
 
 type interactionState struct {
+	access        security.AccessContext
 	turnID        uint64
 	persistCtx    context.Context
 	persistCancel context.CancelFunc
@@ -216,7 +218,7 @@ func (ra *ReActAgent) Interact(parent context.Context, input *schema.UserInput, 
 		defer func() {
 			if ra.messageStore != nil && !completed {
 				cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(interactionCtx), persistenceTimeout)
-				if abortErr := ra.messageStore.AbortTurnForTurn(cleanupCtx, sessionID, state.turnID); abortErr != nil && !errors.Is(abortErr, conversationstore.ErrTurnNotFound) {
+				if abortErr := ra.messageStore.AbortTurnForTurn(cleanupCtx, state.access, sessionID, state.turnID); abortErr != nil && !errors.Is(abortErr, conversationstore.ErrTurnNotFound) {
 					rt.GetLogger().Error("Failed to abort AI interaction turn", "session_id", sessionID, "turn_id", state.turnID, "error", abortErr)
 				}
 				cancel()
@@ -235,7 +237,7 @@ func (ra *ReActAgent) Interact(parent context.Context, input *schema.UserInput, 
 			return
 		}
 		if ra.messageStore != nil {
-			if err := ra.messageStore.NextTurnForTurn(state.persistCtx, sessionID, state.turnID); err != nil {
+			if err := ra.messageStore.NextTurnForTurn(state.persistCtx, state.access, sessionID, state.turnID); err != nil {
 				interactionErr = fmt.Errorf("failed to complete turn: %w", err)
 				chans.ErrorChan <- interactionErr
 				return
@@ -310,14 +312,18 @@ func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserI
 		return nil, nil, errors.New("nil input")
 	}
 	if ra.messageStore != nil {
-		turnID, err := ra.messageStore.BeginTurn(parent, sessionID)
+		access, err := security.AccessContextFromContext(parent)
+		if err != nil {
+			return nil, nil, err
+		}
+		turnID, err := ra.messageStore.BeginTurn(parent, access, sessionID)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to begin turn: %w", err)
 		}
 		persistCtx, persistCancel := context.WithTimeout(context.WithoutCancel(parent), persistenceTimeout)
-		if err := ra.messageStore.AddHistoryToTurn(parent, sessionID, turnID, ai.NewUserMessage(ai.NewTextPart(input.Content))); err != nil {
+		if err := ra.messageStore.AddHistoryToTurn(parent, access, sessionID, turnID, ai.NewUserMessage(ai.NewTextPart(input.Content))); err != nil {
 			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(parent), persistenceTimeout)
-			abortErr := ra.messageStore.AbortTurnForTurn(cleanupCtx, sessionID, turnID)
+			abortErr := ra.messageStore.AbortTurnForTurn(cleanupCtx, access, sessionID, turnID)
 			cancel()
 			persistCancel()
 			if abortErr != nil && !errors.Is(abortErr, conversationstore.ErrTurnNotFound) {
@@ -328,7 +334,7 @@ func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserI
 		ctx := context.WithValue(parent, sessionIDContextKey, sessionID)
 		ctx = context.WithValue(ctx, turnIDContextKey, turnID)
 		ctx = context.WithValue(ctx, persistenceContextKey, persistCtx)
-		return ctx, &interactionState{turnID: turnID, persistCtx: persistCtx, persistCancel: persistCancel}, nil
+		return ctx, &interactionState{access: access, turnID: turnID, persistCtx: persistCtx, persistCancel: persistCancel}, nil
 	}
 
 	// Compatibility path for callers that construct ReActAgent directly in tests.

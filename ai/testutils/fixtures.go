@@ -222,7 +222,7 @@ func (f *ConfigFixture) ValidServerConfig() *yaml.Node {
 func (f *ConfigFixture) ServerConfigWithCustomPort(port int) *yaml.Node {
 	var node yaml.Node
 	node.Encode(map[string]any{
-		"host": "0.0.0.0",
+		"host": "127.0.0.1",
 		"port": port,
 	})
 	return &node

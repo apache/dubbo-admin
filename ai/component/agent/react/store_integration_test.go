@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"dubbo-admin-ai/schema"
-	conversationstore "dubbo-admin-ai/store"
 	memorystore "dubbo-admin-ai/store/memory"
+	"dubbo-admin-ai/testutils"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
@@ -16,9 +16,8 @@ import (
 func TestInteractPersistsAndFinalizesTurn(t *testing.T) {
 	store := memorystore.NewMemoryStore(2)
 	now := time.Now()
-	if err := store.Create(context.Background(), &conversationstore.Session{
-		ID: "store-agent-session", CreatedAt: now, UpdatedAt: now, Status: "active",
-	}); err != nil {
+	access := testutils.TestAccess()
+	if err := store.Create(context.Background(), access, testutils.TestSession("store-agent-session", now)); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
 
@@ -32,7 +31,8 @@ func TestInteractPersistsAndFinalizesTurn(t *testing.T) {
 		bufferSize:    8,
 	}
 
-	channels := ra.Interact(context.Background(), &schema.UserInput{Content: "hello"}, "store-agent-session")
+	ctx := testutils.ContextWithTestAccess(context.Background())
+	channels := ra.Interact(ctx, &schema.UserInput{Content: "hello"}, "store-agent-session")
 	for {
 		select {
 		case <-channels.UserRespChan:
@@ -42,7 +42,7 @@ func TestInteractPersistsAndFinalizesTurn(t *testing.T) {
 	}
 
 done:
-	messages, err := store.AllMemory(context.Background(), "store-agent-session")
+	messages, err := store.AllMemory(context.Background(), access, "store-agent-session")
 	if err != nil {
 		t.Fatalf("AllMemory() error = %v", err)
 	}
