@@ -2,11 +2,13 @@ package ragtest
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"sync"
 	"testing"
 
 	compRag "dubbo-admin-ai/component/rag"
+	"dubbo-admin-ai/security"
 
 	"github.com/cloudwego/eino/components/document"
 	"github.com/cloudwego/eino/components/indexer"
@@ -145,5 +147,29 @@ func TestRAG_Retrieve(t *testing.T) {
 	}
 	if got == nil || len(got) != 0 {
 		t.Fatalf("expected non-nil empty map, got %+v", got)
+	}
+}
+
+func TestRAGIndexRejectsSecretsAndFiltersMetadata(t *testing.T) {
+	idx := &workflowIndexer{store: newWorkflowStore()}
+	r := &compRag.RAG{Indexer: idx}
+	input := &schema.Document{ID: "safe", Content: "Dubbo guide", MetaData: map[string]any{
+		"source": "guide.md", "title": "Guide", "internal_owner": "private",
+	}}
+	if _, err := r.Index(context.Background(), "ns", []*schema.Document{input}); err != nil {
+		t.Fatal(err)
+	}
+	stored := idx.store.docs["ns"][0]
+	if _, ok := stored.MetaData["internal_owner"]; ok {
+		t.Fatalf("non-allowlisted metadata was indexed: %#v", stored.MetaData)
+	}
+	if input.MetaData["internal_owner"] != "private" {
+		t.Fatal("index preparation mutated canonical document metadata")
+	}
+	if _, err := r.Index(context.Background(), "ns", []*schema.Document{{ID: "secret", Content: "api_key=do-not-index"}}); !errors.Is(err, security.ErrSensitiveDerivedData) {
+		t.Fatalf("Index() error = %v, want ErrSensitiveDerivedData", err)
+	}
+	if idx.lastCount != 1 {
+		t.Fatalf("sensitive document reached indexer; last count = %d", idx.lastCount)
 	}
 }

@@ -102,6 +102,7 @@ func (s *RewriteStep) Process(ctx context.Context, query string) (*Result, error
 		return nil, nil
 	}
 
+	query = modelInput(query)
 	input := RewriteInput{Query: query}
 
 	resp, err := s.prompt.Execute(ctx, ai.WithInput(input))
