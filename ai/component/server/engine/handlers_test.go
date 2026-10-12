@@ -21,13 +21,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"dubbo-admin-ai/component/agent"
 	"dubbo-admin-ai/component/server/engine/session"
+	"dubbo-admin-ai/component/server/engine/sse"
 	"dubbo-admin-ai/schema"
 	memorystore "dubbo-admin-ai/store/memory"
 	"dubbo-admin-ai/testutils"
@@ -41,6 +44,14 @@ import (
 type captureAgent struct {
 	ctx   context.Context
 	input *schema.UserInput
+}
+
+type failingAgent struct{ err error }
+
+func (a *failingAgent) Interact(context.Context, *schema.UserInput, string) *agent.Channels {
+	channels := agent.NewChannels(1)
+	channels.ErrorChan <- a.err
+	return channels
 }
 
 func TestDiscardAgentOutputUnblocksDetachedProducer(t *testing.T) {
@@ -135,6 +146,106 @@ func TestStreamChatContextContract(t *testing.T) {
 	}
 	if spanContext := trace.SpanContextFromContext(capturedAgent.ctx); !spanContext.IsValid() || !spanContext.IsRemote() {
 		t.Fatalf("agent received invalid inbound span context: %v", spanContext)
+	}
+}
+
+func TestStreamChatDoesNotExposeAgentError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	const secret = "provider-secret-value"
+	store := memorystore.NewMemoryStore(2)
+	manager := session.NewManager(store, store)
+	t.Cleanup(func() { _ = manager.Close() })
+	access := testutils.TestAccess()
+	created, err := manager.CreateSession(context.Background(), access)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := NewAgentHandler(&failingAgent{err: errors.New("upstream token=" + secret)}, manager)
+	router := gin.New()
+	router.POST("/chat", handler.StreamChat)
+	body, err := json.Marshal(map[string]any{"message": "hello", "sessionID": created.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodPost, "/chat", bytes.NewReader(body))
+	request = request.WithContext(testutils.ContextWithTestAccess(request.Context()))
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if strings.Contains(response.Body.String(), secret) || !strings.Contains(response.Body.String(), "Agent interaction failed") {
+		t.Fatalf("unsafe SSE error response: %s", response.Body.String())
+	}
+}
+
+func TestStreamChatDoesNotExposeJSONBindingError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	handler := NewAgentHandler(nil, nil)
+	router := gin.New()
+	router.POST("/chat", handler.StreamChat)
+	request := httptest.NewRequest(http.MethodPost, "/chat", strings.NewReader(`{"message":`))
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusBadRequest)
+	}
+	if !strings.Contains(response.Body.String(), clientInvalidRequest) || strings.Contains(response.Body.String(), "unexpected EOF") {
+		t.Fatalf("unsafe binding error response: %s", response.Body.String())
+	}
+}
+
+func TestDrainDoesNotExposeAgentError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	response := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(response)
+	c.Request = httptest.NewRequest(http.MethodGet, "/chat", nil)
+	writer, err := sse.NewStreamWriter(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stream := sse.NewStreamHandler(writer, "session")
+	channels := agent.NewChannels(1)
+	const secret = "drain-provider-secret"
+	channels.ErrorChan <- errors.New("provider token=" + secret)
+	channels.Close()
+
+	NewAgentHandler(nil, nil).drainAndFinish(stream, channels, "session")
+	if strings.Contains(response.Body.String(), secret) || !strings.Contains(response.Body.String(), clientAgentError) {
+		t.Fatalf("unsafe drain error response: %s", response.Body.String())
+	}
+}
+
+type failMessageDeltaWriter struct {
+	gin.ResponseWriter
+	failed bool
+}
+
+func (w *failMessageDeltaWriter) Write(data []byte) (int, error) {
+	if !w.failed && bytes.Contains(data, []byte("message_delta")) {
+		w.failed = true
+		return 0, errors.New("provider token=finish-provider-secret")
+	}
+	return w.ResponseWriter.Write(data)
+}
+
+func (w *failMessageDeltaWriter) WriteString(value string) (int, error) {
+	return w.Write([]byte(value))
+}
+
+func TestMessageDeltaDoesNotExposeFinishError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	response := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(response)
+	c.Request = httptest.NewRequest(http.MethodGet, "/chat", nil)
+	c.Writer = &failMessageDeltaWriter{ResponseWriter: c.Writer}
+	writer, err := sse.NewStreamWriter(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stream := sse.NewStreamHandler(writer, "session")
+	NewAgentHandler(nil, nil).MessageDelta(stream, schema.Observation{})
+	if strings.Contains(response.Body.String(), "finish-provider-secret") || !strings.Contains(response.Body.String(), clientFinishStreamError) {
+		t.Fatalf("unsafe finish error response: %s", response.Body.String())
 	}
 }
 
