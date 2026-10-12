@@ -147,16 +147,20 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 	if err != nil {
 		return false, fmt.Errorf("failed to load conversation history: %w", err)
 	}
+	modelMessages, err := modelInputView(messages)
+	if err != nil {
+		return false, err
+	}
 	// Model and tool deadlines are independent; cancellation still propagates.
 	resp, err := func() (*ai.ModelResponse, error) {
 		lctx, cancel := withTimeout(ctx, ra.callTimeout)
 		defer cancel()
-		return executeModelCall(lctx, s, prompt, messages, func(resp *ai.ModelResponse, err error) {
+		return executeModelCall(lctx, s, prompt, modelMessages, func(resp *ai.ModelResponse, err error) {
 			if err == nil && forceAnswer && resp.Text() == "" {
 				s.FallbackUsed = true
 				s.FallbackReason = hooks.FallbackReasonEmptyResponse
 			}
-		}, ai.WithMessages(messages...))
+		}, ai.WithMessages(modelMessages...))
 	}()
 	if err != nil {
 		return false, fmt.Errorf("failed to execute react prompt: %w", err)

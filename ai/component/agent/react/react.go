@@ -219,7 +219,7 @@ func (ra *ReActAgent) Interact(parent context.Context, input *schema.UserInput, 
 			if ra.messageStore != nil && !completed {
 				cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(interactionCtx), persistenceTimeout)
 				if abortErr := ra.messageStore.AbortTurnForTurn(cleanupCtx, state.access, sessionID, state.turnID); abortErr != nil && !errors.Is(abortErr, conversationstore.ErrTurnNotFound) {
-					rt.GetLogger().Error("Failed to abort AI interaction turn", "session_id", sessionID, "turn_id", state.turnID, "error", abortErr)
+					rt.GetLogger().Error("Failed to abort AI interaction turn", "session_id", sessionID, "turn_id", state.turnID, "error_type", hooks.ErrorType(abortErr))
 				}
 				cancel()
 			}
