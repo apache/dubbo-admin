@@ -777,7 +777,7 @@ items:
                     "uid": "${datasource}"
                   },
                   "editorMode": "code",
-                  "expr": "sum(increase (dubbo_consumer_requests_unknown_failed_tota{application_name=\"$application\"}[2m])>0) OR vector(0)",
+                  "expr": "sum(increase (dubbo_consumer_requests_unknown_failed_total{application_name=\"$application\"}[2m])>0) OR vector(0)",
                   "hide": false,
                   "instant": false,
                   "legendFormat": "未知原因失败数",
@@ -982,7 +982,7 @@ items:
                     "uid": "${datasource}"
                   },
                   "editorMode": "code",
-                  "expr": "sum(increase (dubbo_provider_requests_unknown_failed_tota{application_name=\"$application\"}[2m])) OR vector(0)",
+                  "expr": "sum(increase (dubbo_provider_requests_unknown_failed_total{application_name=\"$application\"}[2m])) OR vector(0)",
                   "hide": false,
                   "instant": false,
                   "legendFormat": "未知原因失败数",
@@ -2308,7 +2308,7 @@ items:
                       },
                       "editorMode": "code",
                       "exemplar": false,
-                      "expr": "sum (increase(dubbo_consumer_requests_unknown_failed_tota{application_name=\"$application\"}[2m])) >0",
+                      "expr": "sum (increase(dubbo_consumer_requests_unknown_failed_total{application_name=\"$application\"}[2m])) >0",
                       "instant": false,
                       "legendFormat": "未知原因失败总数",
                       "range": true,
@@ -5696,7 +5696,7 @@ items:
                     "uid": "${datasource}"
                   },
                   "editorMode": "code",
-                  "expr": "sum((increase(dubbo_consumer_requests_unknown_failed_tota{application_name=\"$application\",ip=\"$instance\"}[2m]) or (increase(dubbo_consumer_requests_unknown_failed_tota{application_name=\"$application\"}[2m]) and on(application_name,instance) dubbo_application_info_total{application_name=\"$application\",ip=\"$instance\"}))) OR vector(0)",
+                  "expr": "sum((increase(dubbo_consumer_requests_unknown_failed_total{application_name=\"$application\",ip=\"$instance\"}[2m]) or (increase(dubbo_consumer_requests_unknown_failed_total{application_name=\"$application\"}[2m]) and on(application_name,instance) dubbo_application_info_total{application_name=\"$application\",ip=\"$instance\"}))) OR vector(0)",
                   "hide": false,
                   "instant": false,
                   "legendFormat": "未知原因失败数",
@@ -5903,7 +5903,7 @@ items:
                     "uid": "${datasource}"
                   },
                   "editorMode": "code",
-                  "expr": "sum((increase(dubbo_provider_requests_unknown_failed_tota{application_name=\"$application\",ip=\"$instance\"}[2m]) or (increase(dubbo_provider_requests_unknown_failed_tota{application_name=\"$application\"}[2m]) and on(application_name,instance) dubbo_application_info_total{application_name=\"$application\",ip=\"$instance\"}))) OR vector(0)",
+                  "expr": "sum((increase(dubbo_provider_requests_unknown_failed_total{application_name=\"$application\",ip=\"$instance\"}[2m]) or (increase(dubbo_provider_requests_unknown_failed_total{application_name=\"$application\"}[2m]) and on(application_name,instance) dubbo_application_info_total{application_name=\"$application\",ip=\"$instance\"}))) OR vector(0)",
                   "hide": false,
                   "instant": false,
                   "legendFormat": "未知原因失败数",
@@ -7223,7 +7223,7 @@ items:
                       },
                       "editorMode": "code",
                       "exemplar": false,
-                      "expr": "sum ((increase(dubbo_provider_requests_unknown_failed_tota{application_name=\"$application\",ip=\"$instance\"}[2m]) or (increase(dubbo_provider_requests_unknown_failed_tota{application_name=\"$application\"}[2m]) and on(application_name,instance) dubbo_application_info_total{application_name=\"$application\",ip=\"$instance\"}))) or vector(0)",
+                      "expr": "sum ((increase(dubbo_provider_requests_unknown_failed_total{application_name=\"$application\",ip=\"$instance\"}[2m]) or (increase(dubbo_provider_requests_unknown_failed_total{application_name=\"$application\"}[2m]) and on(application_name,instance) dubbo_application_info_total{application_name=\"$application\",ip=\"$instance\"}))) or vector(0)",
                       "instant": false,
                       "legendFormat": "未知原因错误总数",
                       "range": true,
@@ -7236,7 +7236,7 @@ items:
                       },
                       "editorMode": "code",
                       "exemplar": false,
-                      "expr": "sum ((increase(dubbo_provider_requests_unknown_failed_tota{application_name=\"$application\",ip=\"$instance\"}[2m]) or (increase(dubbo_provider_requests_unknown_failed_tota{application_name=\"$application\"}[2m]) and on(application_name,instance) dubbo_application_info_total{application_name=\"$application\",ip=\"$instance\"}))) by(interface)",
+                      "expr": "sum ((increase(dubbo_provider_requests_unknown_failed_total{application_name=\"$application\",ip=\"$instance\"}[2m]) or (increase(dubbo_provider_requests_unknown_failed_total{application_name=\"$application\"}[2m]) and on(application_name,instance) dubbo_application_info_total{application_name=\"$application\",ip=\"$instance\"}))) by(interface)",
                       "hide": false,
                       "instant": false,
                       "legendFormat": "{{interface}}",
@@ -10630,7 +10630,7 @@ items:
                     "uid": "${datasource}"
                   },
                   "editorMode": "code",
-                  "expr": "sum(increase (dubbo_consumer_requests_unknown_failed_tota{interface=\"$service\"}[2m])>0) OR vector(0)",
+                  "expr": "sum(increase (dubbo_consumer_requests_unknown_failed_total{interface=\"$service\"}[2m])>0) OR vector(0)",
                   "hide": false,
                   "instant": false,
                   "legendFormat": "未知原因失败数",
@@ -10836,7 +10836,7 @@ items:
                     "uid": "${datasource}"
                   },
                   "editorMode": "code",
-                  "expr": "sum(increase (dubbo_consumer_requests_unknown_failed_tota{interface=\"$service\"}[2m])>0) OR vector(0)",
+                  "expr": "sum(increase (dubbo_consumer_requests_unknown_failed_total{interface=\"$service\"}[2m])>0) OR vector(0)",
                   "hide": false,
                   "instant": false,
                   "legendFormat": "未知原因失败数",
@@ -12151,7 +12151,7 @@ items:
                         "uid": "${datasource}"
                       },
                       "editorMode": "code",
-                      "expr": "sum(increase(dubbo_provider_requests_unknown_failed_total{interface=\"$service\",method=~\"method\"}[2m])) by (mehtod)",
+                      "expr": "sum(increase(dubbo_provider_requests_unknown_failed_total{interface=\"$service\",method=~\"$method\"}[2m])) by (method)",
                       "hide": false,
                       "instant": false,
                       "legendFormat": "{{method}}",
@@ -13155,7 +13155,7 @@ items:
                         "uid": "${datasource}"
                       },
                       "editorMode": "code",
-                      "expr": "sum(increase(dubbo_consumer_requests_unknown_failed_total{interface=\"$service\",method=~\"method\"}[2m])) by (mehtod)",
+                      "expr": "sum(increase(dubbo_consumer_requests_unknown_failed_total{interface=\"$service\",method=~\"$method\"}[2m])) by (method)",
                       "hide": false,
                       "instant": false,
                       "legendFormat": "{{method}}",
