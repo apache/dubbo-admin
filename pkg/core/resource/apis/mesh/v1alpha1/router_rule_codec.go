@@ -214,11 +214,14 @@ func ruleYAMLError(name string, err error) error {
 // ValidateRule enforces the part of the Admin/runtime contract that can be
 // checked before a write reaches a configuration center.
 func ValidateRule(r coremodel.Resource) error {
-	if r == nil || r.ResourceSpec() == nil {
+	if r == nil {
 		return invalidRule("rule spec is required")
 	}
 	switch typed := r.(type) {
 	case *AffinityRouteResource:
+		if typed == nil || typed.Spec == nil {
+			return invalidRule("rule spec is required")
+		}
 		if typed.Spec.ConfigVersion != constants.ConfiguratorVersionV3x1 {
 			return invalidRule("affinity configVersion must be v3.1")
 		}
@@ -236,6 +239,9 @@ func ValidateRule(r coremodel.Resource) error {
 		}
 		return nil
 	case *ScriptRouteResource:
+		if typed == nil || typed.Spec == nil {
+			return invalidRule("rule spec is required")
+		}
 		if typed.Spec.ConfigVersion != constants.ConfiguratorVersionV3 && typed.Spec.ConfigVersion != constants.ConfiguratorVersionV3x1 {
 			return invalidRule("script configVersion must be v3.0 or v3.1")
 		}
@@ -256,6 +262,9 @@ func ValidateRule(r coremodel.Resource) error {
 		}
 		return nil
 	default:
+		if r.ResourceSpec() == nil {
+			return invalidRule("rule spec is required")
+		}
 		return nil
 	}
 }

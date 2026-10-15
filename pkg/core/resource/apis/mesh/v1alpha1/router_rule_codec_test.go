@@ -216,6 +216,31 @@ func TestRouterRuleValidation(t *testing.T) {
 	require.Error(t, ValidateRule(affinity))
 }
 
+func TestRouterRuleValidationRejectsNilSpecs(t *testing.T) {
+	tests := []struct {
+		name string
+		rule coremodel.Resource
+	}{
+		{name: "affinity", rule: &AffinityRouteResource{}},
+		{name: "script", rule: &ScriptRouteResource{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var err error
+			require.NotPanics(t, func() {
+				err = ValidateRule(tt.rule)
+			})
+			require.Error(t, err)
+
+			require.NotPanics(t, func() {
+				_, err = EncodeRule(tt.rule)
+			})
+			require.Error(t, err)
+		})
+	}
+}
+
 func TestRouterRuleTombstones(t *testing.T) {
 	a := ToAffinityRouteResource("mesh", "a.affinity-router", "")
 	s := ToScriptRouteResource("mesh", "s.script-router", "")
