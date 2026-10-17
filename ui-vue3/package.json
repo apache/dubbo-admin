@@ -39,6 +39,7 @@
     "js-yaml": "^4.1.0",
     "less": "^4.2.0",
     "lodash": "^4.17.21",
+    "lossless-json": "^4.3.1",
     "monaco-editor": "^0.52.2",
     "nprogress": "^0.2.0",
     "pinia": "^2.1.7",
