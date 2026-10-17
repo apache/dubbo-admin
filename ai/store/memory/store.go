@@ -30,15 +30,16 @@ import (
 	conversationstore "dubbo-admin-ai/store"
 
 	"github.com/firebase/genkit/go/ai"
+	"github.com/google/uuid"
 )
 
 // DefaultMaxTurns matches MemorySpec's default conversation limit.
 const DefaultMaxTurns = 100
 
-const sessionExpiration = 24 * time.Hour
-
 type turn struct {
 	id             uint64
+	interactionID  string
+	status         string
 	createdAt      time.Time
 	userMessages   []*ai.Message
 	modelMessages  []*ai.Message
@@ -62,10 +63,18 @@ type sessionHistory struct {
 
 // MemoryStore is the in-process implementation of the conversation Store.
 type MemoryStore struct {
-	mu       sync.RWMutex
-	limit    int
-	sessions map[string]conversationstore.Session
-	history  map[string]*sessionHistory
+	mu                 sync.RWMutex
+	limit              int
+	quota              conversationstore.QuotaPolicy
+	lifecycle          conversationstore.LifecyclePolicy
+	sessions           map[string]conversationstore.Session
+	history            map[string]*sessionHistory
+	interactions       map[string]conversationstore.Interaction
+	idempotency        map[string]string
+	activeInteractions map[string]string
+	derivedArtifacts   map[string]conversationstore.DerivedArtifact
+	cleanupJobs        map[string]conversationstore.CleanupJob
+	outbox             map[string]conversationstore.OutboxEvent
 }
 
 var _ conversationstore.BackendStore = (*MemoryStore)(nil)
@@ -73,14 +82,34 @@ var _ conversationstore.BackendStore = (*MemoryStore)(nil)
 // NewMemoryStore creates a MemoryStore. The optional limit exists for runtime
 // configuration and tests; the default matches MemorySpec.
 func NewMemoryStore(limits ...int) *MemoryStore {
+	quota := conversationstore.DefaultQuotaPolicy()
 	limit := DefaultMaxTurns
 	if len(limits) > 0 && limits[0] > 0 {
 		limit = limits[0]
 	}
+	quota.MaxTurnsPerSession = limit
+	return NewMemoryStoreWithPolicy(quota)
+}
+
+func NewMemoryStoreWithPolicy(quota conversationstore.QuotaPolicy) *MemoryStore {
+	return NewMemoryStoreWithPolicies(quota, conversationstore.DefaultLifecyclePolicy())
+}
+
+func NewMemoryStoreWithPolicies(quota conversationstore.QuotaPolicy, lifecycle conversationstore.LifecyclePolicy) *MemoryStore {
+	quota = quota.WithDefaults()
+	lifecycle = lifecycle.WithDefaults()
 	return &MemoryStore{
-		limit:    limit,
-		sessions: make(map[string]conversationstore.Session),
-		history:  make(map[string]*sessionHistory),
+		limit:              quota.MaxTurnsPerSession,
+		quota:              quota,
+		lifecycle:          lifecycle,
+		sessions:           make(map[string]conversationstore.Session),
+		history:            make(map[string]*sessionHistory),
+		interactions:       make(map[string]conversationstore.Interaction),
+		idempotency:        make(map[string]string),
+		activeInteractions: make(map[string]string),
+		derivedArtifacts:   make(map[string]conversationstore.DerivedArtifact),
+		cleanupJobs:        make(map[string]conversationstore.CleanupJob),
+		outbox:             make(map[string]conversationstore.OutboxEvent),
 	}
 }
 
@@ -100,10 +129,24 @@ func (m *MemoryStore) Create(ctx context.Context, access security.AccessContext,
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	sessionCount := 0
+	for _, existing := range m.sessions {
+		if existing.TenantID == session.TenantID && existing.Status != conversationstore.SessionStatusDeleted {
+			sessionCount++
+		}
+	}
+	if sessionCount >= m.quota.MaxSessionsPerTenant || m.entityCountLocked() >= m.quota.MaxInMemoryEntities {
+		return conversationstore.ErrResourceExhausted
+	}
 	if _, exists := m.sessions[session.ID]; exists {
 		return fmt.Errorf("session %q already exists", session.ID)
 	}
-	m.sessions[session.ID] = cloneSession(*session)
+	stored := cloneSession(*session)
+	if stored.ExpiresAt == nil {
+		expiresAt := stored.UpdatedAt.Add(m.lifecycle.Retention)
+		stored.ExpiresAt = &expiresAt
+	}
+	m.sessions[session.ID] = stored
 	return nil
 }
 
@@ -121,7 +164,10 @@ func (m *MemoryStore) Get(ctx context.Context, access security.AccessContext, se
 	if !exists || !access.CanAccessOwner(session.TenantID, session.OwnerID) {
 		return nil, conversationstore.ErrSessionNotFound
 	}
-	if isExpired(session, time.Now()) {
+	if session.Status != conversationstore.SessionStatusActive {
+		return nil, conversationstore.ErrSessionNotFound
+	}
+	if m.isExpired(session, time.Now()) {
 		return nil, conversationstore.ErrSessionExpired
 	}
 	copy := cloneSession(session)
@@ -141,7 +187,7 @@ func (m *MemoryStore) List(ctx context.Context, access security.AccessContext) (
 	result := make([]*conversationstore.Session, 0, len(m.sessions))
 	now := time.Now()
 	for _, session := range m.sessions {
-		if !access.CanAccessOwner(session.TenantID, session.OwnerID) || session.Status != "active" || isExpired(session, now) {
+		if !access.CanAccessOwner(session.TenantID, session.OwnerID) || session.Status != "active" || m.isExpired(session, now) {
 			continue
 		}
 		copy := cloneSession(session)
@@ -150,7 +196,7 @@ func (m *MemoryStore) List(ctx context.Context, access security.AccessContext) (
 	return result, nil
 }
 
-func (m *MemoryStore) Touch(ctx context.Context, access security.AccessContext, sessionID string, updatedAt time.Time) error {
+func (m *MemoryStore) Touch(ctx context.Context, access security.AccessContext, sessionID string, updatedAt time.Time, retentions ...time.Duration) error {
 	if err := checkContext(ctx); err != nil {
 		return err
 	}
@@ -167,11 +213,15 @@ func (m *MemoryStore) Touch(ctx context.Context, access security.AccessContext, 
 	if session.Status != "active" {
 		return fmt.Errorf("session %q is not active", sessionID)
 	}
-	if isExpired(session, time.Now()) {
+	if m.isExpired(session, time.Now()) {
 		return conversationstore.ErrSessionExpired
 	}
 	session.UpdatedAt = updatedAt
-	expiresAt := updatedAt.Add(sessionExpiration)
+	retention := m.lifecycle.Retention
+	if len(retentions) > 0 && retentions[0] > 0 {
+		retention = retentions[0]
+	}
+	expiresAt := updatedAt.Add(retention)
 	session.ExpiresAt = &expiresAt
 	session.Version++
 	m.sessions[sessionID] = session
@@ -192,12 +242,19 @@ func (m *MemoryStore) Delete(ctx context.Context, access security.AccessContext,
 	if !exists || !access.CanAccessOwner(session.TenantID, session.OwnerID) {
 		return conversationstore.ErrSessionNotFound
 	}
-	delete(m.sessions, sessionID)
-	delete(m.history, sessionID)
+	if session.Status != conversationstore.SessionStatusActive {
+		return conversationstore.ErrSessionNotFound
+	}
+	session.Status = conversationstore.SessionStatusDeletionPending
+	session.Version++
+	session.UpdatedAt = time.Now()
+	m.sessions[sessionID] = session
+	delete(m.activeInteractions, sessionID)
+	m.enqueueCleanupLocked(session)
 	return nil
 }
 
-func (m *MemoryStore) DeleteExpired(ctx context.Context, access security.AccessContext, now time.Time) (int, error) {
+func (m *MemoryStore) DeleteExpired(ctx context.Context, access security.AccessContext, now time.Time, batchSizes ...int) (int, error) {
 	if err := checkContext(ctx); err != nil {
 		return 0, err
 	}
@@ -210,16 +267,449 @@ func (m *MemoryStore) DeleteExpired(ctx context.Context, access security.AccessC
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	deleted := 0
+	batchLimit := 100
+	if len(batchSizes) > 0 && batchSizes[0] > 0 {
+		batchLimit = batchSizes[0]
+	}
+	type cleanupCandidate struct {
+		sessionID string
+		tenantID  string
+		updatedAt time.Time
+	}
+	candidates := make([]cleanupCandidate, 0)
 	for sessionID, session := range m.sessions {
-		if !isExpired(session, now) {
+		if (session.Status == conversationstore.SessionStatusActive && m.isExpired(session, now)) || session.Status == conversationstore.SessionStatusDeletionPending || session.Status == conversationstore.SessionStatusDerivedCleanup {
+			candidates = append(candidates, cleanupCandidate{sessionID: sessionID, tenantID: session.TenantID, updatedAt: session.UpdatedAt})
+		}
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		if !candidates[i].updatedAt.Equal(candidates[j].updatedAt) {
+			return candidates[i].updatedAt.Before(candidates[j].updatedAt)
+		}
+		if candidates[i].tenantID != candidates[j].tenantID {
+			return candidates[i].tenantID < candidates[j].tenantID
+		}
+		return candidates[i].sessionID < candidates[j].sessionID
+	})
+	if len(candidates) > batchLimit {
+		candidates = candidates[:batchLimit]
+	}
+	deleted := 0
+	for _, candidate := range candidates {
+		if err := ctx.Err(); err != nil {
+			return deleted, err
+		}
+		sessionID := candidate.sessionID
+		session := m.sessions[sessionID]
+		if session.Status == conversationstore.SessionStatusActive && !m.isExpired(session, now) {
 			continue
 		}
-		delete(m.sessions, sessionID)
+		if session.Status == conversationstore.SessionStatusDeleted {
+			continue
+		}
+		if session.Status == conversationstore.SessionStatusActive {
+			session.Status = conversationstore.SessionStatusDeletionPending
+			session.Version++
+			m.enqueueCleanupLocked(session)
+		}
+		session.Status = conversationstore.SessionStatusDerivedCleanup
+		canonicalID := "session:" + sessionID
+		blocked := false
+		for _, artifact := range m.derivedArtifacts {
+			if artifact.CanonicalSourceID == canonicalID && artifact.Status != "deleted" {
+				blocked = true
+				break
+			}
+		}
+		job := m.cleanupJobs[canonicalID]
+		job.Attempts++
+		job.UpdatedAt = now
+		if blocked {
+			job.Status = "cleanup_failed"
+			job.LastErrorCode = "HANDLER_REQUIRED"
+			m.cleanupJobs[canonicalID] = job
+			m.sessions[sessionID] = session
+			continue
+		}
 		delete(m.history, sessionID)
+		for id, interaction := range m.interactions {
+			if interaction.SessionID == sessionID {
+				delete(m.interactions, id)
+			}
+		}
+		for key, id := range m.idempotency {
+			if _, exists := m.interactions[id]; !exists {
+				delete(m.idempotency, key)
+			}
+		}
+		delete(m.activeInteractions, sessionID)
+		session.Status = conversationstore.SessionStatusDeleted
+		session.UpdatedAt = now
+		m.sessions[sessionID] = session
+		job.Status = "completed"
+		job.LastErrorCode = ""
+		job.NextRetryAt = nil
+		m.cleanupJobs[canonicalID] = job
 		deleted++
 	}
 	return deleted, nil
+}
+
+func (m *MemoryStore) DeleteExpiredPage(ctx context.Context, access security.AccessContext, now time.Time, cursor conversationstore.CleanupCursor, limit int) (int, conversationstore.CleanupCursor, error) {
+	if err := checkContext(ctx); err != nil {
+		return 0, cursor, err
+	}
+	if err := access.Validate(); err != nil {
+		return 0, cursor, err
+	}
+	if !access.IsSystem() {
+		return 0, cursor, security.ErrResourceNotAccessible
+	}
+	if limit <= 0 {
+		limit = 100
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	type candidate struct {
+		id, tenant string
+		at         time.Time
+	}
+	items := make([]candidate, 0)
+	for id, session := range m.sessions {
+		if (session.Status == conversationstore.SessionStatusActive && m.isExpired(session, now)) || session.Status == conversationstore.SessionStatusDeletionPending || session.Status == conversationstore.SessionStatusDerivedCleanup {
+			if cursor.Valid && !afterCleanupCursor(session.UpdatedAt, session.TenantID, id, cursor) {
+				continue
+			}
+			items = append(items, candidate{id, session.TenantID, session.UpdatedAt})
+		}
+	}
+	sort.Slice(items, func(i, j int) bool {
+		return cleanupCandidateBefore(items[i].at, items[i].tenant, items[i].id, items[j].at, items[j].tenant, items[j].id)
+	})
+	if len(items) > limit {
+		items = items[:limit]
+	}
+	next := conversationstore.CleanupCursor{}
+	deleted := 0
+	for _, item := range items {
+		if err := ctx.Err(); err != nil {
+			return deleted, next, err
+		}
+		next = conversationstore.CleanupCursor{SortTime: item.at, TenantID: item.tenant, ID: item.id, Valid: true}
+		session := m.sessions[item.id]
+		if session.Status == conversationstore.SessionStatusActive && !m.isExpired(session, now) {
+			continue
+		}
+		if session.Status == conversationstore.SessionStatusActive {
+			session.Status = conversationstore.SessionStatusDeletionPending
+			session.Version++
+			m.enqueueCleanupLocked(session)
+		}
+		session.Status = conversationstore.SessionStatusDerivedCleanup
+		canonicalID := "session:" + item.id
+		blocked := false
+		for _, artifact := range m.derivedArtifacts {
+			if artifact.CanonicalSourceID == canonicalID && artifact.Status != "deleted" {
+				blocked = true
+				break
+			}
+		}
+		job := m.cleanupJobs[canonicalID]
+		job.Attempts++
+		job.UpdatedAt = now
+		if blocked {
+			job.Status = "cleanup_failed"
+			job.LastErrorCode = "HANDLER_REQUIRED"
+			m.cleanupJobs[canonicalID] = job
+			session.UpdatedAt = now
+			m.sessions[item.id] = session
+			continue
+		}
+		delete(m.history, item.id)
+		for id, interaction := range m.interactions {
+			if interaction.SessionID == item.id {
+				delete(m.interactions, id)
+			}
+		}
+		for key, id := range m.idempotency {
+			if _, exists := m.interactions[id]; !exists {
+				delete(m.idempotency, key)
+			}
+		}
+		delete(m.activeInteractions, item.id)
+		session.Status = conversationstore.SessionStatusDeleted
+		session.UpdatedAt = now
+		m.sessions[item.id] = session
+		job.Status = "completed"
+		job.LastErrorCode = ""
+		job.NextRetryAt = nil
+		m.cleanupJobs[canonicalID] = job
+		deleted++
+	}
+	return deleted, next, nil
+}
+
+func cleanupCandidateBefore(at time.Time, tenant, id string, otherAt time.Time, otherTenant, otherID string) bool {
+	if !at.Equal(otherAt) {
+		return at.Before(otherAt)
+	}
+	if tenant != otherTenant {
+		return tenant < otherTenant
+	}
+	return id < otherID
+}
+
+func afterCleanupCursor(at time.Time, tenant, id string, cursor conversationstore.CleanupCursor) bool {
+	return cleanupCandidateBefore(cursor.SortTime, cursor.TenantID, cursor.ID, at, tenant, id)
+}
+
+func (m *MemoryStore) enqueueCleanupLocked(session conversationstore.Session) {
+	canonicalID := "session:" + session.ID
+	if _, exists := m.cleanupJobs[canonicalID]; exists {
+		return
+	}
+	now := time.Now()
+	m.cleanupJobs[canonicalID] = conversationstore.CleanupJob{ID: uuid.NewString(), TenantID: session.TenantID, CanonicalSourceID: canonicalID, Status: "pending", CreatedAt: now, UpdatedAt: now}
+	event := conversationstore.OutboxEvent{ID: uuid.NewString(), TenantID: session.TenantID, AggregateID: canonicalID, EventType: "session.deletion_requested", CreatedAt: now}
+	m.outbox[event.ID] = event
+}
+
+func (m *MemoryStore) RegisterDerivedArtifact(ctx context.Context, access security.AccessContext, artifact conversationstore.DerivedArtifact) error {
+	if err := checkContext(ctx); err != nil {
+		return err
+	}
+	if err := access.Validate(); err != nil {
+		return err
+	}
+	if !access.IsSystem() || artifact.ID == "" || artifact.TenantID == "" || artifact.CanonicalSourceID == "" || artifact.Kind == "" || artifact.Locator == "" {
+		return security.ErrResourceNotAccessible
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	sessionID, err := conversationstore.SessionIDFromCanonicalSource(artifact.CanonicalSourceID)
+	if err != nil {
+		return err
+	}
+	session, ok := m.sessions[sessionID]
+	if !ok || session.TenantID != artifact.TenantID || session.Status != conversationstore.SessionStatusActive {
+		return conversationstore.ErrCanonicalSourceNotWritable
+	}
+	if _, exists := m.derivedArtifacts[artifact.ID]; exists {
+		return fmt.Errorf("derived artifact %q already exists", artifact.ID)
+	}
+	now := time.Now()
+	artifact.Status = "active"
+	artifact.CleanupAttempts = 0
+	artifact.LastErrorCode = ""
+	artifact.NextRetryAt = nil
+	artifact.CreatedAt = now
+	artifact.UpdatedAt = now
+	m.derivedArtifacts[artifact.ID] = artifact
+	return nil
+}
+
+func (m *MemoryStore) ListDerivedArtifactsForCleanup(ctx context.Context, access security.AccessContext, now time.Time, limit int) ([]conversationstore.DerivedArtifact, error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
+	if err := access.Validate(); err != nil {
+		return nil, err
+	}
+	if !access.IsSystem() {
+		return nil, security.ErrResourceNotAccessible
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	result := make([]conversationstore.DerivedArtifact, 0)
+	for _, artifact := range m.derivedArtifacts {
+		if artifact.Status == "deleted" {
+			continue
+		}
+		if artifact.NextRetryAt != nil && artifact.NextRetryAt.After(now) {
+			continue
+		}
+		sessionID, err := conversationstore.SessionIDFromCanonicalSource(artifact.CanonicalSourceID)
+		if err == nil {
+			session, ok := m.sessions[sessionID]
+			if ok && session.TenantID == artifact.TenantID && session.Status == conversationstore.SessionStatusActive {
+				continue
+			}
+		}
+		result = append(result, artifact)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		left := result[i].CreatedAt
+		if result[i].NextRetryAt != nil {
+			left = *result[i].NextRetryAt
+		}
+		right := result[j].CreatedAt
+		if result[j].NextRetryAt != nil {
+			right = *result[j].NextRetryAt
+		}
+		if !left.Equal(right) {
+			return left.Before(right)
+		}
+		if result[i].TenantID != result[j].TenantID {
+			return result[i].TenantID < result[j].TenantID
+		}
+		return result[i].ID < result[j].ID
+	})
+	if limit > 0 && len(result) > limit {
+		result = result[:limit]
+	}
+	return result, nil
+}
+
+func (m *MemoryStore) ListDerivedArtifactsForCleanupPage(ctx context.Context, access security.AccessContext, now time.Time, cursor conversationstore.CleanupCursor, limit int) ([]conversationstore.DerivedArtifact, conversationstore.CleanupCursor, error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, cursor, err
+	}
+	if err := access.Validate(); err != nil {
+		return nil, cursor, err
+	}
+	if !access.IsSystem() {
+		return nil, cursor, security.ErrResourceNotAccessible
+	}
+	if limit <= 0 {
+		limit = 100
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	result := make([]conversationstore.DerivedArtifact, 0)
+	for _, artifact := range m.derivedArtifacts {
+		if artifact.Status == "deleted" || (artifact.NextRetryAt != nil && artifact.NextRetryAt.After(now)) {
+			continue
+		}
+		sessionID, err := conversationstore.SessionIDFromCanonicalSource(artifact.CanonicalSourceID)
+		if err == nil {
+			if session, ok := m.sessions[sessionID]; ok && session.TenantID == artifact.TenantID && session.Status == conversationstore.SessionStatusActive {
+				continue
+			}
+		}
+		at := artifact.CreatedAt
+		if artifact.NextRetryAt != nil {
+			at = *artifact.NextRetryAt
+		}
+		if cursor.Valid && !afterCleanupCursor(at, artifact.TenantID, artifact.ID, cursor) {
+			continue
+		}
+		result = append(result, artifact)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		li := result[i].CreatedAt
+		if result[i].NextRetryAt != nil {
+			li = *result[i].NextRetryAt
+		}
+		lj := result[j].CreatedAt
+		if result[j].NextRetryAt != nil {
+			lj = *result[j].NextRetryAt
+		}
+		return cleanupCandidateBefore(li, result[i].TenantID, result[i].ID, lj, result[j].TenantID, result[j].ID)
+	})
+	if len(result) > limit {
+		result = result[:limit]
+	}
+	next := conversationstore.CleanupCursor{}
+	if len(result) > 0 {
+		last := result[len(result)-1]
+		at := last.CreatedAt
+		if last.NextRetryAt != nil {
+			at = *last.NextRetryAt
+		}
+		next = conversationstore.CleanupCursor{SortTime: at, TenantID: last.TenantID, ID: last.ID, Valid: true}
+	}
+	return result, next, nil
+}
+
+func (m *MemoryStore) MarkDerivedArtifactDeleted(ctx context.Context, access security.AccessContext, artifactID string) error {
+	if err := checkContext(ctx); err != nil {
+		return err
+	}
+	if err := access.Validate(); err != nil {
+		return err
+	}
+	if !access.IsSystem() {
+		return security.ErrResourceNotAccessible
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	artifact, ok := m.derivedArtifacts[artifactID]
+	if !ok {
+		return conversationstore.ErrDerivedArtifactNotFound
+	}
+	artifact.Status = "deleted"
+	artifact.LastErrorCode = ""
+	artifact.NextRetryAt = nil
+	now := time.Now()
+	artifact.UpdatedAt = now
+	m.derivedArtifacts[artifactID] = artifact
+	m.refreshCleanupJobRetryLocked(artifact.CanonicalSourceID, now)
+	return nil
+}
+
+func (m *MemoryStore) MarkDerivedArtifactCleanupFailed(ctx context.Context, access security.AccessContext, artifactID, errorCode string, failedAt time.Time) error {
+	if err := checkContext(ctx); err != nil {
+		return err
+	}
+	if err := access.Validate(); err != nil {
+		return err
+	}
+	if !access.IsSystem() {
+		return security.ErrResourceNotAccessible
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	artifact, ok := m.derivedArtifacts[artifactID]
+	if !ok {
+		return conversationstore.ErrDerivedArtifactNotFound
+	}
+	if artifact.Status == "deleted" {
+		return nil
+	}
+	artifact.CleanupAttempts++
+	artifact.LastErrorCode = errorCode
+	nextRetryAt := conversationstore.DerivedArtifactRetryAt(failedAt, artifact.CleanupAttempts)
+	artifact.NextRetryAt = &nextRetryAt
+	artifact.UpdatedAt = failedAt
+	m.derivedArtifacts[artifactID] = artifact
+	job, ok := m.cleanupJobs[artifact.CanonicalSourceID]
+	if !ok {
+		job = conversationstore.CleanupJob{ID: uuid.NewString(), TenantID: artifact.TenantID, CanonicalSourceID: artifact.CanonicalSourceID, CreatedAt: failedAt}
+	}
+	job.Status = "cleanup_failed"
+	job.Attempts++
+	job.LastErrorCode = errorCode
+	job.UpdatedAt = failedAt
+	m.cleanupJobs[artifact.CanonicalSourceID] = job
+	m.refreshCleanupJobRetryLocked(artifact.CanonicalSourceID, failedAt)
+	return nil
+}
+
+// refreshCleanupJobRetryLocked projects per-artifact retry eligibility onto
+// the canonical-source job. Artifact retry fields remain the scheduler's
+// authority; the job value is an aggregate for progress observation.
+func (m *MemoryStore) refreshCleanupJobRetryLocked(canonicalSourceID string, updatedAt time.Time) {
+	job, ok := m.cleanupJobs[canonicalSourceID]
+	if !ok {
+		return
+	}
+	var nextRetryAt *time.Time
+	for _, artifact := range m.derivedArtifacts {
+		if artifact.CanonicalSourceID != canonicalSourceID || artifact.Status == "deleted" {
+			continue
+		}
+		if artifact.NextRetryAt == nil {
+			nextRetryAt = nil
+			break
+		}
+		if nextRetryAt == nil || artifact.NextRetryAt.Before(*nextRetryAt) {
+			next := *artifact.NextRetryAt
+			nextRetryAt = &next
+		}
+	}
+	job.NextRetryAt = nextRetryAt
+	job.UpdatedAt = updatedAt
+	m.cleanupJobs[canonicalSourceID] = job
 }
 
 func (m *MemoryStore) AdoptLegacySessions(ctx context.Context, access security.AccessContext, tenantID, ownerID string) (int, error) {
@@ -248,13 +738,163 @@ func (m *MemoryStore) AdoptLegacySessions(ctx context.Context, access security.A
 			session.Version = 1
 		}
 		if session.ExpiresAt == nil {
-			expiresAt := session.UpdatedAt.Add(sessionExpiration)
+			expiresAt := session.UpdatedAt.Add(m.lifecycle.Retention)
 			session.ExpiresAt = &expiresAt
 		}
 		m.sessions[id] = session
 		updated++
 	}
 	return updated, nil
+}
+
+func idempotencyLookupKey(access security.AccessContext, sessionID, key string) string {
+	return access.Subject.TenantID + "\x00" + access.Subject.UserID + "\x00" + sessionID + "\x00" + key
+}
+
+func (m *MemoryStore) PrepareInteraction(ctx context.Context, access security.AccessContext, sessionID, idempotencyKey, requestHash string, leaseDuration time.Duration) (*conversationstore.PreparedInteraction, error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
+	if idempotencyKey == "" || requestHash == "" || leaseDuration <= 0 {
+		return nil, errors.New("idempotency key, request hash, and positive lease are required")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err := m.validateSessionLocked(access, sessionID); err != nil {
+		return nil, err
+	}
+	now := time.Now()
+	lookup := idempotencyLookupKey(access, sessionID, idempotencyKey)
+	if interactionID := m.idempotency[lookup]; interactionID != "" {
+		interaction := m.interactions[interactionID]
+		if interaction.RequestHash != requestHash {
+			return nil, conversationstore.ErrIdempotencyConflict
+		}
+		if interaction.Status == conversationstore.InteractionStatusCompleted {
+			return &conversationstore.PreparedInteraction{InteractionID: interaction.ID, TurnID: interaction.TurnID, Replayed: true, Result: interaction.Result}, nil
+		}
+		if interaction.Status == conversationstore.InteractionStatusRunning && interaction.LeaseExpiresAt.After(now) {
+			return nil, conversationstore.ErrInteractionInProgress
+		}
+		history := m.ensureHistoryLocked(sessionID)
+		if len(history.history) >= m.limit {
+			return nil, conversationstore.ErrResourceExhausted
+		}
+		additionalEntities := 1
+		if _, hasActiveTurn := history.active[interaction.TurnID]; hasActiveTurn {
+			additionalEntities = 0
+		}
+		if m.entityCountLocked()+additionalEntities > m.quota.MaxInMemoryEntities {
+			return nil, conversationstore.ErrResourceExhausted
+		}
+		delete(history.active, interaction.TurnID)
+		history.nextID++
+		interaction.TurnID = history.nextID
+		interaction.Status = conversationstore.InteractionStatusRunning
+		interaction.Attempt++
+		interaction.UpdatedAt = now
+		interaction.LeaseExpiresAt = now.Add(leaseDuration)
+		interaction.Result = ""
+		interaction.CompletedAt = nil
+		history.active[interaction.TurnID] = &turn{id: interaction.TurnID, interactionID: interaction.ID, status: conversationstore.InteractionStatusRunning, createdAt: now}
+		m.interactions[interaction.ID] = interaction
+		m.activeInteractions[sessionID] = interaction.ID
+		return &conversationstore.PreparedInteraction{InteractionID: interaction.ID, TurnID: interaction.TurnID}, nil
+	}
+	if activeID := m.activeInteractions[sessionID]; activeID != "" {
+		active := m.interactions[activeID]
+		if active.Status == conversationstore.InteractionStatusRunning && active.LeaseExpiresAt.After(now) {
+			return nil, conversationstore.ErrSessionBusy
+		}
+		if history := m.history[sessionID]; history != nil {
+			delete(history.active, active.TurnID)
+		}
+		active.Status = conversationstore.InteractionStatusFailed
+		active.UpdatedAt = now
+		m.interactions[activeID] = active
+		delete(m.activeInteractions, sessionID)
+	}
+	history := m.ensureHistoryLocked(sessionID)
+	if len(history.history) >= m.limit {
+		return nil, conversationstore.ErrResourceExhausted
+	}
+	if m.entityCountLocked()+2 > m.quota.MaxInMemoryEntities {
+		return nil, conversationstore.ErrResourceExhausted
+	}
+	history.nextID++
+	interaction := conversationstore.Interaction{
+		ID: uuid.NewString(), TenantID: access.Subject.TenantID, OwnerID: access.Subject.UserID,
+		SessionID: sessionID, IdempotencyKey: idempotencyKey, RequestHash: requestHash,
+		TurnID: history.nextID, Status: conversationstore.InteractionStatusRunning, Attempt: 1,
+		LeaseExpiresAt: now.Add(leaseDuration), CreatedAt: now, UpdatedAt: now,
+	}
+	history.active[interaction.TurnID] = &turn{id: interaction.TurnID, interactionID: interaction.ID, status: conversationstore.InteractionStatusRunning, createdAt: now}
+	m.interactions[interaction.ID] = interaction
+	m.idempotency[lookup] = interaction.ID
+	m.activeInteractions[sessionID] = interaction.ID
+	return &conversationstore.PreparedInteraction{InteractionID: interaction.ID, TurnID: interaction.TurnID}, nil
+}
+
+func (m *MemoryStore) CompleteInteraction(ctx context.Context, access security.AccessContext, sessionID, interactionID string, turnID uint64, result string) error {
+	if err := checkContext(ctx); err != nil {
+		return err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err := m.validateSessionLocked(access, sessionID); err != nil {
+		return err
+	}
+	interaction, ok := m.interactions[interactionID]
+	if !ok || interaction.SessionID != sessionID || interaction.TurnID != turnID {
+		return conversationstore.ErrTurnNotFound
+	}
+	history := m.history[sessionID]
+	active, ok := history.active[turnID]
+	if !ok {
+		return conversationstore.ErrTurnNotFound
+	}
+	resultBytes := int64(len([]byte(result)))
+	if m.sessionBytesLocked(sessionID)+resultBytes > m.quota.MaxSessionBytes || m.tenantBytesLocked(access.Subject.TenantID)+resultBytes > m.quota.MaxTenantBytes {
+		return conversationstore.ErrResourceExhausted
+	}
+	now := time.Now()
+	active.status = conversationstore.InteractionStatusCompleted
+	delete(history.active, turnID)
+	history.history = append(history.history, active)
+	interaction.Status = conversationstore.InteractionStatusCompleted
+	interaction.Result = result
+	interaction.UpdatedAt = now
+	interaction.CompletedAt = &now
+	m.interactions[interactionID] = interaction
+	if m.activeInteractions[sessionID] == interactionID {
+		delete(m.activeInteractions, sessionID)
+	}
+	return nil
+}
+
+func (m *MemoryStore) FailInteraction(ctx context.Context, access security.AccessContext, sessionID, interactionID string, turnID uint64) error {
+	if err := checkContext(ctx); err != nil {
+		return err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err := m.validateSessionLocked(access, sessionID); err != nil {
+		return err
+	}
+	interaction, ok := m.interactions[interactionID]
+	if !ok || interaction.SessionID != sessionID || interaction.TurnID != turnID {
+		return conversationstore.ErrTurnNotFound
+	}
+	if history := m.history[sessionID]; history != nil {
+		delete(history.active, turnID)
+	}
+	interaction.Status = conversationstore.InteractionStatusFailed
+	interaction.UpdatedAt = time.Now()
+	m.interactions[interactionID] = interaction
+	if m.activeInteractions[sessionID] == interactionID {
+		delete(m.activeInteractions, sessionID)
+	}
+	return nil
 }
 
 func (m *MemoryStore) BeginTurn(ctx context.Context, access security.AccessContext, sessionID string) (uint64, error) {
@@ -268,6 +908,9 @@ func (m *MemoryStore) BeginTurn(ctx context.Context, access security.AccessConte
 		return 0, err
 	}
 	history := m.ensureHistoryLocked(sessionID)
+	if len(history.active) > 0 {
+		return 0, conversationstore.ErrSessionBusy
+	}
 	if len(history.history)+len(history.active) >= m.limit {
 		return 0, fmt.Errorf("%w: current session's context is full, please create a new session", conversationstore.ErrTurnLimitReached)
 	}
@@ -295,6 +938,16 @@ func (m *MemoryStore) AddHistoryToTurn(ctx context.Context, access security.Acce
 	if !ok {
 		return conversationstore.ErrTurnNotFound
 	}
+	events, bytes, err := messageBatchUsage(messages)
+	if err != nil {
+		return err
+	}
+	if len(active.messages())+events > m.quota.MaxEventsPerTurn ||
+		m.sessionBytesLocked(sessionID)+bytes > m.quota.MaxSessionBytes ||
+		m.tenantBytesLocked(access.Subject.TenantID)+bytes > m.quota.MaxTenantBytes ||
+		m.entityCountLocked()+events > m.quota.MaxInMemoryEntities {
+		return conversationstore.ErrResourceExhausted
+	}
 	if err := appendMessages(active, messages...); err != nil {
 		if len(active.messages()) == 0 {
 			delete(history.active, turnID)
@@ -302,6 +955,71 @@ func (m *MemoryStore) AddHistoryToTurn(ctx context.Context, access security.Acce
 		return err
 	}
 	return nil
+}
+
+func messageBatchUsage(messages []*ai.Message) (int, int64, error) {
+	count := 0
+	var bytes int64
+	for _, message := range messages {
+		if message == nil || !supportedRole(message.Role) {
+			continue
+		}
+		payload, err := json.Marshal(message)
+		if err != nil {
+			return 0, 0, fmt.Errorf("failed to encode message: %w", err)
+		}
+		count++
+		bytes += int64(len(payload))
+	}
+	return count, bytes, nil
+}
+
+func (m *MemoryStore) sessionBytesLocked(sessionID string) int64 {
+	var total int64
+	history := m.history[sessionID]
+	if history == nil {
+		return 0
+	}
+	turns := append([]*turn(nil), history.history...)
+	for _, active := range history.active {
+		turns = append(turns, active)
+	}
+	for _, current := range turns {
+		for _, message := range current.messages() {
+			payload, _ := json.Marshal(message)
+			total += int64(len(payload))
+		}
+	}
+	for _, interaction := range m.interactions {
+		if interaction.SessionID == sessionID {
+			total += int64(len([]byte(interaction.Result)))
+		}
+	}
+	return total
+}
+
+func (m *MemoryStore) tenantBytesLocked(tenantID string) int64 {
+	var total int64
+	for id, session := range m.sessions {
+		if session.TenantID == tenantID {
+			total += m.sessionBytesLocked(id)
+		}
+	}
+	return total
+}
+
+func (m *MemoryStore) entityCountLocked() int {
+	total := len(m.sessions) + len(m.interactions)
+	for _, history := range m.history {
+		total += len(history.active) + len(history.history)
+		for _, current := range history.active {
+			total += len(current.messages())
+		}
+		for _, current := range history.history {
+			total += len(current.messages())
+		}
+	}
+	return total
 }
 
 func (m *MemoryStore) IsTurnEmpty(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64) (bool, error) {
@@ -451,6 +1169,13 @@ func (m *MemoryStore) AddHistory(ctx context.Context, access security.AccessCont
 	for _, candidate := range history.active {
 		active = candidate
 	}
+	events, bytes, err := messageBatchUsage(messages)
+	if err != nil {
+		return err
+	}
+	if len(active.messages())+events > m.quota.MaxEventsPerTurn || m.sessionBytesLocked(sessionID)+bytes > m.quota.MaxSessionBytes || m.tenantBytesLocked(access.Subject.TenantID)+bytes > m.quota.MaxTenantBytes || m.entityCountLocked()+events > m.quota.MaxInMemoryEntities {
+		return conversationstore.ErrResourceExhausted
+	}
 	return appendMessages(active, messages...)
 }
 
@@ -528,7 +1253,7 @@ func (m *MemoryStore) validateSessionLocked(access security.AccessContext, sessi
 	if !exists || !access.CanAccessOwner(session.TenantID, session.OwnerID) {
 		return conversationstore.ErrSessionNotFound
 	}
-	return conversationstore.ValidateSessionActive(sessionID, session.Status, isExpired(session, time.Now()))
+	return conversationstore.ValidateSessionActive(sessionID, session.Status, m.isExpired(session, time.Now()))
 }
 
 func (m *MemoryStore) ensureHistoryLocked(sessionID string) *sessionHistory {
@@ -610,8 +1335,8 @@ func supportedRole(role ai.Role) bool {
 	return role == ai.RoleSystem || role == ai.RoleUser || role == ai.RoleModel
 }
 
-func isExpired(session conversationstore.Session, now time.Time) bool {
-	return conversationstore.IsSessionExpired(session.ExpiresAt, session.UpdatedAt, now, sessionExpiration)
+func (m *MemoryStore) isExpired(session conversationstore.Session, now time.Time) bool {
+	return conversationstore.IsSessionExpired(session.ExpiresAt, session.UpdatedAt, now, m.lifecycle.Retention)
 }
 
 func checkContext(ctx context.Context) error {

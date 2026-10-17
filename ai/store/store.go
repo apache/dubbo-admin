@@ -31,19 +31,30 @@ type SessionStore interface {
 	Create(ctx context.Context, access security.AccessContext, session *Session) error
 	Get(ctx context.Context, access security.AccessContext, sessionID string) (*Session, error)
 	List(ctx context.Context, access security.AccessContext) ([]*Session, error)
-	Touch(ctx context.Context, access security.AccessContext, sessionID string, updatedAt time.Time) error
+	Touch(ctx context.Context, access security.AccessContext, sessionID string, updatedAt time.Time, retentions ...time.Duration) error
 	Delete(ctx context.Context, access security.AccessContext, sessionID string) error
 }
 
 // MaintenanceStore exposes privileged lifecycle operations separately from
 // the business-facing SessionStore contract.
 type MaintenanceStore interface {
-	DeleteExpired(ctx context.Context, access security.AccessContext, now time.Time) (int, error)
+	DeleteExpired(ctx context.Context, access security.AccessContext, now time.Time, batchSizes ...int) (int, error)
 	AdoptLegacySessions(ctx context.Context, access security.AccessContext, tenantID, ownerID string) (int, error)
+	RegisterDerivedArtifact(ctx context.Context, access security.AccessContext, artifact DerivedArtifact) error
+	// ListDerivedArtifactsForCleanup uses each artifact's NextRetryAt as the
+	// authoritative retry schedule and includes orphaned or inconsistent sources.
+	ListDerivedArtifactsForCleanup(ctx context.Context, access security.AccessContext, now time.Time, limit int) ([]DerivedArtifact, error)
+	MarkDerivedArtifactDeleted(ctx context.Context, access security.AccessContext, artifactID string) error
+	MarkDerivedArtifactCleanupFailed(ctx context.Context, access security.AccessContext, artifactID, errorCode string, failedAt time.Time) error
+	DeleteExpiredPage(ctx context.Context, access security.AccessContext, now time.Time, cursor CleanupCursor, limit int) (int, CleanupCursor, error)
+	ListDerivedArtifactsForCleanupPage(ctx context.Context, access security.AccessContext, now time.Time, cursor CleanupCursor, limit int) ([]DerivedArtifact, CleanupCursor, error)
 }
 
 // MessageStore persists conversation Turns and Genkit messages.
 type MessageStore interface {
+	PrepareInteraction(ctx context.Context, access security.AccessContext, sessionID, idempotencyKey, requestHash string, leaseDuration time.Duration) (*PreparedInteraction, error)
+	CompleteInteraction(ctx context.Context, access security.AccessContext, sessionID, interactionID string, turnID uint64, result string) error
+	FailInteraction(ctx context.Context, access security.AccessContext, sessionID, interactionID string, turnID uint64) error
 	BeginTurn(ctx context.Context, access security.AccessContext, sessionID string) (uint64, error)
 	AddHistoryToTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64, messages ...*ai.Message) error
 	IsTurnEmpty(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64) (bool, error)
