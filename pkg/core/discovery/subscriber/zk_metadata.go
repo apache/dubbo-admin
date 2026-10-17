@@ -136,6 +136,7 @@ func processMetadataUpsert[T coremodel.Resource](
 			logger.Errorf("add metadata %s to store failed, cause: %s", newMetadataRes.ResourceKey(), err.Error())
 			return err
 		}
+		recordMetadataPlatformEvent(router, newMetadataRes, "added")
 		emitter.Send(events.NewResourceChangedEvent(cache.Added, nil, newMetadataRes))
 		return nil
 	}
@@ -153,6 +154,40 @@ func processMetadataUpsert[T coremodel.Resource](
 		return bizerror.NewAssertionError(reflect.TypeOf(oldMetadataRes), oldRes)
 	}
 
+	recordMetadataPlatformEvent(router, newMetadataRes, "updated")
 	emitter.Send(events.NewResourceChangedEvent(cache.Updated, oldMetadataRes, newMetadataRes))
 	return nil
+}
+
+func recordMetadataPlatformEvent(router store.Router, res coremodel.Resource, action string) {
+	switch item := res.(type) {
+	case *meshresource.ServiceProviderMetadataResource:
+		if item.Spec == nil {
+			return
+		}
+		RecordRegistryEvent(router, RegistryEventInput{
+			Mesh:        item.Mesh,
+			Source:      "Zookeeper",
+			SourceType:  "zookeeper",
+			Category:    "metadata",
+			Action:      action,
+			Message:     fmt.Sprintf("Zookeeper provider metadata %s: %s -> %s", action, item.Spec.ProviderAppName, item.Spec.ServiceName),
+			AppName:     item.Spec.ProviderAppName,
+			ServiceName: item.Spec.ServiceName,
+		})
+	case *meshresource.ServiceConsumerMetadataResource:
+		if item.Spec == nil {
+			return
+		}
+		RecordRegistryEvent(router, RegistryEventInput{
+			Mesh:        item.Mesh,
+			Source:      "Zookeeper",
+			SourceType:  "zookeeper",
+			Category:    "metadata",
+			Action:      action,
+			Message:     fmt.Sprintf("Zookeeper consumer metadata %s: %s -> %s", action, item.Spec.ConsumerAppName, item.Spec.ServiceName),
+			AppName:     item.Spec.ConsumerAppName,
+			ServiceName: item.Spec.ServiceName,
+		})
+	}
 }

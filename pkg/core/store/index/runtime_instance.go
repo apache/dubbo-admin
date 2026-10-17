@@ -27,11 +27,15 @@ import (
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 )
 
-const ByRuntimeInstanceIPIndex = "idx_rt_instance_ip"
+const (
+	ByRuntimeInstanceIPIndex   = "idx_rt_instance_ip"
+	ByRuntimeInstanceNameIndex = "idx_rt_instance_name"
+)
 
 func init() {
 	RegisterIndexers(meshresource.RuntimeInstanceKind, map[string]cache.IndexFunc{
-		ByRuntimeInstanceIPIndex: byRuntimeInstanceIp,
+		ByRuntimeInstanceIPIndex:   byRuntimeInstanceIp,
+		ByRuntimeInstanceNameIndex: byRuntimeInstanceName,
 	})
 }
 
@@ -44,4 +48,15 @@ func byRuntimeInstanceIp(obj interface{}) ([]string, error) {
 		return []string{}, nil
 	}
 	return []string{rtInstance.Spec.Ip}, nil
+}
+
+func byRuntimeInstanceName(obj interface{}) ([]string, error) {
+	rtInstance, ok := obj.(*meshresource.RuntimeInstanceResource)
+	if !ok {
+		return nil, bizerror.NewAssertionError(meshresource.RuntimeInstanceKind, reflect.TypeOf(obj).Name())
+	}
+	if rtInstance.Spec == nil || rtInstance.Spec.Name == "" {
+		return []string{}, nil
+	}
+	return []string{rtInstance.Spec.Name}, nil
 }

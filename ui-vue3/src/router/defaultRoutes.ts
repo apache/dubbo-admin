@@ -169,7 +169,6 @@ export const routes: Readonly<RouteRecordType[]> = [
                 component: () => import('../views/resources/applications/tabs/event.vue'),
                 meta: {
                   tab: true,
-                  hidden: true,
                   icon: 'material-symbols:date-range',
                   back: '/resources/applications/list'
                 }
@@ -243,7 +242,6 @@ export const routes: Readonly<RouteRecordType[]> = [
                 component: () => import('../views/resources/instances/tabs/event.vue'),
                 meta: {
                   tab: true,
-                  hidden: true,
                   icon: 'material-symbols:date-range',
                   back: '/resources/instances/list'
                 }
@@ -346,7 +344,6 @@ export const routes: Readonly<RouteRecordType[]> = [
                 component: () => import('../views/resources/services/tabs/event.vue'),
                 meta: {
                   tab: true,
-                  hidden: true,
                   back: '/resources/services/list',
                   icon: 'material-symbols:date-range'
                 }

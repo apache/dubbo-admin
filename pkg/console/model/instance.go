@@ -269,10 +269,21 @@ func DeriveInstanceLifecycleState(
 	registerState InstanceRegisterState,
 ) InstanceLifecycleState {
 	switch deployState {
-	case InstanceDeployStateCrashing, InstanceDeployStateFailed, InstanceDeployStateUnknown, InstanceDeployStateSucceeded:
+	case InstanceDeployStateCrashing, InstanceDeployStateFailed, InstanceDeployStateSucceeded:
 		return InstanceLifecycleStateError
 	case InstanceDeployStateTerminating:
 		return InstanceLifecycleStateTerminating
+	}
+
+	// When there is no deploy-state signal (e.g. no engine / mock engine), the
+	// lifecycle cannot be inferred from the deploy side. Fall back to registry
+	// signals alone instead of falsely reporting an error: a registered instance
+	// is considered Serving, otherwise the state stays Unknown.
+	if deployState == InstanceDeployStateUnknown {
+		if registerState == InstanceRegisterStateRegistered {
+			return InstanceLifecycleStateServing
+		}
+		return InstanceLifecycleStateUnknown
 	}
 
 	if registerState == InstanceRegisterStateRegistered {

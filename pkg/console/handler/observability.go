@@ -20,6 +20,7 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/gin-gonic/gin"
 
@@ -75,13 +76,17 @@ func GetGrafanaDashboard(ctx consolectx.Context, dim Dimension, dashboardType Da
 			if err = c.ShouldBindQuery(&req); err != nil {
 				break
 			}
-			fullURL, err = service.GetInstanceDashboard(ctx, grafanaDashboards.InstanceDashboardURL, &req)
+			fullURL, err = getInstanceDashboard(ctx, grafanaDashboards.InstanceDashboardURL, &req, dashboardType)
 		case ServiceDimension:
 			var req model.ServiceDashboardReq
 			if err = c.ShouldBindQuery(&req); err != nil {
 				break
 			}
-			fullURL, err = service.GetServiceDashboard(grafanaDashboards.ServiceDashboardURL, &req)
+			if dashboardType == TraceDashboard {
+				fullURL, err = service.GetServiceTraceDashboard(ctx, grafanaDashboards.ServiceDashboardURL, &req)
+			} else {
+				fullURL, err = service.GetServiceDashboard(grafanaDashboards.ServiceDashboardURL, &req)
+			}
 		}
 
 		if err != nil {
@@ -92,6 +97,13 @@ func GetGrafanaDashboard(ctx consolectx.Context, dim Dimension, dashboardType Da
 			FullURL: fullURL,
 		}))
 	}
+}
+
+func getInstanceDashboard(ctx consolectx.Context, baseURL *url.URL, req *model.InstanceDashboardReq, dashboardType DashboardType) (string, error) {
+	if dashboardType == TraceDashboard {
+		return service.GetInstanceTraceDashboard(ctx, baseURL, req)
+	}
+	return service.GetInstanceDashboard(ctx, baseURL, req)
 }
 
 func GetPrometheus(ctx consolectx.Context) gin.HandlerFunc {

@@ -18,8 +18,6 @@
 package service
 
 import (
-	"github.com/apache/dubbo-admin/pkg/common/constants"
-	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/duke-git/lancet/v2/slice"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
@@ -114,21 +112,11 @@ func GetTagRule(ctx consolectx.Context, name string, mesh string) (*meshresource
 }
 
 func UpdateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) error {
-	lockMgr := ctx.LockManager()
-	if lockMgr == nil {
-		return updateTagRuleUnsafe(ctx, res)
-	}
-
-	lockKey := lock.BuildTagRouteLockKey(res.Mesh, res.Name)
-
-	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
-		return updateTagRuleUnsafe(ctx, res)
-	})
+	return UpdateTagRuleWithOptions(ctx, res, RuleMutationOptions{})
 }
 
-func updateTagRuleUnsafe(ctx consolectx.Context, res *meshresource.TagRouteResource) error {
-	err := ctx.ResourceManager().Update(res)
-	if err != nil {
+func UpdateTagRuleWithOptions(ctx consolectx.Context, res *meshresource.TagRouteResource, opts RuleMutationOptions) error {
+	if err := updateRule(ctx, res, opts); err != nil {
 		logger.Warnf("update tag rule %s error: %v", res.Name, err)
 		return err
 	}
@@ -136,21 +124,11 @@ func updateTagRuleUnsafe(ctx consolectx.Context, res *meshresource.TagRouteResou
 }
 
 func CreateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) error {
-	lockMgr := ctx.LockManager()
-	if lockMgr == nil {
-		return createTagRuleUnsafe(ctx, res)
-	}
-
-	lockKey := lock.BuildTagRouteLockKey(res.Mesh, res.Name)
-
-	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
-		return createTagRuleUnsafe(ctx, res)
-	})
+	return CreateTagRuleWithOptions(ctx, res, RuleMutationOptions{})
 }
 
-func createTagRuleUnsafe(ctx consolectx.Context, res *meshresource.TagRouteResource) error {
-	err := ctx.ResourceManager().Add(res)
-	if err != nil {
+func CreateTagRuleWithOptions(ctx consolectx.Context, res *meshresource.TagRouteResource, opts RuleMutationOptions) error {
+	if err := createRule(ctx, res, opts); err != nil {
 		logger.Warnf("create tag rule %s error: %v", res.Name, err)
 		return err
 	}
@@ -158,19 +136,12 @@ func createTagRuleUnsafe(ctx consolectx.Context, res *meshresource.TagRouteResou
 }
 
 func DeleteTagRule(ctx consolectx.Context, name string, mesh string) error {
-	lockMgr := ctx.LockManager()
-	if lockMgr == nil {
-		return deleteTagRuleUnsafe(ctx, name, mesh)
-	}
-	lockKey := lock.BuildTagRouteLockKey(mesh, name)
-	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
-		return deleteTagRuleUnsafe(ctx, name, mesh)
-	})
+	return DeleteTagRuleWithOptions(ctx, name, mesh, RuleMutationOptions{})
 }
 
-func deleteTagRuleUnsafe(ctx consolectx.Context, name string, mesh string) error {
-	err := ctx.ResourceManager().DeleteByKey(meshresource.TagRouteKind, mesh, coremodel.BuildResourceKey(mesh, name))
-	if err != nil {
+func DeleteTagRuleWithOptions(ctx consolectx.Context, name string, mesh string, opts RuleMutationOptions) error {
+	ruleRef := RuleRef{Kind: meshresource.TagRouteKind, Mesh: mesh, Name: name}
+	if err := deleteRule(ctx, ruleRef, opts); err != nil {
 		logger.Warnf("delete tag rule %s error: %v", name, err)
 		return err
 	}

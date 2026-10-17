@@ -21,11 +21,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -118,12 +120,26 @@ func (m mockResourceList) SetItems(items []model.Resource) {
 // setupTestStore creates a new GormStore with an in-memory SQLite database for testing
 func setupTestStore(t *testing.T) (*GormStore, func()) {
 	// Create temporary SQLite database file for better isolation and reliability
-	tmpFile, err := os.CreateTemp("", fmt.Sprintf("test-db-%s-*.db", t.Name()))
+	dbPath := tempSQLitePath(t)
+	dialector := sqlite.Open(dbPath)
+	return setupTestStoreWithDialector(t, dialector)
+}
+
+func tempSQLitePath(t *testing.T) string {
+	t.Helper()
+	safeName := strings.NewReplacer("/", "_", "\\", "_").Replace(t.Name())
+	tmpFile, err := os.CreateTemp("", fmt.Sprintf("test-db-%s-*.db", safeName))
 	require.NoError(t, err)
 	dbPath := tmpFile.Name()
-	tmpFile.Close()
+	require.NoError(t, tmpFile.Close())
+	t.Cleanup(func() {
+		_ = os.Remove(dbPath)
+	})
+	return dbPath
+}
 
-	dialector := sqlite.Open(dbPath)
+func setupTestStoreWithDialector(t *testing.T, dialector gorm.Dialector) (*GormStore, func()) {
+	t.Helper()
 	pool, err := NewConnectionPool(dialector, storecfg.MySQL, t.Name(), DefaultConnectionPoolConfig())
 	require.NoError(t, err)
 
@@ -146,8 +162,7 @@ func setupTestStore(t *testing.T) (*GormStore, func()) {
 
 	// Cleanup function
 	cleanup := func() {
-		pool.Close()
-		os.Remove(dbPath)
+		_ = pool.Close()
 	}
 
 	return store, cleanup
@@ -802,10 +817,46 @@ func TestGormStore_ListByIndexesEmpty(t *testing.T) {
 	err = store.Add(mockRes)
 	require.NoError(t, err)
 
-	// List with empty indexes should return all resources
+	// Empty index conditions preserve memory-store semantics: no indexed query means no results.
 	resources, err := store.ListByIndexes([]index.IndexCondition{})
 	assert.NoError(t, err)
-	assert.Len(t, resources, 1)
+	assert.Empty(t, resources)
+}
+
+func TestGormStore_ListResourcesSorted(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	err := store.Init(nil)
+	require.NoError(t, err)
+
+	mockRes1 := &mockResource{
+		Kind: "TestResource",
+		Key:  "mesh/test-key-2",
+		Mesh: "mesh",
+		Meta: metav1.ObjectMeta{Name: "test-resource-2"},
+	}
+	mockRes2 := &mockResource{
+		Kind: "TestResource",
+		Key:  "mesh/test-key-1",
+		Mesh: "mesh",
+		Meta: metav1.ObjectMeta{Name: "test-resource-1"},
+	}
+
+	err = store.Add(mockRes1)
+	require.NoError(t, err)
+	err = store.Add(mockRes2)
+	require.NoError(t, err)
+
+	resources := store.List()
+	require.Len(t, resources, 2)
+	// List() returns resources in arbitrary order, so check both are present
+	keys := []string{
+		resources[0].(model.Resource).ResourceKey(),
+		resources[1].(model.Resource).ResourceKey(),
+	}
+	assert.Contains(t, keys, "mesh/test-key-1")
+	assert.Contains(t, keys, "mesh/test-key-2")
 }
 
 func TestGormStore_PageListByIndexes(t *testing.T) {
