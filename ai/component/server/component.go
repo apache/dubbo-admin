@@ -218,7 +218,7 @@ func (s *ServerComponent) Start() error {
 			return fmt.Errorf("failed to adopt legacy sessions: %w", err)
 		}
 	}
-	router, err := engine.NewRouterWithCORS(agentComponent.Agent, conversationStore, maintenanceStore, authenticator, s.corsOrigins)
+	router, err := engine.NewRouterWithLifecycle(agentComponent.Agent, conversationStore, maintenanceStore, authenticator, s.corsOrigins, memoryComponent.GetLifecyclePolicy())
 	if err != nil {
 		return fmt.Errorf("failed to create AI router: %w", err)
 	}

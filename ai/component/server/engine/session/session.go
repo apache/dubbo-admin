@@ -44,25 +44,32 @@ type Manager struct {
 	store       conversationstore.SessionStore
 	maintenance conversationstore.MaintenanceStore
 	policy      security.PolicyEnforcer
+	lifecycle   conversationstore.LifecyclePolicy
 
 	cleanupCtx    context.Context
 	cleanupCancel context.CancelFunc
 	cleanupWG     sync.WaitGroup
+	cleanupCursor conversationstore.CleanupCursor
 	closeOnce     sync.Once
 }
 
 // NewManager creates a session manager with separate business and privileged
 // lifecycle Store dependencies.
 func NewManager(sessionStore conversationstore.SessionStore, maintenanceStore conversationstore.MaintenanceStore) *Manager {
-	return NewManagerWithPolicy(sessionStore, maintenanceStore, security.OwnershipPolicy{})
+	return NewManagerWithLifecycle(sessionStore, maintenanceStore, security.OwnershipPolicy{}, conversationstore.DefaultLifecyclePolicy())
 }
 
 func NewManagerWithPolicy(sessionStore conversationstore.SessionStore, maintenanceStore conversationstore.MaintenanceStore, policy security.PolicyEnforcer) *Manager {
+	return NewManagerWithLifecycle(sessionStore, maintenanceStore, policy, conversationstore.DefaultLifecyclePolicy())
+}
+
+func NewManagerWithLifecycle(sessionStore conversationstore.SessionStore, maintenanceStore conversationstore.MaintenanceStore, policy security.PolicyEnforcer, lifecycle conversationstore.LifecyclePolicy) *Manager {
 	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
 	m := &Manager{
 		store:         sessionStore,
 		maintenance:   maintenanceStore,
 		policy:        policy,
+		lifecycle:     lifecycle,
 		cleanupCtx:    cleanupCtx,
 		cleanupCancel: cleanupCancel,
 	}
@@ -79,7 +86,7 @@ func (m *Manager) CreateSession(ctx context.Context, access security.AccessConte
 		return nil, err
 	}
 	now := time.Now()
-	expiresAt := now.Add(24 * time.Hour)
+	expiresAt := now.Add(m.lifecycle.Retention)
 	session := &Session{
 		ID:        generateSessionID(),
 		TenantID:  access.Subject.TenantID,
@@ -123,7 +130,7 @@ func (m *Manager) TouchSession(ctx context.Context, access security.AccessContex
 	if _, err := m.GetSession(ctx, access, sessionID); err != nil {
 		return err
 	}
-	return m.store.Touch(ctx, access, sessionID, time.Now())
+	return m.store.Touch(ctx, access, sessionID, time.Now(), m.lifecycle.Retention)
 }
 
 // DeleteSession removes a session and its conversation history.
@@ -169,16 +176,21 @@ func (m *Manager) Close() error {
 
 func (m *Manager) cleanupExpiredSessions() {
 	defer m.cleanupWG.Done()
-	ticker := time.NewTicker(time.Hour)
+	ticker := time.NewTicker(m.lifecycle.CleanupInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			deleted, err := m.maintenance.DeleteExpired(m.cleanupCtx, security.SystemAccessContext(), time.Now())
+			deleted, next, err := m.maintenance.DeleteExpiredPage(m.cleanupCtx, security.SystemAccessContext(), time.Now(), m.cleanupCursor, m.lifecycle.CleanupBatchSize)
 			if err != nil {
 				rt.GetLogger().Error("Failed to clean expired sessions", "error", err)
 				continue
+			}
+			previousCursor := m.cleanupCursor
+			m.cleanupCursor = next
+			if !next.Valid || (deleted == 0 && next == previousCursor) {
+				m.cleanupCursor = conversationstore.CleanupCursor{}
 			}
 			if deleted > 0 {
 				rt.GetLogger().Info("Cleaned up expired sessions", "count", deleted)

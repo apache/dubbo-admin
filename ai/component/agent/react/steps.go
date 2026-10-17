@@ -182,6 +182,7 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 		runtime.GetLogger().Warn("react: empty forced answer, using fallback")
 		answer = fallbackAnswer
 	}
+	s.FinalAnswer = answer
 	if err := ra.finish(ctx, chans, history, s.Session, turnID, answer); err != nil {
 		return false, err
 	}

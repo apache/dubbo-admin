@@ -17,7 +17,14 @@ paths:
       operationId: streamChat
       tags:
         - 聊天
-      parameters: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
       requestBody:
         content:
           application/json:
@@ -100,6 +107,14 @@ paths:
               schema:
                 type: string
                 example: sess_20240118143022_abcd1234
+            X-Interaction-ID:
+              description: Stable interaction ID reused by idempotent retries
+              schema:
+                type: string
+        "409":
+          description: Idempotency conflict or active Session interaction
+        "429":
+          description: Conversation storage quota exhausted
         "400":
           description: 请求参数错误
           content:

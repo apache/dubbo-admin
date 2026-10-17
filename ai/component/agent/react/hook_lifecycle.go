@@ -41,6 +41,7 @@ type interactionTrace struct {
 	FallbackUsed   bool
 	FallbackReason string
 	Degraded       bool
+	FinalAnswer    string
 }
 
 func emitStageEnd(s *interactionTrace, ctx context.Context, startedAt time.Time, err error) {

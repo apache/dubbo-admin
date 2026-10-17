@@ -2,9 +2,14 @@ package engine
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
+	"time"
 
 	"dubbo-admin-ai/component/server/engine/session"
 	"dubbo-admin-ai/component/server/engine/sse"
@@ -22,8 +27,11 @@ import (
 
 // AgentHandler handles AI Agent requests
 type AgentHandler struct {
-	agent      agent.Agent
-	sessionMgr *session.Manager
+	agent            agent.Agent
+	sessionMgr       *session.Manager
+	interactionStore conversationstore.MessageStore
+	interactionLease time.Duration
+	newStreamWriter  func(*gin.Context) (*sse.StreamWriter, error)
 }
 
 const (
@@ -34,10 +42,21 @@ const (
 )
 
 // NewAgentHandler creates an AI Agent handler
-func NewAgentHandler(agent agent.Agent, sessionMgr *session.Manager) *AgentHandler {
-	return &AgentHandler{
-		agent:      agent,
-		sessionMgr: sessionMgr,
+func NewAgentHandler(agent agent.Agent, sessionMgr *session.Manager, stores ...conversationstore.MessageStore) *AgentHandler {
+	handler := &AgentHandler{
+		agent: agent, sessionMgr: sessionMgr,
+		interactionLease: conversationstore.DefaultLifecyclePolicy().InteractionLease,
+		newStreamWriter:  sse.NewStreamWriter,
+	}
+	if len(stores) > 0 {
+		handler.interactionStore = stores[0]
+	}
+	return handler
+}
+
+func (h *AgentHandler) SetInteractionLease(lease time.Duration) {
+	if lease > 0 {
+		h.interactionLease = lease
 	}
 }
 
@@ -70,17 +89,58 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 		h.writeSessionError(c, "Invalid session ID", err, http.StatusBadRequest)
 		return
 	}
+	var prepared *conversationstore.PreparedInteraction
+	handlerOwnsInteraction := false
+	if h.interactionStore != nil {
+		idempotencyKey := strings.TrimSpace(c.GetHeader("Idempotency-Key"))
+		if !validIdempotencyKey(idempotencyKey) {
+			c.JSON(http.StatusBadRequest, NewAPIErrorResponse("IDEMPOTENCY_KEY_REQUIRED", "A valid Idempotency-Key is required"))
+			return
+		}
+		prepared, err = h.interactionStore.PrepareInteraction(requestCtx, access, sessionID, idempotencyKey, hashChatRequest(req), h.interactionLease)
+		if err != nil {
+			h.writeInteractionError(c, err)
+			return
+		}
+		c.Header("X-Interaction-ID", prepared.InteractionID)
+		handlerOwnsInteraction = !prepared.Replayed
+		defer func() {
+			if !handlerOwnsInteraction {
+				return
+			}
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(requestCtx), 30*time.Second)
+			defer cancel()
+			if cleanupErr := h.interactionStore.FailInteraction(cleanupCtx, access, sessionID, prepared.InteractionID, prepared.TurnID); cleanupErr != nil && !errors.Is(cleanupErr, conversationstore.ErrTurnNotFound) {
+				rt.GetLogger().Error("Failed to release unclaimed interaction", "session_id", sessionID, "interaction_id", prepared.InteractionID, "error", security.SafeError(cleanupErr))
+			}
+		}()
+	}
 	if err = h.sessionMgr.TouchSession(requestCtx, access, sessionID); err != nil {
 		h.writeSessionError(c, "Invalid session ID", err, http.StatusBadRequest)
 		return
 	}
 
-	if streamWriter, err = sse.NewStreamWriter(c); err != nil {
+	if streamWriter, err = h.newStreamWriter(c); err != nil {
 		rt.GetLogger().Error("Failed to create stream writer", "error_type", fmt.Sprintf("%T", err))
 		c.JSON(http.StatusInternalServerError, NewErrorResponse(clientInternalError))
 		return
 	}
 	sseHandler = sse.NewStreamHandler(streamWriter, sessionID)
+	if prepared != nil && prepared.Replayed {
+		if err := sseHandler.HandleText(prepared.Result, 0); err == nil {
+			err = sseHandler.HandleContentBlockStop(0)
+		}
+		if err == nil {
+			err = sseHandler.MessageDeltaWithUsage("end_turn", &schema.Observation{})
+		}
+		if err == nil {
+			err = sseHandler.FinishStream()
+		}
+		if err != nil {
+			rt.GetLogger().Error("Failed to replay interaction", "interaction_id", prepared.InteractionID, "error_type", fmt.Sprintf("%T", err))
+		}
+		return
+	}
 
 	// Set response headers and error recovery
 	defer func() {
@@ -96,7 +156,16 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 	// Preserve inbound tracing values while allowing the interaction to finish
 	// after a client disconnects. The agent cancels and drains it on shutdown.
 	extractedCtx := otel.GetTextMapPropagator().Extract(requestCtx, propagation.HeaderCarrier(c.Request.Header))
+	if prepared != nil {
+		extractedCtx = conversationstore.WithPreparedInteraction(extractedCtx, prepared)
+	}
 	channels = h.agent.Interact(context.WithoutCancel(extractedCtx), &schema.UserInput{Content: req.Message}, sessionID)
+	if !channels.Valid() {
+		rt.GetLogger().Error("Agent returned invalid channels", "session_id", sessionID)
+		sseHandler.HandleError("agent_error", clientAgentError)
+		return
+	}
+	handlerOwnsInteraction = false
 	if traceID := channels.TraceID(); traceID != "" {
 		c.Header("X-Trace-ID", traceID)
 	}
@@ -150,6 +219,44 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 			return
 		}
 	}
+}
+
+func validIdempotencyKey(key string) bool {
+	if len(key) == 0 || len(key) > 128 {
+		return false
+	}
+	for _, r := range key {
+		if r < 0x21 || r > 0x7e {
+			return false
+		}
+	}
+	return true
+}
+
+func hashChatRequest(req ChatRequest) string {
+	payload, _ := json.Marshal(struct {
+		Version   int    `json:"version"`
+		SessionID string `json:"session_id"`
+		Message   string `json:"message"`
+	}{Version: 1, SessionID: req.SessionID, Message: req.Message})
+	digest := sha256.Sum256(payload)
+	return hex.EncodeToString(digest[:])
+}
+
+func (h *AgentHandler) writeInteractionError(c *gin.Context, err error) {
+	status, code, message := http.StatusInternalServerError, "INTERNAL_ERROR", clientInternalError
+	switch {
+	case errors.Is(err, conversationstore.ErrIdempotencyConflict):
+		status, code, message = http.StatusConflict, "IDEMPOTENCY_CONFLICT", "Idempotency key conflicts with the original request"
+	case errors.Is(err, conversationstore.ErrInteractionInProgress):
+		status, code, message = http.StatusConflict, "INTERACTION_IN_PROGRESS", "The original interaction is still in progress"
+	case errors.Is(err, conversationstore.ErrSessionBusy):
+		status, code, message = http.StatusConflict, "SESSION_BUSY", "The session already has an active interaction"
+	case errors.Is(err, conversationstore.ErrResourceExhausted), errors.Is(err, conversationstore.ErrTurnLimitReached):
+		status, code, message = http.StatusTooManyRequests, "RESOURCE_EXHAUSTED", "Conversation storage quota exhausted"
+	}
+	rt.GetLogger().Error("Interaction preparation failed", "error", security.SafeError(err))
+	c.JSON(status, NewAPIErrorResponse(code, message))
 }
 
 // discardAgentOutput keeps detached interactions from blocking on their

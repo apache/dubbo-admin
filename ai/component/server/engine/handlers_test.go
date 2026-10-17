@@ -32,6 +32,8 @@ import (
 	"dubbo-admin-ai/component/server/engine/session"
 	"dubbo-admin-ai/component/server/engine/sse"
 	"dubbo-admin-ai/schema"
+	"dubbo-admin-ai/security"
+	conversationstore "dubbo-admin-ai/store"
 	memorystore "dubbo-admin-ai/store/memory"
 	"dubbo-admin-ai/testutils"
 
@@ -47,6 +49,33 @@ type captureAgent struct {
 }
 
 type failingAgent struct{ err error }
+
+type panicAgent struct{}
+
+func (*panicAgent) Interact(context.Context, *schema.UserInput, string) *agent.Channels {
+	panic("injected agent panic")
+}
+
+type nilChannelsAgent struct{}
+
+func (*nilChannelsAgent) Interact(context.Context, *schema.UserInput, string) *agent.Channels {
+	return nil
+}
+
+type invalidChannelsAgent struct{}
+
+func (*invalidChannelsAgent) Interact(context.Context, *schema.UserInput, string) *agent.Channels {
+	return &agent.Channels{}
+}
+
+type touchFailStore struct {
+	conversationstore.BackendStore
+	err error
+}
+
+func (s *touchFailStore) Touch(context.Context, security.AccessContext, string, time.Time, ...time.Duration) error {
+	return s.err
+}
 
 func (a *failingAgent) Interact(context.Context, *schema.UserInput, string) *agent.Channels {
 	channels := agent.NewChannels(1)
@@ -146,6 +175,164 @@ func TestStreamChatContextContract(t *testing.T) {
 	}
 	if spanContext := trace.SpanContextFromContext(capturedAgent.ctx); !spanContext.IsValid() || !spanContext.IsRemote() {
 		t.Fatalf("agent received invalid inbound span context: %v", spanContext)
+	}
+}
+
+func TestStreamChatRequiresAndEnforcesIdempotencyKey(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	store := memorystore.NewMemoryStore(2)
+	manager := session.NewManager(store, store)
+	t.Cleanup(func() { _ = manager.Close() })
+	access := testutils.TestAccess()
+	created, err := manager.CreateSession(context.Background(), access)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := NewAgentHandler(&captureAgent{}, manager, store)
+	router := gin.New()
+	router.POST("/chat", handler.StreamChat)
+	body := []byte(`{"message":"hello","sessionID":"` + created.ID + `"}`)
+
+	send := func(key string) *httptest.ResponseRecorder {
+		request := httptest.NewRequest(http.MethodPost, "/chat", bytes.NewReader(body))
+		request = request.WithContext(testutils.ContextWithTestAccess(request.Context()))
+		request.Header.Set("Content-Type", "application/json")
+		if key != "" {
+			request.Header.Set("Idempotency-Key", key)
+		}
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, request)
+		return response
+	}
+	if response := send(""); response.Code != http.StatusBadRequest || !strings.Contains(response.Body.String(), "IDEMPOTENCY_KEY_REQUIRED") {
+		t.Fatalf("missing key response = %d %s", response.Code, response.Body.String())
+	}
+	first := send("request-1")
+	if first.Code != http.StatusOK || first.Header().Get("X-Interaction-ID") == "" {
+		t.Fatalf("first response = %d %s, interaction=%q", first.Code, first.Body.String(), first.Header().Get("X-Interaction-ID"))
+	}
+	retry := send("request-1")
+	if retry.Code != http.StatusConflict || !strings.Contains(retry.Body.String(), "INTERACTION_IN_PROGRESS") {
+		t.Fatalf("retry response = %d %s", retry.Code, retry.Body.String())
+	}
+	concurrent := send("request-2")
+	if concurrent.Code != http.StatusConflict || !strings.Contains(concurrent.Body.String(), "SESSION_BUSY") {
+		t.Fatalf("concurrent response = %d %s", concurrent.Code, concurrent.Body.String())
+	}
+}
+
+func TestStreamChatReleasesPreparedInteractionWhenTouchFails(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	backend := memorystore.NewMemoryStore(2)
+	store := &touchFailStore{BackendStore: backend, err: errors.New("touch failed")}
+	manager := session.NewManager(store, store)
+	t.Cleanup(func() { _ = manager.Close() })
+	access := testutils.TestAccess()
+	created := testutils.TestSession("touch-failure-session", time.Now())
+	if err := backend.Create(context.Background(), access, created); err != nil {
+		t.Fatal(err)
+	}
+	handler := NewAgentHandler(&captureAgent{}, manager, backend)
+	router := gin.New()
+	router.POST("/chat", handler.StreamChat)
+	body := []byte(`{"message":"hello","sessionID":"` + created.ID + `"}`)
+	request := httptest.NewRequest(http.MethodPost, "/chat", bytes.NewReader(body))
+	request = request.WithContext(testutils.ContextWithTestAccess(request.Context()))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Idempotency-Key", "touch-failure")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	retried, err := backend.PrepareInteraction(context.Background(), access, created.ID, "touch-failure", hashChatRequest(ChatRequest{Message: "hello", SessionID: created.ID}), time.Minute)
+	if err != nil {
+		t.Fatalf("PrepareInteraction() after Touch failure error = %v", err)
+	}
+	if err := backend.FailInteraction(context.Background(), access, created.ID, retried.InteractionID, retried.TurnID); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestStreamChatReleasesPreparedInteractionWhenSSEInitializationFails(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	backend := memorystore.NewMemoryStore(2)
+	manager := session.NewManager(backend, backend)
+	t.Cleanup(func() { _ = manager.Close() })
+	access := testutils.TestAccess()
+	created, err := manager.CreateSession(context.Background(), access)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := NewAgentHandler(&captureAgent{}, manager, backend)
+	handler.newStreamWriter = func(*gin.Context) (*sse.StreamWriter, error) {
+		return nil, errors.New("streaming unsupported")
+	}
+	router := gin.New()
+	router.POST("/chat", handler.StreamChat)
+	body := []byte(`{"message":"hello","sessionID":"` + created.ID + `"}`)
+	request := httptest.NewRequest(http.MethodPost, "/chat", bytes.NewReader(body))
+	request = request.WithContext(testutils.ContextWithTestAccess(request.Context()))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Idempotency-Key", "sse-failure")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	retried, err := backend.PrepareInteraction(context.Background(), access, created.ID, "sse-failure", hashChatRequest(ChatRequest{Message: "hello", SessionID: created.ID}), time.Minute)
+	if err != nil {
+		t.Fatalf("PrepareInteraction() after SSE failure error = %v", err)
+	}
+	if err := backend.FailInteraction(context.Background(), access, created.ID, retried.InteractionID, retried.TurnID); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestStreamChatRetainsInteractionOwnershipOnSynchronousAgentFailure(t *testing.T) {
+	tests := []struct {
+		name  string
+		agent agent.Agent
+	}{
+		{name: "panic", agent: &panicAgent{}},
+		{name: "nil channels", agent: &nilChannelsAgent{}},
+		{name: "invalid channels", agent: &invalidChannelsAgent{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gin.SetMode(gin.TestMode)
+			backend := memorystore.NewMemoryStore(2)
+			manager := session.NewManager(backend, backend)
+			t.Cleanup(func() { _ = manager.Close() })
+			access := testutils.TestAccess()
+			created, err := manager.CreateSession(context.Background(), access)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			handler := NewAgentHandler(tt.agent, manager, backend)
+			router := gin.New()
+			router.POST("/chat", handler.StreamChat)
+			requestBody := ChatRequest{Message: "hello", SessionID: created.ID}
+			body, err := json.Marshal(requestBody)
+			if err != nil {
+				t.Fatal(err)
+			}
+			request := httptest.NewRequest(http.MethodPost, "/chat", bytes.NewReader(body))
+			request = request.WithContext(testutils.ContextWithTestAccess(request.Context()))
+			request.Header.Set("Content-Type", "application/json")
+			request.Header.Set("Idempotency-Key", "sync-agent-failure")
+			router.ServeHTTP(httptest.NewRecorder(), request)
+
+			retried, err := backend.PrepareInteraction(context.Background(), access, created.ID, "sync-agent-failure", hashChatRequest(requestBody), time.Minute)
+			if err != nil {
+				t.Fatalf("PrepareInteraction() after synchronous Agent failure error = %v", err)
+			}
+			if err := backend.FailInteraction(context.Background(), access, created.ID, retried.InteractionID, retried.TurnID); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
 
