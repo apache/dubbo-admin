@@ -78,6 +78,41 @@ func TestScriptRuleLifecycleAndRollback(t *testing.T) {
 	require.NoError(t, DeleteScriptRuleWithOptions(ctx, name, "", RuleMutationOptions{Author: "admin"}))
 }
 
+func TestScriptRuleRollbackPreservesOmittedEnabled(t *testing.T) {
+	ctx := setupRollbackTestEnv(t)
+	const (
+		key  = "demo-provider"
+		name = key + ".script-router"
+	)
+	omitted, err := meshresource.DecodeRule(meshresource.ScriptRouteKind, "", name, `
+configVersion: v3.0
+scope: application
+key: demo-provider
+type: javascript
+script: return invokers;
+`)
+	require.NoError(t, err)
+	require.NoError(t, CreateScriptRuleWithOptions(ctx, omitted.(*meshresource.ScriptRouteResource), RuleMutationOptions{Author: "admin"}))
+
+	explicitFalse := scriptRouterRule(key, "return invokers;")
+	explicitFalse.Spec.Enabled = false
+	require.NoError(t, UpdateScriptRuleWithOptions(ctx, explicitFalse, RuleMutationOptions{Author: "admin"}))
+
+	versions, err := ListRuleVersions(ctx, RuleRef{Kind: meshresource.ScriptRouteKind, Name: name})
+	require.NoError(t, err)
+	require.Len(t, versions.Items, 2)
+	require.NotEqual(t, versions.Items[0].ContentHash, versions.Items[1].ContentHash)
+
+	_, err = RollbackRuleVersion(ctx, RuleRef{Kind: meshresource.ScriptRouteKind, Name: name}, versions.Items[1].VersionNo, "restore default-enabled script", "admin")
+	require.NoError(t, err)
+
+	actual, err := GetScriptRule(ctx, name, "")
+	require.NoError(t, err)
+	raw, err := meshresource.EncodeRule(actual)
+	require.NoError(t, err)
+	require.NotContains(t, string(raw), "enabled:")
+}
+
 func TestRouterRuleMutationRejectsInvalidRuntimeContract(t *testing.T) {
 	ctx := setupRollbackTestEnv(t)
 	invalid := scriptRouterRule("demo-provider", "return invokers;")

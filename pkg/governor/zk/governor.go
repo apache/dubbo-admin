@@ -123,11 +123,6 @@ func (g *RuleGovernor) UpdateRule(r coremodel.Resource) error {
 func (g *RuleGovernor) DeleteRule(r coremodel.Resource) error {
 	path := ruleConfigPath(r)
 	err := g.conn.Delete(path, -1)
-	if err == zk.ErrNoNode && usesDubboConfigGroup(r) {
-		// Rules created by older Admin versions used the flat path. Remove it
-		// as a compatibility fallback while all new writes use the grouped path.
-		err = g.conn.Delete(legacyRuleConfigPath(r.ResourceMeta().Name), -1)
-	}
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.ZKError,
 			fmt.Sprintf("failed to delete zk node, path: %s", path))

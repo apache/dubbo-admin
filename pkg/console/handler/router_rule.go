@@ -64,7 +64,7 @@ func GetAffinityRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 			util.HandleNotFoundError(c, name)
 			return
 		}
-		c.JSON(http.StatusOK, model.GenAffinityRuleResp(res.Spec))
+		c.JSON(http.StatusOK, model.GenAffinityRuleResp(res))
 	}
 }
 
@@ -89,6 +89,7 @@ func mutateAffinityRule(ctx consolectx.Context, update bool) gin.HandlerFunc {
 		name, mesh := c.Param("ruleName"), c.Query("mesh")
 		res := meshresource.NewAffinityRouteResourceWithAttributes(name, mesh)
 		res.Spec = input.ToProto()
+		meshresource.SetAffinityRuleOptionalFields(res, input.Runtime, input.Enabled)
 		if err := meshresource.ValidateRule(res); err != nil {
 			util.HandleArgumentError(c, err)
 			return
@@ -111,7 +112,7 @@ func mutateAffinityRule(ctx consolectx.Context, update bool) gin.HandlerFunc {
 			util.HandleServiceError(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, model.GenAffinityRuleResp(res.Spec))
+		c.JSON(http.StatusOK, model.GenAffinityRuleResp(res))
 	}
 }
 
@@ -159,7 +160,7 @@ func GetScriptRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 			util.HandleNotFoundError(c, name)
 			return
 		}
-		c.JSON(http.StatusOK, model.GenScriptRuleResp(res.Spec))
+		c.JSON(http.StatusOK, model.GenScriptRuleResp(res))
 	}
 }
 
@@ -184,6 +185,7 @@ func mutateScriptRule(ctx consolectx.Context, update bool) gin.HandlerFunc {
 		name, mesh := c.Param("ruleName"), c.Query("mesh")
 		res := meshresource.NewScriptRouteResourceWithAttributes(name, mesh)
 		res.Spec = input.ToProto()
+		meshresource.SetScriptRuleOptionalEnabled(res, input.Enabled)
 		if err := meshresource.ValidateRule(res); err != nil {
 			util.HandleArgumentError(c, err)
 			return
@@ -206,7 +208,7 @@ func mutateScriptRule(ctx consolectx.Context, update bool) gin.HandlerFunc {
 			util.HandleServiceError(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, model.GenScriptRuleResp(res.Spec))
+		c.JSON(http.StatusOK, model.GenScriptRuleResp(res))
 	}
 }
 
