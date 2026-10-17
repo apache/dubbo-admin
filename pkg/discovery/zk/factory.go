@@ -143,22 +143,15 @@ func toDeleteZKConfigResource(mesh, nodePath string) coremodel.Resource {
 	return res
 }
 
-// zkConfigName accepts the Dubbo 3 grouped config path
-// /dubbo/config/dubbo/<ruleName> and the legacy flat path
-// /dubbo/config/<ruleName>. Group/root nodes are not rules.
+// zkConfigName accepts only the Dubbo 3 grouped config path
+// /dubbo/config/dubbo/<ruleName>. Group/root nodes and legacy flat paths are
+// not rules.
 func zkConfigName(nodePath string) (string, bool) {
 	paths := strings.Split(strings.Trim(nodePath, constants.PathSeparator), constants.PathSeparator)
-	// Trim above removes the leading slash, therefore the grouped form has
-	// [dubbo config dubbo rule] and the legacy form [dubbo config rule].
-	switch len(paths) {
-	case 3:
-		if paths[2] != "" && paths[2] != constants.RuleConfigGroup {
-			return paths[2], true
-		}
-	case 4:
-		if paths[2] == constants.RuleConfigGroup && paths[3] != "" {
-			return paths[3], true
-		}
+	// Trim above removes the leading slash, therefore the grouped form is
+	// [dubbo config dubbo rule].
+	if len(paths) == 4 && paths[2] == constants.RuleConfigGroup && paths[3] != "" {
+		return paths[3], true
 	}
 	return "", false
 }

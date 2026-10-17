@@ -67,10 +67,8 @@ func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
 		return bizerror.Wrap(err, bizerror.YamlError,
 			fmt.Sprintf("failed to marshal resource spec, res: %s", r.String()))
 	}
-	if usesDubboConfigGroup(r) {
-		if err := g.ensurePath(ruleConfigGroupPath()); err != nil {
-			return err
-		}
+	if err := g.ensurePath(ruleConfigGroupPath()); err != nil {
+		return err
 	}
 	_, err = g.conn.Create(path, content, 0, zk.WorldACL(zk.PermAll))
 	if err != nil {
@@ -100,7 +98,7 @@ func (g *RuleGovernor) UpdateRule(r coremodel.Resource) error {
 			fmt.Sprintf("failed to marshal resource spec, res: %s", r.String()))
 	}
 	_, err = g.conn.Set(path, content, -1)
-	if err == zk.ErrNoNode && usesDubboConfigGroup(r) {
+	if err == zk.ErrNoNode {
 		if ensureErr := g.ensurePath(ruleConfigGroupPath()); ensureErr != nil {
 			return ensureErr
 		}
@@ -125,11 +123,6 @@ func (g *RuleGovernor) UpdateRule(r coremodel.Resource) error {
 func (g *RuleGovernor) DeleteRule(r coremodel.Resource) error {
 	path := ruleConfigPath(r)
 	err := g.conn.Delete(path, -1)
-	if err == zk.ErrNoNode && usesDubboConfigGroup(r) {
-		// Rules created by older Admin versions used the flat path. Remove it
-		// as a compatibility fallback while all new writes use the grouped path.
-		err = g.conn.Delete(legacyRuleConfigPath(r.ResourceMeta().Name), -1)
-	}
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.ZKError,
 			fmt.Sprintf("failed to delete zk node, path: %s", path))
@@ -153,25 +146,11 @@ func marshalRule(r coremodel.Resource) ([]byte, error) {
 }
 
 func ruleConfigPath(r coremodel.Resource) string {
-	if usesDubboConfigGroup(r) {
-		return ruleConfigGroupPath() + "/" + r.ResourceMeta().Name
-	}
-	return legacyRuleConfigPath(r.ResourceMeta().Name)
-}
-
-// usesDubboConfigGroup deliberately scopes the new key layout to Affinity and
-// Script. Existing Configurator, Condition, and Tag rules retain their legacy
-// paths so this alignment work does not change their control-plane contract.
-func usesDubboConfigGroup(r coremodel.Resource) bool {
-	return r != nil && (r.ResourceKind() == meshresource.AffinityRouteKind || r.ResourceKind() == meshresource.ScriptRouteKind)
+	return ruleConfigGroupPath() + "/" + r.ResourceMeta().Name
 }
 
 func ruleConfigGroupPath() string {
 	return zkConfigRootPath + "/" + constants.RuleConfigGroup
-}
-
-func legacyRuleConfigPath(ruleName string) string {
-	return zkConfigRootPath + "/" + ruleName
 }
 
 // ensurePath creates every component of a grouped config path. ZooKeeper's
