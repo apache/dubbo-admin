@@ -19,7 +19,13 @@ package constants
 
 import set "github.com/duke-git/lancet/v2/datastructure/set"
 
-var RuleSuffixSet = set.New(ConfiguratorsSuffix, ConditionRuleSuffix, TagRuleSuffix, AffinityRuleSuffix)
+var RuleSuffixSet = set.New(
+	ConfiguratorsSuffix,
+	ConditionRuleSuffix,
+	TagRuleSuffix,
+	AffinityRuleSuffix,
+	ScriptRuleSuffix,
+)
 
 const (
 	ConfiguratorVersionV3   = `v3.0`
@@ -29,6 +35,9 @@ const (
 	ScopeService            = `service`
 	SideProvider            = `provider`
 	SideConsumer            = `consumer`
+	// RuleConfigGroup is the group path used by Dubbo 3 dynamic rules in
+	// ZooKeeper and the group name used by Nacos.
+	RuleConfigGroup = `dubbo`
 
 	ConfiguratorRuleDotSuffix = ".configurators"
 	ConfiguratorsSuffix       = "configurators"
@@ -38,6 +47,13 @@ const (
 	TagRuleSuffix             = "tag-router"
 	AffinityRuleDotSuffix     = ".affinity-router"
 	AffinityRuleSuffix        = "affinity-router"
+	ScriptRuleDotSuffix       = ".script-router"
+	ScriptRuleSuffix          = "script-router"
+	ScriptTypeJavaScript      = "javascript"
+	// MaxScriptRuleSize bounds the payload Admin accepts before publishing it
+	// to a configuration center. The runtime compiles scripts, so an explicit
+	// limit prevents accidentally publishing unbounded documents.
+	MaxScriptRuleSize = 64 * 1024
 )
 
 const (
