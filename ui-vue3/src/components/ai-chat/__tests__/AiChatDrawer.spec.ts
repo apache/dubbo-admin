@@ -40,9 +40,10 @@ const DrawerStub = defineComponent({
 const MessageListStub = defineComponent({
   name: 'MessageList',
   props: ['messages', 'labels', 'suggestions'],
-  setup(_, { expose }) {
+  emits: ['retryLastMessage'],
+  setup(_, { emit, expose }) {
     expose({ scrollToBottom: vi.fn() })
-    return () => h('div')
+    return () => h('button', { class: 'retry-message', onClick: () => emit('retryLastMessage') })
   }
 })
 
@@ -148,8 +149,42 @@ describe('AiChatDrawer', () => {
     expect(service.sendChatMessage).toHaveBeenCalledWith(
       'inspect this resource',
       'session-1',
-      context
+      context,
+      expect.stringMatching(/^[0-9a-f-]{36}$/)
     )
+  })
+
+  it('reuses the logical request key and context snapshot when retrying', async () => {
+    const firstContext = { page: 'instances', version: 1 }
+    const collectContext = vi.fn(() => firstContext)
+    const service: ChatService<unknown> = {
+      createSession: vi.fn().mockResolvedValue('session-1'),
+      sendChatMessage: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('network failed'))
+        .mockResolvedValueOnce(createEmptyStream())
+    }
+    const wrapper = mountDrawer(service, { collectContext })
+    const input = wrapper.findComponent(ChatInputStub)
+    const exposed = input.vm.$.exposed as { inputMessage: { value: string } }
+    exposed.inputMessage.value = 'inspect this resource'
+
+    await input.find('.send-message').trigger('click')
+    await flushPromises()
+    await wrapper.find('.retry-message').trigger('click')
+    await flushPromises()
+
+    expect(service.sendChatMessage).toHaveBeenCalledTimes(2)
+    const firstCall = vi.mocked(service.sendChatMessage).mock.calls[0]
+    const retryCall = vi.mocked(service.sendChatMessage).mock.calls[1]
+    expect(retryCall[0]).toBe(firstCall[0])
+    expect(retryCall[1]).toBe(firstCall[1])
+    expect(retryCall[2]).toBe(firstCall[2])
+    expect(retryCall[3]).toBe(firstCall[3])
+    expect(collectContext).toHaveBeenCalledOnce()
+    const renderedMessages = wrapper.findComponent(MessageListStub).props('messages') as Array<{ role: string }>
+    expect(renderedMessages).toHaveLength(2)
+    expect(renderedMessages.map((item) => item.role)).toEqual(['user', 'assistant'])
   })
 
   it('works without session history and forwards labels and suggestions', () => {
