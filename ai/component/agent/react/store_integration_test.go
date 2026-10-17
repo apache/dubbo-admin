@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"dubbo-admin-ai/component/agent"
+	"dubbo-admin-ai/component/hooks"
 	"dubbo-admin-ai/schema"
 	conversationstore "dubbo-admin-ai/store"
 	memorystore "dubbo-admin-ai/store/memory"
@@ -151,6 +152,21 @@ func TestRunAppendsToolOutputToContextSnapshotWithoutReloading(t *testing.T) {
 		maxIterations:      2,
 		contextWindowTurns: 5,
 	}
+	var sizes []hooks.ContextSize
+	ra.hookManager = hooks.NewManager(nil)
+	if err := ra.hookManager.Register(hooks.Registration{
+		Events: []hooks.Event{hooks.EventModelCallStart},
+		Hook: func(ctx context.Context, state hooks.State) context.Context {
+			size, ok := state.ContextSize()
+			if !ok {
+				t.Error("model call did not supply context size")
+			}
+			sizes = append(sizes, size)
+			return ctx
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
 	interactionCtx, state, err := ra.newInteraction(ctx, &schema.UserInput{Content: "use a tool"}, "tool-snapshot-session")
 	if err != nil {
 		t.Fatalf("newInteraction() error = %v", err)
@@ -175,6 +191,12 @@ func TestRunAppendsToolOutputToContextSnapshotWithoutReloading(t *testing.T) {
 	}
 	if len(state.messages) != 2 || !strings.Contains(state.messages[1].Text(), "snapshot_tool") {
 		t.Fatalf("tool output was not appended to context snapshot: %#v", state.messages)
+	}
+	if len(sizes) != 2 || sizes[0].Messages != 1 || sizes[1].Messages != 2 {
+		t.Fatalf("model context sizes = %+v, want one then two messages", sizes)
+	}
+	if sizes[0].JSONBytes <= 0 || sizes[1].JSONBytes <= sizes[0].JSONBytes || sizes[1].EstimatedTokens <= sizes[0].EstimatedTokens {
+		t.Fatalf("tool output did not increase context measurements: %+v", sizes)
 	}
 }
 

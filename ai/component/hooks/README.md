@@ -100,11 +100,35 @@ export OTEL_EXPORTER_OTLP_HEADERS=authorization=Bearer%20token
 The default ports are conventionally 4317 for gRPC and 4318 for HTTP/protobuf.
 
 `capture_content` defaults to `none` deliberately: model messages and tool
-payloads may contain credentials or user data. Payloads are not serialized on
-the agent hot path unless a matching hook explicitly opts in; the tracing hook
-defers serialization until the created span reports `IsRecording()`. `truncated`
+payloads may contain credentials or user data. Payload content is exported only when a matching hook explicitly opts in;
+the tracing hook defers content serialization until the created span reports
+`IsRecording()`. Recording model spans can also measure message size locally
+without exporting the messages, as described below. `truncated`
 limits each exported JSON attribute to 4096 bytes; `full` should only be used
 in a controlled environment.
+
+## Context size observations
+
+Each recording model-call span includes numeric metadata for the selected
+conversation messages, even with `capture_content: none`:
+
+- `agent.context.message_count`: number of selected messages.
+- `agent.context.json_bytes`: UTF-8 byte length of their Genkit JSON encoding.
+- `agent.context.estimated_tokens`: JSON byte length divided by four, rounded up.
+
+These values include tool payloads and message metadata, but exclude the prompt
+template, tool definitions, and provider-specific framing. The token estimate is
+a rough observation, not a model tokenizer, a quota limit, or billable usage;
+non-English text can have a different ratio. Actual provider usage remains under
+`gen_ai.usage.*`. If JSON encoding fails, only the message count is available.
+
+Measurements use the interaction's existing snapshot and its appended tool
+outputs. They do not reload history or change the selected context. Computation
+is lazy and shared by observers of the same event: an unsampled trace does not
+serialize messages for size measurement. Custom hooks can call
+`state.ContextSize()` to read the numeric metadata without enabling payload
+capture. Each model call emits its own measurement, so growth from tool outputs
+is visible on the next model span.
 
 ## Available events
 

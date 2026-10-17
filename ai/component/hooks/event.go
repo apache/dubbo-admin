@@ -120,6 +120,7 @@ type State struct {
 	EndedAt        time.Time
 	inputContent   *lazyContentSnapshot
 	outputContent  *lazyContentSnapshot
+	contextSize    *lazyContextSize
 }
 
 type lazyContentSnapshot struct {
