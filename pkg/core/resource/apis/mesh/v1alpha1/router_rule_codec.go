@@ -193,6 +193,56 @@ func optionalRuleBool(value bool, annotations map[string]string, omittedAnnotati
 	return &value
 }
 
+// AffinityRuleOptionalFields returns the public values for Affinity's two
+// optional booleans. A nil value means that the original config omitted the
+// field, rather than that it explicitly set the field to false.
+func AffinityRuleOptionalFields(res *AffinityRouteResource) (runtime *bool, enabled *bool) {
+	if res == nil || res.Spec == nil {
+		return nil, nil
+	}
+	return optionalRuleBool(res.Spec.Runtime, res.Annotations, affinityRuntimeOmittedAnnotation),
+		optionalRuleBool(res.Spec.Enabled, res.Annotations, affinityEnabledOmittedAnnotation)
+}
+
+// SetAffinityRuleOptionalFields applies public optional values without losing
+// the field-presence metadata required to faithfully write the rule back to a
+// configuration center.
+func SetAffinityRuleOptionalFields(res *AffinityRouteResource, runtime, enabled *bool) {
+	if res == nil || res.Spec == nil {
+		return
+	}
+	setOptionalRuleBool(&res.Spec.Runtime, &res.Annotations, affinityRuntimeOmittedAnnotation, runtime)
+	setOptionalRuleBool(&res.Spec.Enabled, &res.Annotations, affinityEnabledOmittedAnnotation, enabled)
+}
+
+// ScriptRuleOptionalEnabled returns nil when enabled was omitted from the
+// original Script rule; otherwise it returns the explicit boolean value.
+func ScriptRuleOptionalEnabled(res *ScriptRouteResource) *bool {
+	if res == nil || res.Spec == nil {
+		return nil
+	}
+	return optionalRuleBool(res.Spec.Enabled, res.Annotations, scriptEnabledOmittedAnnotation)
+}
+
+// SetScriptRuleOptionalEnabled applies the public optional enabled field while
+// preserving whether it was omitted or explicitly set to false.
+func SetScriptRuleOptionalEnabled(res *ScriptRouteResource, enabled *bool) {
+	if res == nil || res.Spec == nil {
+		return
+	}
+	setOptionalRuleBool(&res.Spec.Enabled, &res.Annotations, scriptEnabledOmittedAnnotation, enabled)
+}
+
+func setOptionalRuleBool(value *bool, annotations *map[string]string, omittedAnnotation string, input *bool) {
+	if input == nil {
+		*value = false
+		markRuleBooleanOmitted(annotations, omittedAnnotation)
+		return
+	}
+	*value = *input
+	clearRuleBooleanOmitted(annotations, omittedAnnotation)
+}
+
 func markRuleBooleanOmitted(annotations *map[string]string, key string) {
 	if *annotations == nil {
 		*annotations = make(map[string]string)
