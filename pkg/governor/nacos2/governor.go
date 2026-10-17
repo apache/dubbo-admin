@@ -26,6 +26,7 @@ import (
 	nacosnamingclient "github.com/nacos-group/nacos-sdk-go/v2/clients/naming_client"
 	nacosvo "github.com/nacos-group/nacos-sdk-go/v2/vo"
 	"k8s.io/client-go/tools/cache"
+	"sigs.k8s.io/yaml"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/common/constants"
