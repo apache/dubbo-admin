@@ -98,6 +98,11 @@ func executeModelCall(
 		Model:         s.Model,
 		StartedAt:     startedAt,
 	}
+	if messages, ok := input.([]*ai.Message); ok && s.hookManager.HasHooks() {
+		startState = startState.WithContextSize(func() hooks.ContextSize {
+			return measureContextSize(messages)
+		})
+	}
 	startState = withHookInput(s.hookManager, hooks.EventModelCallStart, "", startState, func() any {
 		return genAIInputMessages(input)
 	})

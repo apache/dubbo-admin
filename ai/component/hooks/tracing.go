@@ -64,6 +64,9 @@ func newTracingHook(tracer trace.Tracer, captureContent string) Hook {
 				trace.WithAttributes(attrs...),
 			)
 			if span.IsRecording() {
+				if state.Event == EventModelCallStart {
+					span.SetAttributes(contextSizeAttributes(state)...)
+				}
 				span.SetAttributes(contentAttributes(state, captureContent, true)...)
 			}
 			return ctx
@@ -180,6 +183,23 @@ func stateAttributes(state State) []attribute.KeyValue {
 	}
 	if state.TotalTokens > 0 {
 		attrs = append(attrs, attribute.Int("agent.usage.total_tokens", state.TotalTokens))
+	}
+	return attrs
+}
+
+// contextSizeAttributes is called only for recording model spans, so an
+// unsampled trace does not serialize messages just to measure their size.
+func contextSizeAttributes(state State) []attribute.KeyValue {
+	size, ok := state.ContextSize()
+	if !ok {
+		return nil
+	}
+	attrs := []attribute.KeyValue{attribute.Int("agent.context.message_count", size.Messages)}
+	if size.JSONBytes >= 0 {
+		attrs = append(attrs, attribute.Int("agent.context.json_bytes", size.JSONBytes))
+	}
+	if size.EstimatedTokens >= 0 {
+		attrs = append(attrs, attribute.Int("agent.context.estimated_tokens", size.EstimatedTokens))
 	}
 	return attrs
 }
