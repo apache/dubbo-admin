@@ -20,14 +20,13 @@ package memory
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"sync"
 
+	storefactory "dubbo-admin-ai/component/memory/store_factory"
 	"dubbo-admin-ai/runtime"
 	conversationstore "dubbo-admin-ai/store"
-	gormstore "dubbo-admin-ai/store/gorm"
-	memorystore "dubbo-admin-ai/store/memory"
-	"gorm.io/gorm"
 )
 
 // MemoryComponent owns the single conversation Store shared by runtime
@@ -44,7 +43,7 @@ type MemoryComponent struct {
 	memoryCtx    context.Context
 	memory       *HistoryMemory
 	store        conversationstore.Store
-	gormStore    *gormstore.GormStore
+	storeCloser  io.Closer
 }
 
 func NewMemoryComponent(historyKey HistoryKey, maxTurns ...int) (runtime.Component, error) {
@@ -102,43 +101,19 @@ func (m *MemoryComponent) Validate() error {
 }
 
 func (m *MemoryComponent) Init(rt *runtime.Runtime) error {
-	backend := m.spec.Backend
-	if backend == "" {
-		backend = DefaultBackend
+	config := storefactory.Config{Backend: m.spec.Backend, MaxTurns: m.maxTurns}
+	if m.spec.Database != nil {
+		config.Database = &storefactory.DatabaseConfig{
+			Driver:       m.spec.Database.Driver,
+			DSN:          m.spec.Database.DSN,
+			MaxOpenConns: m.spec.Database.MaxOpenConns,
+			MaxIdleConns: m.spec.Database.MaxIdleConns,
+		}
 	}
-	switch backend {
-	case "memory":
-		m.store = memorystore.NewMemoryStore(m.maxTurns)
-	case "gorm":
-		if m.spec.Database == nil {
-			return fmt.Errorf("database is required for gorm backend")
-		}
-		db, err := gormstore.Open(m.spec.Database.Driver, m.spec.Database.DSN, &gorm.Config{})
-		if err != nil {
-			return fmt.Errorf("failed to open conversation database: %w", err)
-		}
-		sqlDB, err := db.DB()
-		if err != nil {
-			if closeDB, closeErr := db.DB(); closeErr == nil {
-				_ = closeDB.Close()
-			}
-			return fmt.Errorf("failed to access conversation database: %w", err)
-		}
-		sqlDB.SetMaxOpenConns(m.spec.Database.MaxOpenConns)
-		sqlDB.SetMaxIdleConns(m.spec.Database.MaxIdleConns)
-		gormStore, err := gormstore.NewGormStore(db, m.maxTurns)
-		if err != nil {
-			_ = sqlDB.Close()
-			return fmt.Errorf("failed to create gorm conversation store: %w", err)
-		}
-		if err := gormStore.Migrate(context.Background()); err != nil {
-			_ = gormStore.Close()
-			return fmt.Errorf("failed to migrate conversation database: %w", err)
-		}
-		m.gormStore = gormStore
-		m.store = gormStore
-	default:
-		return fmt.Errorf("unsupported memory backend %q", backend)
+	var err error
+	m.store, m.storeCloser, err = storefactory.Open(config)
+	if err != nil {
+		return err
 	}
 	rt.GetLogger().Info("Memory component initialized",
 		"history_key", m.historyKey)
@@ -151,9 +126,9 @@ func (m *MemoryComponent) Start() error {
 }
 
 func (m *MemoryComponent) Stop() error {
-	if m.gormStore != nil {
-		err := m.gormStore.Close()
-		m.gormStore = nil
+	if m.storeCloser != nil {
+		err := m.storeCloser.Close()
+		m.storeCloser = nil
 		return err
 	}
 	return nil
