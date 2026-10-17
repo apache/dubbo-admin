@@ -39,6 +39,7 @@ type AgentComponent struct {
 // NewAgentComponent builds an unstarted AgentComponent from a decoded spec. The
 // ReActAgent itself is created later, in Init.
 func NewAgentComponent(spec AgentSpec) (runtime.Component, error) {
+	spec.ApplyDefaults()
 	return &AgentComponent{spec: spec}, nil
 }
 
