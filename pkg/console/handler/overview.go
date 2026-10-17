@@ -40,18 +40,19 @@ func AdminMetadata(ctx consolectx.Context) gin.HandlerFunc {
 		var registryAddr string
 		var metadataAddr string
 		var configAddr string
-		if d := ctx.Config().FindDiscovery(mesh); d != nil {
+		cfg := ctx.Config()
+		if d := cfg.FindDiscovery(mesh); d != nil {
 			registryAddr = d.Address.Registry
 			metadataAddr = d.Address.MetadataReport
 			configAddr = d.Address.ConfigCenter
 		}
 		var prometheusURL string
 		var grafanaURL string
-		if ctx.Config().Observability.PrometheusBaseURL != nil {
-			prometheusURL = ctx.Config().Observability.PrometheusBaseURL.String()
+		if cfg.Observability.PrometheusBaseURL != nil {
+			prometheusURL = cfg.Observability.PrometheusBaseURL.String()
 		}
-		if ctx.Config().Observability.GrafanaBaseURL != nil {
-			grafanaURL = ctx.Config().Observability.GrafanaBaseURL.String()
+		if cfg.Observability.GrafanaBaseURL != nil {
+			grafanaURL = cfg.Observability.GrafanaBaseURL.String()
 		}
 		metadata := model.AdminMetadata{
 			Registry:   registryAddr,

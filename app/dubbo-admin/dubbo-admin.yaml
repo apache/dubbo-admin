@@ -74,6 +74,9 @@ console:
   auth:
     user: admin
     password: dubbo@2025
+    # Required. Set a deployment-specific random value, for example:
+    # openssl rand -base64 32
+    sessionSecret: ""
     expirationTime: 3600
 
 # [Optional] config for data storage, default is memory
@@ -83,6 +86,13 @@ store:
   # [Optional, Beta] store data in mysql
 #  type: mysql
 #  address: root:123456@tcp(127.0.0.1:23306)/dubbo-admin?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai
+
+# [Optional] version history and rollback for traffic rules.
+# This records RuleVersion audit history. Supported governance rule mutations
+# fail closed if the version ledger is unavailable or cannot record the
+# mutation. Set maxVersionsPerRule to 0 to disable retention trimming.
+ruleVersioning:
+  maxVersionsPerRule: 20
 
 # [Necessary] configs for service discovery
 discovery:

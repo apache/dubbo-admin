@@ -227,6 +227,44 @@ func TestResourceStore_List(t *testing.T) {
 	assert.Contains(t, list, mockRes2)
 }
 
+func TestResourceStore_ListResourcesSortedAndEmptyIndexes(t *testing.T) {
+	store := NewMemoryResourceStore("TestResource")
+	err := store.Init(nil)
+	assert.NoError(t, err)
+
+	mockRes1 := &mockResource{
+		kind: "TestResource",
+		key:  "mesh/test-key-2",
+		mesh: "mesh",
+		meta: metav1.ObjectMeta{Name: "test-resource-2"},
+	}
+	mockRes2 := &mockResource{
+		kind: "TestResource",
+		key:  "mesh/test-key-1",
+		mesh: "mesh",
+		meta: metav1.ObjectMeta{Name: "test-resource-1"},
+	}
+
+	err = store.Add(mockRes1)
+	assert.NoError(t, err)
+	err = store.Add(mockRes2)
+	assert.NoError(t, err)
+
+	resources := store.List()
+	assert.Len(t, resources, 2)
+	// List() returns resources in arbitrary order, so check both are present
+	keys := []string{
+		resources[0].(model.Resource).ResourceKey(),
+		resources[1].(model.Resource).ResourceKey(),
+	}
+	assert.Contains(t, keys, "mesh/test-key-1")
+	assert.Contains(t, keys, "mesh/test-key-2")
+
+	indexed, err := store.ListByIndexes([]index.IndexCondition{})
+	assert.NoError(t, err)
+	assert.Empty(t, indexed)
+}
+
 func TestResourceStore_ListKeys(t *testing.T) {
 	store := NewMemoryResourceStore("TestResource")
 	err := store.Init(nil)

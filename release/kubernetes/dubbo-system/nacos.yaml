@@ -84,8 +84,6 @@ spec:
     - port: 8848
       name: server
       targetPort: 8848
-      nodePort: 30848
     - port: 9848
       name: client-rpc
       targetPort: 9848
-      nodePort: 31848

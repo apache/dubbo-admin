@@ -131,7 +131,7 @@
                               :columns="labelsColumns"
                               :data-source="tagItem.scope?.labels"
                             >
-                              <template #bodyCell="{ column, record, text, index: labelItemIndex }">
+                              <template #bodyCell="{ column, record, index: labelItemIndex }">
                                 <template v-if="column.key === 'myKey'">
                                   <a-input placeholder="label key" v-model:value="record.myKey" />
                                 </template>
@@ -225,40 +225,41 @@
 </template>
 
 <script setup lang="ts">
-import {
-  type ComponentInternalInstance,
-  getCurrentInstance,
-  inject,
-  onMounted,
-  reactive,
-  ref,
-  watch
-} from 'vue'
+import { inject, onMounted, reactive, ref, watch } from 'vue'
 import { DoubleLeftOutlined, DoubleRightOutlined } from '@ant-design/icons-vue'
-import useClipboard from 'vue-clipboard3'
 import { message } from 'ant-design-vue'
-import { PRIMARY_COLOR } from '@/base/constants'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { getTagRuleDetailAPI, updateTagRuleAPI } from '@/api/service/traffic'
 import { isNil } from 'lodash'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { HTTP_STATUS } from '@/base/http/constants'
 
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
-const router = useRouter()
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 
 onMounted(async () => {
   if (!isNil(TAB_STATE.tagRule)) {
-    const { enabled = true, key, scope, runtime = true, tags } = TAB_STATE.tagRule
+    const {
+      configVersion,
+      priority,
+      enabled = true,
+      force = false,
+      key,
+      scope,
+      runtime = true,
+      tags
+    } = TAB_STATE.tagRule
+    baseInfo.configVersion = configVersion
+    baseInfo.priority = priority
     baseInfo.enable = enabled
+    baseInfo.faultTolerantProtection = force
     baseInfo.objectOfAction = key
     baseInfo.ruleGranularity = scope
     baseInfo.runtime = runtime
     console.log('tags', tags)
     tags &&
       tags.length &&
-      tags.forEach((tagItem, tagIndex) => {
+      tags.forEach((tagItem: any, tagIndex: number) => {
         tagList.value.push({
           tagName: tagItem.name,
           scope: {
@@ -273,7 +274,7 @@ onMounted(async () => {
 
         const { match } = tagItem
         let formatLabels: any[] = []
-        match.forEach((matchItem, matchIndex) => {
+        match.forEach((matchItem: any) => {
           formatLabels.push({
             myKey: matchItem.key,
             condition: Object.keys(matchItem.value)[0],
@@ -288,26 +289,12 @@ onMounted(async () => {
     await getTagRuleDetail()
   }
 })
-const {
-  appContext: {
-    config: { globalProperties }
-  }
-} = <ComponentInternalInstance>getCurrentInstance()
 const route = useRoute()
 
 const isDrawerOpened = ref(false)
 const loading = ref(false)
 
 const sliderSpan = ref(8)
-
-let __ = PRIMARY_COLOR
-
-const toClipboard = useClipboard().toClipboard
-
-function copyIt(v: string) {
-  message.success(globalProperties.$t('messageDomain.success.copy'))
-  toClipboard(v)
-}
 
 const generateDescription = (tagItem: any, serviceName: string): string => {
   let description = `对于应用 ${serviceName || '未指定'}，将满足 `
@@ -472,24 +459,24 @@ const labelsColumns = ref([
 ])
 
 // tag list
-const tagList: any[] = ref([])
+const tagList = ref<any[]>([])
 
 watch(
   tagList,
   (newVal) => {
     console.log(newVal)
-    const tags = []
+    const tags: any[] = []
     newVal.forEach((tagItem) => {
       const { tagName, scope } = tagItem
       const labels = scope.labels
 
       const newTagItem = {
         name: tagName,
-        match: []
+        match: [] as any[]
       }
 
       if (labels && labels.length > 0) {
-        labels.forEach((labelItem) => {
+        labels.forEach((labelItem: any) => {
           newTagItem.match.push({
             key: labelItem.myKey,
             value: {
@@ -554,17 +541,18 @@ const deleteTagItem = (tagItemIndex: number) => {
 
 // Get label routing details
 const getTagRuleDetail = async () => {
-  const res = await getTagRuleDetailAPI(<string>route.params?.ruleName)
+  const res = await getTagRuleDetailAPI(route.params?.ruleName as string)
   if (res.code === HTTP_STATUS.SUCCESS) {
-    const { configVersion, enabled, key, runtime, scope, tags } = res?.data
+    const { configVersion, priority, enabled, force, key, runtime, scope, tags } = res.data || {}
     baseInfo.configVersion = configVersion
+    baseInfo.priority = priority
     baseInfo.enable = enabled
-    // baseInfo.faultTolerantProtection =
+    baseInfo.faultTolerantProtection = force
     baseInfo.runtime = runtime
     baseInfo.ruleGranularity = scope
     baseInfo.objectOfAction = key
     tagList.value = []
-    tags.forEach((tagItem, tagIndex) => {
+    tags.forEach((tagItem: any, tagIndex: number) => {
       tagList.value.push({
         tagName: tagItem.name,
         scope: {
@@ -579,7 +567,7 @@ const getTagRuleDetail = async () => {
 
       const { match } = tagItem
       let formatLabels: any[] = []
-      match.forEach((matchItem, matchIndex) => {
+      match.forEach((matchItem: any) => {
         formatLabels.push({
           myKey: matchItem.key,
           condition: Object.keys(matchItem.value)[0],
@@ -609,33 +597,35 @@ const updateTagRule = async () => {
       configVersion,
       scope: ruleGranularity,
       key: objectOfAction,
+      priority,
       enabled: enable,
+      force: faultTolerantProtection,
       runtime,
-      tags: []
+      tags: [] as any[]
     }
-    tagList.value.forEach((tagItem, tagIndex) => {
+    tagList.value.forEach((tagItem: any) => {
       const tag = {
         name: tagItem.tagName,
-        match: []
+        match: [] as any[]
       }
-      tagItem.scope.labels.forEach((labelItem, labelIndex) => {
+      tagItem.scope.labels.forEach((labelItem: any) => {
         const matchItem = {
           key: labelItem.myKey,
-          value: {}
+          value: {} as Record<string, any>
         }
         matchItem.value[labelItem.condition] = labelItem.value
         tag.match.push(matchItem)
       })
       data.tags.push(tag)
     })
-    const res = await updateTagRuleAPI(route.params?.ruleName, data)
+    const res = await updateTagRuleAPI(route.params?.ruleName as string, data)
     if (res.code === HTTP_STATUS.SUCCESS) {
       message.success('update success')
-      // 延迟 2 秒后再获取数据，确保数据库已更新
-      await new Promise((resolve) => setTimeout(resolve, 2000))
       TAB_STATE.tagRule = null
       await getTagRuleDetail()
     }
+  } catch (e: any) {
+    message.error(e?.message || String(e))
   } finally {
     loading.value = false
   }

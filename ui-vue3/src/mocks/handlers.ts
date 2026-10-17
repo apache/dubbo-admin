@@ -27,6 +27,7 @@ import { versionHandlers } from './handlers/version'
 import { dynamicConfigHandlers } from './handlers/dynamicConfig'
 import { routingRuleHandlers } from './handlers/routingRule'
 import { tagRuleHandlers } from './handlers/tagRule'
+import { ruleVersionHandlers } from './handlers/ruleVersion'
 import { destinationRuleHandlers, virtualServiceHandlers } from './handlers/istio'
 import { promQLHandlers } from './handlers/promQL'
 import { serverHandlers } from './handlers/server'
@@ -46,6 +47,7 @@ export const handlers: HttpHandler[] = [
   ...dynamicConfigHandlers,
   ...routingRuleHandlers,
   ...tagRuleHandlers,
+  ...ruleVersionHandlers,
   ...destinationRuleHandlers,
   ...virtualServiceHandlers,
   ...promQLHandlers,

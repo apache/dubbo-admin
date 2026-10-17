@@ -285,5 +285,13 @@ func (d *discoveryComponent) initSubscribes(storeRouter store.Router, emitter ev
 		zkConfigSub := subscriber.NewZKConfigEventSubscriber(emitter, storeRouter)
 		d.subscribers = append(d.subscribers, zkMetadataSub, zkConfigSub)
 	}
+
+	// LifecycleEventSubscriber processes all LifecycleEvent resources on the EventBus,
+	// enriching K8s-sourced events and writing them to the store.
+	if engineConfig != nil && engineConfig.Type == engine.Kubernetes {
+		k8sEventSub := subscriber.NewLifecycleEventSubscriber(storeRouter, engineConfig)
+		d.subscribers = append(d.subscribers, k8sEventSub)
+	}
+
 	return nil
 }

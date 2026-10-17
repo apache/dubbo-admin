@@ -26,7 +26,6 @@ import (
 	nacosnamingclient "github.com/nacos-group/nacos-sdk-go/v2/clients/naming_client"
 	nacosvo "github.com/nacos-group/nacos-sdk-go/v2/vo"
 	"k8s.io/client-go/tools/cache"
-	"sigs.k8s.io/yaml"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/common/constants"
@@ -65,7 +64,7 @@ func NewNacos2Governor(
 }
 
 func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
-	rawContent, err := yaml.Marshal(r.ResourceSpec())
+	rawContent, err := meshresource.MarshalRuleSpec(r.ResourceSpec())
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.NacosError,
 			fmt.Sprintf("failed to marshal resource spec, res: %s", r.String()))
