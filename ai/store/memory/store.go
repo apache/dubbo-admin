@@ -81,7 +81,7 @@ func (m *MemoryStore) Create(ctx context.Context, access security.AccessContext,
 	if err := checkContext(ctx); err != nil {
 		return err
 	}
-	if err := access.Validate(); err != nil {
+	if err := access.ValidateBusiness(); err != nil {
 		return err
 	}
 	if err := conversationstore.ValidateSession(session); err != nil {
@@ -104,7 +104,7 @@ func (m *MemoryStore) Get(ctx context.Context, access security.AccessContext, se
 	if err := checkContext(ctx); err != nil {
 		return nil, err
 	}
-	if err := access.Validate(); err != nil {
+	if err := access.ValidateBusiness(); err != nil {
 		return nil, err
 	}
 
@@ -125,7 +125,7 @@ func (m *MemoryStore) List(ctx context.Context, access security.AccessContext) (
 	if err := checkContext(ctx); err != nil {
 		return nil, err
 	}
-	if err := access.Validate(); err != nil {
+	if err := access.ValidateBusiness(); err != nil {
 		return nil, err
 	}
 
@@ -147,7 +147,7 @@ func (m *MemoryStore) Touch(ctx context.Context, access security.AccessContext, 
 	if err := checkContext(ctx); err != nil {
 		return err
 	}
-	if err := access.Validate(); err != nil {
+	if err := access.ValidateBusiness(); err != nil {
 		return err
 	}
 
@@ -175,7 +175,7 @@ func (m *MemoryStore) Delete(ctx context.Context, access security.AccessContext,
 	if err := checkContext(ctx); err != nil {
 		return err
 	}
-	if err := access.Validate(); err != nil {
+	if err := access.ValidateBusiness(); err != nil {
 		return err
 	}
 
@@ -530,7 +530,7 @@ func (m *MemoryStore) NextTurn(ctx context.Context, access security.AccessContex
 }
 
 func (m *MemoryStore) validateSessionLocked(access security.AccessContext, sessionID string) error {
-	if err := access.Validate(); err != nil {
+	if err := access.ValidateBusiness(); err != nil {
 		return err
 	}
 	session, exists := m.sessions[sessionID]

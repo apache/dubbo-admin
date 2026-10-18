@@ -101,7 +101,7 @@ func (s *GormStore) Create(ctx context.Context, access security.AccessContext, s
 	if err := s.checkContext(ctx); err != nil {
 		return err
 	}
-	if err := access.Validate(); err != nil {
+	if err := access.ValidateBusiness(); err != nil {
 		return err
 	}
 	if err := conversationstore.ValidateSession(session); err != nil {
@@ -118,28 +118,24 @@ func (s *GormStore) Get(ctx context.Context, access security.AccessContext, sess
 	if err := s.checkContext(ctx); err != nil {
 		return nil, err
 	}
-	if err := access.Validate(); err != nil {
+	if err := access.ValidateBusiness(); err != nil {
 		return nil, err
 	}
-	var model SessionModel
-	err := scopeSessions(s.db.WithContext(normalizeContext(ctx)), access).Where("id = ?", sessionID).First(&model).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, conversationstore.ErrSessionNotFound
-	}
+	model, err := s.findSession(s.db.WithContext(normalizeContext(ctx)), access, sessionID, false)
 	if err != nil {
 		return nil, err
 	}
-	if isExpired(&model, time.Now()) {
+	if isExpired(model, time.Now()) {
 		return nil, conversationstore.ErrSessionExpired
 	}
-	return sessionDomainFromModel(&model), nil
+	return sessionDomainFromModel(model), nil
 }
 
 func (s *GormStore) List(ctx context.Context, access security.AccessContext) ([]*conversationstore.Session, error) {
 	if err := s.checkContext(ctx); err != nil {
 		return nil, err
 	}
-	if err := access.Validate(); err != nil {
+	if err := access.ValidateBusiness(); err != nil {
 		return nil, err
 	}
 	var models []SessionModel
@@ -153,6 +149,9 @@ func (s *GormStore) List(ctx context.Context, access security.AccessContext) ([]
 	}
 	result := make([]*conversationstore.Session, 0, len(models))
 	for i := range models {
+		if !access.CanAccessOwner(models[i].TenantID, models[i].OwnerID) {
+			continue
+		}
 		result = append(result, sessionDomainFromModel(&models[i]))
 	}
 	return result, nil
@@ -160,6 +159,9 @@ func (s *GormStore) List(ctx context.Context, access security.AccessContext) ([]
 
 func (s *GormStore) Touch(ctx context.Context, access security.AccessContext, sessionID string, updatedAt time.Time) error {
 	if err := s.checkContext(ctx); err != nil {
+		return err
+	}
+	if err := access.ValidateBusiness(); err != nil {
 		return err
 	}
 	return s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
@@ -178,6 +180,9 @@ func (s *GormStore) Touch(ctx context.Context, access security.AccessContext, se
 
 func (s *GormStore) Delete(ctx context.Context, access security.AccessContext, sessionID string) error {
 	if err := s.checkContext(ctx); err != nil {
+		return err
+	}
+	if err := access.ValidateBusiness(); err != nil {
 		return err
 	}
 	return s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
@@ -682,10 +687,16 @@ func (s *GormStore) findSession(tx *gorm.DB, access security.AccessContext, sess
 	} else if err != nil {
 		return nil, err
 	}
+	if !access.IsSystem() && !access.CanAccessOwner(model.TenantID, model.OwnerID) {
+		return nil, conversationstore.ErrSessionNotFound
+	}
 	return &model, nil
 }
 
 func (s *GormStore) findActiveSession(tx *gorm.DB, access security.AccessContext, sessionID string, lock bool) (*SessionModel, error) {
+	if err := access.ValidateBusiness(); err != nil {
+		return nil, err
+	}
 	model, err := s.findSession(tx, access, sessionID, lock)
 	if err != nil {
 		return nil, err
@@ -701,9 +712,6 @@ func scopeSessions(query *gorm.DB, access security.AccessContext) *gorm.DB {
 		return query
 	}
 	query = query.Where("tenant_id = ?", access.Subject.TenantID)
-	if !access.Subject.HasScope(security.ScopeSessionAdmin) {
-		query = query.Where("owner_id = ?", access.Subject.UserID)
-	}
 	return query
 }
 

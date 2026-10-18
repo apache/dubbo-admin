@@ -17,7 +17,14 @@
 
 package server
 
-import "testing"
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"dubbo-admin-ai/security"
+)
 
 func TestAuthenticationSpecRoleDefaultsDistinguishMissingAndEmpty(t *testing.T) {
 	missing := AuthenticationSpec{}
@@ -30,5 +37,57 @@ func TestAuthenticationSpecRoleDefaultsDistinguishMissingAndEmpty(t *testing.T) 
 	explicitEmpty.applyDefaults()
 	if explicitEmpty.Roles == nil || len(explicitEmpty.Roles) != 0 {
 		t.Fatalf("explicit empty roles changed to %#v", explicitEmpty.Roles)
+	}
+}
+
+func TestNormalizeHostIPv6(t *testing.T) {
+	if got := normalizeHost(" [::1] "); got != "::1" {
+		t.Fatalf("normalizeHost() = %q, want %q", got, "::1")
+	}
+	if !isLoopbackHost("[::1]") || !isLoopbackHost("::1") {
+		t.Fatal("IPv6 loopback host was not recognized")
+	}
+}
+
+type recordingMaintenanceStore struct {
+	called   bool
+	access   security.AccessContext
+	tenantID string
+	ownerID  string
+	err      error
+}
+
+func (s *recordingMaintenanceStore) DeleteExpired(context.Context, security.AccessContext, time.Time) (int, error) {
+	return 0, nil
+}
+
+func (s *recordingMaintenanceStore) AdoptLegacySessions(_ context.Context, access security.AccessContext, tenantID, ownerID string) (int, error) {
+	s.called = true
+	s.access = access
+	s.tenantID = tenantID
+	s.ownerID = ownerID
+	return 0, s.err
+}
+
+func TestAdoptLegacySessionsWiring(t *testing.T) {
+	subject := security.Subject{TenantID: "tenant-a", UserID: "user-a", AuthMethod: security.AuthMethodStatic}
+	store := &recordingMaintenanceStore{}
+	if err := adoptLegacySessions(context.Background(), store, true, subject); err != nil {
+		t.Fatalf("adoptLegacySessions() error = %v", err)
+	}
+	if !store.called || !store.access.IsSystem() || store.tenantID != subject.TenantID || store.ownerID != subject.UserID {
+		t.Fatalf("adoption call = called:%v system:%v tenant:%q owner:%q", store.called, store.access.IsSystem(), store.tenantID, store.ownerID)
+	}
+	store.called = false
+	if err := adoptLegacySessions(context.Background(), store, false, subject); err != nil {
+		t.Fatalf("disabled adoptLegacySessions() error = %v", err)
+	}
+	if store.called {
+		t.Fatal("disabled adoption called maintenance store")
+	}
+
+	store.err = errors.New("adoption failed")
+	if err := adoptLegacySessions(context.Background(), store, true, subject); !errors.Is(err, store.err) {
+		t.Fatalf("adoptLegacySessions() error = %v, want %v", err, store.err)
 	}
 }

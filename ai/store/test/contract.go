@@ -151,6 +151,13 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Backe
 		if _, err := s.Get(ctx, admin, session.ID); err != nil {
 			t.Fatalf("same-tenant admin Get() error = %v", err)
 		}
+		system := security.SystemAccessContext()
+		if _, err := s.Get(ctx, system, session.ID); !errors.Is(err, security.ErrResourceNotAccessible) {
+			t.Fatalf("system Get() error = %v, want ErrResourceNotAccessible", err)
+		}
+		if _, err := s.List(ctx, system); !errors.Is(err, security.ErrResourceNotAccessible) {
+			t.Fatalf("system List() error = %v, want ErrResourceNotAccessible", err)
+		}
 		if _, err := s.List(ctx, security.AccessContext{}); !errors.Is(err, security.ErrAuthenticationRequired) {
 			t.Fatalf("unauthenticated List() error = %v, want ErrAuthenticationRequired", err)
 		}
