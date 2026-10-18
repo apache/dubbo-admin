@@ -24,6 +24,7 @@ import (
 	"time"
 
 	rt "dubbo-admin-ai/runtime"
+	"dubbo-admin-ai/security"
 	conversationstore "dubbo-admin-ai/store"
 
 	"github.com/google/uuid"
@@ -40,7 +41,9 @@ type Session = conversationstore.Session
 
 // Manager coordinates SessionStore operations and periodic expiration cleanup.
 type Manager struct {
-	store conversationstore.SessionStore
+	store       conversationstore.SessionStore
+	maintenance conversationstore.MaintenanceStore
+	policy      security.PolicyEnforcer
 
 	cleanupCtx    context.Context
 	cleanupCancel context.CancelFunc
@@ -48,15 +51,22 @@ type Manager struct {
 	closeOnce     sync.Once
 }
 
-// NewManager creates a session manager backed by the supplied SessionStore.
-func NewManager(sessionStore conversationstore.SessionStore) *Manager {
+// NewManager creates a session manager with separate business and privileged
+// lifecycle Store dependencies.
+func NewManager(sessionStore conversationstore.SessionStore, maintenanceStore conversationstore.MaintenanceStore) *Manager {
+	return NewManagerWithPolicy(sessionStore, maintenanceStore, security.OwnershipPolicy{})
+}
+
+func NewManagerWithPolicy(sessionStore conversationstore.SessionStore, maintenanceStore conversationstore.MaintenanceStore, policy security.PolicyEnforcer) *Manager {
 	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
 	m := &Manager{
 		store:         sessionStore,
+		maintenance:   maintenanceStore,
+		policy:        policy,
 		cleanupCtx:    cleanupCtx,
 		cleanupCancel: cleanupCancel,
 	}
-	if sessionStore != nil {
+	if maintenanceStore != nil {
 		m.cleanupWG.Add(1)
 		go m.cleanupExpiredSessions()
 	}
@@ -64,18 +74,26 @@ func NewManager(sessionStore conversationstore.SessionStore) *Manager {
 }
 
 // CreateSession creates a new active session in the configured Store.
-func (m *Manager) CreateSession(ctx context.Context) (*Session, error) {
+func (m *Manager) CreateSession(ctx context.Context, access security.AccessContext) (*Session, error) {
 	if err := m.requireStore(); err != nil {
 		return nil, err
 	}
 	now := time.Now()
+	expiresAt := now.Add(24 * time.Hour)
 	session := &Session{
 		ID:        generateSessionID(),
+		TenantID:  access.Subject.TenantID,
+		OwnerID:   access.Subject.UserID,
+		Version:   1,
 		CreatedAt: now,
 		UpdatedAt: now,
+		ExpiresAt: &expiresAt,
 		Status:    "active",
 	}
-	if err := m.store.Create(ctx, session); err != nil {
+	if err := m.policy.AuthorizeOwner(access, session.TenantID, session.OwnerID); err != nil {
+		return nil, err
+	}
+	if err := m.store.Create(ctx, access, session); err != nil {
 		return nil, err
 	}
 	rt.GetLogger().Info("Session created", "session_id", session.ID)
@@ -83,27 +101,40 @@ func (m *Manager) CreateSession(ctx context.Context) (*Session, error) {
 }
 
 // GetSession retrieves a session snapshot from the configured Store.
-func (m *Manager) GetSession(ctx context.Context, sessionID string) (*Session, error) {
+func (m *Manager) GetSession(ctx context.Context, access security.AccessContext, sessionID string) (*Session, error) {
 	if err := m.requireStore(); err != nil {
 		return nil, err
 	}
-	return m.store.Get(ctx, sessionID)
+	session, err := m.store.Get(ctx, access, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if err := m.policy.AuthorizeOwner(access, session.TenantID, session.OwnerID); err != nil {
+		return nil, err
+	}
+	return session, nil
 }
 
 // TouchSession records activity for an active session.
-func (m *Manager) TouchSession(ctx context.Context, sessionID string) error {
+func (m *Manager) TouchSession(ctx context.Context, access security.AccessContext, sessionID string) error {
 	if err := m.requireStore(); err != nil {
 		return err
 	}
-	return m.store.Touch(ctx, sessionID, time.Now())
+	if _, err := m.GetSession(ctx, access, sessionID); err != nil {
+		return err
+	}
+	return m.store.Touch(ctx, access, sessionID, time.Now())
 }
 
 // DeleteSession removes a session and its conversation history.
-func (m *Manager) DeleteSession(ctx context.Context, sessionID string) error {
+func (m *Manager) DeleteSession(ctx context.Context, access security.AccessContext, sessionID string) error {
 	if err := m.requireStore(); err != nil {
 		return err
 	}
-	if err := m.store.Delete(ctx, sessionID); err != nil {
+	if _, err := m.GetSession(ctx, access, sessionID); err != nil {
+		return err
+	}
+	if err := m.store.Delete(ctx, access, sessionID); err != nil {
 		return err
 	}
 	rt.GetLogger().Info("Session deleted", "session_id", sessionID)
@@ -111,11 +142,20 @@ func (m *Manager) DeleteSession(ctx context.Context, sessionID string) error {
 }
 
 // ListSessions returns active, non-expired session snapshots.
-func (m *Manager) ListSessions(ctx context.Context) ([]*Session, error) {
+func (m *Manager) ListSessions(ctx context.Context, access security.AccessContext) ([]*Session, error) {
 	if err := m.requireStore(); err != nil {
 		return nil, err
 	}
-	return m.store.List(ctx)
+	sessions, err := m.store.List(ctx, access)
+	if err != nil {
+		return nil, err
+	}
+	for _, session := range sessions {
+		if err := m.policy.AuthorizeOwner(access, session.TenantID, session.OwnerID); err != nil {
+			return nil, err
+		}
+	}
+	return sessions, nil
 }
 
 // Close stops expiration cleanup. It does not close the underlying Store.
@@ -135,7 +175,7 @@ func (m *Manager) cleanupExpiredSessions() {
 	for {
 		select {
 		case <-ticker.C:
-			deleted, err := m.store.DeleteExpired(m.cleanupCtx, time.Now())
+			deleted, err := m.maintenance.DeleteExpired(m.cleanupCtx, security.SystemAccessContext(), time.Now())
 			if err != nil {
 				rt.GetLogger().Error("Failed to clean expired sessions", "error", err)
 				continue
@@ -152,6 +192,9 @@ func (m *Manager) cleanupExpiredSessions() {
 func (m *Manager) requireStore() error {
 	if m == nil || m.store == nil {
 		return fmt.Errorf("session store is not configured")
+	}
+	if m.policy == nil {
+		return fmt.Errorf("session policy is not configured")
 	}
 	return nil
 }
