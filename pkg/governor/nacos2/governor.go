@@ -91,6 +91,32 @@ func (g *RuleGovernor) UpdateRule(r coremodel.Resource) error {
 }
 
 func (g *RuleGovernor) DeleteRule(r coremodel.Resource) error {
+	if script, ok := r.(*meshresource.ScriptRouteResource); ok {
+		// The Nacos SDK reports DeleteConfig to listeners as an Update with an
+		// empty payload. Dubbo-Go's ScriptRouter only clears an active script
+		// when it receives a valid disabled rule, so publish that transition
+		// before removing the dataId. The subsequent delete still makes the
+		// configuration absent for new consumers.
+		disabled := script.DeepCopyObject().(*meshresource.ScriptRouteResource)
+		disabled.Spec.Enabled = false
+		rawContent, err := marshalRule(disabled)
+		if err != nil {
+			return bizerror.Wrap(err, bizerror.NacosError,
+				fmt.Sprintf("failed to marshal disabled script rule, res: %s", r.String()))
+		}
+		ok, err := g.configClient.PublishConfig(nacosvo.ConfigParam{
+			DataId:  r.ResourceMeta().Name,
+			Group:   constants.NacosConfigGroup,
+			Content: string(rawContent),
+		})
+		if err != nil || !ok {
+			logger.Errorf("failed to disable script rule in %s, res: %s", r.String(), r.ResourceMesh())
+			return bizerror.Wrap(err, bizerror.NacosError,
+				fmt.Sprintf("failed to disable script rule before deletion, res: %s", r.String()))
+		}
+		// Keep the ordering deterministic for existing config-center listeners.
+		<-time.After(2 * time.Second)
+	}
 	ok, err := g.configClient.DeleteConfig(nacosvo.ConfigParam{
 		DataId: r.ResourceMeta().Name,
 		Group:  constants.NacosConfigGroup,
