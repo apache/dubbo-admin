@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -96,4 +97,44 @@ func TestGetTraceStartTimeNormalizesTraceIDs(t *testing.T) {
 			require.Equal(t, int64(1500), result.StartTime)
 		})
 	}
+}
+
+func TestGetTraceStartTimeResponseBoundaries(t *testing.T) {
+	valid := `{"data":[{"traceID":"0123456789abcdef","spans":[{"startTime":1000}]}]}`
+	for _, tc := range []struct {
+		name, body, wantError string
+	}{
+		{"normal", valid, ""},
+		{"exact limit", valid + strings.Repeat(" ", maxJaegerTraceResponseBytes-len(valid)), ""},
+		{"oversized valid JSON", valid + strings.Repeat(" ", maxJaegerTraceResponseBytes+1-len(valid)), "exceeds 16 MiB"},
+		{"malformed JSON", `{"data":`, "decode jaeger query response failed"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_, _ = fmt.Fprint(w, tc.body)
+			}))
+			defer server.Close()
+			base, err := url.Parse(server.URL)
+			require.NoError(t, err)
+			result, err := GetTraceStartTime(context.Background(), base, "0123456789abcdef")
+			if tc.wantError != "" {
+				require.ErrorContains(t, err, tc.wantError)
+				require.Nil(t, result)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, int64(1), result.StartTime)
+		})
+	}
+}
+
+func TestGetTraceStartTimeHonorsCanceledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	base, err := url.Parse("http://127.0.0.1:1")
+	require.NoError(t, err)
+	result, err := GetTraceStartTime(ctx, base, "0123456789abcdef")
+	require.ErrorContains(t, err, "jaeger query unavailable")
+	require.Nil(t, result)
+	require.Equal(t, 5*time.Second, jaegerTraceHTTPClient.Timeout)
 }

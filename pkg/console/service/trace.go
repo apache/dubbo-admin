@@ -34,6 +34,10 @@ import (
 
 var traceIDPattern = regexp.MustCompile(`^(?:[0-9a-fA-F]{16}|[0-9a-fA-F]{32})$`)
 
+const maxJaegerTraceResponseBytes = 16 << 20 // 16 MiB, including the complete trace envelope.
+
+var jaegerTraceHTTPClient = &http.Client{Timeout: 5 * time.Second}
+
 type jaegerTraceResponse struct {
 	Data []struct {
 		TraceID string `json:"traceID"`
@@ -57,8 +61,7 @@ func GetTraceStartTime(ctx context.Context, baseURL *url.URL, traceID string) (*
 	if err != nil {
 		return nil, bizerror.Wrap(err, bizerror.NetWorkError, "create jaeger query request failed")
 	}
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := jaegerTraceHTTPClient.Do(req)
 	if err != nil {
 		return nil, bizerror.Wrap(err, bizerror.NetWorkError, "jaeger query unavailable")
 	}
@@ -69,9 +72,12 @@ func GetTraceStartTime(ctx context.Context, baseURL *url.URL, traceID string) (*
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, bizerror.New(bizerror.NetWorkError, fmt.Sprintf("jaeger query returned status %d", resp.StatusCode))
 	}
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxJaegerTraceResponseBytes+1))
 	if err != nil {
 		return nil, bizerror.Wrap(err, bizerror.NetWorkError, "read jaeger query response failed")
+	}
+	if len(body) > maxJaegerTraceResponseBytes {
+		return nil, bizerror.New(bizerror.NetWorkError, "jaeger query response exceeds 16 MiB limit")
 	}
 	var result jaegerTraceResponse
 	if err := json.Unmarshal(body, &result); err != nil {
