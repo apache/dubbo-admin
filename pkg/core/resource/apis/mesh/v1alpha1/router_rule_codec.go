@@ -65,9 +65,10 @@ type scriptRouteYAML struct {
 }
 
 // EncodeRule serializes a rule resource using the public Dubbo YAML contract.
-// Existing rule kinds fall back to their historical protobuf/YAML encoding;
-// Affinity and Script use explicit codecs because their public field names and
-// boolean defaults differ from the internal protobuf shape.
+// Existing rule kinds use MarshalRuleSpec so their explicit router booleans
+// survive protobuf's omitempty tags. Affinity and Script use explicit codecs
+// because their public field names and boolean defaults differ from the
+// internal protobuf shape.
 func EncodeRule(r coremodel.Resource) ([]byte, error) {
 	if err := ValidateRule(r); err != nil {
 		return nil, err
@@ -100,7 +101,7 @@ func EncodeRule(r coremodel.Resource) ([]byte, error) {
 		if r == nil || r.ResourceSpec() == nil {
 			return nil, invalidRule("rule spec is required")
 		}
-		value = r.ResourceSpec()
+		return MarshalRuleSpec(r.ResourceSpec())
 	}
 	data, err := yaml.Marshal(value)
 	if err != nil {

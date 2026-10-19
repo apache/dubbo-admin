@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/dubbogo/go-zookeeper/zk"
-	"sigs.k8s.io/yaml"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/common/constants"
@@ -62,7 +61,7 @@ func NewZKRuleGovernor(cfg *discoverycfg.Config, router store.Router, emitter ev
 
 func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
 	path := ruleConfigPath(r)
-	content, err := marshalRule(r)
+	content, err := meshresource.EncodeRule(r)
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.YamlError,
 			fmt.Sprintf("failed to marshal resource spec, res: %s", r.String()))
@@ -92,7 +91,7 @@ func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
 
 func (g *RuleGovernor) UpdateRule(r coremodel.Resource) error {
 	path := ruleConfigPath(r)
-	content, err := marshalRule(r)
+	content, err := meshresource.EncodeRule(r)
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.YamlError,
 			fmt.Sprintf("failed to marshal resource spec, res: %s", r.String()))
@@ -136,13 +135,6 @@ func (g *RuleGovernor) DeleteRule(r coremodel.Resource) error {
 		logger.Warnf("delete resource from store failed, res: %s, cause: %v", r.String(), err)
 	}
 	return nil
-}
-
-func marshalRule(r coremodel.Resource) ([]byte, error) {
-	if r.ResourceKind() == meshresource.AffinityRouteKind || r.ResourceKind() == meshresource.ScriptRouteKind {
-		return meshresource.EncodeRule(r)
-	}
-	return yaml.Marshal(r.ResourceSpec())
 }
 
 func ruleConfigPath(r coremodel.Resource) string {

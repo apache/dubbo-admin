@@ -26,7 +26,6 @@ import (
 	nacosnamingclient "github.com/nacos-group/nacos-sdk-go/v2/clients/naming_client"
 	nacosvo "github.com/nacos-group/nacos-sdk-go/v2/vo"
 	"k8s.io/client-go/tools/cache"
-	"sigs.k8s.io/yaml"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/common/constants"
@@ -65,7 +64,7 @@ func NewNacos2Governor(
 }
 
 func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
-	rawContent, err := marshalRule(r)
+	rawContent, err := meshresource.EncodeRule(r)
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.NacosError,
 			fmt.Sprintf("failed to marshal resource spec, res: %s", r.String()))
@@ -99,7 +98,7 @@ func (g *RuleGovernor) DeleteRule(r coremodel.Resource) error {
 		// configuration absent for new consumers.
 		disabled := script.DeepCopyObject().(*meshresource.ScriptRouteResource)
 		disabled.Spec.Enabled = false
-		rawContent, err := marshalRule(disabled)
+		rawContent, err := meshresource.EncodeRule(disabled)
 		if err != nil {
 			return bizerror.Wrap(err, bizerror.NacosError,
 				fmt.Sprintf("failed to marshal disabled script rule, res: %s", r.String()))
@@ -202,13 +201,6 @@ func (g *RuleGovernor) GetConfigAndUpdateStore(r coremodel.Resource) {
 		return
 	}
 	g.emitter.Send(events.NewResourceChangedEvent(cache.Added, nil, res))
-}
-
-func marshalRule(r coremodel.Resource) ([]byte, error) {
-	if r.ResourceKind() == meshresource.AffinityRouteKind || r.ResourceKind() == meshresource.ScriptRouteKind {
-		return meshresource.EncodeRule(r)
-	}
-	return yaml.Marshal(r.ResourceSpec())
 }
 
 func (g *RuleGovernor) mesh() string {
