@@ -20,6 +20,8 @@ export interface GrafanaState {
   showIframe: boolean
   params: Record<string, any>
   url?: string
+  error?: string
+  requestVersion?: number
 }
 
 export interface ApplicationDashboardParams {

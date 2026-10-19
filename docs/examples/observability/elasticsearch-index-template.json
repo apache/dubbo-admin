@@ -1,0 +1,31 @@
+{
+  "index_patterns": ["dubbo-logs", "dubbo-logs-*"],
+  "priority": 100,
+  "version": 1,
+  "_meta": {
+    "description": "Optional reference for OTel raw log mapping; not installed by Dubbo Admin."
+  },
+  "template": {
+    "mappings": {
+      "properties": {
+        "@timestamp": { "type": "date" },
+        "Body": { "type": "text" },
+        "app": {
+          "type": "text",
+          "fields": { "keyword": { "type": "keyword" } }
+        },
+        "pod_ip": {
+          "type": "text",
+          "fields": { "keyword": { "type": "keyword" } }
+        },
+        "trace_id": {
+          "type": "text",
+          "fields": { "keyword": { "type": "keyword" } }
+        },
+        "level": { "type": "keyword" },
+        "pod_name": { "type": "keyword" },
+        "logger": { "type": "keyword" }
+      }
+    }
+  }
+}
