@@ -44,7 +44,7 @@ type jaegerTraceResponse struct {
 }
 
 func GetTraceStartTime(ctx context.Context, baseURL *url.URL, traceID string) (*model.TraceStartTimeResp, error) {
-	traceID = strings.TrimSpace(traceID)
+	traceID = strings.ToLower(strings.TrimSpace(traceID))
 	if !traceIDPattern.MatchString(traceID) {
 		return nil, bizerror.New(bizerror.InvalidArgument, "traceId must be 16 or 32 hexadecimal characters")
 	}
@@ -80,7 +80,9 @@ func GetTraceStartTime(ctx context.Context, baseURL *url.URL, traceID string) (*
 	if len(result.Data) == 0 {
 		return nil, bizerror.New(bizerror.NotFoundError, "trace not found")
 	}
-	if !strings.EqualFold(result.Data[0].TraceID, traceID) {
+	// Jaeger may represent a 64-bit ID either directly or padded to 128 bits.
+	returnedID := result.Data[0].TraceID
+	if !traceIDPattern.MatchString(returnedID) || fmt.Sprintf("%032s", strings.ToLower(returnedID)) != fmt.Sprintf("%032s", traceID) {
 		return nil, bizerror.New(bizerror.NetWorkError, "jaeger returned a different trace id")
 	}
 	var earliest int64

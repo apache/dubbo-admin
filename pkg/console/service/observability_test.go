@@ -20,6 +20,7 @@ package service
 import (
 	"fmt"
 	"net/url"
+	"strings"
 	"sync"
 	"testing"
 
@@ -320,6 +321,22 @@ func TestTraceLogDashboardRejectsBroadOrInvalidInput(t *testing.T) {
 			})
 			require.ErrorContains(t, err, "valid millisecond time range")
 			require.Empty(t, result)
+		})
+	}
+}
+
+func TestTraceLogDashboardLowercasesTraceIDWithoutChangingWidth(t *testing.T) {
+	base, err := url.Parse("http://grafana/d/logs")
+	require.NoError(t, err)
+	for _, id := range []string{"ABCDEF0123456789", "0000000000000000ABCDEF0123456789", "ABCDEF0123456789ABCDEF0123456789"} {
+		t.Run(id, func(t *testing.T) {
+			result, err := GetTraceLogDashboard(base, &model.TraceLogDashboardReq{
+				TraceID: " " + id + " ", From: "1000", To: "601000",
+			})
+			require.NoError(t, err)
+			parsed, err := url.Parse(result)
+			require.NoError(t, err)
+			require.Equal(t, strings.ToLower(id), parsed.Query().Get("var-traceId"))
 		})
 	}
 }

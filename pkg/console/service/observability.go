@@ -166,7 +166,7 @@ func GetTraceLogDashboard(baseURL *url.URL, req *model.TraceLogDashboardReq) (st
 	return concatURLWithQueryVars(baseURL, map[string]string{
 		"var-application": ".*",
 		"var-instance":    ".*",
-		"var-traceId":     strings.TrimSpace(req.TraceID),
+		"var-traceId":     strings.ToLower(strings.TrimSpace(req.TraceID)),
 		"from":            fromText,
 		"to":              toText,
 	}), nil
