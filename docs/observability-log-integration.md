@@ -36,7 +36,7 @@ change to `beginning` temporarily if historical files are needed.
 | `pod_ip` | Required | Pod IP from `k8sattributes`; with `app` filters Instance Log. It must equal the IP known to Admin. |
 | timestamp | Required | Container log timestamp retained by OTel; becomes ES `@timestamp`. |
 | raw log | Required | Complete original application line retained in OTel `Body`; displayed as the message. |
-| `trace_id` | Optional | 16- or 32-character hex ID for manual Log-page search; never a Loki index label. |
+| `trace_id` | Optional | Lowercase 16- or 32-character hex ID for manual Log-page search; never a Loki index label. |
 | `level` | Optional | Parsed severity, if available. |
 | `pod_name` | Optional | Kubernetes pod name for display. |
 | `logger` | Optional | Parsed logger name, if available. |
@@ -220,6 +220,87 @@ Admin supplies application and instance variables. Manual Trace ID search
 gets the Trace start time from Jaeger and opens the selected log Dashboard
 over T±5 minutes. Jaeger query access is needed for this optional search,
 not for ordinary Log views.
+
+Set `observability.jaeger` to the Jaeger **query HTTP** base URL reachable
+by the Admin server (for example, `http://127.0.0.1:16686`), not its OTLP
+ingestion endpoint. The query client has a five-second timeout and accepts
+at most 16 MiB per trace response; oversized responses are reported as
+query failures, not as missing traces. The local example in
+`app/dubbo-admin/dubbo-admin.yaml` includes optional Jaeger and Log settings.
+
+### Dashboard variable contract
+
+The two Loki Dashboards intentionally consume different representations
+of `var-application`. These are existing contracts, not provider detection:
+
+| Entry | Value supplied by Admin | Loki interpolation |
+| --- | --- | --- |
+| Application Log | `regexp.QuoteMeta(app)`, then `strconv.Quote` with the outer quotes removed | `${application:raw}` inside a quoted LogQL regex matcher |
+| Instance Log | Original application name | `${application:regex}` inside a quoted LogQL regex matcher |
+| Both Log entries | `var-applicationRaw` is the original application name | Not used by the Loki Dashboards; available for exact-match Dashboards |
+
+For example, for application `shop.user`, the decoded Application Log URL
+parameter contains `shop\\.user` (two backslashes), whereas Instance Log
+receives `shop.user`. The Application value is escaped for both the regex
+and its surrounding LogQL string; the Instance Dashboard delegates regex
+formatting to Grafana. `var-instance` is the bare Pod IP, without a QoS port.
+Do not substitute one representation for the other when customizing a
+Dashboard. URL percent-encoding is separate from these query escapes.
+
+`console.logDashboards.trace` is used only for manual Trace ID search on a
+Log page. Although `GrafanaDashboardConfig` is shared, its `trace` field is
+not a Metric or Trace Dashboard setting. It normally reuses the Application
+Log Dashboard in trace-focused mode; a separate URL setting allows operators
+to override that target without changing the ordinary Application view.
+There is no third Dashboard and no automatic fallback when `trace` is absent:
+manual search reports that its Dashboard is not configured. The handler
+checks for the Log configuration object and the service checks its target
+URL, so both direct service calls and HTTP requests remain protected.
+
+### Elasticsearch exact-match constraints
+
+The ES Dashboards use Lucene quoted exact-match filters, for example
+`app.keyword:"${applicationRaw:raw}"`. Dots and hyphens are supported, but
+application names containing a double quote (`"`) or backslash (`\`) are
+**not supported by these templates**. `applicationRaw` deliberately remains
+provider-neutral and unescaped; Admin does not apply ES-specific escaping.
+Use a supported application identity or an independently adapted Dashboard
+for those names; do not change the shared identity or the Loki variables.
+
+Manual Trace ID search sends `var-application=.*`, `var-instance=.*`, and
+`var-traceId`, but does not send `var-applicationRaw`. The ES Application
+Dashboard query is:
+
+```text
+app.keyword:"${applicationRaw:raw}" OR trace_id.keyword:"${traceId:raw}"
+```
+
+The Instance query has the same `OR trace_id.keyword` branch after its
+application/IP filter. In trace-focused mode, `applicationRaw` defaults to
+`.*`; this is a literal value inside a quoted keyword filter, **not** a
+match-all expression. The `OR trace_id` branch enables the exact Trace ID
+search without an application or instance restriction. Trace IDs are
+validated as hexadecimal before URL generation. Outside trace-focused mode,
+the default `traceId=.*` is also a literal keyword value, not a match-all
+expression; it does not replace the ordinary application filter.
+
+Admin lowercases accepted Trace IDs before Jaeger lookup and Log URL
+generation. Configure ingestion to store ES `trace_id` values in lowercase
+as well: keyword matching is case-sensitive, and historical uppercase values
+are not automatically converted. The reference parsing examples do not
+themselves normalize uppercase IDs. A zero-padded 32-character ID and its
+16-character equivalent compare equally for Jaeger response validation,
+but Log queries retain the input width; the stored ES value must use that
+same width. No `Body` full-text fallback is performed.
+
+### Shared Grafana embedding behavior
+
+The shared `GrafanaPage.vue` is used by Metric, Trace, and Log views. It no
+longer accesses the iframe's cross-origin DOM or clips a fixed-size frame
+with negative offsets. It sizes the frame from its container, observes
+container/window resizing, and adds `kiosk=1` only when the URL has no
+`kiosk` parameter (explicit values are preserved). Regression checks should
+include existing Metric and Trace pages as well as the new Log pages.
 
 ## Minimum verification
 

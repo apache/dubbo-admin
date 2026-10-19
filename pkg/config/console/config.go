@@ -95,7 +95,8 @@ type GrafanaDashboardConfig struct {
 	Instance string `json:"instance" yaml:"instance"`
 	// service level metrics panel
 	Service string `json:"service" yaml:"service"`
-	// Trace is the existing application log dashboard used in trace-focused mode.
+	// Trace is used only under logDashboards for manual Trace ID search.
+	// It normally reuses Application in trace-focused mode; it is not a Metric/Trace setting.
 	Trace string `json:"trace" yaml:"trace"`
 
 	AppDashboardURL      *url.URL `json:"-" yaml:"-"`
