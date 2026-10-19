@@ -26,14 +26,22 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
+	"k8s.io/client-go/tools/cache"
+
+	"dubbo.apache.org/dubbo-go/v3/common"
+	dubbogoconstant "dubbo.apache.org/dubbo-go/v3/common/constant"
 	_ "dubbo.apache.org/dubbo-go/v3/config_center/nacos"
 	dubbogologger "dubbo.apache.org/dubbo-go/v3/logger"
+	"dubbo.apache.org/dubbo-go/v3/remoting"
 	gostlogger "github.com/dubbogo/gost/log/logger"
 	nacoslogger "github.com/nacos-group/nacos-sdk-go/v2/common/logger"
 
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	logcfg "github.com/apache/dubbo-admin/pkg/config/log"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	_ "github.com/apache/dubbo-admin/pkg/discovery/nacos2"
 	_ "github.com/apache/dubbo-admin/pkg/governor/nacos2"
 )
@@ -58,9 +66,49 @@ func TestNacosRouterRuleChainLifecycle(t *testing.T) {
 	if address == "" {
 		t.Skipf("set %s to run the Nacos integration test", e2eNacosAddressEnv)
 	}
-	e2e := newRouterRuleChainE2E(t, requireAdminRuntimeFixture(t), configCenterNacos, e2eNacosMesh, address)
+	e2e := newNacosRouterRuleChainE2E(t, requireAdminRuntimeFixture(t), address)
 	t.Run("Affinity", e2e.testAffinityLifecycle)
 	t.Run("Script", e2e.testScriptLifecycle)
+}
+
+func newNacosRouterRuleChainE2E(t *testing.T, fixture *adminRuntimeFixture, address string) *routerRuleChainE2E {
+	t.Helper()
+	return newRouterRuleChainE2E(t, fixture, configCenterNacos, e2eNacosMesh, address, nacosConfigCenterE2EAdapter{})
+}
+
+// nacosConfigCenterE2EAdapter documents Nacos-specific propagation behavior.
+// Its ListWatcher materializes typed rules directly, without a raw config
+// resource equivalent to ZooKeeper's ZKConfig.
+type nacosConfigCenterE2EAdapter struct{}
+
+func (nacosConfigCenterE2EAdapter) configureURL(url *common.URL) {
+	url.AddParam(dubbogoconstant.ClientNameKey, fmt.Sprintf("router-rule-chain-%d", time.Now().UnixNano()))
+	url.AddParam(dubbogoconstant.ConfigGroupKey, constants.NacosConfigGroup)
+	if level := nacosSDKLogLevel(); level != "" {
+		url.AddParam(dubbogoconstant.NacosLogLevelKey, level)
+	}
+}
+
+func (nacosConfigCenterE2EAdapter) configMatches(e2e *routerRuleChainE2E, name, content string, exists bool) bool {
+	value, err := e2e.dynamic.GetRule(name)
+	return err == nil && ((exists && strings.Contains(value, content)) || (!exists && value == ""))
+}
+
+func (nacosConfigCenterE2EAdapter) verifyUpsert(*testing.T, *routerRuleChainE2E, coremodel.Resource, *resourceEventRecorder, cache.DeltaType, string) {
+	// The typed route resource is asserted by the shared store check.
+}
+
+func (nacosConfigCenterE2EAdapter) verifyDelete(t *testing.T, _ *routerRuleChainE2E, rule coremodel.Resource, events *resourceEventRecorder) {
+	t.Helper()
+	// Nacos governor removes its local item synchronously, so this event is
+	// produced by Nacos discovery rather than by the governor itself.
+	events.waitFor(t, rule.ResourceKey(), cache.Deleted, "")
+}
+
+func (nacosConfigCenterE2EAdapter) listenerEventType(remoting.EventType) remoting.EventType {
+	// Nacos represents both updates and removals as Update callbacks; removal
+	// is separately verified through the Admin discovery delete event above.
+	return remoting.EventTypeUpdate
 }
 
 func configureE2ELogging() {
