@@ -379,10 +379,22 @@ const words: I18nType = {
     serviceTest: 'Service Test will release later',
     serviceMock: 'Service Mock will release later'
   },
+  grafana: {
+    dashboardNotConfigured: 'Grafana dashboard is not configured',
+    dashboardUnavailable: 'Grafana dashboard is unavailable. Please try again later'
+  },
   traceLog: {
     traceId: 'Trace ID',
     traceIdPlaceholder: 'Enter a 16 or 32 character trace ID',
-    search: 'Search logs'
+    search: 'Search logs',
+    traceIdRequired: 'Trace ID is required',
+    invalidTraceId: 'Trace ID must be 16 or 32 hexadecimal characters',
+    traceNotFound: 'Trace does not exist or has no valid start time',
+    jaegerNotConfigured: 'Jaeger query is not configured',
+    jaegerUnavailable: 'Jaeger query is unavailable. Please try again later',
+    lookupFailed: 'Unable to retrieve the Trace time range',
+    dashboardNotConfigured: 'Trace log dashboard is not configured',
+    dashboardUnavailable: 'Log dashboard is unavailable. Please try again later'
   },
   by: 'by ',
   $vuetify: {

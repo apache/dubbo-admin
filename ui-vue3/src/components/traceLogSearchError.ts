@@ -19,22 +19,22 @@ export function traceLogSearchErrorMessage(error: unknown): string {
   const code = (error as { code?: unknown } | null)?.code
   switch (code) {
     case 'InvalidArgument':
-      return 'Trace ID must be 16 or 32 hexadecimal characters'
+      return 'traceLog.invalidTraceId'
     case 'NotFoundError':
-      return 'Trace does not exist or has no valid start time'
+      return 'traceLog.traceNotFound'
     case 'ConfigError':
-      return 'Jaeger query is not configured'
+      return 'traceLog.jaegerNotConfigured'
     case 'NetWorkError':
-      return 'Jaeger query is unavailable. Please try again later'
+      return 'traceLog.jaegerUnavailable'
     default:
-      return 'Unable to retrieve the Trace time range'
+      return 'traceLog.lookupFailed'
   }
 }
 
 export function traceLogDashboardErrorMessage(error: unknown): string {
   const code = (error as { code?: unknown } | null)?.code
   if (code === 'NotFoundError' || code === 'ConfigError') {
-    return 'Trace log dashboard is not configured'
+    return 'traceLog.dashboardNotConfigured'
   }
-  return 'Log dashboard is unavailable. Please try again later'
+  return 'traceLog.dashboardUnavailable'
 }

@@ -17,6 +17,8 @@
 
 import { flushPromises, mount } from '@vue/test-utils'
 import { reactive } from 'vue'
+import { createI18n } from 'vue-i18n'
+import { messages } from '@/base/i18n/messages'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TraceLogSearch from './TraceLogSearch.vue'
 import GrafanaPage from './GrafanaPage.vue'
@@ -32,6 +34,7 @@ vi.mock('@/api/service/trace', () => ({ getTraceStartTime, getTraceLogDashboard 
 vi.mock('ant-design-vue', () => ({ message: { error: showError } }))
 
 const traceId = '766b9604d84bd8e6b17b2292dfd9bdd0'
+const testI18n = (locale = 'en') => createI18n({ legacy: false, locale, messages })
 const stubs = {
   'a-form': { template: '<form><slot /></form>' },
   'a-form-item': { template: '<label><slot /></label>' },
@@ -56,6 +59,82 @@ describe('TraceLogSearch', () => {
     })
   })
 
+  it.each([
+    ['en', '', 'Trace ID is required'],
+    ['cn', '', '请输入 Trace ID'],
+    ['en', 'invalid', 'Trace ID must be 16 or 32 hexadecimal characters'],
+    ['cn', 'invalid', 'Trace ID 必须为 16 或 32 位十六进制字符']
+  ])('localizes client validation in %s for %s', async (locale, input, expected) => {
+    const grafana = reactive({ api: vi.fn(), params: {}, showIframe: true, error: '' })
+    const wrapper = mount(TraceLogSearch, {
+      global: {
+        provide: { [PROVIDE_INJECT_KEY.GRAFANA]: grafana },
+        plugins: [testI18n(locale)],
+        stubs
+      }
+    })
+    await wrapper.get('input').setValue(input)
+    await wrapper.get('button').trigger('click')
+    expect(grafana.error).toBe(expected)
+    expect(showError).toHaveBeenCalledTimes(1)
+    expect(showError).toHaveBeenCalledWith(expected)
+    expect(getTraceStartTime).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it.each([
+    ['trace', 'InvalidArgument', 'Trace ID 必须为 16 或 32 位十六进制字符'],
+    ['trace', 'NotFoundError', 'Trace 不存在或没有有效的开始时间'],
+    ['trace', 'ConfigError', '未配置 Jaeger 查询地址'],
+    ['trace', 'NetWorkError', 'Jaeger 查询暂不可用，请稍后重试'],
+    ['trace', 'unexpected', '无法获取 Trace 时间范围'],
+    ['dashboard', 'NotFoundError', '未配置 Trace 日志面板'],
+    ['dashboard', 'NetWorkError', '日志面板暂不可用，请稍后重试']
+  ])('localizes %s %s failures without duplicate errors', async (stage, code, expected) => {
+    const api = stage === 'trace' ? getTraceStartTime : getTraceLogDashboard
+    api.mockRejectedValueOnce({ code })
+    const grafana = reactive({ api: vi.fn(), params: {}, showIframe: true, error: '' })
+    const wrapper = mount(TraceLogSearch, {
+      global: {
+        provide: { [PROVIDE_INJECT_KEY.GRAFANA]: grafana },
+        plugins: [testI18n('cn')],
+        stubs
+      }
+    })
+    await wrapper.get('input').setValue(traceId)
+    await wrapper.get('button').trigger('click')
+    await flushPromises()
+    expect(grafana.error).toBe(expected)
+    expect(grafana.showIframe).toBe(false)
+    expect(showError).toHaveBeenCalledTimes(1)
+    expect(showError).toHaveBeenCalledWith(expected)
+    wrapper.unmount()
+  })
+
+  it.each([
+    ['en', 'missing', 'Grafana dashboard is not configured'],
+    ['cn', 'missing', '未配置 Grafana 仪表板'],
+    ['en', 'network', 'Grafana dashboard is unavailable. Please try again later'],
+    ['cn', 'network', 'Grafana 仪表板暂不可用，请稍后重试']
+  ])('localizes the initial dashboard %s %s error', async (locale, failure, expected) => {
+    const api = vi.fn()
+    if (failure === 'missing') api.mockResolvedValue({ data: {} })
+    else api.mockRejectedValue(new Error('Unavailable'))
+    const grafana = reactive({ api, params: {}, showIframe: false, error: '' })
+    const wrapper = mount(GrafanaPage, {
+      global: {
+        provide: { [PROVIDE_INJECT_KEY.GRAFANA]: grafana },
+        plugins: [testI18n(locale)],
+        stubs
+      }
+    })
+    await flushPromises()
+    expect(grafana.error).toBe(expected)
+    expect(showError).toHaveBeenCalledTimes(1)
+    expect(showError).toHaveBeenCalledWith(expected)
+    wrapper.unmount()
+  })
+
   it('uses the trace-focused dashboard instead of retaining the current instance filter', async () => {
     const grafana = reactive({
       api: vi.fn(),
@@ -66,7 +145,7 @@ describe('TraceLogSearch', () => {
     const wrapper = mount(TraceLogSearch, {
       global: {
         provide: { [PROVIDE_INJECT_KEY.GRAFANA]: grafana },
-        mocks: { $t: (key: string) => key },
+        plugins: [testI18n()],
         stubs
       }
     })
@@ -95,7 +174,7 @@ describe('TraceLogSearch', () => {
     const wrapper = mount(TraceLogSearch, {
       global: {
         provide: { [PROVIDE_INJECT_KEY.GRAFANA]: grafana },
-        mocks: { $t: (key: string) => key },
+        plugins: [testI18n()],
         stubs
       }
     })
@@ -114,7 +193,7 @@ describe('TraceLogSearch', () => {
     const wrapper = mount(TraceLogSearch, {
       global: {
         provide: { [PROVIDE_INJECT_KEY.GRAFANA]: grafana },
-        mocks: { $t: (key: string) => key },
+        plugins: [testI18n()],
         stubs
       }
     })
@@ -145,7 +224,7 @@ describe('TraceLogSearch', () => {
       {
         global: {
           provide: { [PROVIDE_INJECT_KEY.GRAFANA]: grafana },
-          mocks: { $t: (key: string) => key },
+          plugins: [testI18n()],
           stubs
         }
       }
@@ -183,7 +262,7 @@ describe('TraceLogSearch', () => {
       {
         global: {
           provide: { [PROVIDE_INJECT_KEY.GRAFANA]: grafana },
-          mocks: { $t: (key: string) => key },
+          plugins: [testI18n()],
           stubs
         }
       }

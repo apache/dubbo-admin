@@ -20,30 +20,28 @@ import { traceLogDashboardErrorMessage, traceLogSearchErrorMessage } from './tra
 
 describe('traceLogSearchErrorMessage', () => {
   it('does not report an invalid Trace ID as a missing trace', () => {
-    expect(traceLogSearchErrorMessage({ code: 'InvalidArgument' })).toBe(
-      'Trace ID must be 16 or 32 hexadecimal characters'
-    )
+    expect(traceLogSearchErrorMessage({ code: 'InvalidArgument' })).toBe('traceLog.invalidTraceId')
   })
 
   it('distinguishes a missing trace from configuration and network errors', () => {
-    expect(traceLogSearchErrorMessage({ code: 'NotFoundError' })).toContain('does not exist')
-    expect(traceLogSearchErrorMessage({ code: 'ConfigError' })).toContain('not configured')
-    expect(traceLogSearchErrorMessage({ code: 'NetWorkError' })).toContain('unavailable')
+    expect(traceLogSearchErrorMessage({ code: 'NotFoundError' })).toBe('traceLog.traceNotFound')
+    expect(traceLogSearchErrorMessage({ code: 'ConfigError' })).toBe('traceLog.jaegerNotConfigured')
+    expect(traceLogSearchErrorMessage({ code: 'NetWorkError' })).toBe('traceLog.jaegerUnavailable')
   })
 
   it('uses a neutral message for an unexpected failure', () => {
-    expect(traceLogSearchErrorMessage(new Error('unexpected'))).toBe(
-      'Unable to retrieve the Trace time range'
-    )
+    expect(traceLogSearchErrorMessage(new Error('unexpected'))).toBe('traceLog.lookupFailed')
   })
 })
 
 describe('traceLogDashboardErrorMessage', () => {
   it('reports a missing dashboard without blaming the Trace lookup', () => {
-    expect(traceLogDashboardErrorMessage({ code: 'NotFoundError' })).toContain('not configured')
+    expect(traceLogDashboardErrorMessage({ code: 'NotFoundError' })).toBe(
+      'traceLog.dashboardNotConfigured'
+    )
   })
 
   it('reports dashboard transport failures separately from Jaeger failures', () => {
-    expect(traceLogDashboardErrorMessage(undefined)).toContain('Log dashboard is unavailable')
+    expect(traceLogDashboardErrorMessage(undefined)).toBe('traceLog.dashboardUnavailable')
   })
 })

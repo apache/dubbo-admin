@@ -36,12 +36,14 @@
 
 <script setup lang="ts">
 import { computed, inject, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import type { GrafanaState } from '@/types/grafana'
 import { embedDashboardUrl } from './grafanaEmbed'
 
 const grafana = inject<GrafanaState>(PROVIDE_INJECT_KEY.GRAFANA)
+const { t } = useI18n()
 
 if (!grafana) {
   throw new Error('Grafana state not provided')
@@ -88,14 +90,14 @@ onMounted(async () => {
       await nextTick()
       updateFrameHeight()
     } else {
-      grafana.error = 'Grafana dashboard is not configured'
-      message.error('获取Grafana仪表板URL失败')
+      grafana.error = t('grafana.dashboardNotConfigured')
+      message.error(grafana.error)
     }
   } catch (error) {
     if (requestVersion !== (grafana.requestVersion ?? 0)) return
-    grafana.error = 'Grafana dashboard is unavailable'
-    console.error('获取Grafana仪表板失败:', error)
-    message.error('获取Grafana仪表板失败，请稍后重试')
+    grafana.error = t('grafana.dashboardUnavailable')
+    console.error('Grafana dashboard request failed:', error)
+    message.error(grafana.error)
   }
 })
 

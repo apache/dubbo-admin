@@ -213,10 +213,22 @@ const words: I18nType = {
     startTime_k8s: '启动时间(k8s)',
     readyTime_k8s: '就绪时间(k8s)'
   },
+  grafana: {
+    dashboardNotConfigured: '未配置 Grafana 仪表板',
+    dashboardUnavailable: 'Grafana 仪表板暂不可用，请稍后重试'
+  },
   traceLog: {
     traceId: 'Trace ID',
     traceIdPlaceholder: '输入 16 或 32 位 Trace ID',
-    search: '查询日志'
+    search: '查询日志',
+    traceIdRequired: '请输入 Trace ID',
+    invalidTraceId: 'Trace ID 必须为 16 或 32 位十六进制字符',
+    traceNotFound: 'Trace 不存在或没有有效的开始时间',
+    jaegerNotConfigured: '未配置 Jaeger 查询地址',
+    jaegerUnavailable: 'Jaeger 查询暂不可用，请稍后重试',
+    lookupFailed: '无法获取 Trace 时间范围',
+    dashboardNotConfigured: '未配置 Trace 日志面板',
+    dashboardUnavailable: '日志面板暂不可用，请稍后重试'
   },
   serviceDomain: {
     name: '服务名',

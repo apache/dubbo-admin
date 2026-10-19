@@ -32,6 +32,7 @@ limitations under the License.
 
 <script setup lang="ts">
 import { inject, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
 import { getTraceLogDashboard, getTraceStartTime } from '@/api/service/trace'
 import { isValidTraceId, resolveTraceLogRange } from './traceLogRange'
@@ -40,6 +41,7 @@ import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import type { GrafanaState } from '@/types/grafana'
 
 const grafana = inject<GrafanaState>(PROVIDE_INJECT_KEY.GRAFANA)
+const { t } = useI18n()
 const traceId = ref('')
 const loading = ref(false)
 
@@ -56,11 +58,11 @@ const submit = async () => {
   if (grafana) grafana.requestVersion = (grafana.requestVersion ?? 0) + 1
   const id = traceId.value.trim()
   if (!id) {
-    showSearchError('Trace ID is required')
+    showSearchError(t('traceLog.traceIdRequired'))
     return
   }
   if (!isValidTraceId(id)) {
-    showSearchError('Trace ID must be 16 or 32 hexadecimal characters')
+    showSearchError(t('traceLog.invalidTraceId'))
     return
   }
   loading.value = true
@@ -82,7 +84,9 @@ const submit = async () => {
     grafana.showIframe = true
   } catch (error) {
     showSearchError(
-      stage === 'trace' ? traceLogSearchErrorMessage(error) : traceLogDashboardErrorMessage(error)
+      t(
+        stage === 'trace' ? traceLogSearchErrorMessage(error) : traceLogDashboardErrorMessage(error)
+      )
     )
   } finally {
     loading.value = false
