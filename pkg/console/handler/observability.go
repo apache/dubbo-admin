@@ -20,6 +20,7 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/gin-gonic/gin"
 
@@ -83,11 +84,7 @@ func GetGrafanaDashboard(ctx consolectx.Context, dim Dimension, dashboardType Da
 			if err = c.ShouldBindQuery(&req); err != nil {
 				break
 			}
-			if dashboardType == LogDashboard {
-				fullURL, err = service.GetInstanceLogDashboard(ctx, grafanaDashboards.InstanceDashboardURL, &req)
-			} else {
-				fullURL, err = service.GetInstanceDashboard(ctx, grafanaDashboards.InstanceDashboardURL, &req)
-			}
+			fullURL, err = getInstanceDashboard(ctx, grafanaDashboards.InstanceDashboardURL, &req, dashboardType)
 		case ServiceDimension:
 			var req model.ServiceDashboardReq
 			if err = c.ShouldBindQuery(&req); err != nil {
@@ -107,6 +104,17 @@ func GetGrafanaDashboard(ctx consolectx.Context, dim Dimension, dashboardType Da
 		c.JSON(http.StatusOK, model.NewSuccessResp(model.DashboardResp{
 			FullURL: fullURL,
 		}))
+	}
+}
+
+func getInstanceDashboard(ctx consolectx.Context, baseURL *url.URL, req *model.InstanceDashboardReq, dashboardType DashboardType) (string, error) {
+	switch dashboardType {
+	case TraceDashboard:
+		return service.GetInstanceTraceDashboard(ctx, baseURL, req)
+	case LogDashboard:
+		return service.GetInstanceLogDashboard(ctx, baseURL, req)
+	default:
+		return service.GetInstanceDashboard(ctx, baseURL, req)
 	}
 }
 
