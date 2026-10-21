@@ -5929,7 +5929,7 @@ items:
                     "uid": "${datasource}"
                   },
                   "editorMode": "code",
-                  "expr": "sum(increase (dubbo_provider_requests_failed_network_total{application_name=\"$application\"}[2m])) OR vector(0)",
+                  "expr": "sum((increase(dubbo_provider_requests_failed_network_total{application_name=\"$application\",ip=\"$instance\"}[2m]) or (increase(dubbo_provider_requests_failed_network_total{application_name=\"$application\"}[2m]) and on(application_name,instance) dubbo_application_info_total{application_name=\"$application\",ip=\"$instance\"}))) OR vector(0)",
                   "hide": false,
                   "instant": false,
                   "legendFormat": "网络错误数",
@@ -5942,7 +5942,7 @@ items:
                     "uid": "${datasource}"
                   },
                   "editorMode": "code",
-                  "expr": "sum(increase (dubbo_provider_requests_failed_codec_total{application_name=\"$application\"}[2m])) OR vector(0)",
+                  "expr": "sum((increase(dubbo_provider_requests_failed_codec_total{application_name=\"$application\",ip=\"$instance\"}[2m]) or (increase(dubbo_provider_requests_failed_codec_total{application_name=\"$application\"}[2m]) and on(application_name,instance) dubbo_application_info_total{application_name=\"$application\",ip=\"$instance\"}))) OR vector(0)",
                   "hide": false,
                   "instant": false,
                   "legendFormat": "序列化错误数",
