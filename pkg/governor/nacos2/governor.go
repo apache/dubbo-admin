@@ -64,7 +64,7 @@ func NewNacos2Governor(
 }
 
 func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
-	rawContent, err := meshresource.MarshalRuleSpec(r.ResourceSpec())
+	rawContent, err := meshresource.EncodeRule(r)
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.NacosError,
 			fmt.Sprintf("failed to marshal resource spec, res: %s", r.String()))
@@ -90,6 +90,32 @@ func (g *RuleGovernor) UpdateRule(r coremodel.Resource) error {
 }
 
 func (g *RuleGovernor) DeleteRule(r coremodel.Resource) error {
+	if script, ok := r.(*meshresource.ScriptRouteResource); ok {
+		// The Nacos SDK reports DeleteConfig to listeners as an Update with an
+		// empty payload. Dubbo-Go's ScriptRouter only clears an active script
+		// when it receives a valid disabled rule, so publish that transition
+		// before removing the dataId. The subsequent delete still makes the
+		// configuration absent for new consumers.
+		disabled := script.DeepCopyObject().(*meshresource.ScriptRouteResource)
+		disabled.Spec.Enabled = false
+		rawContent, err := meshresource.EncodeRule(disabled)
+		if err != nil {
+			return bizerror.Wrap(err, bizerror.NacosError,
+				fmt.Sprintf("failed to marshal disabled script rule, res: %s", r.String()))
+		}
+		ok, err := g.configClient.PublishConfig(nacosvo.ConfigParam{
+			DataId:  r.ResourceMeta().Name,
+			Group:   constants.NacosConfigGroup,
+			Content: string(rawContent),
+		})
+		if err != nil || !ok {
+			logger.Errorf("failed to disable script rule in %s, res: %s", r.String(), r.ResourceMesh())
+			return bizerror.Wrap(err, bizerror.NacosError,
+				fmt.Sprintf("failed to disable script rule before deletion, res: %s", r.String()))
+		}
+		// Keep the ordering deterministic for existing config-center listeners.
+		<-time.After(2 * time.Second)
+	}
 	ok, err := g.configClient.DeleteConfig(nacosvo.ConfigParam{
 		DataId: r.ResourceMeta().Name,
 		Group:  constants.NacosConfigGroup,
@@ -139,6 +165,14 @@ func (g *RuleGovernor) GetConfigAndUpdateStore(r coremodel.Resource) {
 		res = meshresource.ToConditionRouteResource(r.ResourceMesh(), r.ResourceMeta().Name, content)
 	case meshresource.TagRouteKind:
 		res = meshresource.ToTagRouteResource(r.ResourceMesh(), r.ResourceMeta().Name, content)
+	case meshresource.AffinityRouteKind:
+		res = meshresource.ToAffinityRouteResource(r.ResourceMesh(), r.ResourceMeta().Name, content)
+	case meshresource.ScriptRouteKind:
+		res = meshresource.ToScriptRouteResource(r.ResourceMesh(), r.ResourceMeta().Name, content)
+	}
+	if res == nil {
+		logger.Errorf("failed to decode config in %s, res: %s", r.String(), r.ResourceMesh())
+		return
 	}
 	obj, exists, err := st.GetByKey(r.ResourceKey())
 	if err != nil {

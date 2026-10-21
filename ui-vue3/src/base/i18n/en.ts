@@ -91,6 +91,26 @@ const words: I18nType = {
     createNewRoutingRule: 'Create New Conditional Routing Rule',
     warnDeleteRouteRule: 'Are you sure to delete this conditional routing rule?'
   },
+  routerRuleDomain: {
+    create: 'Create {rule}',
+    saveChanges: 'Save changes',
+    deleteConfirm: 'Delete {ruleName}? This removes the rule from the configuration center.',
+    affinityHint:
+      'Affinity rules support application or service scope. For service scope, use interface:version:group as the key.',
+    scriptHint: 'Script rules support application scope and the registered javascript type only.',
+    yamlMustBeObject: 'The YAML document must be an object.',
+    keyRequired: 'A rule key is required.',
+    loadFailed: 'Could not load the rule. Please retry.',
+    saveFailed: 'Could not save the rule. Please retry.',
+    deleteFailed: 'Could not delete the rule. Please retry.',
+    createSuccess: '{rule} created',
+    updateSuccess: '{rule} updated',
+    deleteSuccess: '{rule} deleted',
+    unsavedChangesTitle: 'Discard unsaved changes?',
+    unsavedChangesBody: 'Your YAML changes have not been saved.',
+    keepEditing: 'Keep editing',
+    discardChanges: 'Discard changes'
+  },
   addRoutingRuleDomain: {
     YAMLView: 'YAML view',
     formView: 'Form view'
@@ -262,6 +282,10 @@ const words: I18nType = {
   trafficManagement: 'Traffic Management',
   routingRule: 'Condition Rule',
   tagRule: 'Tag Rule',
+  affinityRule: 'Affinity Rule',
+  affinityRuleEditor: 'Edit Affinity Rule',
+  scriptRule: 'Script Rule',
+  scriptRuleEditor: 'Edit Script Rule',
   meshRule: 'Mesh Rule',
   dynamicConfig: 'Dynamic Config',
   accessControl: 'Black White List',

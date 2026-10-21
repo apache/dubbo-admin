@@ -21,11 +21,12 @@ MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 MAKEFLAGS += --no-print-directory
 
-.PHONY: help test fmt clean lint
+.PHONY: help test test-router-rule-chain-e2e fmt clean lint
 
 help:
 	@echo "Available commands:"
 	@echo "  test       - Run unit tests"
+	@echo "  test-router-rule-chain-e2e - Run router-rule-chain E2E tests with Dubbo-Go v3.3.2"
 	@echo "  clean      - Clean test generate files"
 	@echo "  fmt        - Format code"
 	@echo "  lint       - Run golangci-lint"
@@ -33,6 +34,12 @@ help:
 # Run unit tests
 test: clean
 	go test ./... -gcflags=-l -coverprofile=coverage.txt -covermode=atomic
+
+# Run the RouterChain E2E suite with its independent Go 1.25 / Dubbo-Go v3.3.2 module graph.
+# Set DUBBO_ADMIN_E2E_ZK_ADDR and DUBBO_ADMIN_E2E_NACOS_ADDR to exercise the real config centers.
+# Both host:port (for example 127.0.0.1:2181) and complete URLs are accepted.
+test-router-rule-chain-e2e:
+	go test -modfile ./go.router-e2e.mod -mod=mod -tags=e2e -count=1 ./e2e/router-rule-chain
 
 fmt:
 	go fmt ./...

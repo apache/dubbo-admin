@@ -65,9 +65,10 @@ type scriptRouteYAML struct {
 }
 
 // EncodeRule serializes a rule resource using the public Dubbo YAML contract.
-// Existing rule kinds fall back to their historical protobuf/YAML encoding;
-// Affinity and Script use explicit codecs because their public field names and
-// boolean defaults differ from the internal protobuf shape.
+// Existing rule kinds use MarshalRuleSpec so their explicit router booleans
+// survive protobuf's omitempty tags. Affinity and Script use explicit codecs
+// because their public field names and boolean defaults differ from the
+// internal protobuf shape.
 func EncodeRule(r coremodel.Resource) ([]byte, error) {
 	if err := ValidateRule(r); err != nil {
 		return nil, err
@@ -100,7 +101,7 @@ func EncodeRule(r coremodel.Resource) ([]byte, error) {
 		if r == nil || r.ResourceSpec() == nil {
 			return nil, invalidRule("rule spec is required")
 		}
-		value = r.ResourceSpec()
+		return MarshalRuleSpec(r.ResourceSpec())
 	}
 	data, err := yaml.Marshal(value)
 	if err != nil {
@@ -191,6 +192,56 @@ func optionalRuleBool(value bool, annotations map[string]string, omittedAnnotati
 		return nil
 	}
 	return &value
+}
+
+// AffinityRuleOptionalFields returns the public values for Affinity's two
+// optional booleans. A nil value means that the original config omitted the
+// field, rather than that it explicitly set the field to false.
+func AffinityRuleOptionalFields(res *AffinityRouteResource) (runtime *bool, enabled *bool) {
+	if res == nil || res.Spec == nil {
+		return nil, nil
+	}
+	return optionalRuleBool(res.Spec.Runtime, res.Annotations, affinityRuntimeOmittedAnnotation),
+		optionalRuleBool(res.Spec.Enabled, res.Annotations, affinityEnabledOmittedAnnotation)
+}
+
+// SetAffinityRuleOptionalFields applies public optional values without losing
+// the field-presence metadata required to faithfully write the rule back to a
+// configuration center.
+func SetAffinityRuleOptionalFields(res *AffinityRouteResource, runtime, enabled *bool) {
+	if res == nil || res.Spec == nil {
+		return
+	}
+	setOptionalRuleBool(&res.Spec.Runtime, &res.Annotations, affinityRuntimeOmittedAnnotation, runtime)
+	setOptionalRuleBool(&res.Spec.Enabled, &res.Annotations, affinityEnabledOmittedAnnotation, enabled)
+}
+
+// ScriptRuleOptionalEnabled returns nil when enabled was omitted from the
+// original Script rule; otherwise it returns the explicit boolean value.
+func ScriptRuleOptionalEnabled(res *ScriptRouteResource) *bool {
+	if res == nil || res.Spec == nil {
+		return nil
+	}
+	return optionalRuleBool(res.Spec.Enabled, res.Annotations, scriptEnabledOmittedAnnotation)
+}
+
+// SetScriptRuleOptionalEnabled applies the public optional enabled field while
+// preserving whether it was omitted or explicitly set to false.
+func SetScriptRuleOptionalEnabled(res *ScriptRouteResource, enabled *bool) {
+	if res == nil || res.Spec == nil {
+		return
+	}
+	setOptionalRuleBool(&res.Spec.Enabled, &res.Annotations, scriptEnabledOmittedAnnotation, enabled)
+}
+
+func setOptionalRuleBool(value *bool, annotations *map[string]string, omittedAnnotation string, input *bool) {
+	if input == nil {
+		*value = false
+		markRuleBooleanOmitted(annotations, omittedAnnotation)
+		return
+	}
+	*value = *input
+	clearRuleBooleanOmitted(annotations, omittedAnnotation)
 }
 
 func markRuleBooleanOmitted(annotations *map[string]string, key string) {

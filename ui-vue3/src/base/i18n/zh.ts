@@ -97,6 +97,25 @@ const words: I18nType = {
     createNewRoutingRule: '新增条件路由规则',
     warnDeleteRouteRule: '确认删除该条件路由规则？'
   },
+  routerRuleDomain: {
+    create: '新建{rule}',
+    saveChanges: '保存修改',
+    deleteConfirm: '确认删除 {ruleName} 吗？该规则将从配置中心移除。',
+    affinityHint: '亲和路由支持应用或服务粒度；服务粒度的 key 格式为 interface:version:group。',
+    scriptHint: '脚本路由仅支持应用粒度和已注册的 javascript 脚本类型。',
+    yamlMustBeObject: 'YAML 文档必须是对象。',
+    keyRequired: '必须填写规则 key。',
+    loadFailed: '无法加载规则，请重试。',
+    saveFailed: '无法保存规则，请重试。',
+    deleteFailed: '无法删除规则，请重试。',
+    createSuccess: '{rule}已创建',
+    updateSuccess: '{rule}已更新',
+    deleteSuccess: '{rule}已删除',
+    unsavedChangesTitle: '放弃未保存的修改？',
+    unsavedChangesBody: 'YAML 修改尚未保存。',
+    keepEditing: '继续编辑',
+    discardChanges: '放弃修改'
+  },
   updateRoutingRuleDomain: {
     YAMLView: 'YAML视图',
     formView: '表单视图'
@@ -243,6 +262,10 @@ const words: I18nType = {
   serviceRelation: '服务关系',
   routingRule: '条件路由',
   tagRule: '标签路由',
+  affinityRule: '亲和路由',
+  affinityRuleEditor: '编辑亲和路由',
+  scriptRule: '脚本路由',
+  scriptRuleEditor: '编辑脚本路由',
   meshRule: 'Mesh路由',
   dynamicConfig: '动态配置',
   accessControl: '黑白名单',
