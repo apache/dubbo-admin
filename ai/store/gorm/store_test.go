@@ -153,6 +153,43 @@ func TestGormStore_MigratesAndAdoptsLegacySessions(t *testing.T) {
 			t.Fatalf("partially owned session %q changed to tenant=%q owner=%q", id, row.TenantID, row.OwnerID)
 		}
 	}
+	admin := security.MustAccessContext(security.Subject{
+		TenantID: access.Subject.TenantID, UserID: "admin", Scopes: []string{security.ScopeSessionAdmin}, AuthMethod: security.AuthMethodStatic,
+	})
+	for _, id := range []string{"partial-tenant", "partial-owner"} {
+		if _, err := store.Get(context.Background(), admin, id); !errors.Is(err, conversationstore.ErrSessionNotFound) {
+			t.Fatalf("admin Get(%q) error = %v, want ErrSessionNotFound", id, err)
+		}
+	}
+	listed, err := store.List(context.Background(), admin)
+	if err != nil {
+		t.Fatalf("admin List() error = %v", err)
+	}
+	for _, session := range listed {
+		if session.ID == "partial-tenant" || session.ID == "partial-owner" {
+			t.Fatalf("admin List() returned partially owned session %+v", session)
+		}
+	}
+}
+
+func TestGormStore_UsesExactIdentityComparison(t *testing.T) {
+	store := newSQLiteStore(t, filepath.Join(t.TempDir(), "identity.db"))
+	now := time.Now()
+	expiresAt := now.Add(time.Hour)
+	for _, session := range []gormstore.SessionModel{
+		{ID: "case-tenant", TenantID: "TEST-TENANT", OwnerID: "test-user", Version: 1, CreatedAt: now, UpdatedAt: now, ExpiresAt: &expiresAt, Status: "active"},
+		{ID: "case-owner", TenantID: "test-tenant", OwnerID: "TEST-USER", Version: 1, CreatedAt: now, UpdatedAt: now, ExpiresAt: &expiresAt, Status: "active"},
+	} {
+		if err := store.DB().Create(&session).Error; err != nil {
+			t.Fatalf("seed case-variant session %q: %v", session.ID, err)
+		}
+	}
+	access := testutils.TestAccess()
+	for _, id := range []string{"case-tenant", "case-owner"} {
+		if _, err := store.Get(context.Background(), access, id); !errors.Is(err, conversationstore.ErrSessionNotFound) {
+			t.Fatalf("Get(%q) error = %v, want ErrSessionNotFound", id, err)
+		}
+	}
 }
 
 func TestGormStore_CustomRetentionBackfillsLegacySession(t *testing.T) {

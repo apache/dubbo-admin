@@ -76,7 +76,8 @@ import { PRIMARY_COLOR } from '@/base/constants'
 import { formattedDate } from '@/utils/DateUtil'
 import { useRoute } from 'vue-router'
 import { HTTP_STATUS } from '@/base/http/constants'
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+import { message } from 'ant-design-vue'
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 
 onMounted(() => {
   TAB_STATE.tagRule = null
@@ -131,9 +132,13 @@ const searchDomain = reactive(
 
 // Delete tag routing.
 const deleteTagRule = async (ruleName: string) => {
-  const res = await deleteTagRuleAPI(ruleName)
-  if (res.code === HTTP_STATUS.SUCCESS) {
-    await searchDomain.onSearch()
+  try {
+    const res = await deleteTagRuleAPI(ruleName)
+    if (res.code === HTTP_STATUS.SUCCESS) {
+      await searchDomain.onSearch()
+    }
+  } catch (e: any) {
+    message.error(e?.message || String(e))
   }
 }
 

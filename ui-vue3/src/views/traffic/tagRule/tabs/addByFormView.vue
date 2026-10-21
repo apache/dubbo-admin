@@ -241,7 +241,7 @@ import { isNil } from 'lodash'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { HTTP_STATUS } from '@/base/http/constants'
 
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 
 onMounted(() => {
   if (!isNil(TAB_STATE.tagRule)) {
@@ -252,7 +252,7 @@ onMounted(() => {
     baseInfo.runtime = runtime
     tags &&
       tags.length &&
-      tags.forEach((tagItem, tagIndex) => {
+      tags.forEach((tagItem: any, tagIndex: number) => {
         tagList.value.push({
           tagName: tagItem.name,
           scope: {
@@ -267,7 +267,7 @@ onMounted(() => {
 
         const { match } = tagItem
         let formatLabels: any[] = []
-        match.forEach((matchItem, matchIndex) => {
+        match.forEach((matchItem: any, _matchIndex: number) => {
           formatLabels.push({
             myKey: matchItem.key,
             condition: Object.keys(matchItem.value)[0],
@@ -470,24 +470,24 @@ const labelsColumns = ref([
 ])
 
 // tag list
-const tagList: any[] = ref([])
+const tagList = ref<any[]>([])
 
 watch(
   tagList,
   (newVal) => {
     console.log(newVal)
-    const tags = []
+    const tags: any[] = []
     newVal.forEach((tagItem) => {
       const { tagName, scope } = tagItem
       const labels = scope.labels
 
       const newTagItem = {
         name: tagName,
-        match: []
+        match: [] as any[]
       }
 
       if (labels && labels.length > 0) {
-        labels.forEach((labelItem) => {
+        labels.forEach((labelItem: any) => {
           newTagItem.match.push({
             key: labelItem.myKey,
             value: {
@@ -567,17 +567,17 @@ const addTagRule = async () => {
     key: objectOfAction,
     enabled: enable,
     runtime,
-    tags: []
+    tags: [] as any[]
   }
-  tagList.value.forEach((tagItem, tagIndex) => {
+  tagList.value.forEach((tagItem: any, _tagIndex: number) => {
     const tag = {
       name: tagItem.tagName,
-      match: []
+      match: [] as any[]
     }
-    tagItem.scope.labels.forEach((labelItem, labelIndex) => {
+    tagItem.scope.labels.forEach((labelItem: any, _labelIndex: number) => {
       const matchItem = {
         key: labelItem.myKey,
-        value: {}
+        value: {} as Record<string, any>
       }
       matchItem.value[labelItem.condition] = labelItem.value
       tag.match.push(matchItem)

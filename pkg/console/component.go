@@ -32,11 +32,11 @@ import (
 	"github.com/gin-gonic/gin"
 
 	ui "github.com/apache/dubbo-admin/app/dubbo-ui"
-	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/config/app"
 	"github.com/apache/dubbo-admin/pkg/config/console"
+	configauth "github.com/apache/dubbo-admin/pkg/config/console/auth"
+	consoleauth "github.com/apache/dubbo-admin/pkg/console/auth"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
-	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/router"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
@@ -48,11 +48,11 @@ func init() {
 }
 
 type consoleWebServer struct {
+	mcpPath   string
+	mcpAPIKey string
 	Engine    *gin.Engine
 	cfg       *console.Config
 	cs        consolectx.Context
-	mcpPath   string // MCP端点路径，用于auth中间件跳过认证
-	mcpAPIKey string // MCP API密钥，用于认证
 }
 
 func (c *consoleWebServer) RequiredDependencies() []runtime.ComponentType {
@@ -72,16 +72,6 @@ func (c *consoleWebServer) Order() int {
 
 func (c *consoleWebServer) Init(ctx runtime.BuilderContext) error {
 	c.cfg = ctx.Config().Console
-
-	// 提前读取 MCP 配置，供 auth 中间件使用
-	cfg := ctx.Config()
-	if cfg.MCP != nil {
-		if cfg.MCP.Path != "" {
-			c.mcpPath = cfg.MCP.Path
-		}
-		c.mcpAPIKey = cfg.MCP.APIKey
-	}
-
 	r := gin.New()
 	// Admin UI
 	r.StaticFS("/admin", http.FS(ui.FS()))
@@ -97,9 +87,10 @@ func (c *consoleWebServer) Init(ctx runtime.BuilderContext) error {
 			"status": "UP",
 		})
 	})
-	store := cookie.NewStore([]byte("secret"))
+	store := cookie.NewStore([]byte(c.cfg.Auth.SessionSecret))
+	store.Options(adminSessionOptions(c.cfg.Auth))
 	r.Use(sessions.Sessions("session", store))
-	r.Use(c.authMiddleware())
+	r.Use(consoleauth.SessionMiddleware())
 	r.Use(ginzap.Ginzap(logger.Logger(), time.RFC3339, true))
 	r.Use(ginzap.RecoveryWithZap(logger.Logger(), true))
 	c.Engine = r
@@ -107,21 +98,23 @@ func (c *consoleWebServer) Init(ctx runtime.BuilderContext) error {
 	return nil
 }
 
-func (c *consoleWebServer) Start(coreRt runtime.Runtime, stop <-chan struct{}) error {
-	// If console config is nil, skip starting (e.g., MCP mode)
-	if c.cfg == nil {
-		logger.Sugar().Info("Console config is nil, skipping console start")
-		// Wait for stop signal since we need to keep the component "running"
-		<-stop
-		return nil
+func adminSessionOptions(cfg *configauth.Config) sessions.Options {
+	return sessions.Options{
+		Path:     "/",
+		MaxAge:   cfg.ExpirationTime,
+		Secure:   cfg.SessionCookieSecure,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
 	}
+}
+
+func (c *consoleWebServer) Start(coreRt runtime.Runtime, stop <-chan struct{}) error {
 	errChan := make(chan error)
 	c.cs = consolectx.NewConsoleContext(coreRt)
-	router.InitRouter(c.Engine, c.cs)
-
-	// 注册MCP端点（如果启用）
+	if err := router.InitRouter(c.Engine, c.cs); err != nil {
+		return err
+	}
 	c.registerMCPEndpoints(coreRt, c.Engine)
-
 	httpServer := c.startHttpServer(errChan)
 	select {
 	case <-stop:
@@ -133,28 +126,6 @@ func (c *consoleWebServer) Start(coreRt runtime.Runtime, stop <-chan struct{}) e
 		return err
 	}
 	return nil
-}
-
-func (c *consoleWebServer) startHttpServer(errChan chan error) *http.Server {
-	server := &http.Server{
-		Addr:    ":" + strconv.Itoa(c.cfg.Port),
-		Handler: c.Engine,
-	}
-
-	go func() {
-		err := server.ListenAndServe()
-		if err != nil {
-			switch {
-			case errors.Is(err, http.ErrServerClosed):
-				logger.Sugar().Info("shutting down bufman HTTP Server")
-			default:
-				logger.Sugar().Error(err, "could not start bufman HTTP Server")
-				errChan <- err
-			}
-		}
-	}()
-
-	return server
 }
 
 func (c *consoleWebServer) registerMCPEndpoints(coreRt runtime.Runtime, engine *gin.Engine) {
@@ -186,6 +157,10 @@ func (c *consoleWebServer) registerMCPEndpoints(coreRt runtime.Runtime, engine *
 
 	// 注册路由
 	engine.POST(path, func(ctx *gin.Context) {
+		if c.mcpAPIKey != "" && ctx.GetHeader("Authorization") != "Bearer "+c.mcpAPIKey {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid API key"})
+			return
+		}
 		server.HandleHTTP(ctx)
 	})
 
@@ -196,54 +171,24 @@ func (c *consoleWebServer) registerMCPEndpoints(coreRt runtime.Runtime, engine *
 	logger.Sugar().Infof("MCP endpoint registered at %s (%s)", path, authStatus)
 }
 
-func (c *consoleWebServer) authMiddleware() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		requestPath := ctx.Request.URL.Path
-
-		// skip login api
-		if strings.HasSuffix(requestPath, "/login") {
-			ctx.Next()
-			return
-		}
-
-		// check MCP endpoint authentication
-		isMCPRequest := requestPath == "/api/mcp" || (c.mcpPath != "" && requestPath == c.mcpPath)
-		if isMCPRequest {
-			// 如果配置了 API Key，验证 Bearer Token
-			if c.mcpAPIKey != "" {
-				authHeader := ctx.GetHeader("Authorization")
-				if authHeader == "" {
-					ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Missing Authorization header"})
-					ctx.Abort()
-					return
-				}
-				// 检查 Bearer Token 格式
-				if len(authHeader) < 7 || authHeader[:7] != "Bearer " {
-					ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Authorization header format. Use: Bearer <token>"})
-					ctx.Abort()
-					return
-				}
-				token := authHeader[7:]
-				if token != c.mcpAPIKey {
-					ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid API key"})
-					ctx.Abort()
-					return
-				}
-			}
-			// API Key 验证通过或未配置 API Key，继续处理
-			ctx.Next()
-			return
-		}
-
-		// 其他 API 需要会话认证
-		session := sessions.Default(ctx)
-		user := session.Get("user")
-		if user == nil {
-			authErr := bizerror.New(bizerror.Unauthorized, "no access, please login")
-			ctx.JSON(http.StatusUnauthorized, model.NewBizErrorResp(authErr))
-			ctx.Abort()
-			return
-		}
-		ctx.Next()
+func (c *consoleWebServer) startHttpServer(errChan chan error) *http.Server {
+	server := &http.Server{
+		Addr:    ":" + strconv.Itoa(c.cfg.Port),
+		Handler: c.Engine,
 	}
+
+	go func() {
+		err := server.ListenAndServe()
+		if err != nil {
+			switch {
+			case errors.Is(err, http.ErrServerClosed):
+				logger.Sugar().Info("shutting down bufman HTTP Server")
+			default:
+				logger.Sugar().Error(err, "could not start bufman HTTP Server")
+				errChan <- err
+			}
+		}
+	}()
+
+	return server
 }

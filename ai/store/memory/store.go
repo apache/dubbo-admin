@@ -37,22 +37,15 @@ import (
 const DefaultMaxTurns = 100
 
 type turn struct {
-	id             uint64
-	interactionID  string
-	status         string
-	createdAt      time.Time
-	userMessages   []*ai.Message
-	modelMessages  []*ai.Message
-	systemMessages []*ai.Message
+	id              uint64
+	interactionID   string
+	status          string
+	createdAt       time.Time
+	orderedMessages []*ai.Message
 }
 
 func (t *turn) messages() []*ai.Message {
-	messages := make([]*ai.Message, 0,
-		len(t.systemMessages)+len(t.userMessages)+len(t.modelMessages))
-	messages = append(messages, t.systemMessages...)
-	messages = append(messages, t.userMessages...)
-	messages = append(messages, t.modelMessages...)
-	return messages
+	return t.orderedMessages
 }
 
 type sessionHistory struct {
@@ -117,7 +110,7 @@ func (m *MemoryStore) Create(ctx context.Context, access security.AccessContext,
 	if err := checkContext(ctx); err != nil {
 		return err
 	}
-	if err := access.Validate(); err != nil {
+	if err := access.ValidateBusiness(); err != nil {
 		return err
 	}
 	if err := conversationstore.ValidateSession(session); err != nil {
@@ -154,7 +147,7 @@ func (m *MemoryStore) Get(ctx context.Context, access security.AccessContext, se
 	if err := checkContext(ctx); err != nil {
 		return nil, err
 	}
-	if err := access.Validate(); err != nil {
+	if err := access.ValidateBusiness(); err != nil {
 		return nil, err
 	}
 
@@ -178,7 +171,7 @@ func (m *MemoryStore) List(ctx context.Context, access security.AccessContext) (
 	if err := checkContext(ctx); err != nil {
 		return nil, err
 	}
-	if err := access.Validate(); err != nil {
+	if err := access.ValidateBusiness(); err != nil {
 		return nil, err
 	}
 
@@ -200,7 +193,7 @@ func (m *MemoryStore) Touch(ctx context.Context, access security.AccessContext, 
 	if err := checkContext(ctx); err != nil {
 		return err
 	}
-	if err := access.Validate(); err != nil {
+	if err := access.ValidateBusiness(); err != nil {
 		return err
 	}
 
@@ -232,7 +225,7 @@ func (m *MemoryStore) Delete(ctx context.Context, access security.AccessContext,
 	if err := checkContext(ctx); err != nil {
 		return err
 	}
-	if err := access.Validate(); err != nil {
+	if err := access.ValidateBusiness(); err != nil {
 		return err
 	}
 
@@ -1046,8 +1039,17 @@ func (m *MemoryStore) IsTurnEmpty(ctx context.Context, access security.AccessCon
 }
 
 func (m *MemoryStore) WindowMemoryForTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64) ([]*ai.Message, error) {
+	return m.ContextWindowForTurn(ctx, access, sessionID, turnID, 0)
+}
+
+// ContextWindowForTurn returns a stable copy of the most recent completed
+// turns followed by the selected active turn. Other active turns are excluded.
+func (m *MemoryStore) ContextWindowForTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64, completedLimit int) ([]*ai.Message, error) {
 	if err := checkContext(ctx); err != nil {
 		return nil, err
+	}
+	if completedLimit < 0 {
+		return nil, fmt.Errorf("completed turn limit must not be negative")
 	}
 
 	m.mu.RLock()
@@ -1063,7 +1065,14 @@ func (m *MemoryStore) WindowMemoryForTurn(ctx context.Context, access security.A
 	if !ok {
 		return nil, conversationstore.ErrTurnNotFound
 	}
-	return cloneTurnList([]*turn{active})
+	start := len(history.history) - completedLimit
+	if start < 0 {
+		start = 0
+	}
+	turns := make([]*turn, 0, len(history.history)-start+1)
+	turns = append(turns, history.history[start:]...)
+	turns = append(turns, active)
+	return cloneTurnList(turns)
 }
 
 func (m *MemoryStore) AllMemory(ctx context.Context, access security.AccessContext, sessionID string) ([]*ai.Message, error) {
@@ -1246,7 +1255,7 @@ func (m *MemoryStore) NextTurn(ctx context.Context, access security.AccessContex
 }
 
 func (m *MemoryStore) validateSessionLocked(access security.AccessContext, sessionID string) error {
-	if err := access.Validate(); err != nil {
+	if err := access.ValidateBusiness(); err != nil {
 		return err
 	}
 	session, exists := m.sessions[sessionID]
@@ -1291,7 +1300,7 @@ func cloneSession(session conversationstore.Session) conversationstore.Session {
 }
 
 func appendMessages(active *turn, messages ...*ai.Message) error {
-	var system, user, model []*ai.Message
+	ordered := make([]*ai.Message, 0, len(messages))
 	for _, message := range messages {
 		if message == nil || !supportedRole(message.Role) {
 			continue
@@ -1300,19 +1309,10 @@ func appendMessages(active *turn, messages ...*ai.Message) error {
 		if err != nil {
 			return fmt.Errorf("failed to copy message: %w", err)
 		}
-		switch copy.Role {
-		case ai.RoleSystem:
-			system = append(system, copy)
-		case ai.RoleUser:
-			user = append(user, copy)
-		case ai.RoleModel:
-			model = append(model, copy)
-		}
+		ordered = append(ordered, copy)
 	}
 	// Mutate the Turn only after the complete input batch has been cloned.
-	active.systemMessages = append(active.systemMessages, system...)
-	active.userMessages = append(active.userMessages, user...)
-	active.modelMessages = append(active.modelMessages, model...)
+	active.orderedMessages = append(active.orderedMessages, ordered...)
 	return nil
 }
 

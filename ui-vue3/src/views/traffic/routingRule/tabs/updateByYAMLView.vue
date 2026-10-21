@@ -82,7 +82,7 @@
 <script setup lang="ts">
 import MonacoEditor from '@/components/editor/MonacoEditor.vue'
 import { DoubleLeftOutlined, DoubleRightOutlined } from '@ant-design/icons-vue'
-import { onMounted, reactive, ref, inject } from 'vue'
+import { onMounted, ref, inject } from 'vue'
 import { getConditionRuleDetailAPI, updateConditionRuleAPI } from '@/api/service/traffic'
 import { useRoute } from 'vue-router'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
@@ -90,7 +90,7 @@ import yaml from 'js-yaml'
 import { isNil } from 'lodash'
 import { message } from 'ant-design-vue'
 import { HTTP_STATUS } from '@/base/http/constants'
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 
 const route = useRoute()
 const isReadonly = ref(false)
@@ -102,25 +102,33 @@ const sliderSpan = ref(8)
 
 const YAMLValue = ref('')
 
-onMounted(() => {
+onMounted(async () => {
   if (!isNil(TAB_STATE.conditionRule)) {
     const data = TAB_STATE.conditionRule
     YAMLValue.value = yaml.dump(data)
   } else {
     YAMLValue.value = ``
-    getRoutingRuleDetail()
+    await getRoutingRuleDetail()
   }
 })
 
-const changeEditor = (val) => {
+const changeEditor = () => {
   TAB_STATE.conditionRule = yaml.load(YAMLValue.value)
+}
+
+const parseYAMLObject = (): Record<string, any> => {
+  const data = yaml.load(YAMLValue.value)
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('YAML content must be an object')
+  }
+  return data
 }
 
 // Get condition routing details
 async function getRoutingRuleDetail() {
-  let res = await getConditionRuleDetailAPI(<string>route.params?.ruleName)
+  let res = await getConditionRuleDetailAPI(route.params?.ruleName as string)
   if (res?.code === HTTP_STATUS.SUCCESS) {
-    const conditionName = route.params?.ruleName
+    const conditionName = String(route.params?.ruleName || '')
     if (conditionName && res.data.scope === 'service') {
       const arr = conditionName?.split(':')
       res.data.group = arr[2]?.split('.')[0]
@@ -132,16 +140,19 @@ async function getRoutingRuleDetail() {
 const updateRoutingRule = async () => {
   loading.value = true
   try {
-    const data = yaml.load(YAMLValue.value)
+    const data = parseYAMLObject()
     data.configVersion = 'v3.0'
-    const res = await updateConditionRuleAPI(<string>route.params?.ruleName, data)
+    const res = await updateConditionRuleAPI(route.params?.ruleName as string, data)
     if (res.code === HTTP_STATUS.SUCCESS) {
       message.success('update success')
-      // 延迟 2 秒后再获取数据，确保数据库已更新
-      await new Promise((resolve) => setTimeout(resolve, 2000))
       TAB_STATE.conditionRule = null
       await getRoutingRuleDetail()
     }
+  } catch (e: any) {
+    if (e instanceof Error) {
+      message.error(e.message)
+    }
+    console.error(e)
   } finally {
     loading.value = false
   }

@@ -92,6 +92,24 @@ spec:
         - mountPath: /grafana-dashboard-definitions/0/cluster-total
           name: grafana-dashboard-cluster-total
           readOnly: false
+        - mountPath: /grafana-dashboard-definitions/0/dubbo-application-metrics
+          name: grafana-dashboard-dubbo-application-metrics
+          readOnly: false
+        - mountPath: /grafana-dashboard-definitions/0/dubbo-application-traces
+          name: grafana-dashboard-dubbo-application-traces
+          readOnly: false
+        - mountPath: /grafana-dashboard-definitions/0/dubbo-instance-metrics
+          name: grafana-dashboard-dubbo-instance-metrics
+          readOnly: false
+        - mountPath: /grafana-dashboard-definitions/0/dubbo-instance-traces
+          name: grafana-dashboard-dubbo-instance-traces
+          readOnly: false
+        - mountPath: /grafana-dashboard-definitions/0/dubbo-service-metrics
+          name: grafana-dashboard-dubbo-service-metrics
+          readOnly: false
+        - mountPath: /grafana-dashboard-definitions/0/dubbo-service-traces
+          name: grafana-dashboard-dubbo-service-traces
+          readOnly: false
         - mountPath: /grafana-dashboard-definitions/0/controller-manager
           name: grafana-dashboard-controller-manager
           readOnly: false
@@ -212,6 +230,24 @@ spec:
       - configMap:
           name: grafana-dashboard-cluster-total
         name: grafana-dashboard-cluster-total
+      - configMap:
+          name: grafana-dashboard-dubbo-application-metrics
+        name: grafana-dashboard-dubbo-application-metrics
+      - configMap:
+          name: grafana-dashboard-dubbo-application-traces
+        name: grafana-dashboard-dubbo-application-traces
+      - configMap:
+          name: grafana-dashboard-dubbo-instance-metrics
+        name: grafana-dashboard-dubbo-instance-metrics
+      - configMap:
+          name: grafana-dashboard-dubbo-instance-traces
+        name: grafana-dashboard-dubbo-instance-traces
+      - configMap:
+          name: grafana-dashboard-dubbo-service-metrics
+        name: grafana-dashboard-dubbo-service-metrics
+      - configMap:
+          name: grafana-dashboard-dubbo-service-traces
+        name: grafana-dashboard-dubbo-service-traces
       - configMap:
           name: grafana-dashboard-controller-manager
         name: grafana-dashboard-controller-manager

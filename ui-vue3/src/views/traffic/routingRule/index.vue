@@ -82,7 +82,8 @@ import { Icon } from '@iconify/vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import { formattedDate } from '@/utils/DateUtil'
 import { HTTP_STATUS } from '@/base/http/constants'
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+import { message } from 'ant-design-vue'
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 let columns = [
   {
     title: 'ruleName',
@@ -95,7 +96,7 @@ let columns = [
     title: 'ruleGranularity',
     key: 'ruleGranularity',
     dataIndex: 'ruleGranularity',
-    render: (text, record) =>
+    render: (_text: any, record: any) =>
       record.isService ? t('routingRuleDomain.service') : t('routingRuleDomain.application'),
     width: 100
     // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
@@ -140,9 +141,13 @@ const searchDomain = reactive(
 
 //Delete conditional routing
 const deleteRule = async (ruleName: string) => {
-  const res = await deleteConditionRuleAPI(ruleName)
-  if (res.code === HTTP_STATUS.SUCCESS) {
-    await searchDomain.onSearch()
+  try {
+    const res = await deleteConditionRuleAPI(ruleName)
+    if (res.code === HTTP_STATUS.SUCCESS) {
+      await searchDomain.onSearch()
+    }
+  } catch (e: any) {
+    message.error(e?.message || String(e))
   }
 }
 
@@ -156,7 +161,7 @@ onMounted(() => {
   }
 })
 
-const confirm = (ruleName) => {
+const confirm = (ruleName: string) => {
   deleteRule(ruleName)
 }
 

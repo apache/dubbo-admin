@@ -30,7 +30,10 @@
         <a-flex :gap="20">
           <a-input-group @keyup.enter="globalSearch" class="search-group" compact>
             <a-select v-model:value="searchType" class="select-type">
-              <a-select-option v-for="option in searchTypeOptions" :value="option.value"
+              <a-select-option
+                v-for="option in searchTypeOptions"
+                :key="option.value"
+                :value="option.value"
                 >{{ option.label }}
               </a-select-option>
             </a-select>
@@ -91,7 +94,7 @@
           </a-flex>
           <a-flex align="center">
             <a-dropdown>
-              <a-avatar @click="">
+              <a-avatar>
                 <template #icon>
                   <UserOutlined />
                 </template>
@@ -120,7 +123,7 @@ import {
   UserOutlined
 } from '@ant-design/icons-vue'
 import { type ComponentInternalInstance, onMounted } from 'vue'
-import { computed, getCurrentInstance, h, inject, nextTick, reactive, ref, watch } from 'vue'
+import { computed, getCurrentInstance, h, inject, reactive, ref, watch } from 'vue'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { changeLanguage, localeConfig } from '@/base/i18n'
 import {
@@ -140,17 +143,16 @@ import { getAuthState, removeAuthState } from '@/utils/AuthUtil'
 import { logout } from '@/api/service/login'
 import { useMeshStore } from '@/stores/mesh'
 import { meshesSearch } from '@/api/service/globalSearch'
+import { syncAuthenticatedPrincipal } from '@/auth/session'
 
 const {
   appContext: {
     config: { globalProperties }
   }
-} = <ComponentInternalInstance>getCurrentInstance()
+} = getCurrentInstance() as ComponentInternalInstance
 
-let __null = PRIMARY_COLOR
-let __null_r = PRIMARY_COLOR_R
 const collapsed = inject(PROVIDE_INJECT_KEY.COLLAPSED)
-const i18nConfig = <typeof localeConfig>inject(PROVIDE_INJECT_KEY.LOCALE)
+const i18nConfig = inject(PROVIDE_INJECT_KEY.LOCALE) as typeof localeConfig
 let locale = ref(localeConfig.locale)
 
 function changeTheme(val: string) {
@@ -158,7 +160,7 @@ function changeTheme(val: string) {
   PRIMARY_COLOR.value = val
 }
 
-function resetTheme(val: string) {
+function resetTheme() {
   localStorage.removeItem(LOCAL_STORAGE_THEME)
   PRIMARY_COLOR.value = PRIMARY_COLOR_DEFAULT
 }
@@ -178,11 +180,17 @@ const changeMesh = (value: any) => {
 }
 
 onMounted(async () => {
+  try {
+    const principal = await syncAuthenticatedPrincipal()
+    authState.value = { state: true, userinfo: { username: principal.username } }
+  } catch {
+    // The global Admin request interceptor handles an expired session.
+  }
   const { data } = await meshesSearch()
   meshes.value = data
 })
 
-const authState = getAuthState()
+const authState = ref(getAuthState())
 watch(locale, (value) => {
   changeLanguage(value)
 })
@@ -252,7 +260,7 @@ const onSearch = async () => {
 }
 
 // Listen for changes in searchType and trigger a search.
-watch(searchType, async (newType) => {
+watch(searchType, async () => {
   await onSearch() // When a change is detected, re-call the search function.
 })
 

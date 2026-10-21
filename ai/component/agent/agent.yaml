@@ -6,6 +6,7 @@ spec:
   prompt_file: "agentReasonAct.txt"
   max_iterations: 3  # bounded reason-act loop; the last iteration forces an answer (effective tool rounds = max_iterations - 1)
   channel_buffer_size: 5
+  context_window_turns: 10  # completed turns included before the current active turn
 
   # Model sampling + per model-call timeout (seconds).
   temperature: 0.7

@@ -33,6 +33,7 @@ import (
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
+	"github.com/apache/dubbo-admin/pkg/core/versioning"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -140,6 +141,10 @@ func newToolTestContext(resources map[coremodel.ResourceKind]map[string]coremode
 type toolTestContext struct {
 	config          app.AdminConfig
 	resourceManager manager.ResourceManager
+}
+
+func (c *toolTestContext) RuleVersioning() *versioning.Service {
+	return nil
 }
 
 func (c *toolTestContext) ResourceManager() manager.ResourceManager {

@@ -84,6 +84,9 @@ func (s *authorizedStore) IsTurnEmpty(ctx context.Context, id string, turn uint6
 func (s *authorizedStore) WindowMemoryForTurn(ctx context.Context, id string, turn uint64) ([]*ai.Message, error) {
 	return s.BackendStore.WindowMemoryForTurn(ctx, s.access, id, turn)
 }
+func (s *authorizedStore) ContextWindowForTurn(ctx context.Context, id string, turn uint64, completedLimit int) ([]*ai.Message, error) {
+	return s.BackendStore.ContextWindowForTurn(ctx, s.access, id, turn, completedLimit)
+}
 func (s *authorizedStore) AllMemory(ctx context.Context, id string) ([]*ai.Message, error) {
 	return s.BackendStore.AllMemory(ctx, s.access, id)
 }
@@ -147,6 +150,13 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Backe
 		}
 		if _, err := s.Get(ctx, admin, session.ID); err != nil {
 			t.Fatalf("same-tenant admin Get() error = %v", err)
+		}
+		system := security.SystemAccessContext()
+		if _, err := s.Get(ctx, system, session.ID); !errors.Is(err, security.ErrResourceNotAccessible) {
+			t.Fatalf("system Get() error = %v, want ErrResourceNotAccessible", err)
+		}
+		if _, err := s.List(ctx, system); !errors.Is(err, security.ErrResourceNotAccessible) {
+			t.Fatalf("system List() error = %v, want ErrResourceNotAccessible", err)
 		}
 		if _, err := s.List(ctx, security.AccessContext{}); !errors.Is(err, security.ErrAuthenticationRequired) {
 			t.Fatalf("unauthenticated List() error = %v, want ErrAuthenticationRequired", err)
@@ -250,8 +260,8 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Backe
 		if err != nil {
 			t.Fatalf("AllMemory() error = %v", err)
 		}
-		if len(messages) != 4 || messages[0].Content[0].Text != "second" || messages[1].Role != ai.RoleSystem || messages[2].Role != ai.RoleUser || messages[3].Role != ai.RoleModel {
-			t.Fatalf("AllMemory() = %#v, want active turn followed by system/user/model", messages)
+		if len(messages) != 4 || messages[0].Content[0].Text != "second" || messages[1].Role != ai.RoleUser || messages[2].Role != ai.RoleSystem || messages[3].Role != ai.RoleModel {
+			t.Fatalf("AllMemory() = %#v, want active turn followed by persisted message order", messages)
 		}
 	})
 
@@ -573,6 +583,120 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Backe
 		deleted, _, err := s.BackendStore.DeleteExpiredPage(ctx, security.SystemAccessContext(), expiresAt.Add(time.Second), cursor, 10)
 		if err != nil || deleted != 1 {
 			t.Fatalf("future expiry cleanup = %d, %v; want 1", deleted, err)
+		}
+	})
+
+	t.Run("context window contains recent completed turns and selected active turn", func(t *testing.T) {
+		ctx := context.Background()
+		s := withAccess(newStore())
+		now := time.Now()
+		session := &conversationstore.Session{ID: "window-session", CreatedAt: now, UpdatedAt: now, Status: "active"}
+		if err := s.Create(ctx, session); err != nil {
+			t.Fatalf("Create() error = %v", err)
+		}
+
+		for _, text := range []string{"oldest", "latest"} {
+			turnID := begin(t, s, ctx, session.ID)
+			if err := s.AddHistoryToTurn(ctx, session.ID, turnID,
+				ai.NewUserTextMessage(text+"-user"), ai.NewModelTextMessage(text+"-model")); err != nil {
+				t.Fatalf("AddHistoryToTurn(%s) error = %v", text, err)
+			}
+			if err := s.NextTurnForTurn(ctx, session.ID, turnID); err != nil {
+				t.Fatalf("NextTurnForTurn(%s) error = %v", text, err)
+			}
+		}
+
+		selected := begin(t, s, ctx, session.ID)
+		if err := s.AddHistoryToTurn(ctx, session.ID, selected, ai.NewUserTextMessage("selected-active")); err != nil {
+			t.Fatalf("AddHistoryToTurn(selected active) error = %v", err)
+		}
+
+		messages, err := s.ContextWindowForTurn(ctx, session.ID, selected, 1)
+		if err != nil {
+			t.Fatalf("ContextWindowForTurn() error = %v", err)
+		}
+		got := messageTexts(messages)
+		want := []string{"latest-user", "latest-model", "selected-active"}
+		if fmt.Sprint(got) != fmt.Sprint(want) {
+			t.Fatalf("ContextWindowForTurn() texts = %v, want %v", got, want)
+		}
+		if strings.Contains(strings.Join(got, " "), "oldest") {
+			t.Fatalf("ContextWindowForTurn() included an excluded turn: %v", got)
+		}
+
+		messages[0].Content[0].Text = "mutated"
+		again, err := s.ContextWindowForTurn(ctx, session.ID, selected, 1)
+		if err != nil {
+			t.Fatalf("second ContextWindowForTurn() error = %v", err)
+		}
+		if again[0].Text() != "latest-user" {
+			t.Fatalf("caller mutation changed stored context: %q", again[0].Text())
+		}
+
+		currentOnly, err := s.ContextWindowForTurn(ctx, session.ID, selected, 0)
+		if err != nil || len(currentOnly) != 1 || currentOnly[0].Text() != "selected-active" {
+			t.Fatalf("zero-limit context = %#v, error = %v, want selected active only", currentOnly, err)
+		}
+		if _, err := s.ContextWindowForTurn(ctx, session.ID, selected, -1); err == nil {
+			t.Fatal("negative completed limit succeeded, want validation error")
+		}
+
+		isolated := withAccess(newStore())
+		isolatedSession := &conversationstore.Session{ID: "isolated-window-session", CreatedAt: now, UpdatedAt: now, Status: "active"}
+		if err := isolated.Create(ctx, isolatedSession); err != nil {
+			t.Fatalf("Create(isolated) error = %v", err)
+		}
+		completed := begin(t, isolated, ctx, isolatedSession.ID)
+		if err := isolated.AddHistoryToTurn(ctx, isolatedSession.ID, completed, ai.NewUserTextMessage("completed")); err != nil {
+			t.Fatalf("AddHistoryToTurn(completed) error = %v", err)
+		}
+		if err := isolated.NextTurnForTurn(ctx, isolatedSession.ID, completed); err != nil {
+			t.Fatalf("NextTurnForTurn(completed) error = %v", err)
+		}
+		otherActive := begin(t, isolated, ctx, isolatedSession.ID)
+		if err := isolated.AddHistoryToTurn(ctx, isolatedSession.ID, otherActive, ai.NewUserTextMessage("other-active")); err != nil {
+			t.Fatalf("AddHistoryToTurn(other active) error = %v", err)
+		}
+		if _, err := isolated.BeginTurn(ctx, isolatedSession.ID); !errors.Is(err, conversationstore.ErrSessionBusy) {
+			t.Fatalf("BeginTurn(concurrent) error = %v, want ErrSessionBusy", err)
+		}
+		if err := isolated.AbortTurnForTurn(ctx, isolatedSession.ID, otherActive); err != nil {
+			t.Fatalf("AbortTurnForTurn(other active) error = %v", err)
+		}
+		selectedActive := begin(t, isolated, ctx, isolatedSession.ID)
+		if err := isolated.AddHistoryToTurn(ctx, isolatedSession.ID, selectedActive, ai.NewUserTextMessage("selected")); err != nil {
+			t.Fatalf("AddHistoryToTurn(selected) error = %v", err)
+		}
+		isolatedWindow, err := isolated.ContextWindowForTurn(ctx, isolatedSession.ID, selectedActive, 1)
+		if err != nil {
+			t.Fatalf("ContextWindowForTurn(isolated) error = %v", err)
+		}
+		if got := messageTexts(isolatedWindow); fmt.Sprint(got) != fmt.Sprint([]string{"completed", "selected"}) {
+			t.Fatalf("isolated context texts = %v, want completed and selected only", got)
+		}
+	})
+
+	t.Run("context window preserves message write order within a turn", func(t *testing.T) {
+		ctx := context.Background()
+		s := withAccess(newStore())
+		now := time.Now()
+		session := &conversationstore.Session{ID: "message-order-session", CreatedAt: now, UpdatedAt: now, Status: "active"}
+		if err := s.Create(ctx, session); err != nil {
+			t.Fatalf("Create() error = %v", err)
+		}
+		turnID := begin(t, s, ctx, session.ID)
+		if err := s.AddHistoryToTurn(ctx, session.ID, turnID,
+			ai.NewUserTextMessage("user-1"), ai.NewModelTextMessage("model-1"),
+			ai.NewUserTextMessage("user-2"), ai.NewModelTextMessage("model-2")); err != nil {
+			t.Fatalf("AddHistoryToTurn() error = %v", err)
+		}
+		messages, err := s.ContextWindowForTurn(ctx, session.ID, turnID, 0)
+		if err != nil {
+			t.Fatalf("ContextWindowForTurn() error = %v", err)
+		}
+		want := []string{"user-1", "model-1", "user-2", "model-2"}
+		if got := messageTexts(messages); fmt.Sprint(got) != fmt.Sprint(want) {
+			t.Fatalf("message order = %v, want %v", got, want)
 		}
 	})
 
@@ -907,4 +1031,12 @@ func RunQuotaContractTests(t *testing.T, newStore func(conversationstore.QuotaPo
 			}
 		})
 	}
+}
+
+func messageTexts(messages []*ai.Message) []string {
+	texts := make([]string, 0, len(messages))
+	for _, message := range messages {
+		texts = append(texts, message.Text())
+	}
+	return texts
 }
