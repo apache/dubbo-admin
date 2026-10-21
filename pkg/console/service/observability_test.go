@@ -52,8 +52,8 @@ func TestInstanceMetricAndTraceDashboardVariables(t *testing.T) {
 		qosPort        int64
 		metricInstance string
 	}{
-		{name: "explicit QoS port", qosPort: 22222, metricInstance: "10.42.1.10:22222"},
-		{name: "default QoS port", qosPort: 0, metricInstance: "10.42.1.10:22222"},
+		{name: "explicit QoS port", qosPort: 22222, metricInstance: "10.42.1.10"},
+		{name: "default QoS port", qosPort: 0, metricInstance: "10.42.1.10"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, s := instanceDashboardTestContext(t)
@@ -73,7 +73,7 @@ func TestInstanceMetricAndTraceDashboardVariables(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, "shop-user", trace["var-application"])
 			require.Equal(t, "10.42.1.10", trace["var-instance"])
-			require.NotEqual(t, metric["var-instance"], trace["var-instance"])
+			require.Equal(t, metric["var-instance"], trace["var-instance"])
 		})
 	}
 }

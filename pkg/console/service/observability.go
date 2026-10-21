@@ -104,16 +104,9 @@ func GetInstanceDashboardVariables(ctx consolectx.Context, req *model.InstanceDa
 	if err != nil {
 		return nil, err
 	}
-	var instanceValue string
-	if res.Spec.QosPort != 0 {
-		instanceValue = fmt.Sprintf("%s:%d", res.Spec.Ip, res.Spec.QosPort)
-	} else {
-		instanceValue = fmt.Sprintf("%s:%d", res.Spec.Ip, 22222)
-	}
-
 	return map[string]string{
 		"var-application": res.Spec.AppName,
-		"var-instance":    instanceValue,
+		"var-instance":    res.Spec.Ip,
 	}, nil
 }
 
