@@ -113,7 +113,7 @@ type routerRuleAPIResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
-func TestRouterRuleAPIContractPreservesScriptOptionalEnabled(t *testing.T) {
+func TestRouterRuleAPIContractNormalizesScriptEnabled(t *testing.T) {
 	router, sessionCookie := newRouterRuleAPI(t)
 	const (
 		mesh = "api-contract-mesh"
@@ -129,11 +129,11 @@ func TestRouterRuleAPIContractPreservesScriptOptionalEnabled(t *testing.T) {
 		"script":        "return [invokers[1]];",
 	})
 	created := callRouterRuleAPI(t, router, sessionCookie, http.MethodPost, path, create)
-	require.NotContains(t, string(created.Data), `"enabled"`)
+	require.Contains(t, string(created.Data), `"enabled":true`)
 
 	detail := callRouterRuleAPI(t, router, sessionCookie, http.MethodGet, path, nil)
 	require.JSONEq(t, string(created.Data), string(detail.Data))
-	require.NotContains(t, string(detail.Data), `"enabled"`)
+	require.Contains(t, string(detail.Data), `"enabled":true`)
 
 	search := callRouterRuleAPI(t, router, sessionCookie, http.MethodGet,
 		"/api/v1/script-rule/search?mesh="+mesh+"&keywords="+name, nil)
@@ -148,7 +148,7 @@ func TestRouterRuleAPIContractPreservesScriptOptionalEnabled(t *testing.T) {
 
 	updatedPayload := replaceJSONField(t, detail.Data, "script", "return [invokers[0]];")
 	updated := callRouterRuleAPI(t, router, sessionCookie, http.MethodPut, path, updatedPayload)
-	require.NotContains(t, string(updated.Data), `"enabled"`)
+	require.Contains(t, string(updated.Data), `"enabled":true`)
 
 	versionPath := "/api/v1/script-rule/" + name + "/versions?mesh=" + mesh
 	versionList := callRouterRuleAPI(t, router, sessionCookie, http.MethodGet, versionPath, nil)
@@ -170,7 +170,7 @@ func TestRouterRuleAPIContractPreservesScriptOptionalEnabled(t *testing.T) {
 		mustRouterRuleJSON(t, map[string]string{"reason": "verify omitted enabled"}))
 
 	restored := callRouterRuleAPI(t, router, sessionCookie, http.MethodGet, path, nil)
-	require.NotContains(t, string(restored.Data), `"enabled"`)
+	require.Contains(t, string(restored.Data), `"enabled":true`)
 	var restoredData map[string]any
 	require.NoError(t, json.Unmarshal(restored.Data, &restoredData))
 	require.Equal(t, "return [invokers[1]];", restoredData["script"])

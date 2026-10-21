@@ -185,7 +185,12 @@ func mutateScriptRule(ctx consolectx.Context, update bool) gin.HandlerFunc {
 		name, mesh := c.Param("ruleName"), c.Query("mesh")
 		res := meshresource.NewScriptRouteResourceWithAttributes(name, mesh)
 		res.Spec = input.ToProto()
-		meshresource.SetScriptRuleOptionalEnabled(res, input.Enabled)
+		enabled := input.Enabled
+		if enabled == nil {
+			defaultEnabled := true
+			enabled = &defaultEnabled
+		}
+		meshresource.SetScriptRuleOptionalEnabled(res, enabled)
 		if err := meshresource.ValidateRule(res); err != nil {
 			util.HandleArgumentError(c, err)
 			return

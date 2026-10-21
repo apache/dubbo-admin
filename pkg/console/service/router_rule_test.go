@@ -78,7 +78,7 @@ func TestScriptRuleLifecycleAndRollback(t *testing.T) {
 	require.NoError(t, DeleteScriptRuleWithOptions(ctx, name, "", RuleMutationOptions{Author: "admin"}))
 }
 
-func TestScriptRuleRollbackPreservesOmittedEnabled(t *testing.T) {
+func TestScriptRuleRollbackNormalizesOmittedEnabledToTrue(t *testing.T) {
 	ctx := setupRollbackTestEnv(t)
 	const (
 		key  = "demo-provider"
@@ -110,7 +110,7 @@ script: return invokers;
 	require.NoError(t, err)
 	raw, err := meshresource.EncodeRule(actual)
 	require.NoError(t, err)
-	require.NotContains(t, string(raw), "enabled:")
+	require.Contains(t, string(raw), "enabled: true")
 }
 
 func TestRouterRuleMutationRejectsInvalidRuntimeContract(t *testing.T) {

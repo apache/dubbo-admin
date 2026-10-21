@@ -26,7 +26,7 @@ import (
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 )
 
-func TestScriptRuleDetailRoundTripPreservesOmittedEnabled(t *testing.T) {
+func TestScriptRuleDetailRoundTripNormalizesOmittedEnabledToTrue(t *testing.T) {
 	source, err := meshresource.DecodeRule(meshresource.ScriptRouteKind, "mesh", "demo.script-router", `
 configVersion: v3.0
 scope: application
@@ -37,17 +37,18 @@ script: return invokers;
 	require.NoError(t, err)
 
 	input := GenScriptRuleResp(source.(*meshresource.ScriptRouteResource)).Data.(ScriptRuleInput)
-	require.Nil(t, input.Enabled)
+	require.NotNil(t, input.Enabled)
+	require.True(t, *input.Enabled)
 	body, err := json.Marshal(input)
 	require.NoError(t, err)
-	require.NotContains(t, string(body), `"enabled"`)
+	require.Contains(t, string(body), `"enabled":true`)
 
 	restored := meshresource.NewScriptRouteResourceWithAttributes("demo.script-router", "mesh")
 	restored.Spec = input.ToProto()
 	meshresource.SetScriptRuleOptionalEnabled(restored, input.Enabled)
 	raw, err := meshresource.EncodeRule(restored)
 	require.NoError(t, err)
-	require.NotContains(t, string(raw), "enabled:")
+	require.Contains(t, string(raw), "enabled: true")
 }
 
 func TestAffinityRuleDetailRoundTripPreservesOptionalBooleans(t *testing.T) {

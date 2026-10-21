@@ -97,7 +97,8 @@ func (g *RuleGovernor) DeleteRule(r coremodel.Resource) error {
 		// before removing the dataId. The subsequent delete still makes the
 		// configuration absent for new consumers.
 		disabled := script.DeepCopyObject().(*meshresource.ScriptRouteResource)
-		disabled.Spec.Enabled = false
+		disabledEnabled := false
+		meshresource.SetScriptRuleOptionalEnabled(disabled, &disabledEnabled)
 		rawContent, err := meshresource.EncodeRule(disabled)
 		if err != nil {
 			return bizerror.Wrap(err, bizerror.NacosError,

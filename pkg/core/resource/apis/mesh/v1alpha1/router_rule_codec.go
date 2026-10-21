@@ -35,7 +35,6 @@ import (
 const (
 	affinityRuntimeOmittedAnnotation = "dubbo.apache.org/affinity-runtime-omitted"
 	affinityEnabledOmittedAnnotation = "dubbo.apache.org/affinity-enabled-omitted"
-	scriptEnabledOmittedAnnotation   = "dubbo.apache.org/script-enabled-omitted"
 )
 
 // The protobuf field is named affinity for historical/internal reasons. The
@@ -93,9 +92,12 @@ func EncodeRule(r coremodel.Resource) ([]byte, error) {
 			ConfigVersion: typed.Spec.ConfigVersion,
 			Scope:         typed.Spec.Scope,
 			Key:           typed.Spec.Key,
-			Enabled:       optionalRuleBool(typed.Spec.Enabled, typed.Annotations, scriptEnabledOmittedAnnotation),
-			Type:          typed.Spec.Type,
-			Script:        typed.Spec.Script,
+			// Dubbo-Go's ScriptRouter dereferences Enabled, so Script rules must
+			// always publish this field. Unlike Affinity rules, enabled is not
+			// optional in the Script rule contract.
+			Enabled: &typed.Spec.Enabled,
+			Type:    typed.Spec.Type,
+			Script:  typed.Spec.Script,
 		}
 	default:
 		if r == nil || r.ResourceSpec() == nil {
@@ -162,11 +164,12 @@ func DecodeRule(kind coremodel.ResourceKind, mesh, name, data string) (coremodel
 		res.Spec.ConfigVersion = external.ConfigVersion
 		res.Spec.Scope = external.Scope
 		res.Spec.Key = external.Key
+		// Treat old configurations which omit enabled as enabled. This keeps
+		// Console's next write compatible with ScriptRouter by making the
+		// normalized value explicit in the published YAML.
+		res.Spec.Enabled = true
 		if external.Enabled != nil {
 			res.Spec.Enabled = *external.Enabled
-			clearRuleBooleanOmitted(&res.Annotations, scriptEnabledOmittedAnnotation)
-		} else {
-			markRuleBooleanOmitted(&res.Annotations, scriptEnabledOmittedAnnotation)
 		}
 		res.Spec.Type = external.Type
 		res.Spec.Script = external.Script
@@ -216,22 +219,27 @@ func SetAffinityRuleOptionalFields(res *AffinityRouteResource, runtime, enabled 
 	setOptionalRuleBool(&res.Spec.Enabled, &res.Annotations, affinityEnabledOmittedAnnotation, enabled)
 }
 
-// ScriptRuleOptionalEnabled returns nil when enabled was omitted from the
-// original Script rule; otherwise it returns the explicit boolean value.
+// ScriptRuleOptionalEnabled returns the normalized Script enabled value.
+// ScriptRouter requires this field, so an omitted value is normalized to true.
 func ScriptRuleOptionalEnabled(res *ScriptRouteResource) *bool {
 	if res == nil || res.Spec == nil {
 		return nil
 	}
-	return optionalRuleBool(res.Spec.Enabled, res.Annotations, scriptEnabledOmittedAnnotation)
+	return &res.Spec.Enabled
 }
 
-// SetScriptRuleOptionalEnabled applies the public optional enabled field while
-// preserving whether it was omitted or explicitly set to false.
+// SetScriptRuleOptionalEnabled applies the public enabled field. A missing
+// input is normalized to true so all Script rule writes remain safe for
+// ScriptRouter consumers.
 func SetScriptRuleOptionalEnabled(res *ScriptRouteResource, enabled *bool) {
 	if res == nil || res.Spec == nil {
 		return
 	}
-	setOptionalRuleBool(&res.Spec.Enabled, &res.Annotations, scriptEnabledOmittedAnnotation, enabled)
+	normalized := true
+	if enabled != nil {
+		normalized = *enabled
+	}
+	res.Spec.Enabled = normalized
 }
 
 func setOptionalRuleBool(value *bool, annotations *map[string]string, omittedAnnotation string, input *bool) {

@@ -63,7 +63,7 @@ func TestScriptRuleCodecAndValidation(t *testing.T) {
 	require.Error(t, ValidateRule(res))
 }
 
-func TestRouterRuleCodecPreservesOmittedBooleans(t *testing.T) {
+func TestRouterRuleCodecPreservesOptionalAffinityBooleansAndNormalizesScriptEnabled(t *testing.T) {
 	affinityYAML := "configVersion: v3.1\n" +
 		"scope: application\n" +
 		"key: demo\n" +
@@ -90,7 +90,7 @@ func TestRouterRuleCodecPreservesOmittedBooleans(t *testing.T) {
 	require.NoError(t, err)
 	scriptRaw, err := EncodeRule(script)
 	require.NoError(t, err)
-	require.NotContains(t, string(scriptRaw), "enabled:")
+	require.Contains(t, string(scriptRaw), "enabled: true")
 }
 
 func TestRouterRuleCodecPreservesExplicitFalseBooleans(t *testing.T) {

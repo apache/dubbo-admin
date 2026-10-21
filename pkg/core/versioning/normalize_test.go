@@ -47,14 +47,14 @@ script: return invokers;
 	explicitHash, explicitSnapshot, err := NormalizeResource(explicitFalse)
 	require.NoError(t, err)
 	require.NotEqual(t, omittedHash, explicitHash)
-	require.Contains(t, omittedSnapshot, `"omittedFields":["enabled"]`)
+	require.NotContains(t, omittedSnapshot, `"omittedFields"`)
 	require.NotContains(t, explicitSnapshot, `"omittedFields"`)
 
 	restored, err := ResourceFromSpecJSON(meshresource.ScriptRouteKind, "mesh", "demo.script-router", omittedSnapshot)
 	require.NoError(t, err)
 	raw, err := meshresource.EncodeRule(restored)
 	require.NoError(t, err)
-	require.NotContains(t, string(raw), "enabled:")
+	require.Contains(t, string(raw), "enabled: true")
 
 	restored, err = ResourceFromSpecJSON(meshresource.ScriptRouteKind, "mesh", "demo.script-router", explicitSnapshot)
 	require.NoError(t, err)

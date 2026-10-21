@@ -47,6 +47,18 @@ type routerRuleSnapshot struct {
 	OmittedFields []string        `json:"omittedFields,omitempty"`
 }
 
+// scriptRouteSnapshotSpec deliberately does not use protojson because
+// proto3 omits false scalars. Script enabled must retain an explicit false
+// across history and rollback.
+type scriptRouteSnapshotSpec struct {
+	ConfigVersion string `json:"configVersion"`
+	Scope         string `json:"scope"`
+	Key           string `json:"key"`
+	Enabled       bool   `json:"enabled"`
+	Type          string `json:"type"`
+	Script        string `json:"script"`
+}
+
 // NormalizeSpec returns the spec hash followed by canonical JSON for stable comparisons.
 // It does not validate whether the spec is acceptable to the registry.
 func NormalizeSpec(spec coremodel.ResourceSpec) (specHash string, specJSON string, err error) {
@@ -189,12 +201,20 @@ func normalizeRouterRuleSnapshot(res coremodel.Resource) (routerRuleSnapshot, bo
 		if typed == nil || typed.Spec == nil {
 			return routerRuleSnapshot{}, false, nil
 		}
-		_, specJSON, err = NormalizeSpec(typed.Spec)
+		raw, marshalErr := json.Marshal(scriptRouteSnapshotSpec{
+			ConfigVersion: typed.Spec.ConfigVersion,
+			Scope:         typed.Spec.Scope,
+			Key:           typed.Spec.Key,
+			Enabled:       typed.Spec.Enabled,
+			Type:          typed.Spec.Type,
+			Script:        typed.Spec.Script,
+		})
+		if marshalErr != nil {
+			return routerRuleSnapshot{}, true, marshalErr
+		}
+		specJSON, err = canonicalJSON(raw)
 		if err != nil {
 			return routerRuleSnapshot{}, true, err
-		}
-		if meshresource.ScriptRuleOptionalEnabled(typed) == nil {
-			omittedFields = append(omittedFields, "enabled")
 		}
 	default:
 		return routerRuleSnapshot{}, false, nil
