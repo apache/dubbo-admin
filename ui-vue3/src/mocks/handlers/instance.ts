@@ -91,5 +91,25 @@ export const instanceHandlers: HttpHandler[] = [
 
   http.get(`${base}/instance/config/trafficDisable`, () => success({ trafficDisable: false })),
 
-  http.put(`${base}/instance/config/trafficDisable`, () => success(null))
+  http.put(`${base}/instance/config/trafficDisable`, () => success(null)),
+
+  http.get(`${base}/instance/event`, () => {
+    const sources = ['deployment-controller', 'nacos', 'replicaset-controller', 'scheduler']
+    const messages = [
+      'Scaled down replica set shop-detail-v1-5847b7cdfd to 1 from 2',
+      'Scaled up replica set shop-detail-v1-74fd98bc9d to 2 from 1',
+      'Successfully assigned shop-user/shop-detail-v1-5847b7cdfd to node hz-ali-30.33.0.1',
+      'Created container shop-detail',
+      'Started container shop-detail',
+      'Pulling image apache/org.apahce.dubbo.samples.shop-user:v1',
+      'Instance registered via Nacos: 45.7.37.227:20880'
+    ]
+    const list = Array.from({ length: 8 }, (_, i) => ({
+      time: `2024/2/17 ${String(20 - i).padStart(2, '0')}:04:38`,
+      type: (i === 0 ? 'warning' : 'normal') as 'normal' | 'warning',
+      message: messages[i % messages.length],
+      source: sources[i % sources.length]
+    }))
+    return success({ list, total: list.length })
+  })
 ]

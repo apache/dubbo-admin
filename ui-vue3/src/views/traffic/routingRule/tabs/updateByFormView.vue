@@ -144,19 +144,9 @@
 </template>
 
 <script lang="ts" setup>
-import {
-  ComponentInternalInstance,
-  getCurrentInstance,
-  onMounted,
-  reactive,
-  ref,
-  inject,
-  watch
-} from 'vue'
+import { onMounted, reactive, ref, inject, watch } from 'vue'
 import { DoubleLeftOutlined, DoubleRightOutlined } from '@ant-design/icons-vue'
-import useClipboard from 'vue-clipboard3'
 import { message } from 'ant-design-vue'
-import { PRIMARY_COLOR } from '@/base/constants'
 import { useRoute } from 'vue-router'
 import { getConditionRuleDetailAPI, updateConditionRuleAPI } from '@/api/service/traffic'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
@@ -167,7 +157,7 @@ import RoutingRuleList from '../components/RoutingRuleList.vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 const loading = ref(false)
 
 const routingRuleLogic = useRoutingRule()
@@ -178,57 +168,69 @@ const {
   parseConditionToStringToArray
 } = routingRuleLogic
 
+// Raw conditions as fetched. When configVersion is unsupported the form cannot
+// parse them into routeList, so we send these back untouched on save instead of
+// letting mergeConditions() overwrite the rule with an empty list.
+const originalConditions = ref<string[]>([])
+const conditionsEditable = ref(true)
+
 onMounted(async () => {
   if (!isNil(TAB_STATE.conditionRule)) {
-    const { enabled = true, key, scope, runtime = true, conditions } = TAB_STATE.conditionRule
+    const {
+      configVersion,
+      priority,
+      enabled = true,
+      force = false,
+      key,
+      scope,
+      runtime = true,
+      conditions
+    } = TAB_STATE.conditionRule
+    baseInfo.configVersion = configVersion
+    baseInfo.priority = priority
     baseInfo.enable = enabled
+    baseInfo.faultTolerantProtection = force
     baseInfo.objectOfAction = key
     baseInfo.ruleGranularity = scope
     baseInfo.runtime = runtime
 
     // Clear and rebuild routeList based on conditions
     if (conditions && conditions.length > 0) {
-      routeList.value = []
-      conditions.forEach((item, index) => {
-        // Add new route item for each condition
-        routeList.value.push({
-          selectedMatchConditionTypes: [],
-          requestMatch: [],
-          selectedRouteDistributeMatchTypes: [],
-          routeDistribute: []
-        })
+      originalConditions.value = conditions
+      if (configVersion !== 'v3.0') {
+        conditionsEditable.value = false
+        console.warn(
+          `skip condition route form parsing for unsupported configVersion: ${configVersion}`
+        )
+      } else {
+        routeList.value = []
+        conditions.forEach((item: string, index: number) => {
+          // Add new route item for each condition
+          routeList.value.push({
+            selectedMatchConditionTypes: [],
+            requestMatch: [],
+            selectedRouteDistributeMatchTypes: [],
+            routeDistribute: []
+          })
 
-        const conditionArr = item.split(' => ')
-        const match = conditionArr[0]?.trim()
-        const to = conditionArr[1]?.trim()
-        routeList.value[index].requestMatch = parseConditionMatchStringToArray(match, index)
-        routeList.value[index].routeDistribute = parseConditionToStringToArray(to, index)
-      })
+          const conditionArr = item.split(' => ')
+          const match = conditionArr[0]?.trim()
+          const to = conditionArr[1]?.trim()
+          routeList.value[index].requestMatch = parseConditionMatchStringToArray(match, index)
+          routeList.value[index].routeDistribute = parseConditionToStringToArray(to, index)
+        })
+      }
     }
   } else {
     await getRoutingRuleDetail()
   }
   getVersionAndGroup()
 })
-const {
-  appContext: {
-    config: { globalProperties }
-  }
-} = <ComponentInternalInstance>getCurrentInstance()
 const route = useRoute()
 
 const isDrawerOpened = ref(false)
 
 const sliderSpan = ref(8)
-
-let __ = PRIMARY_COLOR
-
-const toClipboard = useClipboard().toClipboard
-
-function copyIt(v: string) {
-  message.success(globalProperties.$t('messageDomain.success.copy'))
-  toClipboard(v)
-}
 
 // base info
 const baseInfo = reactive({
@@ -239,6 +241,7 @@ const baseInfo = reactive({
   faultTolerantProtection: false,
   runtime: true,
   priority: null,
+  configVersion: '',
   group: ''
 })
 
@@ -267,14 +270,9 @@ const ruleGranularityOptions = computed(() => [
   }
 ])
 
-enum ruleGranularityEnum {
-  application = '应用',
-  service = '服务'
-}
-
 watch(
   routeList,
-  (newVal) => {
+  () => {
     TAB_STATE.conditionRule = {
       ...TAB_STATE.conditionRule,
       conditions: mergeConditions()
@@ -287,23 +285,32 @@ watch(
 
 // Get condition routing details
 async function getRoutingRuleDetail() {
-  let res = await getConditionRuleDetailAPI(<string>route.params?.ruleName)
-  // console.log(res)
+  let res = await getConditionRuleDetailAPI(route.params?.ruleName as string)
   if (res?.code === HTTP_STATUS.SUCCESS) {
-    console.log('res', res.data)
-    const { conditions, configVersion, enabled, force, key, runtime, scope } = res?.data
+    const { conditions, configVersion, priority, enabled, force, key, runtime, scope } =
+      res.data || {}
     baseInfo.ruleGranularity = scope
     baseInfo.objectOfAction = key
     baseInfo.enable = enabled
     baseInfo.faultTolerantProtection = force
     baseInfo.runtime = runtime
     baseInfo.configVersion = configVersion
+    baseInfo.priority = priority
 
     //   format conditions data
-    if (configVersion == 'v3.0' && conditions && conditions.length > 0) {
+    if (conditions && conditions.length > 0) {
+      originalConditions.value = conditions
+      if (configVersion !== 'v3.0') {
+        conditionsEditable.value = false
+        console.warn(
+          `skip condition route form parsing for unsupported configVersion: ${configVersion}`
+        )
+        return
+      }
+      conditionsEditable.value = true
       // Clear and rebuild routeList based on conditions
       routeList.value = []
-      conditions.forEach((item, index) => {
+      conditions.forEach((item: string, index: number) => {
         // Add new route item for each condition
         routeList.value.push({
           selectedMatchConditionTypes: [],
@@ -327,32 +334,40 @@ const updateRoutingRule = async () => {
   loading.value = true
   try {
     const { ruleName } = route.params
-    const { version, ruleGranularity, objectOfAction, enable, faultTolerantProtection, runtime } =
-      baseInfo
+    const {
+      ruleGranularity,
+      objectOfAction,
+      enable,
+      faultTolerantProtection,
+      runtime,
+      priority,
+      configVersion
+    } = baseInfo
     const data = {
-      configVersion: 'v3.0',
+      configVersion: configVersion || 'v3.0',
+      priority,
       scope: ruleGranularity,
       key: objectOfAction,
       enabled: enable,
       force: faultTolerantProtection,
       runtime,
-      conditions: mergeConditions()
+      conditions: conditionsEditable.value ? mergeConditions() : originalConditions.value
     }
-    const res = await updateConditionRuleAPI(<string>ruleName, data)
+    const res = await updateConditionRuleAPI(ruleName as string, data)
     if (res?.code === HTTP_STATUS.SUCCESS) {
       message.success('update success')
-      // 延迟 2 秒后再获取数据，确保数据库已更新
-      await new Promise((resolve) => setTimeout(resolve, 2000))
       TAB_STATE.conditionRule = null
       await getRoutingRuleDetail()
     }
+  } catch (e: any) {
+    message.error(e?.message || String(e))
   } finally {
     loading.value = false
   }
 }
 
 const getVersionAndGroup = () => {
-  const conditionName = route.params?.ruleName
+  const conditionName = String(route.params?.ruleName || '')
   // console.log('lll', baseInfo)
   if (conditionName && baseInfo.ruleGranularity === 'service') {
     const arr = conditionName.split(':')

@@ -106,6 +106,18 @@ func (a AccessContext) Validate() error { return a.Subject.Validate() }
 
 func (a AccessContext) IsSystem() bool { return a.systemCapability }
 
+// ValidateBusiness rejects the system capability from ordinary business
+// operations. Maintenance operations are the only callers that may use it.
+func (a AccessContext) ValidateBusiness() error {
+	if err := a.Validate(); err != nil {
+		return err
+	}
+	if a.IsSystem() {
+		return ErrResourceNotAccessible
+	}
+	return nil
+}
+
 // CanAccessOwner intentionally grants no cross-tenant access. The reserved
 // admin scope permits managing other owners only within the same tenant.
 func (a AccessContext) CanAccessOwner(tenantID, ownerID string) bool {
@@ -114,6 +126,9 @@ func (a AccessContext) CanAccessOwner(tenantID, ownerID string) bool {
 	}
 	if a.IsSystem() {
 		return true
+	}
+	if tenantID == "" || ownerID == "" {
+		return false
 	}
 	if a.Subject.TenantID != tenantID {
 		return false

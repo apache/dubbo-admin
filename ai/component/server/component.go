@@ -24,6 +24,7 @@ import (
 	"dubbo-admin-ai/component/server/engine"
 	"dubbo-admin-ai/runtime"
 	"dubbo-admin-ai/security"
+	conversationstore "dubbo-admin-ai/store"
 	"fmt"
 	"net"
 	"net/http"
@@ -67,7 +68,7 @@ func NewServerComponent(
 	authentication := DefaultServerSpec().Authentication
 	return &ServerComponent{
 		port:           port,
-		host:           host,
+		host:           normalizeHost(host),
 		debug:          debug,
 		corsOrigins:    corsOrigins,
 		readTimeout:    readTimeout,
@@ -134,12 +135,20 @@ func (s *ServerComponent) Validate() error {
 }
 
 func isLoopbackHost(host string) bool {
-	host = strings.TrimSpace(host)
+	host = normalizeHost(host)
 	if strings.EqualFold(host, "localhost") {
 		return true
 	}
 	ip := net.ParseIP(strings.Trim(host, "[]"))
 	return ip != nil && ip.IsLoopback()
+}
+
+func normalizeHost(host string) string {
+	host = strings.TrimSpace(host)
+	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+		return strings.TrimSuffix(strings.TrimPrefix(host, "["), "]")
+	}
+	return host
 }
 
 func (s *ServerComponent) Init(rt *runtime.Runtime) error {
@@ -208,15 +217,8 @@ func (s *ServerComponent) Start() error {
 	}
 
 	// Create router with AI interface
-	if s.authentication.AdoptLegacySessions {
-		if _, err := maintenanceStore.AdoptLegacySessions(
-			context.Background(),
-			security.SystemAccessContext(),
-			subject.TenantID,
-			subject.UserID,
-		); err != nil {
-			return fmt.Errorf("failed to adopt legacy sessions: %w", err)
-		}
+	if err := adoptLegacySessions(context.Background(), maintenanceStore, s.authentication.AdoptLegacySessions, subject); err != nil {
+		return fmt.Errorf("failed to adopt legacy sessions: %w", err)
 	}
 	router, err := engine.NewRouterWithCORS(agentComponent.Agent, conversationStore, maintenanceStore, authenticator, s.corsOrigins)
 	if err != nil {
@@ -248,6 +250,16 @@ func (s *ServerComponent) Start() error {
 		}
 	}()
 
+	return nil
+}
+
+func adoptLegacySessions(ctx context.Context, maintenance conversationstore.MaintenanceStore, enabled bool, subject security.Subject) error {
+	if !enabled {
+		return nil
+	}
+	if _, err := maintenance.AdoptLegacySessions(ctx, security.SystemAccessContext(), subject.TenantID, subject.UserID); err != nil {
+		return err
+	}
 	return nil
 }
 

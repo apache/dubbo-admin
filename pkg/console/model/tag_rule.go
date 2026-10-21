@@ -31,7 +31,9 @@ type TagRuleSearchResp struct {
 type TagRuleResp struct {
 	ConfigVersion string           `json:"configVersion"`
 	Enabled       bool             `json:"enabled"`
+	Force         bool             `json:"force"`
 	Key           string           `json:"key"`
+	Priority      int32            `json:"priority"`
 	Runtime       bool             `json:"runtime"`
 	Scope         string           `json:"scope"`
 	Tags          []RespTagElement `json:"tags"`
@@ -50,7 +52,9 @@ func GenTagRouteResp(pb *meshproto.TagRoute) *CommonResp {
 		return NewSuccessResp(TagRuleResp{
 			ConfigVersion: pb.ConfigVersion,
 			Enabled:       pb.Enabled,
+			Force:         pb.Force,
 			Key:           pb.Key,
+			Priority:      pb.Priority,
 			Runtime:       pb.Runtime,
 			Scope:         constants.ScopeApplication,
 			Tags:          tagToRespTagElement(pb.Tags),

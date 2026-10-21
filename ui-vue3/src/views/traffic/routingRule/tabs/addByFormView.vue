@@ -157,7 +157,7 @@ import RoutingRuleList from '../components/RoutingRuleList.vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 
 const routingRuleLogic = useRoutingRule()
 const {
@@ -177,7 +177,7 @@ onMounted(() => {
 
     conditions &&
       conditions.length &&
-      conditions.forEach((item, index) => {
+      conditions.forEach((item: string, index: number) => {
         const conditionArr = item.split(' => ')
         const match = conditionArr[0]?.trim()
         const to = conditionArr[1]?.trim()
@@ -307,23 +307,6 @@ const addRoutingRule = async () => {
   const res = await addConditionRuleAPI(ruleName, data)
   if (res?.code === HTTP_STATUS.SUCCESS) {
     message.success('add success')
-    // 延迟 2 秒后再获取数据，确保数据库已更新
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    // Back to list or something? The original code didn't seem to navigate back, just stayed there?
-    // Ah, maybe it's supposed to clear the form.
-    // But looking at the original it didn't seem to do much after success except message.
-    // Wait, original `addRoutingRule` was missing from the `view_file` output (it was truncated probably, or I didn't see it).
-    // Let's assume standard behavior: probably redirect?
-    // Wait, I should check if I missed `addRoutingRule` implementation in Step 7.
-    // Yes, step 7 showed up to line 800. `addRoutingRule` was likely at the end.
-    // I should have checked the end of the file.
-    // But based on `updateByFormView`, it waits and refreshes.
-    // For ADD, it probably should go back to list.
-    // But for now I'll just keep it basic as I don't want to change behavior blindly.
-    // Actually, I can check the original file content again if I want to be 100% sure about `addRoutingRule` implementation.
-    // However, I can infer it.
-    // Or I can add a `console.log` or something if I am unsure.
-    // Let's try to view the end of the file `addByFormView.vue`.
   }
 }
 </script>
