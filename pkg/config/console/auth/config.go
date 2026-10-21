@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"regexp"
 	"slices"
 	"strings"
@@ -30,8 +31,9 @@ import (
 )
 
 const (
-	DefaultExpirationTime = 7200
-	DefaultSessionSecret  = "secret"
+	DefaultExpirationTime      = 7200
+	MinimumSessionSecretLength = 32
+	SessionSecretEnvVar        = "DUBBO_ADMIN_SESSION_SECRET"
 
 	MethodPassword     = "password"
 	ProviderTypeGitHub = "github"
@@ -89,8 +91,11 @@ func (c *Config) Validate() error {
 	if c.ExpirationTime <= 0 || c.ExpirationTime >= 24*60*60 {
 		return errors.New("auth: expirationTime should be greater than 0 and less than 86400")
 	}
-	if c.SessionSecret == "" {
-		c.SessionSecret = DefaultSessionSecret
+	if strings.TrimSpace(c.SessionSecret) == "" {
+		c.SessionSecret = os.Getenv(SessionSecretEnvVar)
+	}
+	if strings.TrimSpace(c.SessionSecret) == "" || len([]byte(c.SessionSecret)) < MinimumSessionSecretLength {
+		return fmt.Errorf("auth: sessionSecret must contain at least %d bytes", MinimumSessionSecretLength)
 	}
 	for id, provider := range c.Providers {
 		if err := validateProvider(id, &provider); err != nil {

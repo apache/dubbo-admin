@@ -78,10 +78,6 @@ func (c *Config) Validate() error {
 	if err := c.Auth.Validate(); err != nil {
 		return err
 	}
-	// Release deployments with external providers must reject the legacy default session secret and other short cookie-signing keys.
-	if c.GinMode == ReleaseMode && len(c.Auth.Providers) > 0 && len([]byte(c.Auth.SessionSecret)) < 32 {
-		return bizerror.New(bizerror.ConfigError, "auth sessionSecret must contain at least 32 bytes when providers are enabled in release mode")
-	}
 	return nil
 }
 
@@ -136,7 +132,6 @@ func DefaultConsoleConfig() *Config {
 			User:           "admin",
 			Password:       "admin",
 			ExpirationTime: 3600,
-			SessionSecret:  auth.DefaultSessionSecret,
 		},
 	}
 }

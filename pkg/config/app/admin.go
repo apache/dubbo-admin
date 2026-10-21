@@ -67,7 +67,6 @@ var DefaultAdminConfig = func() AdminConfig {
 		Engine:         engine.DefaultResourceEngineConfig(),
 		Observability:  observability.DefaultObservabilityConfig(),
 		Diagnostics:    diagnostics.DefaultDiagnosticsConfig(),
-		Console:        console.DefaultConsoleConfig(),
 		EventBus:       &eventBusCfg,
 		RuleVersioning: versioning.Default(),
 	}
@@ -79,7 +78,9 @@ func (c *AdminConfig) Sanitize() {
 		d.Sanitize()
 	}
 	c.Store.Sanitize()
-	c.Console.Sanitize()
+	if c.Console != nil {
+		c.Console.Sanitize()
+	}
 	c.Observability.Sanitize()
 	c.Diagnostics.Sanitize()
 	c.Log.Sanitize()
@@ -90,6 +91,9 @@ func (c *AdminConfig) Sanitize() {
 }
 
 func (c *AdminConfig) PreProcess() error {
+	if c.Console == nil {
+		return bizerror.New(bizerror.ConfigError, "console config is needed, but found empty")
+	}
 	discoveryPreProcess := func() error {
 		for _, d := range c.Discovery {
 			if err := d.PreProcess(); err != nil {
@@ -114,6 +118,9 @@ func (c *AdminConfig) PreProcess() error {
 }
 
 func (c *AdminConfig) PostProcess() error {
+	if c.Console == nil {
+		return bizerror.New(bizerror.ConfigError, "console config is needed, but found empty")
+	}
 	discoveryPostProcess := func() error {
 		for _, d := range c.Discovery {
 			if err := d.PostProcess(); err != nil {
@@ -138,6 +145,9 @@ func (c *AdminConfig) PostProcess() error {
 }
 
 func (c *AdminConfig) Validate() error {
+	if c.Console == nil {
+		return bizerror.New(bizerror.ConfigError, "console config is needed, but found empty")
+	}
 	if c.Log == nil {
 		c.Log = log.DefaultLogConfig()
 	} else if err := c.Log.Validate(); err != nil {
@@ -153,9 +163,7 @@ func (c *AdminConfig) Validate() error {
 	} else if err := c.Diagnostics.Validate(); err != nil {
 		return bizerror.Wrap(err, bizerror.ConfigError, "diagnostics config validation failed")
 	}
-	if c.Console == nil {
-		c.Console = console.DefaultConsoleConfig()
-	} else if err := c.Console.Validate(); err != nil {
+	if err := c.Console.Validate(); err != nil {
 		return bizerror.Wrap(err, bizerror.ConfigError, "console config validation failed")
 	}
 	if c.Observability == nil {
