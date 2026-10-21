@@ -204,3 +204,139 @@ func TestAuthenticationMiddlewareRejectsSystemAccess(t *testing.T) {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
 	}
 }
+
+func TestSessionRoutesIgnoreSpoofedIdentityAndIsolateOwners(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	store := memorystore.NewMemoryStore()
+	ownerAuth, err := security.NewStaticAuthenticator(security.Subject{
+		TenantID: "tenant-a", UserID: "owner-a", AuthMethod: security.AuthMethodStatic,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownerRouter, err := NewRouter(nil, store, store, ownerAuth)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = ownerRouter.Close() })
+
+	create := httptest.NewRequest(http.MethodPost, "/api/v1/ai/sessions", nil)
+	create.Header.Set("X-Tenant-ID", "attacker-tenant")
+	create.Header.Set("X-User-ID", "attacker-user")
+	createdResponse := httptest.NewRecorder()
+	ownerRouter.GetEngine().ServeHTTP(createdResponse, create)
+	if createdResponse.Code != http.StatusOK {
+		t.Fatalf("create status = %d, body = %s", createdResponse.Code, createdResponse.Body.String())
+	}
+	var created struct {
+		Data struct {
+			SessionID string `json:"session_id"`
+			TenantID  string `json:"tenant_id"`
+			OwnerID   string `json:"owner_id"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(createdResponse.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	if created.Data.TenantID != "tenant-a" || created.Data.OwnerID != "owner-a" {
+		t.Fatalf("created identity = %s/%s", created.Data.TenantID, created.Data.OwnerID)
+	}
+
+	otherAuth, err := security.NewStaticAuthenticator(security.Subject{
+		TenantID: "tenant-a", UserID: "owner-b", AuthMethod: security.AuthMethodStatic,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherRouter, err := NewRouter(nil, store, store, otherAuth)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = otherRouter.Close() })
+	get := httptest.NewRequest(http.MethodGet, "/api/v1/ai/sessions/"+created.Data.SessionID, nil)
+	getResponse := httptest.NewRecorder()
+	otherRouter.GetEngine().ServeHTTP(getResponse, get)
+	if getResponse.Code != http.StatusNotFound {
+		t.Fatalf("cross-owner status = %d, body = %s", getResponse.Code, getResponse.Body.String())
+	}
+	var denied Response
+	if err := json.Unmarshal(getResponse.Body.Bytes(), &denied); err != nil {
+		t.Fatal(err)
+	}
+	if denied.Code != "RESOURCE_NOT_ACCESSIBLE" {
+		t.Fatalf("cross-owner code = %q", denied.Code)
+	}
+
+	list := httptest.NewRequest(http.MethodGet, "/api/v1/ai/sessions", nil)
+	listResponse := httptest.NewRecorder()
+	otherRouter.GetEngine().ServeHTTP(listResponse, list)
+	if listResponse.Code != http.StatusOK || !strings.Contains(listResponse.Body.String(), `"total":0`) {
+		t.Fatalf("cross-owner list status = %d, body = %s", listResponse.Code, listResponse.Body.String())
+	}
+
+	chatBody := []byte(`{"message":"hello","sessionID":"` + created.Data.SessionID + `"}`)
+	chat := httptest.NewRequest(http.MethodPost, "/api/v1/ai/chat/stream", bytes.NewReader(chatBody))
+	chat.Header.Set("Content-Type", "application/json")
+	chatResponse := httptest.NewRecorder()
+	otherRouter.GetEngine().ServeHTTP(chatResponse, chat)
+	if chatResponse.Code != http.StatusBadRequest || !strings.Contains(chatResponse.Body.String(), "RESOURCE_NOT_ACCESSIBLE") {
+		t.Fatalf("cross-owner chat status = %d, body = %s", chatResponse.Code, chatResponse.Body.String())
+	}
+
+	deleteRequest := httptest.NewRequest(http.MethodDelete, "/api/v1/ai/sessions/"+created.Data.SessionID, nil)
+	deleteResponse := httptest.NewRecorder()
+	otherRouter.GetEngine().ServeHTTP(deleteResponse, deleteRequest)
+	if deleteResponse.Code != http.StatusNotFound || !strings.Contains(deleteResponse.Body.String(), "RESOURCE_NOT_ACCESSIBLE") {
+		t.Fatalf("cross-owner delete status = %d, body = %s", deleteResponse.Code, deleteResponse.Body.String())
+	}
+	if _, err := store.Get(t.Context(), security.MustAccessContext(security.Subject{
+		TenantID: "tenant-a", UserID: "owner-a", AuthMethod: security.AuthMethodStatic,
+	}), created.Data.SessionID); err != nil {
+		t.Fatalf("cross-owner delete modified owner session: %v", err)
+	}
+}
+
+func TestAuthenticationMiddlewareRejectsMissingTrustedIdentity(t *testing.T) {
+	store := memorystore.NewMemoryStore()
+	router, err := NewRouter(nil, store, store, rejectingAuthenticator{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = router.Close() })
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/ai/sessions", nil)
+	response := httptest.NewRecorder()
+	router.GetEngine().ServeHTTP(response, request)
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	var denied Response
+	if err := json.Unmarshal(response.Body.Bytes(), &denied); err != nil {
+		t.Fatal(err)
+	}
+	if denied.Code != "AUTHENTICATION_REQUIRED" {
+		t.Fatalf("code = %q", denied.Code)
+	}
+}
+
+func TestNewRouterRequiresExplicitAuthenticator(t *testing.T) {
+	store := memorystore.NewMemoryStore()
+	if _, err := NewRouter(nil, store, store, nil); err == nil {
+		t.Fatal("NewRouter() succeeded without an authenticator")
+	}
+}
+
+func TestAuthenticationMiddlewareRejectsSystemAccess(t *testing.T) {
+	store := memorystore.NewMemoryStore()
+	router, err := NewRouter(nil, store, store, systemAuthenticator{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = router.Close() })
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/ai/sessions", nil)
+	response := httptest.NewRecorder()
+	router.GetEngine().ServeHTTP(response, request)
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
