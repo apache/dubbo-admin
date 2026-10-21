@@ -89,7 +89,7 @@ func mutateAffinityRule(ctx consolectx.Context, update bool) gin.HandlerFunc {
 		name, mesh := c.Param("ruleName"), c.Query("mesh")
 		res := meshresource.NewAffinityRouteResourceWithAttributes(name, mesh)
 		res.Spec = input.ToProto()
-		meshresource.SetAffinityRuleOptionalFields(res, input.Runtime, input.Enabled)
+		meshresource.SetAffinityRuleOptionalFields(res, input.Runtime, normalizedRuleEnabled(input.Enabled))
 		if err := meshresource.ValidateRule(res); err != nil {
 			util.HandleArgumentError(c, err)
 			return
@@ -185,12 +185,7 @@ func mutateScriptRule(ctx consolectx.Context, update bool) gin.HandlerFunc {
 		name, mesh := c.Param("ruleName"), c.Query("mesh")
 		res := meshresource.NewScriptRouteResourceWithAttributes(name, mesh)
 		res.Spec = input.ToProto()
-		enabled := input.Enabled
-		if enabled == nil {
-			defaultEnabled := true
-			enabled = &defaultEnabled
-		}
-		meshresource.SetScriptRuleOptionalEnabled(res, enabled)
+		meshresource.SetScriptRuleOptionalEnabled(res, normalizedRuleEnabled(input.Enabled))
 		if err := meshresource.ValidateRule(res); err != nil {
 			util.HandleArgumentError(c, err)
 			return
@@ -237,4 +232,12 @@ func validRouterRuleName(c *gin.Context, suffix string) bool {
 	err := bizerror.New(bizerror.InvalidArgument, fmt.Sprintf("ruleName must end with %s", suffix))
 	c.JSON(http.StatusBadRequest, model.NewBizErrorResp(err))
 	return false
+}
+
+func normalizedRuleEnabled(enabled *bool) *bool {
+	if enabled != nil {
+		return enabled
+	}
+	defaultEnabled := true
+	return &defaultEnabled
 }

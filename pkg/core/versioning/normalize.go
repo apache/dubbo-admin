@@ -186,16 +186,13 @@ func normalizeRouterRuleSnapshot(res coremodel.Resource) (routerRuleSnapshot, bo
 		if typed == nil || typed.Spec == nil {
 			return routerRuleSnapshot{}, false, nil
 		}
-		_, specJSON, err = NormalizeSpec(typed.Spec)
+		specJSON, err = normalizeSpecWithExplicitEnabled(typed.Spec, typed.Spec.Enabled)
 		if err != nil {
 			return routerRuleSnapshot{}, true, err
 		}
-		runtime, enabled := meshresource.AffinityRuleOptionalFields(typed)
+		runtime, _ := meshresource.AffinityRuleOptionalFields(typed)
 		if runtime == nil {
 			omittedFields = append(omittedFields, "runtime")
-		}
-		if enabled == nil {
-			omittedFields = append(omittedFields, "enabled")
 		}
 	case *meshresource.ScriptRouteResource:
 		if typed == nil || typed.Spec == nil {
@@ -224,6 +221,23 @@ func normalizeRouterRuleSnapshot(res coremodel.Resource) (routerRuleSnapshot, bo
 		Spec:          json.RawMessage(specJSON),
 		OmittedFields: omittedFields,
 	}, true, nil
+}
+
+func normalizeSpecWithExplicitEnabled(spec coremodel.ResourceSpec, enabled bool) (string, error) {
+	_, specJSON, err := NormalizeSpec(spec)
+	if err != nil {
+		return "", err
+	}
+	var value map[string]any
+	if err := json.Unmarshal([]byte(specJSON), &value); err != nil {
+		return "", err
+	}
+	value["enabled"] = enabled
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return "", err
+	}
+	return canonicalJSON(raw)
 }
 
 func affinityResourceFromSnapshot(mesh, ruleName, specJSON string) (coremodel.Resource, bool, error) {

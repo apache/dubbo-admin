@@ -179,7 +179,7 @@ func TestRouterRuleAPIContractNormalizesScriptEnabled(t *testing.T) {
 	require.JSONEq(t, `""`, string(deleted.Data))
 }
 
-func TestRouterRuleAPIContractPreservesAffinityOptionalBooleans(t *testing.T) {
+func TestRouterRuleAPIContractNormalizesAffinityEnabled(t *testing.T) {
 	router, sessionCookie := newRouterRuleAPI(t)
 	const (
 		mesh = "api-contract-mesh"
@@ -195,7 +195,7 @@ func TestRouterRuleAPIContractPreservesAffinityOptionalBooleans(t *testing.T) {
 	})
 	created := callRouterRuleAPI(t, router, sessionCookie, http.MethodPost, path, create)
 	require.NotContains(t, string(created.Data), `"runtime"`)
-	require.NotContains(t, string(created.Data), `"enabled"`)
+	require.Contains(t, string(created.Data), `"enabled":true`)
 
 	detail := callRouterRuleAPI(t, router, sessionCookie, http.MethodGet, path, nil)
 	require.JSONEq(t, string(created.Data), string(detail.Data))
@@ -203,7 +203,7 @@ func TestRouterRuleAPIContractPreservesAffinityOptionalBooleans(t *testing.T) {
 	updatedPayload := replaceJSONField(t, detail.Data, "affinityAware", map[string]any{"key": "region", "ratio": 60})
 	updated := callRouterRuleAPI(t, router, sessionCookie, http.MethodPut, path, updatedPayload)
 	require.NotContains(t, string(updated.Data), `"runtime"`)
-	require.NotContains(t, string(updated.Data), `"enabled"`)
+	require.Contains(t, string(updated.Data), `"enabled":true`)
 
 	versionPath := "/api/v1/affinity-rule/" + name + "/versions?mesh=" + mesh
 	versionList := callRouterRuleAPI(t, router, sessionCookie, http.MethodGet, versionPath, nil)
@@ -220,7 +220,7 @@ func TestRouterRuleAPIContractPreservesAffinityOptionalBooleans(t *testing.T) {
 
 	restored := callRouterRuleAPI(t, router, sessionCookie, http.MethodGet, path, nil)
 	require.NotContains(t, string(restored.Data), `"runtime"`)
-	require.NotContains(t, string(restored.Data), `"enabled"`)
+	require.Contains(t, string(restored.Data), `"enabled":true`)
 	var restoredData struct {
 		AffinityAware struct {
 			Ratio int `json:"ratio"`

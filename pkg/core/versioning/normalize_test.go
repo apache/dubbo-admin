@@ -90,7 +90,7 @@ affinityAware:
 	explicitHash, explicitSnapshot, err := NormalizeResource(explicitFalse)
 	require.NoError(t, err)
 	require.NotEqual(t, omittedHash, explicitHash)
-	require.Contains(t, snapshot, `"omittedFields":["runtime","enabled"]`)
+	require.Contains(t, snapshot, `"omittedFields":["runtime"]`)
 	require.NotContains(t, explicitSnapshot, `"omittedFields"`)
 
 	restored, err := ResourceFromSpecJSON(meshresource.AffinityRouteKind, "mesh", "demo.affinity-router", snapshot)
@@ -98,7 +98,7 @@ affinityAware:
 	raw, err := meshresource.EncodeRule(restored)
 	require.NoError(t, err)
 	require.NotContains(t, string(raw), "runtime:")
-	require.NotContains(t, string(raw), "enabled:")
+	require.Contains(t, string(raw), "enabled: true")
 
 	restored, err = ResourceFromSpecJSON(meshresource.AffinityRouteKind, "mesh", "demo.affinity-router", explicitSnapshot)
 	require.NoError(t, err)
