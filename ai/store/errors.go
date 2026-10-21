@@ -20,9 +20,15 @@ package store
 import "errors"
 
 var (
-	ErrSessionNotFound  = errors.New("session not found")
-	ErrSessionExpired   = errors.New("session expired")
-	ErrNoActiveTurn     = errors.New("no active turn")
-	ErrTurnNotFound     = errors.New("turn not found")
-	ErrTurnLimitReached = errors.New("conversation turn limit reached")
+	ErrSessionNotFound            = errors.New("session not found")
+	ErrSessionExpired             = errors.New("session expired")
+	ErrNoActiveTurn               = errors.New("no active turn")
+	ErrTurnNotFound               = errors.New("turn not found")
+	ErrTurnLimitReached           = errors.New("conversation turn limit reached")
+	ErrIdempotencyConflict        = errors.New("idempotency key was used for a different request")
+	ErrInteractionInProgress      = errors.New("interaction is already in progress")
+	ErrSessionBusy                = errors.New("session already has an active interaction")
+	ErrResourceExhausted          = errors.New("conversation storage quota exhausted")
+	ErrCanonicalSourceNotWritable = errors.New("canonical source is not writable")
+	ErrDerivedArtifactNotFound    = errors.New("derived artifact not found")
 )

@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -31,6 +32,20 @@ import (
 
 func testManager() *Manager {
 	return NewManager(slog.New(slog.NewTextHandler(io.Discard, nil)))
+}
+
+func TestHookSnapshotsDoNotExposeSecrets(t *testing.T) {
+	const secret = "hook-secret-value"
+	content := SnapshotContent(map[string]any{
+		"api_key": secret,
+		"message": "Authorization: Bearer " + secret,
+	})
+	if strings.Contains(content, secret) {
+		t.Fatalf("SnapshotContent leaked secret: %s", content)
+	}
+	if message := ErrorMessage(fmt.Errorf("upstream password=%s", secret)); strings.Contains(message, secret) {
+		t.Fatalf("ErrorMessage leaked secret: %s", message)
+	}
 }
 
 func TestManagerSelectsEventsAndTools(t *testing.T) {
