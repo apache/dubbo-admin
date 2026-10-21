@@ -94,8 +94,8 @@ func PutConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 			util.HandleArgumentError(c, err)
 			return
 		}
-
-		if err := service.UpdateConditionRule(cs, res); err != nil {
+		opts := mutationOptions(c)
+		if err := service.UpdateConditionRuleWithOptions(cs, res, opts); err != nil {
 			util.HandleServiceError(c, err)
 			return
 		} else {
@@ -118,8 +118,8 @@ func PostConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 			util.HandleArgumentError(c, err)
 			return
 		}
-
-		if err := service.CreateConditionRule(cs, res); err != nil {
+		opts := mutationOptions(c)
+		if err := service.CreateConditionRuleWithOptions(cs, res, opts); err != nil {
 			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
 			return
 		} else {
@@ -137,7 +137,8 @@ func DeleteConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 				fmt.Sprintf("ruleName must end with %s", constants.ConditionRuleDotSuffix))))
 			return
 		}
-		if err := service.DeleteConditionRule(cs, ruleName, mesh); err != nil {
+		opts := mutationOptions(c)
+		if err := service.DeleteConditionRuleWithOptions(cs, ruleName, mesh, opts); err != nil {
 			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
 			return
 		}

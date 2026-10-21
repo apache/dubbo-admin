@@ -24,11 +24,12 @@ import (
 	"github.com/gin-gonic/gin"
 
 	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
+	enginecfg "github.com/apache/dubbo-admin/pkg/config/engine"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 )
 
-// ListMeshes list all meshes(discoveries) defined in config
+// ListMeshes list all meshes(discoveries + engine) defined in config
 func ListMeshes(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		discoveries := ctx.Config().Discovery
@@ -39,6 +40,17 @@ func ListMeshes(ctx consolectx.Context) gin.HandlerFunc {
 				Type: string(item.Type),
 			}
 		})
+
+		// Include the engine as a mesh so K8s resources are discoverable in the UI
+		engineCfg := ctx.Config().Engine
+		if engineCfg != nil && engineCfg.Type != enginecfg.Mock {
+			meshes = append(meshes, model.MeshResp{
+				ID:   engineCfg.ID,
+				Name: engineCfg.Name,
+				Type: string(engineCfg.Type),
+			})
+		}
+
 		c.JSON(http.StatusOK, model.NewSuccessResp(meshes))
 	}
 }

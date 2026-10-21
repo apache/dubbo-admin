@@ -20,25 +20,41 @@ package router
 import (
 	"github.com/gin-gonic/gin"
 
+	consoleauth "github.com/apache/dubbo-admin/pkg/console/auth"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/handler"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 )
 
-func InitRouter(r *gin.Engine, ctx consolectx.Context) {
-	router := r.Group("/api/v1")
+func InitRouter(r *gin.Engine, ctx consolectx.Context) error {
+	authHandler, err := handler.NewAuthHandler(ctx)
+	if err != nil {
+		return err
+	}
+	api := r.Group("/api/v1")
 	{
-		prometheus := router.Group("/promQL")
+		auth := api.Group("/auth")
+		auth.POST("/login", authHandler.Login)
+		auth.GET("/providers", authHandler.Providers)
+		auth.GET("/providers/:provider/login", authHandler.ProviderLogin)
+		auth.GET("/providers/:provider/callback", authHandler.ProviderCallback)
+	}
+
+	protected := api.Group("")
+	protected.Use(consoleauth.RequireLogin())
+	{
+		auth := protected.Group("/auth")
+		auth.POST("/logout", authHandler.Logout)
+		auth.GET("/userinfo", authHandler.UserInfo)
+	}
+
+	{
+		prometheus := protected.Group("/promQL")
 		prometheus.GET("/query", handler.PromQL(ctx))
 	}
 
 	{
-		auth := router.Group("/auth")
-		auth.POST("/login", handler.Login(ctx))
-		auth.POST("/logout", handler.Logout(ctx))
-	}
-
-	{
-		instance := router.Group("/instance")
+		instance := protected.Group("/instance")
 		instance.GET("/search", handler.SearchInstances(ctx))
 		instance.GET("/detail", handler.GetInstanceDetail(ctx))
 		{
@@ -49,13 +65,14 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 			instanceConfig.GET("/operatorLog", handler.InstanceConfigOperatorLogGET(ctx))
 			instanceConfig.PUT("/operatorLog", handler.InstanceConfigOperatorLogPUT(ctx))
 		}
+		instance.GET("/event", handler.GetInstanceEvents(ctx))
 		instance.GET("/metric-dashboard", handler.GetGrafanaDashboard(ctx, handler.InstanceDimension, handler.MetricDashboard))
 		instance.GET("/trace-dashboard", handler.GetGrafanaDashboard(ctx, handler.InstanceDimension, handler.TraceDashboard))
 		instance.GET("/metrics-list", handler.GetMetricsList(ctx))
 	}
 
 	{
-		application := router.Group("/application")
+		application := protected.Group("/application")
 		application.GET("/detail", handler.GetApplicationDetail(ctx))
 		application.GET("/instance/info", handler.GetApplicationTabInstanceInfo(ctx))
 		application.GET("/service/form", handler.GetApplicationServiceForm(ctx))
@@ -72,12 +89,13 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 			applicationConfig.GET("/gray", handler.ApplicationConfigGrayGET(ctx))
 			applicationConfig.PUT("/gray", handler.ApplicationConfigGrayPUT(ctx))
 		}
+		application.GET("/event", handler.GetApplicationEvents(ctx))
 		application.GET("/metric-dashboard", handler.GetGrafanaDashboard(ctx, handler.AppDimension, handler.MetricDashboard))
 		application.GET("/trace-dashboard", handler.GetGrafanaDashboard(ctx, handler.AppDimension, handler.TraceDashboard))
 	}
 
 	{
-		service := router.Group("/service")
+		service := protected.Group("/service")
 		{
 			serviceConfig := service.Group("/config")
 			serviceConfig.GET("/timeout", handler.ServiceConfigTimeoutGET(ctx))
@@ -97,7 +115,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 	}
 
 	{
-		service := router.Group("/service")
+		service := protected.Group("/service")
 		service.POST("/generic/invoke", handler.ServiceGenericInvoke(ctx))
 		service.GET("/method/detail", handler.GetServiceMethodDetail(ctx))
 		service.GET("/distribution", handler.GetServiceTabDistribution(ctx))
@@ -106,12 +124,17 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 		service.GET("/search", handler.SearchServices(ctx))
 		service.GET("/graph", handler.GetServiceGraph(ctx))
 		service.GET("/detail", handler.GetServiceDetail(ctx))
+		service.GET("/event", handler.GetServiceEvents(ctx))
 		service.GET("/interfaces", handler.GetServiceInterfaces(ctx))
 	}
 
 	{
-		configuration := router.Group("/configurator")
+		configuration := protected.Group("/configurator")
 		configuration.GET("/search", handler.ConfiguratorSearch(ctx))
+		configuration.GET("/:ruleName/versions", handler.ListRuleVersions(ctx, meshresource.DynamicConfigKind))
+		configuration.GET("/:ruleName/versions/:versionNo", handler.GetRuleVersion(ctx, meshresource.DynamicConfigKind))
+		configuration.GET("/:ruleName/versions/:versionNo/diff", handler.DiffRuleVersion(ctx, meshresource.DynamicConfigKind))
+		configuration.POST("/:ruleName/versions/:versionNo/rollback", handler.RollbackRuleVersion(ctx, meshresource.DynamicConfigKind))
 		configuration.GET("/:ruleName", handler.GetConfiguratorWithRuleName(ctx))
 		configuration.PUT("/:ruleName", handler.PutConfiguratorWithRuleName(ctx))
 		configuration.POST("/:ruleName", handler.PostConfiguratorWithRuleName(ctx))
@@ -119,8 +142,12 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 	}
 
 	{
-		conditionRule := router.Group("/condition-rule")
+		conditionRule := protected.Group("/condition-rule")
 		conditionRule.GET("/search", handler.ConditionRuleSearch(ctx))
+		conditionRule.GET("/:ruleName/versions", handler.ListRuleVersions(ctx, meshresource.ConditionRouteKind))
+		conditionRule.GET("/:ruleName/versions/:versionNo", handler.GetRuleVersion(ctx, meshresource.ConditionRouteKind))
+		conditionRule.GET("/:ruleName/versions/:versionNo/diff", handler.DiffRuleVersion(ctx, meshresource.ConditionRouteKind))
+		conditionRule.POST("/:ruleName/versions/:versionNo/rollback", handler.RollbackRuleVersion(ctx, meshresource.ConditionRouteKind))
 		conditionRule.GET("/:ruleName", handler.GetConditionRuleWithRuleName(ctx))
 		conditionRule.PUT("/:ruleName", handler.PutConditionRuleWithRuleName(ctx))
 		conditionRule.POST("/:ruleName", handler.PostConditionRuleWithRuleName(ctx))
@@ -128,17 +155,22 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 	}
 
 	{
-		tagRule := router.Group("/tag-rule")
+		tagRule := protected.Group("/tag-rule")
 		tagRule.GET("/search", handler.TagRuleSearch(ctx))
+		tagRule.GET("/:ruleName/versions", handler.ListRuleVersions(ctx, meshresource.TagRouteKind))
+		tagRule.GET("/:ruleName/versions/:versionNo", handler.GetRuleVersion(ctx, meshresource.TagRouteKind))
+		tagRule.GET("/:ruleName/versions/:versionNo/diff", handler.DiffRuleVersion(ctx, meshresource.TagRouteKind))
+		tagRule.POST("/:ruleName/versions/:versionNo/rollback", handler.RollbackRuleVersion(ctx, meshresource.TagRouteKind))
 		tagRule.GET("/:ruleName", handler.GetTagRuleWithRuleName(ctx))
 		tagRule.PUT("/:ruleName", handler.PutTagRuleWithRuleName(ctx))
 		tagRule.POST("/:ruleName", handler.PostTagRuleWithRuleName(ctx))
 		tagRule.DELETE("/:ruleName", handler.DeleteTagRuleWithRuleName(ctx))
 	}
 
-	router.GET("/prometheus", handler.GetPrometheus(ctx))
-	router.GET("/search", handler.BannerGlobalSearch(ctx))
-	router.GET("/overview", handler.ClusterOverview(ctx))
-	router.GET("/metadata", handler.AdminMetadata(ctx))
-	router.GET("/meshes", handler.ListMeshes(ctx))
+	protected.GET("/prometheus", handler.GetPrometheus(ctx))
+	protected.GET("/search", handler.BannerGlobalSearch(ctx))
+	protected.GET("/overview", handler.ClusterOverview(ctx))
+	protected.GET("/metadata", handler.AdminMetadata(ctx))
+	protected.GET("/meshes", handler.ListMeshes(ctx))
+	return nil
 }

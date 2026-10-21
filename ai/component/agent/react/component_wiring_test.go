@@ -29,6 +29,17 @@ import (
 	"github.com/firebase/genkit/go/genkit"
 )
 
+func TestNewAgentComponentAppliesContextWindowDefault(t *testing.T) {
+	raw, err := NewAgentComponent(AgentSpec{ContextWindowTurns: 0})
+	if err != nil {
+		t.Fatalf("create agent component: %v", err)
+	}
+	component := raw.(*AgentComponent)
+	if component.spec.ContextWindowTurns != defaultContextWindowTurns {
+		t.Fatalf("context_window_turns = %d, want %d", component.spec.ContextWindowTurns, defaultContextWindowTurns)
+	}
+}
+
 func TestAgentComponentKeepsEmptyManagerForLateHookRegistration(t *testing.T) {
 	rt := runtime.NewRuntime()
 	rt.SetGenkitRegistry(genkit.Init(context.Background()))

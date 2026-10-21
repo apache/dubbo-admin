@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package dubbo.mesh.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
+
+import "api/mesh/options.proto";
+
+message LifecycleEvent {
+  option (dubbo.mesh.resource).name = "LifecycleEvent";
+  option (dubbo.mesh.resource).plural_name = "LifecycleEvents";
+  option (dubbo.mesh.resource).package = "mesh";
+  option (dubbo.mesh.resource).is_experimental = true;
+
+  string namespace = 1;
+
+  string reason = 2;
+
+  string message = 3;
+
+  string type = 4;
+
+  string involvedObjKind = 5;
+
+  string involvedObjName = 6;
+
+  string sourceComponent = 7;
+
+  string sourceHost = 8;
+
+  string firstTimestamp = 9;
+
+  string lastTimestamp = 10;
+
+  int32 count = 11;
+
+  string eventSource = 12;
+}

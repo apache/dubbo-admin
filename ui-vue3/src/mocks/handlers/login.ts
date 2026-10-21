@@ -19,6 +19,18 @@ import { http, type HttpHandler } from 'msw'
 import { success, base } from '../utils'
 
 export const loginHandlers: HttpHandler[] = [
+  http.get(`${base}/auth/providers`, () => success({ methods: ['password'], providers: [] })),
+  http.get(`${base}/auth/userinfo`, () =>
+    success({
+      subject: 'local:admin',
+      username: 'admin',
+      email: '',
+      groups: [],
+      roles: [],
+      authType: 'password',
+      provider: 'local'
+    })
+  ),
   http.post(`${base}/auth/login`, () => success(null)),
   http.post(`${base}/auth/logout`, () => success(null))
 ]

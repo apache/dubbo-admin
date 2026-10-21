@@ -145,6 +145,19 @@ export const updateParamRouteAPI = (data: {
   })
 }
 
+export const listServiceEvent = (params: {
+  serviceName?: string
+  mesh?: string
+  pageOffset?: number
+  pageSize?: number
+}): Promise<any> => {
+  return request({
+    url: '/service/event',
+    method: 'get',
+    params
+  })
+}
+
 export const getServiceGraph = (serviceName: string): Promise<any> => {
   return request({
     url: '/service/graph',

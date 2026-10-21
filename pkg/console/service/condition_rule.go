@@ -18,8 +18,6 @@
 package service
 
 import (
-	"github.com/apache/dubbo-admin/pkg/common/constants"
-	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/duke-git/lancet/v2/slice"
 	"github.com/duke-git/lancet/v2/strutil"
 
@@ -108,18 +106,11 @@ func GetConditionRule(ctx context.Context, name string, mesh string) (*meshresou
 }
 
 func UpdateConditionRule(ctx context.Context, res *meshresource.ConditionRouteResource) error {
-	lockMgr := ctx.LockManager()
-	if lockMgr == nil {
-		return updateConditionRuleUnsafe(ctx, res)
-	}
-	lockKey := lock.BuildConditionRuleLockKey(res.Mesh, res.Name)
-	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
-		return updateConditionRuleUnsafe(ctx, res)
-	})
+	return UpdateConditionRuleWithOptions(ctx, res, RuleMutationOptions{})
 }
 
-func updateConditionRuleUnsafe(ctx context.Context, res *meshresource.ConditionRouteResource) error {
-	if err := ctx.ResourceManager().Update(res); err != nil {
+func UpdateConditionRuleWithOptions(ctx context.Context, res *meshresource.ConditionRouteResource, opts RuleMutationOptions) error {
+	if err := updateRule(ctx, res, opts); err != nil {
 		logger.Warnf("update %s condition failed with error: %s", res.Name, err.Error())
 		return err
 	}
@@ -127,18 +118,11 @@ func updateConditionRuleUnsafe(ctx context.Context, res *meshresource.ConditionR
 }
 
 func CreateConditionRule(ctx context.Context, res *meshresource.ConditionRouteResource) error {
-	lockMgr := ctx.LockManager()
-	if lockMgr == nil {
-		return createConditionRuleUnsafe(ctx, res)
-	}
-	lockKey := lock.BuildConditionRuleLockKey(res.Mesh, res.Name)
-	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
-		return createConditionRuleUnsafe(ctx, res)
-	})
+	return CreateConditionRuleWithOptions(ctx, res, RuleMutationOptions{})
 }
 
-func createConditionRuleUnsafe(ctx context.Context, res *meshresource.ConditionRouteResource) error {
-	if err := ctx.ResourceManager().Add(res); err != nil {
+func CreateConditionRuleWithOptions(ctx context.Context, res *meshresource.ConditionRouteResource, opts RuleMutationOptions) error {
+	if err := createRule(ctx, res, opts); err != nil {
 		logger.Warnf("create %s condition failed with error: %s", res.Name, err.Error())
 		return err
 	}
@@ -146,18 +130,13 @@ func createConditionRuleUnsafe(ctx context.Context, res *meshresource.ConditionR
 }
 
 func DeleteConditionRule(ctx context.Context, name string, mesh string) error {
-	lockMgr := ctx.LockManager()
-	if lockMgr == nil {
-		return deleteConditionRuleUnsafe(ctx, name, mesh)
-	}
-	lockKey := lock.BuildConditionRuleLockKey(mesh, name)
-	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
-		return deleteConditionRuleUnsafe(ctx, name, mesh)
-	})
+	return DeleteConditionRuleWithOptions(ctx, name, mesh, RuleMutationOptions{})
 }
 
-func deleteConditionRuleUnsafe(ctx context.Context, name string, mesh string) error {
-	if err := ctx.ResourceManager().DeleteByKey(meshresource.ConditionRouteKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
+func DeleteConditionRuleWithOptions(ctx context.Context, name string, mesh string, opts RuleMutationOptions) error {
+	ruleRef := RuleRef{Kind: meshresource.ConditionRouteKind, Mesh: mesh, Name: name}
+	if err := deleteRule(ctx, ruleRef, opts); err != nil {
+		logger.Warnf("delete %s condition failed with error: %s", name, err.Error())
 		return err
 	}
 	return nil

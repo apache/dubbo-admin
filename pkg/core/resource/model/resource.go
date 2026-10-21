@@ -18,6 +18,8 @@
 package model
 
 import (
+	"strings"
+
 	k8smeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
@@ -60,4 +62,13 @@ type ResourceList interface {
 // BuildResourceKey build a unique identifier for a resource, usually is `mesh/name`
 func BuildResourceKey(mesh string, name string) string {
 	return mesh + constants.PathSeparator + name
+}
+
+// ParseResourceKey is the inverse of BuildResourceKey for resource keys that
+// may be stored as either "mesh/name" or just "name".
+func ParseResourceKey(resourceKey string) (mesh string, name string) {
+	if idx := strings.Index(resourceKey, constants.PathSeparator); idx >= 0 {
+		return resourceKey[:idx], resourceKey[idx+len(constants.PathSeparator):]
+	}
+	return "", resourceKey
 }
