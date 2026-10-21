@@ -23,10 +23,14 @@ import "time"
 // Associations are intentionally represented by ordinary indexed columns;
 // cleanup is performed explicitly by the Store without database foreign keys.
 type SessionModel struct {
-	ID        string    `gorm:"primaryKey;size:64"`
-	CreatedAt time.Time `gorm:"not null"`
-	UpdatedAt time.Time `gorm:"not null;index"`
-	Status    string    `gorm:"size:16;not null;index"`
+	ID        string     `gorm:"primaryKey;size:64"`
+	TenantID  string     `gorm:"size:128;index:idx_ai_session_owner,priority:1"`
+	OwnerID   string     `gorm:"size:128;index:idx_ai_session_owner,priority:2"`
+	Version   uint64     `gorm:"not null;default:1"`
+	CreatedAt time.Time  `gorm:"not null"`
+	UpdatedAt time.Time  `gorm:"not null;index"`
+	ExpiresAt *time.Time `gorm:"index"`
+	Status    string     `gorm:"size:24;not null;index"`
 }
 
 func (SessionModel) TableName() string { return "ai_sessions" }

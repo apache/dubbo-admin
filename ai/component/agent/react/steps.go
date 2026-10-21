@@ -29,6 +29,7 @@ import (
 	toolEngine "dubbo-admin-ai/component/tools/engine"
 	"dubbo-admin-ai/runtime"
 	"dubbo-admin-ai/schema"
+	"dubbo-admin-ai/security"
 
 	"github.com/firebase/genkit/go/ai"
 )
@@ -64,7 +65,11 @@ func (ra *ReActAgent) run(ctx context.Context, chans *agent.Channels, state *int
 			return nil, fmt.Errorf("history is empty")
 		}
 	} else {
-		empty, err := ra.messageStore.IsTurnEmpty(ctx, sessionID, turnID)
+		access, accessErr := security.AccessContextFromContext(ctx)
+		if accessErr != nil {
+			return nil, accessErr
+		}
+		empty, err := ra.messageStore.IsTurnEmpty(ctx, access, sessionID, turnID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to inspect history: %w", err)
 		}
@@ -141,16 +146,20 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 	} else {
 		messages = history.WindowMemory(s.Session)
 	}
+	modelMessages, err := modelInputView(messages)
+	if err != nil {
+		return false, err
+	}
 	// Model and tool deadlines are independent; cancellation still propagates.
 	resp, err := func() (*ai.ModelResponse, error) {
 		lctx, cancel := withTimeout(ctx, ra.callTimeout)
 		defer cancel()
-		return executeModelCall(lctx, s, prompt, messages, func(resp *ai.ModelResponse, err error) {
+		return executeModelCall(lctx, s, prompt, modelMessages, func(resp *ai.ModelResponse, err error) {
 			if err == nil && forceAnswer && resp.Text() == "" {
 				s.FallbackUsed = true
 				s.FallbackReason = hooks.FallbackReasonEmptyResponse
 			}
-		}, ai.WithMessages(messages...))
+		}, ai.WithMessages(modelMessages...))
 	}()
 	if err != nil {
 		return false, fmt.Errorf("failed to execute react prompt: %w", err)
@@ -219,7 +228,11 @@ func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemo
 	message := ai.NewMessage(ai.RoleModel, nil, parts...)
 	if ra.messageStore != nil {
 		turnID, _ := ctx.Value(turnIDContextKey).(uint64)
-		if err := ra.messageStore.AddHistoryToTurn(persistenceContext(ctx), s.Session, turnID, message); err != nil {
+		access, err := security.AccessContextFromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if err := ra.messageStore.AddHistoryToTurn(persistenceContext(ctx), access, s.Session, turnID, message); err != nil {
 			return nil, fmt.Errorf("failed to record tool output: %w", err)
 		}
 	} else {
@@ -235,7 +248,11 @@ func (ra *ReActAgent) finish(ctx context.Context, chans *agent.Channels, history
 	if answer != "" {
 		message := ai.NewMessage(ai.RoleModel, nil, ai.NewTextPart(answer))
 		if ra.messageStore != nil {
-			if err := ra.messageStore.AddHistoryToTurn(persistenceContext(ctx), sessionID, turnID, message); err != nil {
+			access, err := security.AccessContextFromContext(ctx)
+			if err != nil {
+				return err
+			}
+			if err := ra.messageStore.AddHistoryToTurn(persistenceContext(ctx), access, sessionID, turnID, message); err != nil {
 				return fmt.Errorf("failed to persist final answer: %w", err)
 			}
 		} else {

@@ -10,6 +10,7 @@ import (
 type Response struct {
 	Message   string `json:"message"`        // Response message
 	Data      any    `json:"data,omitempty"` // Response data
+	Code      string `json:"code,omitempty"` // Stable machine-readable error code
 	RequestID string `json:"request_id"`     // Request ID for tracking
 	Timestamp int64  `json:"timestamp"`      // Response timestamp
 }
@@ -32,6 +33,12 @@ func NewSuccessResponse(data any) *Response {
 // NewErrorResponse creates an error response
 func NewErrorResponse(message string) *Response {
 	return NewResponse(message, nil)
+}
+
+func NewAPIErrorResponse(code, message string) *Response {
+	response := NewErrorResponse(message)
+	response.Code = code
+	return response
 }
 
 // ChatRequest defines streaming chat request

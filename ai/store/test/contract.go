@@ -25,19 +25,86 @@ import (
 	"testing"
 	"time"
 
+	"dubbo-admin-ai/security"
 	conversationstore "dubbo-admin-ai/store"
 
 	"github.com/firebase/genkit/go/ai"
 )
 
+var contractAccess = security.MustAccessContext(security.Subject{
+	TenantID: "tenant-a", UserID: "user-a", AuthMethod: security.AuthMethodStatic,
+})
+
+type authorizedStore struct {
+	conversationstore.BackendStore
+	access security.AccessContext
+}
+
+func withAccess(store conversationstore.BackendStore) *authorizedStore {
+	return &authorizedStore{BackendStore: store, access: contractAccess}
+}
+
+func (s *authorizedStore) Create(ctx context.Context, session *conversationstore.Session) error {
+	if session.TenantID == "" {
+		session.TenantID = s.access.Subject.TenantID
+	}
+	if session.OwnerID == "" {
+		session.OwnerID = s.access.Subject.UserID
+	}
+	if session.Version == 0 {
+		session.Version = 1
+	}
+	return s.BackendStore.Create(ctx, s.access, session)
+}
+
+func (s *authorizedStore) Get(ctx context.Context, id string) (*conversationstore.Session, error) {
+	return s.BackendStore.Get(ctx, s.access, id)
+}
+func (s *authorizedStore) List(ctx context.Context) ([]*conversationstore.Session, error) {
+	return s.BackendStore.List(ctx, s.access)
+}
+func (s *authorizedStore) Touch(ctx context.Context, id string, at time.Time) error {
+	return s.BackendStore.Touch(ctx, s.access, id, at)
+}
+func (s *authorizedStore) Delete(ctx context.Context, id string) error {
+	return s.BackendStore.Delete(ctx, s.access, id)
+}
+func (s *authorizedStore) DeleteExpired(ctx context.Context, at time.Time) (int, error) {
+	return s.BackendStore.DeleteExpired(ctx, security.SystemAccessContext(), at)
+}
+func (s *authorizedStore) BeginTurn(ctx context.Context, id string) (uint64, error) {
+	return s.BackendStore.BeginTurn(ctx, s.access, id)
+}
+func (s *authorizedStore) AddHistoryToTurn(ctx context.Context, id string, turn uint64, messages ...*ai.Message) error {
+	return s.BackendStore.AddHistoryToTurn(ctx, s.access, id, turn, messages...)
+}
+func (s *authorizedStore) IsTurnEmpty(ctx context.Context, id string, turn uint64) (bool, error) {
+	return s.BackendStore.IsTurnEmpty(ctx, s.access, id, turn)
+}
+func (s *authorizedStore) WindowMemoryForTurn(ctx context.Context, id string, turn uint64) ([]*ai.Message, error) {
+	return s.BackendStore.WindowMemoryForTurn(ctx, s.access, id, turn)
+}
+func (s *authorizedStore) ContextWindowForTurn(ctx context.Context, id string, turn uint64, completedLimit int) ([]*ai.Message, error) {
+	return s.BackendStore.ContextWindowForTurn(ctx, s.access, id, turn, completedLimit)
+}
+func (s *authorizedStore) AllMemory(ctx context.Context, id string) ([]*ai.Message, error) {
+	return s.BackendStore.AllMemory(ctx, s.access, id)
+}
+func (s *authorizedStore) NextTurnForTurn(ctx context.Context, id string, turn uint64) error {
+	return s.BackendStore.NextTurnForTurn(ctx, s.access, id, turn)
+}
+func (s *authorizedStore) AbortTurnForTurn(ctx context.Context, id string, turn uint64) error {
+	return s.BackendStore.AbortTurnForTurn(ctx, s.access, id, turn)
+}
+
 // RunStoreContractTests verifies behavior shared by every Store backend.
 // Backend-specific tests should call this function with their own constructor.
-func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Store, limit int) {
+func RunStoreContractTests(t *testing.T, newStore func() conversationstore.BackendStore, limit int) {
 	t.Helper()
 	if limit <= 0 {
 		t.Fatalf("contract test limit must be positive, got %d", limit)
 	}
-	begin := func(t *testing.T, s conversationstore.Store, ctx context.Context, sessionID string) uint64 {
+	begin := func(t *testing.T, s *authorizedStore, ctx context.Context, sessionID string) uint64 {
 		t.Helper()
 		turnID, err := s.BeginTurn(ctx, sessionID)
 		if err != nil {
@@ -46,9 +113,99 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Store
 		return turnID
 	}
 
-	t.Run("session lifecycle and history deletion", func(t *testing.T) {
+	t.Run("ownership isolation", func(t *testing.T) {
 		ctx := context.Background()
 		s := newStore()
+		owner := security.MustAccessContext(security.Subject{TenantID: "tenant-a", UserID: "owner", AuthMethod: security.AuthMethodStatic})
+		otherUser := security.MustAccessContext(security.Subject{TenantID: "tenant-a", UserID: "other", AuthMethod: security.AuthMethodStatic})
+		otherTenant := security.MustAccessContext(security.Subject{TenantID: "tenant-b", UserID: "owner", AuthMethod: security.AuthMethodStatic})
+		admin := security.MustAccessContext(security.Subject{
+			TenantID: "tenant-a", UserID: "admin", Scopes: []string{security.ScopeSessionAdmin}, AuthMethod: security.AuthMethodStatic,
+		})
+		now := time.Now()
+		expiresAt := now.Add(time.Hour)
+		session := &conversationstore.Session{
+			ID: "owned-session", TenantID: "tenant-a", OwnerID: "owner", Version: 1,
+			CreatedAt: now, UpdatedAt: now, ExpiresAt: &expiresAt, Status: "active",
+		}
+		if err := s.Create(ctx, owner, session); err != nil {
+			t.Fatalf("Create() error = %v", err)
+		}
+		for name, access := range map[string]security.AccessContext{"other user": otherUser, "other tenant": otherTenant} {
+			t.Run(name, func(t *testing.T) {
+				if _, err := s.Get(ctx, access, session.ID); !errors.Is(err, conversationstore.ErrSessionNotFound) {
+					t.Fatalf("Get() error = %v, want ErrSessionNotFound", err)
+				}
+				listed, err := s.List(ctx, access)
+				if err != nil || len(listed) != 0 {
+					t.Fatalf("List() = %#v, %v, want empty", listed, err)
+				}
+				if _, err := s.BeginTurn(ctx, access, session.ID); !errors.Is(err, conversationstore.ErrSessionNotFound) {
+					t.Fatalf("BeginTurn() error = %v, want ErrSessionNotFound", err)
+				}
+				if err := s.Delete(ctx, access, session.ID); !errors.Is(err, conversationstore.ErrSessionNotFound) {
+					t.Fatalf("Delete() error = %v, want ErrSessionNotFound", err)
+				}
+			})
+		}
+		if _, err := s.Get(ctx, admin, session.ID); err != nil {
+			t.Fatalf("same-tenant admin Get() error = %v", err)
+		}
+		system := security.SystemAccessContext()
+		if _, err := s.Get(ctx, system, session.ID); !errors.Is(err, security.ErrResourceNotAccessible) {
+			t.Fatalf("system Get() error = %v, want ErrResourceNotAccessible", err)
+		}
+		if _, err := s.List(ctx, system); !errors.Is(err, security.ErrResourceNotAccessible) {
+			t.Fatalf("system List() error = %v, want ErrResourceNotAccessible", err)
+		}
+		if _, err := s.List(ctx, security.AccessContext{}); !errors.Is(err, security.ErrAuthenticationRequired) {
+			t.Fatalf("unauthenticated List() error = %v, want ErrAuthenticationRequired", err)
+		}
+	})
+
+	t.Run("session validation", func(t *testing.T) {
+		now := time.Now()
+		valid := func() *conversationstore.Session {
+			return &conversationstore.Session{
+				ID: "valid", TenantID: "tenant-a", OwnerID: "user-a", Version: 1,
+				CreatedAt: now, UpdatedAt: now, Status: "active",
+			}
+		}
+		tests := map[string]func() *conversationstore.Session{
+			"nil":                func() *conversationstore.Session { return nil },
+			"missing id":         func() *conversationstore.Session { s := valid(); s.ID = ""; return s },
+			"missing tenant":     func() *conversationstore.Session { s := valid(); s.TenantID = ""; return s },
+			"missing owner":      func() *conversationstore.Session { s := valid(); s.OwnerID = ""; return s },
+			"missing version":    func() *conversationstore.Session { s := valid(); s.Version = 0; return s },
+			"missing created_at": func() *conversationstore.Session { s := valid(); s.CreatedAt = time.Time{}; return s },
+			"missing updated_at": func() *conversationstore.Session { s := valid(); s.UpdatedAt = time.Time{}; return s },
+			"missing status":     func() *conversationstore.Session { s := valid(); s.Status = ""; return s },
+		}
+		for name, session := range tests {
+			t.Run(name, func(t *testing.T) {
+				if err := newStore().Create(context.Background(), security.SystemAccessContext(), session()); err == nil {
+					t.Fatal("Create() succeeded, want shared model validation error")
+				}
+			})
+		}
+	})
+
+	t.Run("maintenance operations require capability", func(t *testing.T) {
+		s := newStore()
+		forged := security.MustAccessContext(security.Subject{
+			TenantID: "system", UserID: "system", AuthMethod: security.AuthMethodSystem,
+		})
+		if _, err := s.AdoptLegacySessions(context.Background(), forged, "tenant-a", "owner-a"); !errors.Is(err, security.ErrResourceNotAccessible) {
+			t.Fatalf("AdoptLegacySessions() error = %v, want ErrResourceNotAccessible", err)
+		}
+		if _, err := s.DeleteExpired(context.Background(), forged, time.Now()); !errors.Is(err, security.ErrResourceNotAccessible) {
+			t.Fatalf("DeleteExpired() error = %v, want ErrResourceNotAccessible", err)
+		}
+	})
+
+	t.Run("session lifecycle and history deletion", func(t *testing.T) {
+		ctx := context.Background()
+		s := withAccess(newStore())
 		now := time.Now()
 		session := &conversationstore.Session{
 			ID:        "contract-session",
@@ -69,18 +226,14 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Store
 		if _, err := s.Get(ctx, session.ID); !errors.Is(err, conversationstore.ErrSessionNotFound) {
 			t.Fatalf("Get() after Delete() error = %v, want ErrSessionNotFound", err)
 		}
-		messages, err := s.AllMemory(ctx, session.ID)
-		if err != nil {
-			t.Fatalf("AllMemory() after Delete() error = %v", err)
-		}
-		if len(messages) != 0 {
-			t.Fatalf("AllMemory() after Delete() = %d messages, want 0", len(messages))
+		if _, err := s.AllMemory(ctx, session.ID); !errors.Is(err, conversationstore.ErrSessionNotFound) {
+			t.Fatalf("AllMemory() after Delete() error = %v, want ErrSessionNotFound", err)
 		}
 	})
 
 	t.Run("message roles and turn order", func(t *testing.T) {
 		ctx := context.Background()
-		s := newStore()
+		s := withAccess(newStore())
 		now := time.Now()
 		session := &conversationstore.Session{ID: "order-session", CreatedAt: now, UpdatedAt: now, Status: "active"}
 		if err := s.Create(ctx, session); err != nil {
@@ -114,7 +267,7 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Store
 
 	t.Run("concurrent turns remain isolated", func(t *testing.T) {
 		ctx := context.Background()
-		s := newStore()
+		s := withAccess(newStore())
 		now := time.Now()
 		session := &conversationstore.Session{ID: "concurrent-turn-session", CreatedAt: now, UpdatedAt: now, Status: "active"}
 		if err := s.Create(ctx, session); err != nil {
@@ -158,7 +311,7 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Store
 
 	t.Run("context window contains recent completed turns and selected active turn", func(t *testing.T) {
 		ctx := context.Background()
-		s := newStore()
+		s := withAccess(newStore())
 		now := time.Now()
 		session := &conversationstore.Session{ID: "window-session", CreatedAt: now, UpdatedAt: now, Status: "active"}
 		if err := s.Create(ctx, session); err != nil {
@@ -211,7 +364,7 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Store
 			t.Fatal("negative completed limit succeeded, want validation error")
 		}
 
-		isolated := newStore()
+		isolated := withAccess(newStore())
 		isolatedSession := &conversationstore.Session{ID: "isolated-window-session", CreatedAt: now, UpdatedAt: now, Status: "active"}
 		if err := isolated.Create(ctx, isolatedSession); err != nil {
 			t.Fatalf("Create(isolated) error = %v", err)
@@ -242,7 +395,7 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Store
 
 	t.Run("context window preserves message write order within a turn", func(t *testing.T) {
 		ctx := context.Background()
-		s := newStore()
+		s := withAccess(newStore())
 		now := time.Now()
 		session := &conversationstore.Session{ID: "message-order-session", CreatedAt: now, UpdatedAt: now, Status: "active"}
 		if err := s.Create(ctx, session); err != nil {
@@ -266,7 +419,7 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Store
 
 	t.Run("aborting a turn removes its partial history", func(t *testing.T) {
 		ctx := context.Background()
-		s := newStore()
+		s := withAccess(newStore())
 		now := time.Now()
 		session := &conversationstore.Session{ID: "abort-turn-session", CreatedAt: now, UpdatedAt: now, Status: "active"}
 		if err := s.Create(ctx, session); err != nil {
@@ -292,7 +445,7 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Store
 
 	t.Run("returned messages are snapshots", func(t *testing.T) {
 		ctx := context.Background()
-		s := newStore()
+		s := withAccess(newStore())
 		now := time.Now()
 		session := &conversationstore.Session{ID: "snapshot-session", CreatedAt: now, UpdatedAt: now, Status: "active"}
 		if err := s.Create(ctx, session); err != nil {
@@ -315,7 +468,7 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Store
 
 	t.Run("message batch failure does not expose partial writes", func(t *testing.T) {
 		ctx := context.Background()
-		s := newStore()
+		s := withAccess(newStore())
 		now := time.Now()
 		session := &conversationstore.Session{ID: "batch-failure-session", CreatedAt: now, UpdatedAt: now, Status: "active"}
 		if err := s.Create(ctx, session); err != nil {
@@ -343,7 +496,7 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Store
 
 	t.Run("empty and unsupported history still creates an active turn", func(t *testing.T) {
 		ctx := context.Background()
-		s := newStore()
+		s := withAccess(newStore())
 		now := time.Now()
 		session := &conversationstore.Session{ID: "empty-turn-session", CreatedAt: now, UpdatedAt: now, Status: "active"}
 		if err := s.Create(ctx, session); err != nil {
@@ -377,7 +530,7 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Store
 
 	t.Run("closed session rejects history writes", func(t *testing.T) {
 		ctx := context.Background()
-		s := newStore()
+		s := withAccess(newStore())
 		now := time.Now()
 		session := &conversationstore.Session{ID: "closed-session", CreatedAt: now, UpdatedAt: now, Status: "closed"}
 		if err := s.Create(ctx, session); err != nil {
@@ -386,11 +539,20 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Store
 		if _, err := s.BeginTurn(ctx, session.ID); err == nil || !strings.Contains(err.Error(), "not active") {
 			t.Fatalf("BeginTurn() error = %v, want inactive-session error", err)
 		}
+		if _, err := s.IsTurnEmpty(ctx, session.ID, 1); err == nil || !strings.Contains(err.Error(), "not active") {
+			t.Fatalf("IsTurnEmpty() error = %v, want inactive-session error", err)
+		}
+		if _, err := s.WindowMemoryForTurn(ctx, session.ID, 1); err == nil || !strings.Contains(err.Error(), "not active") {
+			t.Fatalf("WindowMemoryForTurn() error = %v, want inactive-session error", err)
+		}
+		if _, err := s.AllMemory(ctx, session.ID); err == nil || !strings.Contains(err.Error(), "not active") {
+			t.Fatalf("AllMemory() error = %v, want inactive-session error", err)
+		}
 	})
 
 	t.Run("expiration is consistent across session operations", func(t *testing.T) {
 		ctx := context.Background()
-		s := newStore()
+		s := withAccess(newStore())
 		now := time.Now()
 		expired := &conversationstore.Session{
 			ID:        "expired-contract-session",
@@ -399,10 +561,27 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Store
 			Status:    "active",
 		}
 		active := &conversationstore.Session{ID: "active-contract-session", CreatedAt: now, UpdatedAt: now, Status: "active"}
-		for _, session := range []*conversationstore.Session{expired, active} {
+		historyExpired := &conversationstore.Session{ID: "expired-history-contract-session", CreatedAt: now, UpdatedAt: now, Status: "active"}
+		for _, session := range []*conversationstore.Session{expired, active, historyExpired} {
 			if err := s.Create(ctx, session); err != nil {
 				t.Fatalf("Create(%s) error = %v", session.ID, err)
 			}
+		}
+		turnID := begin(t, s, ctx, historyExpired.ID)
+		if err := s.AddHistoryToTurn(ctx, historyExpired.ID, turnID, ai.NewUserTextMessage("must not leak")); err != nil {
+			t.Fatalf("AddHistoryToTurn() error = %v", err)
+		}
+		if err := s.Touch(ctx, historyExpired.ID, now.Add(-25*time.Hour)); err != nil {
+			t.Fatalf("Touch(history session into expiry) error = %v", err)
+		}
+		if _, err := s.IsTurnEmpty(ctx, historyExpired.ID, turnID); !errors.Is(err, conversationstore.ErrSessionExpired) {
+			t.Fatalf("IsTurnEmpty(expired) error = %v, want ErrSessionExpired", err)
+		}
+		if _, err := s.WindowMemoryForTurn(ctx, historyExpired.ID, turnID); !errors.Is(err, conversationstore.ErrSessionExpired) {
+			t.Fatalf("WindowMemoryForTurn(expired) error = %v, want ErrSessionExpired", err)
+		}
+		if _, err := s.AllMemory(ctx, historyExpired.ID); !errors.Is(err, conversationstore.ErrSessionExpired) {
+			t.Fatalf("AllMemory(expired) error = %v, want ErrSessionExpired", err)
 		}
 		if _, err := s.Get(ctx, expired.ID); !errors.Is(err, conversationstore.ErrSessionExpired) {
 			t.Fatalf("Get(expired) error = %v, want ErrSessionExpired", err)
@@ -421,8 +600,8 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Store
 		if err != nil {
 			t.Fatalf("DeleteExpired() error = %v", err)
 		}
-		if deleted != 1 {
-			t.Fatalf("DeleteExpired() = %d, want 1", deleted)
+		if deleted != 2 {
+			t.Fatalf("DeleteExpired() = %d, want 2", deleted)
 		}
 		if _, err := s.Get(ctx, expired.ID); !errors.Is(err, conversationstore.ErrSessionNotFound) {
 			t.Fatalf("Get(expired) after DeleteExpired error = %v, want ErrSessionNotFound", err)
@@ -431,7 +610,7 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Store
 
 	t.Run("turn limit and failed transition preserve active turn", func(t *testing.T) {
 		ctx := context.Background()
-		s := newStore()
+		s := withAccess(newStore())
 		now := time.Now()
 		session := &conversationstore.Session{ID: "limit-session", CreatedAt: now, UpdatedAt: now, Status: "active"}
 		if err := s.Create(ctx, session); err != nil {

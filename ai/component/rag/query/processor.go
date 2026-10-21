@@ -19,7 +19,10 @@ package query
 
 import (
 	"context"
+	"fmt"
 	"time"
+
+	"dubbo-admin-ai/security"
 )
 
 // Processor defines the interface for query understanding operations.
@@ -31,26 +34,26 @@ type Processor interface {
 
 // Result represents the output of query processing.
 type Result struct {
-	Query      string   // Processed query (may be original if no changes)
-	Queries    []string // Multiple queries (for expansion)
-	Intent     string   // Detected intent (for intent recognition)
-	Hypothetical string // Hypothetical document (for HyDE)
-	Modified   bool     // Whether the query was modified
-	Metadata   map[string]any // Additional metadata
+	Query        string         // Processed query (may be original if no changes)
+	Queries      []string       // Multiple queries (for expansion)
+	Intent       string         // Detected intent (for intent recognition)
+	Hypothetical string         // Hypothetical document (for HyDE)
+	Modified     bool           // Whether the query was modified
+	Metadata     map[string]any // Additional metadata
 }
 
 // Config defines configuration for query processing.
 type Config struct {
 	// Processing steps to enable (executed in order)
-	EnableIntent     bool
-	EnableRewrite    bool
-	EnableExpansion  bool
-	EnableHyDE       bool
+	EnableIntent    bool
+	EnableRewrite   bool
+	EnableExpansion bool
+	EnableHyDE      bool
 
 	// Model configuration
-	Model           string
-	Timeout         time.Duration
-	Temperature     float64
+	Model       string
+	Timeout     time.Duration
+	Temperature float64
 
 	// Fallback behavior
 	FallbackOnError bool // Return original query on error (default: true)
@@ -59,14 +62,14 @@ type Config struct {
 // DefaultConfig returns default query processor configuration.
 func DefaultConfig() *Config {
 	return &Config{
-		EnableIntent:     false,
-		EnableRewrite:    false,
-		EnableExpansion:  false,
-		EnableHyDE:       false,
-		Model:            "dashscope/qwen-max",
-		Timeout:          5 * time.Second,
-		Temperature:      0.3,
-		FallbackOnError:  true,
+		EnableIntent:    false,
+		EnableRewrite:   false,
+		EnableExpansion: false,
+		EnableHyDE:      false,
+		Model:           "dashscope/qwen-max",
+		Timeout:         5 * time.Second,
+		Temperature:     0.3,
+		FallbackOnError: true,
 	}
 }
 
@@ -74,10 +77,10 @@ func DefaultConfig() *Config {
 type StepType string
 
 const (
-	StepIntent     StepType = "intent"     // Intent recognition
-	StepRewrite    StepType = "rewrite"    // Query rewrite
-	StepExpansion  StepType = "expansion"  // Query expansion
-	StepHyDE       StepType = "hyde"       // Hypothetical document embeddings
+	StepIntent    StepType = "intent"    // Intent recognition
+	StepRewrite   StepType = "rewrite"   // Query rewrite
+	StepExpansion StepType = "expansion" // Query expansion
+	StepHyDE      StepType = "hyde"      // Hypothetical document embeddings
 )
 
 // Step represents a single query processing step.
@@ -113,6 +116,7 @@ func NewLayer(cfg *Config, steps ...Step) *Layer {
 // Each step receives the output of the previous step.
 // Returns the final result or original query on error.
 func (l *Layer) Process(ctx context.Context, query string) (*Result, error) {
+	query = security.DefaultSanitizer().ModelInput(query)
 	if query == "" {
 		return nil, ErrEmptyQuery
 	}
@@ -138,11 +142,11 @@ func (l *Layer) Process(ctx context.Context, query string) (*Result, error) {
 			defer cancel()
 		}
 
-		stepResult, err := step.Process(stepCtx, current)
+		stepResult, err := step.Process(stepCtx, security.DefaultSanitizer().ModelInput(current))
 		if err != nil {
 			if l.cfg.FallbackOnError {
 				// Continue with current query on error
-				result.Metadata[step.Name()+"_error"] = err.Error()
+				result.Metadata[step.Name()+"_error_type"] = fmt.Sprintf("%T", err)
 				continue
 			}
 			// Return original query on error

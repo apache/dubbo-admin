@@ -22,8 +22,12 @@ import "time"
 // Session is the persisted conversation session metadata.
 type Session struct {
 	ID        string
+	TenantID  string
+	OwnerID   string
+	Version   uint64
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	ExpiresAt *time.Time
 	Status    string
 }
 

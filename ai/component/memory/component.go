@@ -43,7 +43,7 @@ type MemoryComponent struct {
 	legacyErr    error
 	memoryCtx    context.Context
 	memory       *HistoryMemory
-	store        conversationstore.Store
+	store        conversationstore.BackendStore
 	gormStore    *gormstore.GormStore
 }
 
@@ -176,6 +176,15 @@ func (m *MemoryComponent) GetContext() context.Context {
 
 // GetStore returns the single conversation Store shared by runtime consumers.
 func (m *MemoryComponent) GetStore() (conversationstore.Store, error) {
+	if m.store == nil {
+		return nil, fmt.Errorf("store not initialized")
+	}
+	return m.store, nil
+}
+
+// GetMaintenanceStore returns the privileged lifecycle contract for runtime
+// components that own cleanup or migration.
+func (m *MemoryComponent) GetMaintenanceStore() (conversationstore.MaintenanceStore, error) {
 	if m.store == nil {
 		return nil, fmt.Errorf("store not initialized")
 	}

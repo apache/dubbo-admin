@@ -29,6 +29,7 @@ import (
 	conversationstore "dubbo-admin-ai/store"
 	gormstore "dubbo-admin-ai/store/gorm"
 	memorystore "dubbo-admin-ai/store/memory"
+	"dubbo-admin-ai/testutils"
 
 	"github.com/firebase/genkit/go/ai"
 )
@@ -163,24 +164,25 @@ func TestMemoryComponentLazilyInitializesLegacyHistory(t *testing.T) {
 func assertConfiguredTurnLimit(t *testing.T, store conversationstore.Store, limit int) {
 	t.Helper()
 	ctx := context.Background()
+	access := testutils.TestAccess()
 	now := time.Now()
-	session := &conversationstore.Session{ID: "configured-limit", CreatedAt: now, UpdatedAt: now, Status: "active"}
-	if err := store.Create(ctx, session); err != nil {
+	session := testutils.TestSession("configured-limit", now)
+	if err := store.Create(ctx, access, session); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
 	for i := 0; i < limit; i++ {
-		turnID, err := store.BeginTurn(ctx, session.ID)
+		turnID, err := store.BeginTurn(ctx, access, session.ID)
 		if err != nil {
 			t.Fatalf("BeginTurn(%d) error = %v", i, err)
 		}
-		if err := store.AddHistoryToTurn(ctx, session.ID, turnID, ai.NewUserTextMessage("turn")); err != nil {
+		if err := store.AddHistoryToTurn(ctx, access, session.ID, turnID, ai.NewUserTextMessage("turn")); err != nil {
 			t.Fatalf("AddHistory(%d) error = %v", i, err)
 		}
-		if err := store.NextTurnForTurn(ctx, session.ID, turnID); err != nil {
+		if err := store.NextTurnForTurn(ctx, access, session.ID, turnID); err != nil {
 			t.Fatalf("NextTurn(%d) error = %v", i, err)
 		}
 	}
-	if _, err := store.BeginTurn(ctx, session.ID); !errors.Is(err, conversationstore.ErrTurnLimitReached) {
+	if _, err := store.BeginTurn(ctx, access, session.ID); !errors.Is(err, conversationstore.ErrTurnLimitReached) {
 		t.Fatalf("overflow BeginTurn() error = %v, want ErrTurnLimitReached", err)
 	}
 }

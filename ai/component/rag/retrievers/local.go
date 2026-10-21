@@ -19,6 +19,7 @@ package retrievers
 
 import (
 	"context"
+	"dubbo-admin-ai/security"
 	"dubbo-admin-ai/utils"
 	"fmt"
 	"sync"
@@ -32,7 +33,7 @@ import (
 
 // Retriever types supported
 const (
-	RetrieverTypeLocal   = "local"
+	RetrieverTypeLocal    = "local"
 	RetrieverTypePinecone = "pinecone"
 	// RetrieverTypeMilvus is defined in milvus_const.go with build tag
 )
@@ -114,6 +115,7 @@ func (r *LocalRetriever) getRetriever(ctx context.Context, targetIndex string) (
 }
 
 func (r *LocalRetriever) Retrieve(ctx context.Context, query string, opts ...retriever.Option) ([]*schema.Document, error) {
+	query = security.DefaultSanitizer().ModelInput(query)
 	impl := retriever.GetImplSpecificOptions(&CommonRetrieverOptions{}, opts...)
 	effectiveTarget := r.target
 	if impl.TargetIndex != nil && *impl.TargetIndex != "" {
