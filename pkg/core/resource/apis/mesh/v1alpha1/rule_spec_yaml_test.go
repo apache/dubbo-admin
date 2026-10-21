@@ -73,6 +73,37 @@ func TestMarshalRuleSpecPreservesRouterBooleans(t *testing.T) {
 	}
 }
 
+func TestEncodeRulePreservesExistingRouterBooleans(t *testing.T) {
+	condition := NewConditionRouteResourceWithAttributes("demo.condition-router", "mesh")
+	condition.Spec = &meshproto.ConditionRoute{
+		ConfigVersion: "v3.0", Key: "demo", Scope: "application",
+		Enabled: false, Force: false, Runtime: false,
+		Conditions: []string{"=>host!=192.0.2.1"},
+	}
+	tag := NewTagRouteResourceWithAttributes("demo.tag-router", "mesh")
+	tag.Spec = &meshproto.TagRoute{
+		ConfigVersion: "v3.0", Key: "demo",
+		Enabled: false, Force: false, Runtime: false,
+		Tags: []*meshproto.Tag{{Name: "gray", Addresses: []string{"192.0.2.1:20880"}}},
+	}
+
+	for name, resource := range map[string]coremodel.Resource{
+		"condition": condition,
+		"tag":       tag,
+	} {
+		t.Run(name, func(t *testing.T) {
+			raw, err := EncodeRule(resource)
+			require.NoError(t, err)
+			var fields map[string]any
+			require.NoError(t, yaml.Unmarshal(raw, &fields))
+			for _, field := range []string{"enabled", "force", "runtime"} {
+				require.Contains(t, fields, field, "%s must not be omitted: %s", field, raw)
+				require.Equal(t, false, fields[field])
+			}
+		})
+	}
+}
+
 func TestMarshalRuleSpecOtherKindsUnchanged(t *testing.T) {
 	spec := &meshproto.AffinityRoute{ConfigVersion: "v3.1", Enabled: false, Runtime: false}
 	want, err := yaml.Marshal(spec)

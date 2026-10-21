@@ -132,6 +132,9 @@ func ruleLockKey(ruleRef RuleRef) string {
 }
 
 func createRule(ctx consolectx.Context, res coremodel.Resource, opts RuleMutationOptions) error {
+	if err := meshresource.ValidateRule(res); err != nil {
+		return err
+	}
 	ruleRef := RuleRef{Kind: res.ResourceKind(), Mesh: res.ResourceMesh(), Name: res.ResourceMeta().Name}
 	return withRuleLock(ctx, ruleRef, func() error {
 		if _, err := appendRuleHistory(ctx, res, versioning.OperationCreate, versioning.SourceAdmin, opts.Author, "", nil); err != nil {
@@ -145,6 +148,9 @@ func createRule(ctx consolectx.Context, res coremodel.Resource, opts RuleMutatio
 }
 
 func updateRule(ctx consolectx.Context, res coremodel.Resource, opts RuleMutationOptions) error {
+	if err := meshresource.ValidateRule(res); err != nil {
+		return err
+	}
 	ruleRef := RuleRef{Kind: res.ResourceKind(), Mesh: res.ResourceMesh(), Name: res.ResourceMeta().Name}
 	return withRuleLock(ctx, ruleRef, func() error {
 		existing, err := getExistingRule(ctx, ruleRef)
