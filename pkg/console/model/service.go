@@ -173,6 +173,18 @@ type ServiceMethodTypeResp struct {
 
 const DefaultServiceGenericInvokeTimeoutMs int64 = 3000
 
+// ServiceGenericInvokeValidationError describes an invalid request field.
+type ServiceGenericInvokeValidationError struct {
+	Field    string
+	Expected string
+	Actual   string
+	Message  string
+}
+
+func (e *ServiceGenericInvokeValidationError) Error() string {
+	return e.Message
+}
+
 type ServiceGenericInvokeReq struct {
 	BaseServiceReq
 
@@ -187,27 +199,52 @@ type ServiceGenericInvokeReq struct {
 func (s *ServiceGenericInvokeReq) Validate() error {
 	s.Mesh = strings.TrimSpace(s.Mesh)
 	if strutil.IsBlank(s.Mesh) {
-		return fmt.Errorf("mesh is empty")
+		return &ServiceGenericInvokeValidationError{
+			Field:    "mesh",
+			Expected: "non-empty",
+			Actual:   s.Mesh,
+			Message:  "mesh is empty",
+		}
 	}
 
 	s.ServiceName = strings.TrimSpace(s.ServiceName)
 	if strutil.IsBlank(s.ServiceName) {
-		return fmt.Errorf("service name is empty")
+		return &ServiceGenericInvokeValidationError{
+			Field:    "serviceName",
+			Expected: "non-empty",
+			Actual:   s.ServiceName,
+			Message:  "service name is empty",
+		}
 	}
 
 	s.MethodName = strings.TrimSpace(s.MethodName)
 	if strutil.IsBlank(s.MethodName) {
-		return fmt.Errorf("method name is empty")
+		return &ServiceGenericInvokeValidationError{
+			Field:    "methodName",
+			Expected: "non-empty",
+			Actual:   s.MethodName,
+			Message:  "method name is empty",
+		}
 	}
 
 	s.Signature = strings.TrimSpace(s.Signature)
 	if strutil.IsBlank(s.Signature) {
-		return fmt.Errorf("signature is empty")
+		return &ServiceGenericInvokeValidationError{
+			Field:    "signature",
+			Expected: "non-empty",
+			Actual:   s.Signature,
+			Message:  "signature is empty",
+		}
 	}
 
 	s.InstanceName = strings.TrimSpace(s.InstanceName)
 	if strutil.IsBlank(s.InstanceName) {
-		return fmt.Errorf("instance name is empty")
+		return &ServiceGenericInvokeValidationError{
+			Field:    "instanceName",
+			Expected: "non-empty",
+			Actual:   s.InstanceName,
+			Message:  "instance name is empty",
+		}
 	}
 
 	s.Group = strings.TrimSpace(s.Group)

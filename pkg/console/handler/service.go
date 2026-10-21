@@ -132,13 +132,13 @@ func ServiceGenericInvoke(ctx consolectx.Context) gin.HandlerFunc {
 		}
 
 		if err := req.Validate(); err != nil {
-			util.HandleArgumentError(c, err)
+			writeGenericInvokeError(c, err)
 			return
 		}
 
 		resp, err := service.InvokeServiceGeneric(ctx, req)
 		if err != nil {
-			util.HandleServiceError(c, err)
+			writeGenericInvokeError(c, err)
 			return
 		}
 
