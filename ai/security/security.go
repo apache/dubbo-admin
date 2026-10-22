@@ -27,6 +27,7 @@ import (
 const (
 	AuthMethodStatic = "static"
 	AuthMethodSystem = "system"
+	AuthMethodJWT    = "jwt"
 
 	ScopeSessionAdmin = "ai:sessions:admin"
 )
