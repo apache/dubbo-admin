@@ -2,9 +2,14 @@ package engine
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
+	"time"
 
 	"dubbo-admin-ai/component/server/engine/session"
 	"dubbo-admin-ai/component/server/engine/sse"
@@ -12,6 +17,7 @@ import (
 
 	"dubbo-admin-ai/component/agent"
 	"dubbo-admin-ai/schema"
+	"dubbo-admin-ai/security"
 	conversationstore "dubbo-admin-ai/store"
 
 	"github.com/gin-gonic/gin"
@@ -21,15 +27,36 @@ import (
 
 // AgentHandler handles AI Agent requests
 type AgentHandler struct {
-	agent      agent.Agent
-	sessionMgr *session.Manager
+	agent            agent.Agent
+	sessionMgr       *session.Manager
+	interactionStore conversationstore.MessageStore
+	interactionLease time.Duration
+	newStreamWriter  func(*gin.Context) (*sse.StreamWriter, error)
 }
 
+const (
+	clientInvalidRequest    = "Invalid request"
+	clientInternalError     = "Internal server error"
+	clientAgentError        = "Agent interaction failed"
+	clientFinishStreamError = "Failed to finish stream"
+)
+
 // NewAgentHandler creates an AI Agent handler
-func NewAgentHandler(agent agent.Agent, sessionMgr *session.Manager) *AgentHandler {
-	return &AgentHandler{
-		agent:      agent,
-		sessionMgr: sessionMgr,
+func NewAgentHandler(agent agent.Agent, sessionMgr *session.Manager, stores ...conversationstore.MessageStore) *AgentHandler {
+	handler := &AgentHandler{
+		agent: agent, sessionMgr: sessionMgr,
+		interactionLease: conversationstore.DefaultLifecyclePolicy().InteractionLease,
+		newStreamWriter:  sse.NewStreamWriter,
+	}
+	if len(stores) > 0 {
+		handler.interactionStore = stores[0]
+	}
+	return handler
+}
+
+func (h *AgentHandler) SetInteractionLease(lease time.Duration) {
+	if lease > 0 {
+		h.interactionLease = lease
 	}
 }
 
@@ -46,26 +73,74 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 
 	// Parse request
 	if err = c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, NewErrorResponse("Invalid request: "+err.Error()))
+		rt.GetLogger().Warn("Invalid stream request", "error_type", fmt.Sprintf("%T", err))
+		c.JSON(http.StatusBadRequest, NewErrorResponse(clientInvalidRequest))
 		return
 	}
 
 	sessionID = req.SessionID
 	requestCtx := c.Request.Context()
-	if _, err = h.sessionMgr.GetSession(requestCtx, sessionID); err != nil {
+	access, accessErr := security.AccessContextFromContext(requestCtx)
+	if accessErr != nil {
+		c.JSON(http.StatusUnauthorized, NewAPIErrorResponse("AUTHENTICATION_REQUIRED", "Authentication required"))
+		return
+	}
+	if _, err = h.sessionMgr.GetSession(requestCtx, access, sessionID); err != nil {
 		h.writeSessionError(c, "Invalid session ID", err, http.StatusBadRequest)
 		return
 	}
-	if err = h.sessionMgr.TouchSession(requestCtx, sessionID); err != nil {
+	var prepared *conversationstore.PreparedInteraction
+	handlerOwnsInteraction := false
+	if h.interactionStore != nil {
+		idempotencyKey := strings.TrimSpace(c.GetHeader("Idempotency-Key"))
+		if !validIdempotencyKey(idempotencyKey) {
+			c.JSON(http.StatusBadRequest, NewAPIErrorResponse("IDEMPOTENCY_KEY_REQUIRED", "A valid Idempotency-Key is required"))
+			return
+		}
+		prepared, err = h.interactionStore.PrepareInteraction(requestCtx, access, sessionID, idempotencyKey, hashChatRequest(req), h.interactionLease)
+		if err != nil {
+			h.writeInteractionError(c, err)
+			return
+		}
+		c.Header("X-Interaction-ID", prepared.InteractionID)
+		handlerOwnsInteraction = !prepared.Replayed
+		defer func() {
+			if !handlerOwnsInteraction {
+				return
+			}
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(requestCtx), 30*time.Second)
+			defer cancel()
+			if cleanupErr := h.interactionStore.FailInteraction(cleanupCtx, access, sessionID, prepared.InteractionID, prepared.TurnID); cleanupErr != nil && !errors.Is(cleanupErr, conversationstore.ErrTurnNotFound) {
+				rt.GetLogger().Error("Failed to release unclaimed interaction", "session_id", sessionID, "interaction_id", prepared.InteractionID, "error", security.SafeError(cleanupErr))
+			}
+		}()
+	}
+	if err = h.sessionMgr.TouchSession(requestCtx, access, sessionID); err != nil {
 		h.writeSessionError(c, "Invalid session ID", err, http.StatusBadRequest)
 		return
 	}
 
-	if streamWriter, err = sse.NewStreamWriter(c); err != nil {
-		c.JSON(http.StatusInternalServerError, NewErrorResponse("Failed to create stream writer: "+err.Error()))
+	if streamWriter, err = h.newStreamWriter(c); err != nil {
+		rt.GetLogger().Error("Failed to create stream writer", "error_type", fmt.Sprintf("%T", err))
+		c.JSON(http.StatusInternalServerError, NewErrorResponse(clientInternalError))
 		return
 	}
 	sseHandler = sse.NewStreamHandler(streamWriter, sessionID)
+	if prepared != nil && prepared.Replayed {
+		if err := sseHandler.HandleText(prepared.Result, 0); err == nil {
+			err = sseHandler.HandleContentBlockStop(0)
+		}
+		if err == nil {
+			err = sseHandler.MessageDeltaWithUsage("end_turn", &schema.Observation{})
+		}
+		if err == nil {
+			err = sseHandler.FinishStream()
+		}
+		if err != nil {
+			rt.GetLogger().Error("Failed to replay interaction", "interaction_id", prepared.InteractionID, "error_type", fmt.Sprintf("%T", err))
+		}
+		return
+	}
 
 	// Set response headers and error recovery
 	defer func() {
@@ -73,14 +148,24 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 			if channels != nil {
 				go discardAgentOutput(channels)
 			}
-			sseHandler.HandleError("internal_error", fmt.Sprintf("internal error: %v", r))
+			rt.GetLogger().Error("Recovered panic while streaming AI response", "panic_recovered", true)
+			sseHandler.HandleError("internal_error", clientInternalError)
 		}
 	}()
 
 	// Preserve inbound tracing values while allowing the interaction to finish
 	// after a client disconnects. The agent cancels and drains it on shutdown.
 	extractedCtx := otel.GetTextMapPropagator().Extract(requestCtx, propagation.HeaderCarrier(c.Request.Header))
+	if prepared != nil {
+		extractedCtx = conversationstore.WithPreparedInteraction(extractedCtx, prepared)
+	}
 	channels = h.agent.Interact(context.WithoutCancel(extractedCtx), &schema.UserInput{Content: req.Message}, sessionID)
+	if !channels.Valid() {
+		rt.GetLogger().Error("Agent returned invalid channels", "session_id", sessionID)
+		sseHandler.HandleError("agent_error", clientAgentError)
+		return
+	}
+	handlerOwnsInteraction = false
 	if traceID := channels.TraceID(); traceID != "" {
 		c.Header("X-Trace-ID", traceID)
 	}
@@ -96,8 +181,8 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 				continue
 			}
 			if err != nil {
-				sseHandler.HandleError("agent_error", fmt.Sprintf("agent error: %v", err))
-				rt.GetLogger().Error("Agent interaction error", "session_id", sessionID, "error", err)
+				sseHandler.HandleError("agent_error", clientAgentError)
+				rt.GetLogger().Error("Agent interaction error", "session_id", sessionID, "error_type", fmt.Sprintf("%T", err))
 				channels.Close()
 				return
 			}
@@ -108,7 +193,6 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 			}
 			rt.GetLogger().Info("Handler received feedback",
 				"session_id", sessionID,
-				"text", feedback.Text(),
 				"done", feedback.IsDone(),
 				"final", feedback.IsFinal(),
 				"final_nil", feedback.Final() == nil)
@@ -117,11 +201,11 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 				h.MessageDelta(sseHandler, feedback.Final())
 			} else if feedback.IsDone() {
 				if err := sseHandler.HandleContentBlockStop(feedback.Index()); err != nil {
-					rt.GetLogger().Error("Failed to handle content block stop", "error", err)
+					rt.GetLogger().Error("Failed to handle content block stop", "error_type", fmt.Sprintf("%T", err))
 				}
 			} else {
 				if err := sseHandler.HandleText(feedback.Text(), feedback.Index()); err != nil {
-					rt.GetLogger().Error("Failed to handle text", "error", err)
+					rt.GetLogger().Error("Failed to handle text", "error_type", fmt.Sprintf("%T", err))
 				}
 			}
 
@@ -135,6 +219,44 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 			return
 		}
 	}
+}
+
+func validIdempotencyKey(key string) bool {
+	if len(key) == 0 || len(key) > 128 {
+		return false
+	}
+	for _, r := range key {
+		if r < 0x21 || r > 0x7e {
+			return false
+		}
+	}
+	return true
+}
+
+func hashChatRequest(req ChatRequest) string {
+	payload, _ := json.Marshal(struct {
+		Version   int    `json:"version"`
+		SessionID string `json:"session_id"`
+		Message   string `json:"message"`
+	}{Version: 1, SessionID: req.SessionID, Message: req.Message})
+	digest := sha256.Sum256(payload)
+	return hex.EncodeToString(digest[:])
+}
+
+func (h *AgentHandler) writeInteractionError(c *gin.Context, err error) {
+	status, code, message := http.StatusInternalServerError, "INTERNAL_ERROR", clientInternalError
+	switch {
+	case errors.Is(err, conversationstore.ErrIdempotencyConflict):
+		status, code, message = http.StatusConflict, "IDEMPOTENCY_CONFLICT", "Idempotency key conflicts with the original request"
+	case errors.Is(err, conversationstore.ErrInteractionInProgress):
+		status, code, message = http.StatusConflict, "INTERACTION_IN_PROGRESS", "The original interaction is still in progress"
+	case errors.Is(err, conversationstore.ErrSessionBusy):
+		status, code, message = http.StatusConflict, "SESSION_BUSY", "The session already has an active interaction"
+	case errors.Is(err, conversationstore.ErrResourceExhausted), errors.Is(err, conversationstore.ErrTurnLimitReached):
+		status, code, message = http.StatusTooManyRequests, "RESOURCE_EXHAUSTED", "Conversation storage quota exhausted"
+	}
+	rt.GetLogger().Error("Interaction preparation failed", "error", security.SafeError(err))
+	c.JSON(status, NewAPIErrorResponse(code, message))
 }
 
 // discardAgentOutput keeps detached interactions from blocking on their
@@ -157,11 +279,13 @@ func (h *AgentHandler) drainAndFinish(sseHandler *sse.SSEHandler, channels *agen
 			h.writeFeedback(sseHandler, feedback)
 		case err := <-channels.ErrorChan:
 			if err != nil {
-				sseHandler.HandleError("agent_error", fmt.Sprintf("agent error: %v", err))
+				rt.GetLogger().Error("Agent interaction error while draining", "session_id", sessionID, "error_type", fmt.Sprintf("%T", err))
+				sseHandler.HandleError("agent_error", clientAgentError)
 			}
 		default:
 			if err := sseHandler.FinishStream(); err != nil {
-				rt.GetLogger().Error("Failed to finish stream", "error", err)
+				rt.GetLogger().Error("Failed to finish stream", "error_type", fmt.Sprintf("%T", err))
+				sseHandler.HandleError("finish_stream_error", clientFinishStreamError)
 			}
 			rt.GetLogger().Info("Stream processing completed", "session_id", sessionID)
 			return
@@ -177,10 +301,10 @@ func (h *AgentHandler) writeFeedback(sseHandler *sse.SSEHandler, feedback *schem
 		h.MessageDelta(sseHandler, feedback.Final())
 	} else if feedback.IsDone() {
 		if err := sseHandler.HandleContentBlockStop(feedback.Index()); err != nil {
-			rt.GetLogger().Error("Failed to handle content block stop", "error", err)
+			rt.GetLogger().Error("Failed to handle content block stop", "error_type", fmt.Sprintf("%T", err))
 		}
 	} else if err := sseHandler.HandleText(feedback.Text(), feedback.Index()); err != nil {
-		rt.GetLogger().Error("Failed to handle text", "error", err)
+		rt.GetLogger().Error("Failed to handle text", "error_type", fmt.Sprintf("%T", err))
 	}
 }
 
@@ -192,12 +316,18 @@ func (h *AgentHandler) MessageDelta(sseHandler *sse.SSEHandler, output schema.Sc
 	stopReason := "end_turn"
 
 	if err := sseHandler.MessageDeltaWithUsage(stopReason, output); err != nil {
-		sseHandler.HandleError("finish_stream_error", fmt.Sprintf("failed to finish stream: %v", err))
+		rt.GetLogger().Error("Failed to write message delta", "error_type", fmt.Sprintf("%T", err))
+		sseHandler.HandleError("finish_stream_error", clientFinishStreamError)
 	}
 }
 
 func (h *AgentHandler) CreateSession(c *gin.Context) {
-	sessionObj, err := h.sessionMgr.CreateSession(c.Request.Context())
+	access, err := security.AccessContextFromContext(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, NewAPIErrorResponse("AUTHENTICATION_REQUIRED", "Authentication required"))
+		return
+	}
+	sessionObj, err := h.sessionMgr.CreateSession(c.Request.Context(), access)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, NewErrorResponse("Failed to create session"))
 		return
@@ -212,7 +342,12 @@ func (h *AgentHandler) GetSession(c *gin.Context) {
 		return
 	}
 
-	sessionObj, err := h.sessionMgr.GetSession(c.Request.Context(), sessionID)
+	access, err := security.AccessContextFromContext(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, NewAPIErrorResponse("AUTHENTICATION_REQUIRED", "Authentication required"))
+		return
+	}
+	sessionObj, err := h.sessionMgr.GetSession(c.Request.Context(), access, sessionID)
 	if err != nil {
 		h.writeSessionError(c, "Session not found", err, http.StatusNotFound)
 		return
@@ -221,7 +356,12 @@ func (h *AgentHandler) GetSession(c *gin.Context) {
 }
 
 func (h *AgentHandler) ListSessions(c *gin.Context) {
-	sessionObjs, err := h.sessionMgr.ListSessions(c.Request.Context())
+	access, err := security.AccessContextFromContext(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, NewAPIErrorResponse("AUTHENTICATION_REQUIRED", "Authentication required"))
+		return
+	}
+	sessionObjs, err := h.sessionMgr.ListSessions(c.Request.Context(), access)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, NewErrorResponse("Failed to list sessions"))
 		return
@@ -247,7 +387,12 @@ func (h *AgentHandler) DeleteSession(c *gin.Context) {
 		return
 	}
 
-	err := h.sessionMgr.DeleteSession(c.Request.Context(), sessionID)
+	access, err := security.AccessContextFromContext(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, NewAPIErrorResponse("AUTHENTICATION_REQUIRED", "Authentication required"))
+		return
+	}
+	err = h.sessionMgr.DeleteSession(c.Request.Context(), access, sessionID)
 	if err != nil {
 		h.writeSessionError(c, "Session not found", err, http.StatusNotFound)
 		return
@@ -261,19 +406,27 @@ func (h *AgentHandler) DeleteSession(c *gin.Context) {
 func (h *AgentHandler) writeSessionError(c *gin.Context, message string, err error, invalidStatus int) {
 	status := http.StatusInternalServerError
 	responseMessage := "Session storage unavailable"
-	if errors.Is(err, conversationstore.ErrSessionNotFound) || errors.Is(err, conversationstore.ErrSessionExpired) {
+	if errors.Is(err, conversationstore.ErrSessionNotFound) || errors.Is(err, conversationstore.ErrSessionExpired) || errors.Is(err, security.ErrResourceNotAccessible) {
 		status = invalidStatus
-		responseMessage = message + ": " + err.Error()
+		responseMessage = message
 	}
-	rt.GetLogger().Error("Session store request failed", "error", err)
+	rt.GetLogger().Error("Session store request failed", "error", security.SafeError(err))
+	if status == invalidStatus {
+		c.JSON(status, NewAPIErrorResponse("RESOURCE_NOT_ACCESSIBLE", responseMessage))
+		return
+	}
 	c.JSON(status, NewErrorResponse(responseMessage))
 }
 
 func toSessionInfo(sessionObj *session.Session) map[string]any {
 	return map[string]any{
 		"session_id": sessionObj.ID,
+		"tenant_id":  sessionObj.TenantID,
+		"owner_id":   sessionObj.OwnerID,
+		"version":    sessionObj.Version,
 		"created_at": sessionObj.CreatedAt,
 		"updated_at": sessionObj.UpdatedAt,
+		"expires_at": sessionObj.ExpiresAt,
 		"status":     sessionObj.Status,
 	}
 }

@@ -20,12 +20,16 @@ package server
 import (
 	"context"
 	"dubbo-admin-ai/component/agent/react"
+	"dubbo-admin-ai/component/hooks"
 	"dubbo-admin-ai/component/memory"
 	"dubbo-admin-ai/component/server/engine"
+	"dubbo-admin-ai/config"
 	"dubbo-admin-ai/runtime"
-	conversationstore "dubbo-admin-ai/store"
+	"dubbo-admin-ai/security"
 	"fmt"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -38,12 +42,14 @@ type ServerComponent struct {
 	router       *engine.Router
 	instanceName string
 
-	port         int
-	host         string
-	debug        bool
-	corsOrigins  []string
-	readTimeout  int
-	writeTimeout int
+	port           int
+	host           string
+	debug          bool
+	corsOrigins    []string
+	readTimeout    int
+	writeTimeout   int
+	authentication AuthenticationSpec
+	features       config.FeatureFlags
 }
 
 func NewServerComponent(
@@ -61,14 +67,37 @@ func NewServerComponent(
 	if len(timeouts) > 1 {
 		writeTimeout = timeouts[1]
 	}
+	authentication := DefaultServerSpec().Authentication
 	return &ServerComponent{
-		port:         port,
-		host:         host,
-		debug:        debug,
-		corsOrigins:  corsOrigins,
-		readTimeout:  readTimeout,
-		writeTimeout: writeTimeout,
+		port:           port,
+		host:           normalizeHost(host),
+		debug:          debug,
+		corsOrigins:    corsOrigins,
+		readTimeout:    readTimeout,
+		writeTimeout:   writeTimeout,
+		authentication: authentication,
+		features:       config.DefaultFeatureFlags(),
 	}, nil
+}
+
+// NewServerComponentWithAuthentication creates a server with an explicit
+// trusted identity configuration.
+func NewServerComponentWithAuthentication(
+	port int,
+	host string,
+	debug bool,
+	corsOrigins []string,
+	readTimeout int,
+	writeTimeout int,
+	authentication AuthenticationSpec,
+) (runtime.Component, error) {
+	authentication.applyDefaults()
+	component, err := NewServerComponent(port, host, debug, corsOrigins, readTimeout, writeTimeout)
+	if err != nil {
+		return nil, err
+	}
+	component.(*ServerComponent).authentication = authentication
+	return component, nil
 }
 
 // Name returns the component name
@@ -96,7 +125,39 @@ func (s *ServerComponent) Validate() error {
 	if s.writeTimeout <= 0 {
 		return fmt.Errorf("write_timeout must be greater than 0")
 	}
+	if s.authentication.Mode != "static" && s.authentication.Mode != "jwt" {
+		return fmt.Errorf("unsupported authentication mode %q", s.authentication.Mode)
+	}
+	if s.features.ProductionAuth && s.authentication.Mode != "jwt" {
+		return fmt.Errorf("production_auth requires jwt authentication")
+	}
+	if s.authentication.Mode == "static" && (s.authentication.TenantID == "" || s.authentication.UserID == "") {
+		return fmt.Errorf("authentication tenant_id and user_id are required")
+	}
+	if s.authentication.Mode == "static" && !s.authentication.AllowInsecureStaticAuth && !isLoopbackHost(s.host) {
+		return fmt.Errorf("static authentication may only bind to a loopback host unless allow_insecure_static_auth is true")
+	}
+	if s.authentication.Mode == "jwt" && (s.authentication.JWTSecret == "" || s.authentication.JWTIssuer == "" || s.authentication.JWTAudience == "") {
+		return fmt.Errorf("jwt authentication requires jwt_secret, jwt_issuer, and jwt_audience")
+	}
 	return nil
+}
+
+func isLoopbackHost(host string) bool {
+	host = normalizeHost(host)
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(strings.Trim(host, "[]"))
+	return ip != nil && ip.IsLoopback()
+}
+
+func normalizeHost(host string) string {
+	host = strings.TrimSpace(host)
+	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+		return strings.TrimSuffix(strings.TrimPrefix(host, "["), "]")
+	}
+	return host
 }
 
 func (s *ServerComponent) Init(rt *runtime.Runtime) error {
@@ -136,13 +197,18 @@ func (s *ServerComponent) Start() error {
 	if !ok {
 		return fmt.Errorf("memory component is not a MemoryComponent")
 	}
+	if hooksComp, hookErr := s.rt.GetComponent("hooks"); hookErr == nil {
+		if configurable, ok := hooksComp.(*hooks.Component); ok {
+			configurable.SetUsageAuditFeatures(s.features.UsagePersistence, s.features.AuditEvents)
+		}
+	}
 	conversationStore, err := memoryComponent.GetStore()
 	if err != nil {
 		return fmt.Errorf("failed to get conversation store: %w", err)
 	}
-	sessionStore, ok := conversationStore.(conversationstore.SessionStore)
-	if !ok {
-		return fmt.Errorf("conversation store does not implement SessionStore")
+	maintenanceStore, err := memoryComponent.GetMaintenanceStore()
+	if err != nil {
+		return fmt.Errorf("failed to get conversation maintenance store: %w", err)
 	}
 
 	// Configure Gin mode
@@ -152,8 +218,33 @@ func (s *ServerComponent) Start() error {
 		gin.SetMode(gin.DebugMode)
 	}
 
+	var authenticator security.Authenticator
+	var subject security.Subject
+	if s.authentication.Mode == "jwt" {
+		authenticator, err = security.NewJWTAuthenticator(security.JWTConfig{
+			Secret: []byte(s.authentication.JWTSecret), Issuer: s.authentication.JWTIssuer, Audience: s.authentication.JWTAudience,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to configure jwt authenticator: %w", err)
+		}
+	} else {
+		subject = security.Subject{TenantID: s.authentication.TenantID, UserID: s.authentication.UserID, Roles: append([]string(nil), s.authentication.Roles...), Scopes: append([]string(nil), s.authentication.Scopes...), AuthMethod: security.AuthMethodStatic}
+		authenticator, err = security.NewStaticAuthenticator(subject)
+		if err != nil {
+			return fmt.Errorf("failed to configure authenticator: %w", err)
+		}
+	}
+
 	// Create router with AI interface
-	router := engine.NewRouter(agentComponent.Agent, sessionStore)
+	if s.authentication.Mode == "static" {
+		if err := adoptLegacySessions(context.Background(), maintenanceStore, s.authentication.AdoptLegacySessions, subject); err != nil {
+			return fmt.Errorf("failed to adopt legacy sessions: %w", err)
+		}
+	}
+	router, err := engine.NewRouterWithLifecycle(agentComponent.Agent, conversationStore, maintenanceStore, authenticator, s.corsOrigins, memoryComponent.GetLifecyclePolicy())
+	if err != nil {
+		return fmt.Errorf("failed to create AI router: %w", err)
+	}
 	s.router = router
 
 	// Add health check endpoint
@@ -165,7 +256,7 @@ func (s *ServerComponent) Start() error {
 
 	// Create HTTP server
 	s.srv = &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", s.host, s.port),
+		Addr:    net.JoinHostPort(s.host, fmt.Sprintf("%d", s.port)),
 		Handler: router.GetEngine(),
 	}
 
@@ -180,6 +271,20 @@ func (s *ServerComponent) Start() error {
 		}
 	}()
 
+	return nil
+}
+
+type legacySessionAdopter interface {
+	AdoptLegacySessions(context.Context, security.AccessContext, string, string) (int, error)
+}
+
+func adoptLegacySessions(ctx context.Context, maintenance legacySessionAdopter, enabled bool, subject security.Subject) error {
+	if !enabled {
+		return nil
+	}
+	if _, err := maintenance.AdoptLegacySessions(ctx, security.SystemAccessContext(), subject.TenantID, subject.UserID); err != nil {
+		return err
+	}
 	return nil
 }
 

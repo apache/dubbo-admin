@@ -29,6 +29,7 @@ import (
 	toolEngine "dubbo-admin-ai/component/tools/engine"
 	"dubbo-admin-ai/runtime"
 	"dubbo-admin-ai/schema"
+	"dubbo-admin-ai/security"
 
 	"github.com/firebase/genkit/go/ai"
 )
@@ -64,7 +65,11 @@ func (ra *ReActAgent) run(ctx context.Context, chans *agent.Channels, state *int
 			return nil, fmt.Errorf("history is empty")
 		}
 	} else {
-		empty, err := ra.messageStore.IsTurnEmpty(ctx, sessionID, turnID)
+		access, accessErr := security.AccessContextFromContext(ctx)
+		if accessErr != nil {
+			return nil, accessErr
+		}
+		empty, err := ra.messageStore.IsTurnEmpty(ctx, access, sessionID, turnID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to inspect history: %w", err)
 		}
@@ -137,20 +142,34 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 	var messages []*ai.Message
 	turnID, _ := ctx.Value(turnIDContextKey).(uint64)
 	if ra.messageStore != nil {
+		access, accessErr := security.AccessContextFromContext(ctx)
+		if accessErr != nil {
+			return false, accessErr
+		}
+		if state == nil {
+			return false, fmt.Errorf("interaction state is required")
+		}
+		if _, err := ra.messageStore.IsTurnEmpty(ctx, access, s.Session, turnID); err != nil {
+			return false, err
+		}
 		messages = state.messages
 	} else {
 		messages = history.WindowMemory(s.Session)
+	}
+	modelMessages, err := modelInputView(messages)
+	if err != nil {
+		return false, err
 	}
 	// Model and tool deadlines are independent; cancellation still propagates.
 	resp, err := func() (*ai.ModelResponse, error) {
 		lctx, cancel := withTimeout(ctx, ra.callTimeout)
 		defer cancel()
-		return executeModelCall(lctx, s, prompt, messages, func(resp *ai.ModelResponse, err error) {
+		return executeModelCall(lctx, s, prompt, modelMessages, func(resp *ai.ModelResponse, err error) {
 			if err == nil && forceAnswer && resp.Text() == "" {
 				s.FallbackUsed = true
 				s.FallbackReason = hooks.FallbackReasonEmptyResponse
 			}
-		}, ai.WithMessages(messages...))
+		}, ai.WithMessages(modelMessages...))
 	}()
 	if err != nil {
 		return false, fmt.Errorf("failed to execute react prompt: %w", err)
@@ -179,6 +198,7 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 		runtime.GetLogger().Warn("react: empty forced answer, using fallback")
 		answer = fallbackAnswer
 	}
+	s.FinalAnswer = answer
 	if err := ra.finish(ctx, chans, history, s.Session, turnID, answer); err != nil {
 		return false, err
 	}
@@ -219,7 +239,11 @@ func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemo
 	message := ai.NewMessage(ai.RoleModel, nil, parts...)
 	if ra.messageStore != nil {
 		turnID, _ := ctx.Value(turnIDContextKey).(uint64)
-		if err := ra.messageStore.AddHistoryToTurn(persistenceContext(ctx), s.Session, turnID, message); err != nil {
+		access, err := security.AccessContextFromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if err := ra.messageStore.AddHistoryToTurn(persistenceContext(ctx), access, s.Session, turnID, message); err != nil {
 			return nil, fmt.Errorf("failed to record tool output: %w", err)
 		}
 	} else {
@@ -235,7 +259,11 @@ func (ra *ReActAgent) finish(ctx context.Context, chans *agent.Channels, history
 	if answer != "" {
 		message := ai.NewMessage(ai.RoleModel, nil, ai.NewTextPart(answer))
 		if ra.messageStore != nil {
-			if err := ra.messageStore.AddHistoryToTurn(persistenceContext(ctx), sessionID, turnID, message); err != nil {
+			access, err := security.AccessContextFromContext(ctx)
+			if err != nil {
+				return err
+			}
+			if err := ra.messageStore.AddHistoryToTurn(persistenceContext(ctx), access, sessionID, turnID, message); err != nil {
 				return fmt.Errorf("failed to persist final answer: %w", err)
 			}
 		} else {

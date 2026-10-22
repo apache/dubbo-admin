@@ -18,39 +18,67 @@
 package engine
 
 import (
+	"fmt"
+	"net/http"
+	"slices"
+
 	"dubbo-admin-ai/component/agent"
 	"dubbo-admin-ai/component/server/engine/session"
+	"dubbo-admin-ai/security"
 	conversationstore "dubbo-admin-ai/store"
 
 	"github.com/gin-gonic/gin"
 )
 
 type Router struct {
-	engine     *gin.Engine
-	handler    *AgentHandler
-	sessionMgr *session.Manager
+	engine        *gin.Engine
+	handler       *AgentHandler
+	sessionMgr    *session.Manager
+	authenticator security.Authenticator
 }
 
-func NewRouter(agent agent.Agent, sessionStore conversationstore.SessionStore) *Router {
-	sessionMgr := session.NewManager(sessionStore)
-	handler := NewAgentHandler(agent, sessionMgr)
+func NewRouter(agent agent.Agent, store conversationstore.Store, maintenance conversationstore.MaintenanceStore, authenticator security.Authenticator) (*Router, error) {
+	return NewRouterWithCORS(agent, store, maintenance, authenticator, nil)
+}
+
+func NewRouterWithCORS(agent agent.Agent, store conversationstore.Store, maintenance conversationstore.MaintenanceStore, authenticator security.Authenticator, corsOrigins []string) (*Router, error) {
+	return NewRouterWithLifecycle(agent, store, maintenance, authenticator, corsOrigins, conversationstore.DefaultLifecyclePolicy())
+}
+
+func NewRouterWithLifecycle(agent agent.Agent, store conversationstore.Store, maintenance conversationstore.MaintenanceStore, authenticator security.Authenticator, corsOrigins []string, lifecycle conversationstore.LifecyclePolicy) (*Router, error) {
+	if authenticator == nil {
+		return nil, fmt.Errorf("authenticator is required")
+	}
+	if store == nil {
+		return nil, fmt.Errorf("conversation store is required")
+	}
+	if maintenance == nil {
+		return nil, fmt.Errorf("maintenance store is required")
+	}
+	// The Memory component owns the cleanup worker. The HTTP manager only owns
+	// request-facing session operations.
+	sessionMgr := session.NewManagerWithLifecycle(store, nil, security.OwnershipPolicy{}, lifecycle)
+	handler := NewAgentHandler(agent, sessionMgr, store)
+	handler.SetInteractionLease(lifecycle.InteractionLease)
 
 	router := &Router{
-		engine:     gin.Default(),
-		handler:    handler,
-		sessionMgr: sessionMgr,
+		engine:        gin.Default(),
+		handler:       handler,
+		sessionMgr:    sessionMgr,
+		authenticator: authenticator,
 	}
 
-	router.setupRoutes()
-	return router
+	router.setupRoutes(corsOrigins)
+	return router, nil
 }
 
-func (r *Router) setupRoutes() {
+func (r *Router) setupRoutes(corsOrigins []string) {
 	// Add CORS middleware
-	r.engine.Use(corsMiddleware())
+	r.engine.Use(corsMiddleware(corsOrigins))
 
 	// API v1 group
 	v1 := r.engine.Group("/api/v1/ai")
+	v1.Use(authenticationMiddleware(r.authenticator))
 	{
 		// Chat endpoints
 		v1.POST("/chat/stream", r.handler.StreamChat) // Streaming chat
@@ -60,6 +88,18 @@ func (r *Router) setupRoutes() {
 		v1.GET("/sessions", r.handler.ListSessions)                // List sessions
 		v1.GET("/sessions/:sessionId", r.handler.GetSession)       // Get session info
 		v1.DELETE("/sessions/:sessionId", r.handler.DeleteSession) // Delete session
+	}
+}
+
+func authenticationMiddleware(authenticator security.Authenticator) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		access, err := authenticator.Authenticate(c.Request)
+		if err != nil || access.Validate() != nil || access.IsSystem() {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, NewAPIErrorResponse("AUTHENTICATION_REQUIRED", "Authentication required"))
+			return
+		}
+		c.Request = c.Request.WithContext(security.WithAccessContext(c.Request.Context(), access))
+		c.Next()
 	}
 }
 
@@ -78,12 +118,21 @@ func (r *Router) Close() error {
 }
 
 // corsMiddleware provides CORS middleware
-func corsMiddleware() gin.HandlerFunc {
+func corsMiddleware(allowedOrigins []string) gin.HandlerFunc {
+	allowedOrigins = append([]string(nil), allowedOrigins...)
 	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, traceparent, tracestate, baggage")
-		c.Header("Access-Control-Expose-Headers", "X-Trace-ID")
+		origin := c.GetHeader("Origin")
+		if slices.Contains(allowedOrigins, "*") {
+			c.Header("Access-Control-Allow-Origin", "*")
+		} else if origin != "" && slices.Contains(allowedOrigins, origin) {
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Vary", "Origin")
+		}
+		if c.Writer.Header().Get("Access-Control-Allow-Origin") != "" {
+			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, Idempotency-Key, traceparent, tracestate, baggage")
+			c.Header("Access-Control-Expose-Headers", "X-Trace-ID, X-Interaction-ID")
+		}
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
