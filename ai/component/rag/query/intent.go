@@ -29,21 +29,21 @@ import (
 type IntentType string
 
 const (
-	IntentSearch      IntentType = "search"      // Information search
-	IntentQA          IntentType = "qa"          // Question answering
-	IntentSummary     IntentType = "summary"     // Document summary
-	IntentComparison  IntentType = "comparison"  // Comparison between items
-	IntentHowTo       IntentType = "howto"       // How-to instructions
-	IntentDefinition  IntentType = "definition"  // Definition of a term
-	IntentUnknown     IntentType = "unknown"     // Unknown intent
+	IntentSearch     IntentType = "search"     // Information search
+	IntentQA         IntentType = "qa"         // Question answering
+	IntentSummary    IntentType = "summary"    // Document summary
+	IntentComparison IntentType = "comparison" // Comparison between items
+	IntentHowTo      IntentType = "howto"      // How-to instructions
+	IntentDefinition IntentType = "definition" // Definition of a term
+	IntentUnknown    IntentType = "unknown"    // Unknown intent
 )
 
 // IntentResult represents the result of intent recognition.
 type IntentResult struct {
-	Intent      IntentType `json:"intent"`
-	Confidence  float64    `json:"confidence"`
-	Keywords    []string   `json:"keywords"`
-	EntityType  string     `json:"entity_type"`
+	Intent     IntentType `json:"intent"`
+	Confidence float64    `json:"confidence"`
+	Keywords   []string   `json:"keywords"`
+	EntityType string     `json:"entity_type"`
 }
 
 // IntentConfig configures intent recognition.
@@ -130,6 +130,7 @@ func (s *IntentStep) Process(ctx context.Context, query string) (*Result, error)
 		return nil, nil
 	}
 
+	query = modelInput(query)
 	input := IntentInput{Query: query}
 
 	resp, err := s.prompt.Execute(ctx, ai.WithInput(input))
@@ -142,15 +143,25 @@ func (s *IntentStep) Process(ctx context.Context, query string) (*Result, error)
 		return nil, fmt.Errorf("failed to parse intent output: %w", err)
 	}
 
+	intent := normalizeIntent(output.Intent)
 	return &Result{
 		Query:  query, // Intent doesn't modify query
-		Intent: string(output.Intent),
+		Intent: string(intent),
 		Metadata: map[string]any{
 			"intent_confidence": output.Confidence,
 			"intent_keywords":   output.Keywords,
 			"entity_type":       output.EntityType,
 		},
 	}, nil
+}
+
+func normalizeIntent(value IntentType) IntentType {
+	switch value {
+	case IntentSearch, IntentQA, IntentSummary, IntentComparison, IntentHowTo, IntentDefinition:
+		return value
+	default:
+		return IntentUnknown
+	}
 }
 
 // IntentInput represents the input for intent recognition.

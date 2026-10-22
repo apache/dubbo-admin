@@ -19,22 +19,58 @@ package server
 
 // ServerSpec defines server configuration
 type ServerSpec struct {
-	Port         int      `yaml:"port"`
-	Host         string   `yaml:"host"`
-	Debug        bool     `yaml:"debug"`
-	CORSOrigins  []string `yaml:"cors_origins"`
-	ReadTimeout  int      `yaml:"read_timeout"`
-	WriteTimeout int      `yaml:"write_timeout"`
+	Port           int                `yaml:"port"`
+	Host           string             `yaml:"host"`
+	Debug          bool               `yaml:"debug"`
+	CORSOrigins    []string           `yaml:"cors_origins"`
+	ReadTimeout    int                `yaml:"read_timeout"`
+	WriteTimeout   int                `yaml:"write_timeout"`
+	Authentication AuthenticationSpec `yaml:"authentication"`
+}
+
+// AuthenticationSpec configures the trusted identity used by the AI HTTP
+// service. Phase 1 supports a server-configured identity; the interface allows
+// JWT or signed-gateway adapters to be added without changing handlers.
+type AuthenticationSpec struct {
+	Mode                    string   `yaml:"mode"`
+	TenantID                string   `yaml:"tenant_id"`
+	UserID                  string   `yaml:"user_id"`
+	Roles                   []string `yaml:"roles"`
+	Scopes                  []string `yaml:"scopes"`
+	AllowInsecureStaticAuth bool     `yaml:"allow_insecure_static_auth"`
+	AdoptLegacySessions     bool     `yaml:"adopt_legacy_sessions"`
 }
 
 // DefaultServerSpec returns default server configuration
 func DefaultServerSpec() *ServerSpec {
 	return &ServerSpec{
 		Port:         8888,
-		Host:         "0.0.0.0",
+		Host:         "127.0.0.1",
 		Debug:        false,
-		CORSOrigins:  []string{"*"},
+		CORSOrigins:  []string{},
 		ReadTimeout:  30,
 		WriteTimeout: 30,
+		Authentication: AuthenticationSpec{
+			Mode:     "static",
+			TenantID: "default",
+			UserID:   "local-user",
+			Roles:    []string{"user"},
+		},
+	}
+}
+
+func (a *AuthenticationSpec) applyDefaults() {
+	defaults := DefaultServerSpec().Authentication
+	if a.Mode == "" {
+		a.Mode = defaults.Mode
+	}
+	if a.TenantID == "" {
+		a.TenantID = defaults.TenantID
+	}
+	if a.UserID == "" {
+		a.UserID = defaults.UserID
+	}
+	if a.Roles == nil {
+		a.Roles = append([]string(nil), defaults.Roles...)
 	}
 }

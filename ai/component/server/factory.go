@@ -34,13 +34,15 @@ func ServerFactory(spec *yaml.Node) (runtime.Component, error) {
 	if err := spec.Decode(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to decode server spec: %w", err)
 	}
+	cfg.Authentication.applyDefaults()
 
-	return NewServerComponent(
+	return NewServerComponentWithAuthentication(
 		cfg.Port,
 		cfg.Host,
 		cfg.Debug,
 		cfg.CORSOrigins,
 		cfg.ReadTimeout,
 		cfg.WriteTimeout,
+		cfg.Authentication,
 	)
 }

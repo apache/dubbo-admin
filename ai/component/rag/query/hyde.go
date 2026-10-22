@@ -106,6 +106,7 @@ func (s *HyDEStep) Process(ctx context.Context, query string) (*Result, error) {
 		return nil, nil
 	}
 
+	query = modelInput(query)
 	input := HyDEInput{Query: query}
 
 	resp, err := s.prompt.Execute(ctx, ai.WithInput(input))
