@@ -88,18 +88,19 @@ done:
 
 func TestNewInteractionBuildsStableContextSnapshot(t *testing.T) {
 	ctx := testutils.ContextWithTestAccess(context.Background())
+	access := testutils.TestAccess()
 	store := memorystore.NewMemoryStore(10)
 	createAgentSession(t, store, "snapshot-session")
 
-	completed, err := store.BeginTurn(ctx, testutils.TestAccess(), "snapshot-session")
+	completed, err := store.BeginTurn(ctx, access, "snapshot-session")
 	if err != nil {
 		t.Fatalf("BeginTurn(completed) error = %v", err)
 	}
-	if err := store.AddHistoryToTurn(ctx, testutils.TestAccess(), "snapshot-session", completed,
+	if err := store.AddHistoryToTurn(ctx, access, "snapshot-session", completed,
 		ai.NewUserTextMessage("first question"), ai.NewModelTextMessage("first answer")); err != nil {
 		t.Fatalf("AddHistoryToTurn(completed) error = %v", err)
 	}
-	if err := store.NextTurnForTurn(ctx, testutils.TestAccess(), "snapshot-session", completed); err != nil {
+	if err := store.NextTurnForTurn(ctx, access, "snapshot-session", completed); err != nil {
 		t.Fatalf("NextTurnForTurn(completed) error = %v", err)
 	}
 
@@ -109,21 +110,33 @@ func TestNewInteractionBuildsStableContextSnapshot(t *testing.T) {
 		t.Fatalf("newInteraction() error = %v", err)
 	}
 	defer state.cancelPersistence()
-	defer func() {
-		_ = store.AbortTurnForTurn(context.Background(), testutils.TestAccess(), "snapshot-session", state.turnID)
-	}()
+	defer func() { _ = store.AbortTurnForTurn(context.Background(), access, "snapshot-session", state.turnID) }()
 
 	if got, want := messageTextList(state.messages), []string{"first question", "first answer", "follow-up"}; fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("context snapshot = %v, want %v", got, want)
 	}
+	if err := store.NextTurnForTurn(ctx, access, "snapshot-session", state.turnID); err != nil {
+		t.Fatalf("NextTurnForTurn(snapshot) error = %v", err)
+	}
 
-	if _, err := store.BeginTurn(ctx, testutils.TestAccess(), "snapshot-session"); !errors.Is(err, conversationstore.ErrSessionBusy) {
-		t.Fatalf("concurrent BeginTurn() = %v, want ErrSessionBusy", err)
+	other, err := store.BeginTurn(ctx, access, "snapshot-session")
+	if err != nil {
+		t.Fatalf("BeginTurn(other) error = %v", err)
+	}
+	if err := store.AddHistoryToTurn(ctx, access, "snapshot-session", other, ai.NewUserTextMessage("later turn")); err != nil {
+		t.Fatalf("AddHistoryToTurn(other) error = %v", err)
+	}
+	if err := store.NextTurnForTurn(ctx, access, "snapshot-session", other); err != nil {
+		t.Fatalf("NextTurnForTurn(other) error = %v", err)
+	}
+	if got := messageTextList(state.messages); strings.Contains(strings.Join(got, " "), "later turn") {
+		t.Fatalf("interaction snapshot changed after another turn completed: %v", got)
 	}
 }
 
 func TestRunAppendsToolOutputToContextSnapshotWithoutReloading(t *testing.T) {
 	ctx := testutils.ContextWithTestAccess(context.Background())
+	access := testutils.TestAccess()
 	baseStore := memorystore.NewMemoryStore(10)
 	createAgentSession(t, baseStore, "tool-snapshot-session")
 	store := &trackingContextStore{Store: baseStore}
@@ -151,7 +164,7 @@ func TestRunAppendsToolOutputToContextSnapshotWithoutReloading(t *testing.T) {
 	}
 	defer state.cancelPersistence()
 	defer func() {
-		_ = baseStore.AbortTurnForTurn(context.Background(), testutils.TestAccess(), "tool-snapshot-session", state.turnID)
+		_ = baseStore.AbortTurnForTurn(context.Background(), access, "tool-snapshot-session", state.turnID)
 	}()
 
 	if _, err := ra.run(interactionCtx, nil, state, &interactionTrace{}); err != nil {
@@ -176,6 +189,7 @@ func TestRunAppendsToolOutputToContextSnapshotWithoutReloading(t *testing.T) {
 
 func TestNewInteractionAbortsTurnWhenContextLoadFails(t *testing.T) {
 	ctx := testutils.ContextWithTestAccess(context.Background())
+	access := testutils.TestAccess()
 	baseStore := memorystore.NewMemoryStore(10)
 	createAgentSession(t, baseStore, "failed-context-session")
 	store := &trackingContextStore{Store: baseStore, fail: errors.New("context unavailable")}
@@ -184,12 +198,41 @@ func TestNewInteractionAbortsTurnWhenContextLoadFails(t *testing.T) {
 	if _, _, err := ra.newInteraction(ctx, &schema.UserInput{Content: "hello"}, "failed-context-session"); err == nil || !strings.Contains(err.Error(), "failed to load conversation context") {
 		t.Fatalf("newInteraction() error = %v, want context load failure", err)
 	}
-	messages, err := baseStore.AllMemory(ctx, testutils.TestAccess(), "failed-context-session")
+	messages, err := baseStore.AllMemory(ctx, access, "failed-context-session")
 	if err != nil {
 		t.Fatalf("AllMemory() error = %v", err)
 	}
 	if len(messages) != 0 {
 		t.Fatalf("failed context load left turn messages behind: %#v", messages)
+	}
+}
+
+func TestPreparedInteractionCanRetryAfterContextLoadFails(t *testing.T) {
+	ctx := testutils.ContextWithTestAccess(context.Background())
+	access := testutils.TestAccess()
+	baseStore := memorystore.NewMemoryStore(10)
+	const sessionID = "prepared-context-failure"
+	createAgentSession(t, baseStore, sessionID)
+	prepared, err := baseStore.PrepareInteraction(ctx, access, sessionID, "request", "hash", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := &trackingContextStore{Store: baseStore, fail: errors.New("context unavailable")}
+	ra := &ReActAgent{messageStore: store, contextWindowTurns: 5}
+	parent := conversationstore.WithPreparedInteraction(ctx, prepared)
+	if _, _, err := ra.newInteraction(parent, &schema.UserInput{Content: "hello"}, sessionID); err == nil || !strings.Contains(err.Error(), "failed to load conversation context") {
+		t.Fatalf("newInteraction() error = %v, want context load failure", err)
+	}
+	assertNoStoredMessages(t, baseStore, sessionID)
+	retried, err := baseStore.PrepareInteraction(ctx, access, sessionID, "request", "hash", time.Minute)
+	if err != nil {
+		t.Fatalf("PrepareInteraction(retry) error = %v", err)
+	}
+	if retried.InteractionID != prepared.InteractionID || retried.TurnID == prepared.TurnID {
+		t.Fatalf("retried interaction = %#v, original = %#v", retried, prepared)
+	}
+	if err := baseStore.FailInteraction(ctx, access, sessionID, retried.InteractionID, retried.TurnID); err != nil {
+		t.Fatal(err)
 	}
 }
 
