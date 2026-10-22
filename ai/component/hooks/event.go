@@ -108,6 +108,7 @@ type State struct {
 	Model          string
 	ToolName       string
 	ToolCallID     string
+	CallID         string
 	Input          string
 	Output         string
 	Error          string
@@ -118,6 +119,7 @@ type State struct {
 	InputTokens    int
 	OutputTokens   int
 	TotalTokens    int
+	UsagePresent   bool
 	StartedAt      time.Time
 	EndedAt        time.Time
 	inputContent   *lazyContentSnapshot

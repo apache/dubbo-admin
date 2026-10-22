@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/firebase/genkit/go/ai"
+	"github.com/google/uuid"
 	"time"
 )
 
@@ -90,6 +91,7 @@ func executeModelCall(
 	opts ...ai.PromptExecuteOption,
 ) (resp *ai.ModelResponse, err error) {
 	startedAt := time.Now()
+	callID := uuid.NewString()
 	startState := hooks.State{
 		Event:         hooks.EventModelCallStart,
 		InteractionID: s.InteractionID,
@@ -97,6 +99,7 @@ func executeModelCall(
 		Iteration:     s.Iteration,
 		Stage:         s.Stage,
 		Model:         s.Model,
+		CallID:        callID,
 		StartedAt:     startedAt,
 	}
 	startState = withHookInput(s.hookManager, hooks.EventModelCallStart, "", startState, func() any {
@@ -106,10 +109,10 @@ func executeModelCall(
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			err = fmt.Errorf("model call panicked: %v", recovered)
-			emitModelCallEnd(ctx, s, startedAt, resp, err)
+			emitModelCallEnd(ctx, s, callID, startedAt, resp, err)
 			panic(recovered)
 		}
-		emitModelCallEnd(ctx, s, startedAt, resp, err)
+		emitModelCallEnd(ctx, s, callID, startedAt, resp, err)
 	}()
 	resp, err = prompt.Execute(ctx, opts...)
 	if err == nil && resp == nil {
@@ -121,7 +124,7 @@ func executeModelCall(
 	return resp, err
 }
 
-func emitModelCallEnd(ctx context.Context, s *interactionTrace, startedAt time.Time, output any, err error) {
+func emitModelCallEnd(ctx context.Context, s *interactionTrace, callID string, startedAt time.Time, output any, err error) {
 	now := time.Now()
 	// Emit error event if the call failed
 	if err != nil {
@@ -132,6 +135,7 @@ func emitModelCallEnd(ctx context.Context, s *interactionTrace, startedAt time.T
 			Iteration:      s.Iteration,
 			Stage:          s.Stage,
 			Model:          s.Model,
+			CallID:         callID,
 			Error:          hooks.ErrorMessage(err),
 			ErrorType:      hooks.ErrorType(err),
 			FallbackUsed:   s.FallbackUsed,
@@ -149,6 +153,7 @@ func emitModelCallEnd(ctx context.Context, s *interactionTrace, startedAt time.T
 		Iteration:      s.Iteration,
 		Stage:          s.Stage,
 		Model:          s.Model,
+		CallID:         callID,
 		Error:          hooks.ErrorMessage(err),
 		ErrorType:      hooks.ErrorType(err),
 		FallbackUsed:   s.FallbackUsed,
@@ -163,6 +168,7 @@ func emitModelCallEnd(ctx context.Context, s *interactionTrace, startedAt time.T
 		endState.InputTokens = response.Usage.InputTokens
 		endState.OutputTokens = response.Usage.OutputTokens
 		endState.TotalTokens = response.Usage.TotalTokens
+		endState.UsagePresent = true
 	}
 	emitHook(s.hookManager, ctx, endState)
 }
