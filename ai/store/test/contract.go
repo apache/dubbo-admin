@@ -609,6 +609,76 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Backe
 		}
 	})
 
+	t.Run("bounded context window snapshots", func(t *testing.T) {
+		ctx := context.Background()
+		s := withAccess(newStore())
+		now := time.Now()
+		session := &conversationstore.Session{ID: "context-window", CreatedAt: now, UpdatedAt: now, Status: "active"}
+		if err := s.Create(ctx, session); err != nil {
+			t.Fatal(err)
+		}
+		var completed uint64
+		for i := 0; i < 2; i++ {
+			completed = begin(t, s, ctx, session.ID)
+			if err := s.AddHistoryToTurn(ctx, session.ID, completed,
+				ai.NewUserTextMessage(fmt.Sprintf("question-%d", i)),
+				ai.NewModelTextMessage(fmt.Sprintf("answer-%d", i))); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.NextTurnForTurn(ctx, session.ID, completed); err != nil {
+				t.Fatal(err)
+			}
+		}
+		active := begin(t, s, ctx, session.ID)
+		if err := s.AddHistoryToTurn(ctx, session.ID, active, ai.NewUserTextMessage("current")); err != nil {
+			t.Fatal(err)
+		}
+		for _, tc := range []struct {
+			limit int
+			want  string
+		}{
+			{-1, "current"},
+			{0, "current"},
+			{1, "question-1,answer-1,current"},
+			{2, "question-0,answer-0,question-1,answer-1,current"},
+			{100, "question-0,answer-0,question-1,answer-1,current"},
+		} {
+			t.Run(fmt.Sprintf("limit=%d", tc.limit), func(t *testing.T) {
+				messages, err := s.ContextWindowForTurn(ctx, s.access, session.ID, active, tc.limit)
+				if err != nil {
+					t.Fatal(err)
+				}
+				texts := make([]string, len(messages))
+				for i, message := range messages {
+					texts[i] = message.Text()
+				}
+				if got := strings.Join(texts, ","); got != tc.want {
+					t.Fatalf("ContextWindowForTurn() = %q, want %q", got, tc.want)
+				}
+				messages[len(messages)-1].Content[0].Text = "caller mutation"
+				again, err := s.ContextWindowForTurn(ctx, s.access, session.ID, active, tc.limit)
+				if err != nil || again[len(again)-1].Text() != "current" {
+					t.Fatalf("snapshot mutation affected storage: %v, %v", again, err)
+				}
+			})
+		}
+		for _, turnID := range []uint64{completed, active + 100} {
+			if _, err := s.ContextWindowForTurn(ctx, s.access, session.ID, turnID, 2); !errors.Is(err, conversationstore.ErrTurnNotFound) {
+				t.Fatalf("ContextWindowForTurn(%d) error = %v, want ErrTurnNotFound", turnID, err)
+			}
+		}
+		before, err := s.ContextWindowForTurn(ctx, s.access, session.ID, active, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := s.AddHistoryToTurn(ctx, session.ID, active, ai.NewModelTextMessage("later")); err != nil {
+			t.Fatal(err)
+		}
+		if len(before) != 3 || before[2].Text() != "current" {
+			t.Fatalf("snapshot changed after append: %v", before)
+		}
+	})
+
 	t.Run("returned messages are snapshots", func(t *testing.T) {
 		ctx := context.Background()
 		s := withAccess(newStore())

@@ -58,6 +58,10 @@ type MessageStore interface {
 	BeginTurn(ctx context.Context, access security.AccessContext, sessionID string) (uint64, error)
 	AddHistoryToTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64, messages ...*ai.Message) error
 	IsTurnEmpty(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64) (bool, error)
+	// ContextWindowForTurn returns independent message snapshots from the last
+	// completedLimit completed turns followed by the active turn, in chronological
+	// order. Non-positive limits include only the active turn. A missing or
+	// completed turn returns ErrTurnNotFound.
 	ContextWindowForTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64, completedLimit int) ([]*ai.Message, error)
 	WindowMemoryForTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64) ([]*ai.Message, error)
 	AllMemory(ctx context.Context, access security.AccessContext, sessionID string) ([]*ai.Message, error)

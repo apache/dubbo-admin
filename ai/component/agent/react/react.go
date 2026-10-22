@@ -54,13 +54,14 @@ type ReActAgent struct {
 	hookManager  *hooks.Manager
 	model        string
 
-	maxIterations int
-	callTimeout   time.Duration
-	bufferSize    int
-	lifecycleMu   sync.Mutex
-	stopping      bool
-	active        map[string]context.CancelFunc
-	activeWG      sync.WaitGroup
+	maxIterations      int
+	contextWindowTurns int
+	callTimeout        time.Duration
+	bufferSize         int
+	lifecycleMu        sync.Mutex
+	stopping           bool
+	active             map[string]context.CancelFunc
+	activeWG           sync.WaitGroup
 }
 
 var interactionSequence atomic.Uint64
@@ -70,6 +71,7 @@ var ErrAgentStopping = errors.New("agent is stopping")
 const persistenceTimeout = 30 * time.Second
 
 type interactionState struct {
+	messages      []*ai.Message
 	access        security.AccessContext
 	turnID        uint64
 	interactionID string
@@ -94,14 +96,15 @@ func NewReActAgent(g *genkit.Genkit, spec *AgentSpec, toolTimeouts toolTimeoutRe
 // NewReActAgentWithStore shares conversation storage with memory and tools.
 func NewReActAgentWithStore(g *genkit.Genkit, messageStore conversationstore.MessageStore, spec *AgentSpec, toolTimeouts toolTimeoutResolver, hookManager *hooks.Manager, toolRefs []ai.ToolRef) (*ReActAgent, error) {
 	ra := &ReActAgent{
-		registry:      g,
-		messageStore:  messageStore,
-		toolTimeouts:  toolTimeouts,
-		hookManager:   hookManager,
-		model:         spec.Model,
-		maxIterations: spec.MaxIterations,
-		callTimeout:   time.Duration(spec.Timeout) * time.Second,
-		bufferSize:    max(spec.ChannelBufferSize, 1),
+		registry:           g,
+		messageStore:       messageStore,
+		toolTimeouts:       toolTimeouts,
+		hookManager:        hookManager,
+		model:              spec.Model,
+		maxIterations:      spec.MaxIterations,
+		contextWindowTurns: spec.ContextWindowTurns,
+		callTimeout:        time.Duration(spec.Timeout) * time.Second,
+		bufferSize:         max(spec.ChannelBufferSize, 1),
 	}
 
 	if messageStore == nil {
@@ -250,7 +253,7 @@ func (ra *ReActAgent) Interact(parent context.Context, input *schema.UserInput, 
 			InteractionID: interactionID, Session: sessionID,
 			Model: ra.model, hookManager: ra.hookManager, Usage: &ai.GenerationUsage{},
 		}
-		usage, err := ra.run(ctx, chans, interactionState)
+		usage, err := ra.run(ctx, chans, state, interactionState)
 		if err != nil {
 			interactionErr = err
 			chans.ErrorChan <- err
@@ -393,7 +396,20 @@ func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserI
 		ctx := context.WithValue(parent, sessionIDContextKey, sessionID)
 		ctx = context.WithValue(ctx, turnIDContextKey, turnID)
 		ctx = context.WithValue(ctx, persistenceContextKey, persistCtx)
-		return ctx, &interactionState{access: access, turnID: turnID, interactionID: interactionID, prepared: isPrepared, persistCtx: persistCtx, persistCancel: persistCancel}, nil
+		messages, loadErr := ra.messageStore.ContextWindowForTurn(parent, access, sessionID, turnID, ra.contextWindowTurns)
+		if loadErr != nil {
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(parent), persistenceTimeout)
+			defer cancel()
+			defer persistCancel()
+			var abortErr error
+			if isPrepared {
+				abortErr = ra.messageStore.FailInteraction(cleanupCtx, access, sessionID, interactionID, turnID)
+			} else {
+				abortErr = ra.messageStore.AbortTurnForTurn(cleanupCtx, access, sessionID, turnID)
+			}
+			return nil, nil, errors.Join(fmt.Errorf("failed to load conversation context: %w", loadErr), abortErr)
+		}
+		return ctx, &interactionState{messages: messages, access: access, turnID: turnID, interactionID: interactionID, prepared: isPrepared, persistCtx: persistCtx, persistCancel: persistCancel}, nil
 	}
 
 	// Compatibility path for callers that construct ReActAgent directly in tests.

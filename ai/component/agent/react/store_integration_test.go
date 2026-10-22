@@ -11,6 +11,8 @@ import (
 
 	"dubbo-admin-ai/component/agent"
 	"dubbo-admin-ai/schema"
+	"dubbo-admin-ai/security"
+	conversationstore "dubbo-admin-ai/store"
 	memorystore "dubbo-admin-ai/store/memory"
 	"dubbo-admin-ai/testutils"
 
@@ -30,20 +32,20 @@ type failingMessageStore struct {
 	failOn   int
 }
 
-func (s *failingMessageStore) AddHistoryToTurn(ctx context.Context, sessionID string, turnID uint64, messages ...*ai.Message) error {
+func (s *failingMessageStore) AddHistoryToTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64, messages ...*ai.Message) error {
 	s.addCalls++
 	if s.addCalls == s.failOn {
 		return errors.New("injected history write failure")
 	}
-	return s.Store.AddHistoryToTurn(ctx, sessionID, turnID, messages...)
+	return s.Store.AddHistoryToTurn(ctx, access, sessionID, turnID, messages...)
 }
 
-func (s *trackingContextStore) ContextWindowForTurn(ctx context.Context, sessionID string, turnID uint64, completedLimit int) ([]*ai.Message, error) {
+func (s *trackingContextStore) ContextWindowForTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64, completedLimit int) ([]*ai.Message, error) {
 	s.calls.Add(1)
 	if s.fail != nil {
 		return nil, s.fail
 	}
-	return s.Store.ContextWindowForTurn(ctx, sessionID, turnID, completedLimit)
+	return s.Store.ContextWindowForTurn(ctx, access, sessionID, turnID, completedLimit)
 }
 
 func TestInteractPersistsAndFinalizesTurn(t *testing.T) {
@@ -85,19 +87,19 @@ done:
 }
 
 func TestNewInteractionBuildsStableContextSnapshot(t *testing.T) {
-	ctx := context.Background()
+	ctx := testutils.ContextWithTestAccess(context.Background())
 	store := memorystore.NewMemoryStore(10)
 	createAgentSession(t, store, "snapshot-session")
 
-	completed, err := store.BeginTurn(ctx, "snapshot-session")
+	completed, err := store.BeginTurn(ctx, testutils.TestAccess(), "snapshot-session")
 	if err != nil {
 		t.Fatalf("BeginTurn(completed) error = %v", err)
 	}
-	if err := store.AddHistoryToTurn(ctx, "snapshot-session", completed,
+	if err := store.AddHistoryToTurn(ctx, testutils.TestAccess(), "snapshot-session", completed,
 		ai.NewUserTextMessage("first question"), ai.NewModelTextMessage("first answer")); err != nil {
 		t.Fatalf("AddHistoryToTurn(completed) error = %v", err)
 	}
-	if err := store.NextTurnForTurn(ctx, "snapshot-session", completed); err != nil {
+	if err := store.NextTurnForTurn(ctx, testutils.TestAccess(), "snapshot-session", completed); err != nil {
 		t.Fatalf("NextTurnForTurn(completed) error = %v", err)
 	}
 
@@ -107,29 +109,21 @@ func TestNewInteractionBuildsStableContextSnapshot(t *testing.T) {
 		t.Fatalf("newInteraction() error = %v", err)
 	}
 	defer state.cancelPersistence()
-	defer func() { _ = store.AbortTurnForTurn(context.Background(), "snapshot-session", state.turnID) }()
+	defer func() {
+		_ = store.AbortTurnForTurn(context.Background(), testutils.TestAccess(), "snapshot-session", state.turnID)
+	}()
 
 	if got, want := messageTextList(state.messages), []string{"first question", "first answer", "follow-up"}; fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("context snapshot = %v, want %v", got, want)
 	}
 
-	other, err := store.BeginTurn(ctx, "snapshot-session")
-	if err != nil {
-		t.Fatalf("BeginTurn(other) error = %v", err)
-	}
-	if err := store.AddHistoryToTurn(ctx, "snapshot-session", other, ai.NewUserTextMessage("later turn")); err != nil {
-		t.Fatalf("AddHistoryToTurn(other) error = %v", err)
-	}
-	if err := store.NextTurnForTurn(ctx, "snapshot-session", other); err != nil {
-		t.Fatalf("NextTurnForTurn(other) error = %v", err)
-	}
-	if got := messageTextList(state.messages); strings.Contains(strings.Join(got, " "), "later turn") {
-		t.Fatalf("interaction snapshot changed after another turn completed: %v", got)
+	if _, err := store.BeginTurn(ctx, testutils.TestAccess(), "snapshot-session"); !errors.Is(err, conversationstore.ErrSessionBusy) {
+		t.Fatalf("concurrent BeginTurn() = %v, want ErrSessionBusy", err)
 	}
 }
 
 func TestRunAppendsToolOutputToContextSnapshotWithoutReloading(t *testing.T) {
-	ctx := context.Background()
+	ctx := testutils.ContextWithTestAccess(context.Background())
 	baseStore := memorystore.NewMemoryStore(10)
 	createAgentSession(t, baseStore, "tool-snapshot-session")
 	store := &trackingContextStore{Store: baseStore}
@@ -156,7 +150,9 @@ func TestRunAppendsToolOutputToContextSnapshotWithoutReloading(t *testing.T) {
 		t.Fatalf("newInteraction() error = %v", err)
 	}
 	defer state.cancelPersistence()
-	defer func() { _ = baseStore.AbortTurnForTurn(context.Background(), "tool-snapshot-session", state.turnID) }()
+	defer func() {
+		_ = baseStore.AbortTurnForTurn(context.Background(), testutils.TestAccess(), "tool-snapshot-session", state.turnID)
+	}()
 
 	if _, err := ra.run(interactionCtx, nil, state, &interactionTrace{}); err != nil {
 		t.Fatalf("run() error = %v", err)
@@ -179,7 +175,7 @@ func TestRunAppendsToolOutputToContextSnapshotWithoutReloading(t *testing.T) {
 }
 
 func TestNewInteractionAbortsTurnWhenContextLoadFails(t *testing.T) {
-	ctx := context.Background()
+	ctx := testutils.ContextWithTestAccess(context.Background())
 	baseStore := memorystore.NewMemoryStore(10)
 	createAgentSession(t, baseStore, "failed-context-session")
 	store := &trackingContextStore{Store: baseStore, fail: errors.New("context unavailable")}
@@ -188,7 +184,7 @@ func TestNewInteractionAbortsTurnWhenContextLoadFails(t *testing.T) {
 	if _, _, err := ra.newInteraction(ctx, &schema.UserInput{Content: "hello"}, "failed-context-session"); err == nil || !strings.Contains(err.Error(), "failed to load conversation context") {
 		t.Fatalf("newInteraction() error = %v, want context load failure", err)
 	}
-	messages, err := baseStore.AllMemory(ctx, "failed-context-session")
+	messages, err := baseStore.AllMemory(ctx, testutils.TestAccess(), "failed-context-session")
 	if err != nil {
 		t.Fatalf("AllMemory() error = %v", err)
 	}
@@ -198,7 +194,7 @@ func TestNewInteractionAbortsTurnWhenContextLoadFails(t *testing.T) {
 }
 
 func TestInteractAbortsTurnWhenModelCallFails(t *testing.T) {
-	ctx := context.Background()
+	ctx := testutils.ContextWithTestAccess(context.Background())
 	store := memorystore.NewMemoryStore(10)
 	createAgentSession(t, store, "model-failure-session")
 	script := &scriptPrompt{errs: []error{errors.New("model unavailable")}}
@@ -215,7 +211,7 @@ func TestInteractAbortsTurnWhenModelCallFails(t *testing.T) {
 }
 
 func TestInteractAbortsTurnWhenToolHistoryWriteFails(t *testing.T) {
-	ctx := context.Background()
+	ctx := testutils.ContextWithTestAccess(context.Background())
 	baseStore := memorystore.NewMemoryStore(10)
 	createAgentSession(t, baseStore, "tool-write-failure-session")
 	store := &failingMessageStore{Store: baseStore, failOn: 2}
@@ -242,9 +238,7 @@ func TestInteractAbortsTurnWhenToolHistoryWriteFails(t *testing.T) {
 func createAgentSession(t *testing.T, store conversationstore.Store, sessionID string) {
 	t.Helper()
 	now := time.Now()
-	if err := store.Create(context.Background(), &conversationstore.Session{
-		ID: sessionID, CreatedAt: now, UpdatedAt: now, Status: "active",
-	}); err != nil {
+	if err := store.Create(context.Background(), testutils.TestAccess(), testutils.TestSession(sessionID, now)); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
 }
@@ -274,7 +268,7 @@ func consumeInteraction(t *testing.T, channels *agent.Channels) {
 
 func assertNoStoredMessages(t *testing.T, store conversationstore.Store, sessionID string) {
 	t.Helper()
-	messages, err := store.AllMemory(context.Background(), sessionID)
+	messages, err := store.AllMemory(context.Background(), testutils.TestAccess(), sessionID)
 	if err != nil {
 		t.Fatalf("AllMemory() error = %v", err)
 	}

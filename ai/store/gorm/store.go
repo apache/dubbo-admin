@@ -1113,6 +1113,43 @@ func (s *GormStore) WindowMemoryForTurn(ctx context.Context, access security.Acc
 	return readTurnMessages(s.db, normalizeContext(ctx), turn.ID)
 }
 
+func (s *GormStore) ContextWindowForTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64, completedLimit int) ([]*ai.Message, error) {
+	if completedLimit < 0 {
+		completedLimit = 0
+	}
+	if err := s.checkContext(ctx); err != nil {
+		return nil, err
+	}
+	if _, err := s.findActiveSession(s.db.WithContext(normalizeContext(ctx)), access, sessionID, false); err != nil {
+		return nil, err
+	}
+	var active TurnModel
+	if err := s.db.WithContext(normalizeContext(ctx)).Where("id = ? AND session_id = ? AND completed_at IS NULL", turnID, sessionID).First(&active).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, conversationstore.ErrTurnNotFound
+	} else if err != nil {
+		return nil, err
+	}
+	var completed []TurnModel
+	if completedLimit > 0 {
+		if err := s.db.WithContext(normalizeContext(ctx)).Where("session_id = ? AND completed_at IS NOT NULL", sessionID).Order("id DESC").Limit(completedLimit).Find(&completed).Error; err != nil {
+			return nil, err
+		}
+		for i, j := 0, len(completed)-1; i < j; i, j = i+1, j-1 {
+			completed[i], completed[j] = completed[j], completed[i]
+		}
+	}
+	turns := append(completed, active)
+	var result []*ai.Message
+	for _, turn := range turns {
+		messages, err := readTurnMessages(s.db, normalizeContext(ctx), turn.ID)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, messages...)
+	}
+	return result, nil
+}
+
 func (s *GormStore) AllMemory(ctx context.Context, access security.AccessContext, sessionID string) ([]*ai.Message, error) {
 	if err := s.checkContext(ctx); err != nil {
 		return nil, err

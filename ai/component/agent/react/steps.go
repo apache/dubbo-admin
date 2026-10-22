@@ -49,7 +49,7 @@ const fallbackAnswer = "抱歉，我暂时无法生成回答，请稍后再试�
 //
 // run streams the answer itself and returns the interaction's accumulated token
 // usage; the caller emits the final usage marker and closes the channels.
-func (ra *ReActAgent) run(ctx context.Context, chans *agent.Channels, s *interactionTrace) (*ai.GenerationUsage, error) {
+func (ra *ReActAgent) run(ctx context.Context, chans *agent.Channels, state *interactionState, s *interactionTrace) (*ai.GenerationUsage, error) {
 	sessionID, err := sessionIDFromCtx(ctx)
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func (ra *ReActAgent) run(ctx context.Context, chans *agent.Channels, s *interac
 	s.hookManager = ra.hookManager
 	for i := 0; i < ra.maxIterations; i++ {
 		s.Iteration = i + 1
-		done, err := ra.runIteration(ctx, chans, history, s, i == ra.maxIterations-1)
+		done, err := ra.runIteration(ctx, chans, history, state, s, i == ra.maxIterations-1)
 		if err != nil || done {
 			return s.Usage, err
 		}
@@ -95,7 +95,7 @@ func (ra *ReActAgent) run(ctx context.Context, chans *agent.Channels, s *interac
 }
 
 // runIteration makes one model call and executes its tools or streams its answer.
-func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, history *memory.HistoryMemory, s *interactionTrace, forceAnswer bool) (done bool, err error) {
+func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, history *memory.HistoryMemory, state *interactionState, s *interactionTrace, forceAnswer bool) (done bool, err error) {
 	iterationStartedAt := time.Now()
 	iterationCtx := emitHook(s.hookManager, ctx, hooks.State{
 		Event: hooks.EventIterationStart, InteractionID: s.InteractionID,
@@ -140,7 +140,13 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 		if accessErr != nil {
 			return false, accessErr
 		}
-		messages, err = ra.messageStore.WindowMemoryForTurn(ctx, access, s.Session, turnID)
+		if state == nil {
+			return false, fmt.Errorf("interaction state is required")
+		}
+		if _, err = ra.messageStore.IsTurnEmpty(ctx, access, s.Session, turnID); err != nil {
+			return false, err
+		}
+		messages = state.messages
 	} else {
 		messages = history.WindowMemory(s.Session)
 	}
@@ -170,7 +176,10 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 		if reqs := resp.ToolRequests(); len(reqs) > 0 {
 			runtime.GetLogger().Debug("react: model requested tools", "count", len(reqs))
 			agent.EmitProgress(chans, "🔍 分析问题并调用工具中...\n")
-			return false, ra.execTools(ctx, history, s, reqs)
+			if err := ra.execTools(ctx, history, state, s, reqs); err != nil {
+				return false, err
+			}
+			return false, nil
 		}
 	}
 	answer := resp.Text()
@@ -194,7 +203,7 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 // A failed tool degrades (its error is recorded as the tool's output) rather
 // than aborting the interaction, so the model can still answer from whatever
 // other tools returned.
-func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemory, s *interactionTrace, reqs []*ai.ToolRequest) error {
+func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemory, state *interactionState, s *interactionTrace, reqs []*ai.ToolRequest) error {
 	var parts []*ai.Part
 	for _, req := range reqs {
 		if err := ctx.Err(); err != nil {
@@ -230,6 +239,7 @@ func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemo
 		if err := ra.messageStore.AddHistoryToTurn(persistenceContext(ctx), access, s.Session, turnID, message); err != nil {
 			return fmt.Errorf("failed to record tool output: %w", err)
 		}
+		state.messages = append(state.messages, message)
 	} else {
 		history.AddHistory(s.Session, message)
 	}

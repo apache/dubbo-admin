@@ -1066,6 +1066,46 @@ func (m *MemoryStore) WindowMemoryForTurn(ctx context.Context, access security.A
 	return cloneTurnList([]*turn{active})
 }
 
+func (m *MemoryStore) ContextWindowForTurn(ctx context.Context, access security.AccessContext, sessionID string, turnID uint64, completedLimit int) ([]*ai.Message, error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
+	m.mu.RLock()
+	if err := m.validateSessionLocked(access, sessionID); err != nil {
+		m.mu.RUnlock()
+		return nil, err
+	}
+	history := m.history[sessionID]
+	if history == nil {
+		m.mu.RUnlock()
+		return nil, conversationstore.ErrTurnNotFound
+	}
+	active, ok := history.active[turnID]
+	if !ok {
+		m.mu.RUnlock()
+		return nil, conversationstore.ErrTurnNotFound
+	}
+	if completedLimit < 0 {
+		completedLimit = 0
+	}
+	turns := make([]*turn, 0, 1+min(completedLimit, len(history.history)))
+	start := len(history.history) - completedLimit
+	if start < 0 {
+		start = 0
+	}
+	for _, t := range history.history[start:] {
+		turns = append(turns, t)
+	}
+	turns = append(turns, active)
+	result, err := cloneTurnList(turns)
+	if err != nil {
+		m.mu.RUnlock()
+		return nil, err
+	}
+	m.mu.RUnlock()
+	return result, nil
+}
+
 func (m *MemoryStore) AllMemory(ctx context.Context, access security.AccessContext, sessionID string) ([]*ai.Message, error) {
 	if err := checkContext(ctx); err != nil {
 		return nil, err
