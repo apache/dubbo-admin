@@ -17,15 +17,18 @@
 
 package server
 
+import "dubbo-admin-ai/config"
+
 // ServerSpec defines server configuration
 type ServerSpec struct {
-	Port           int                `yaml:"port"`
-	Host           string             `yaml:"host"`
-	Debug          bool               `yaml:"debug"`
-	CORSOrigins    []string           `yaml:"cors_origins"`
-	ReadTimeout    int                `yaml:"read_timeout"`
-	WriteTimeout   int                `yaml:"write_timeout"`
-	Authentication AuthenticationSpec `yaml:"authentication"`
+	Port           int                 `yaml:"port"`
+	Host           string              `yaml:"host"`
+	Debug          bool                `yaml:"debug"`
+	CORSOrigins    []string            `yaml:"cors_origins"`
+	ReadTimeout    int                 `yaml:"read_timeout"`
+	WriteTimeout   int                 `yaml:"write_timeout"`
+	Authentication AuthenticationSpec  `yaml:"authentication"`
+	Features       config.FeatureFlags `yaml:"features"`
 }
 
 // AuthenticationSpec configures the trusted identity used by the AI HTTP
@@ -39,6 +42,9 @@ type AuthenticationSpec struct {
 	Scopes                  []string `yaml:"scopes"`
 	AllowInsecureStaticAuth bool     `yaml:"allow_insecure_static_auth"`
 	AdoptLegacySessions     bool     `yaml:"adopt_legacy_sessions"`
+	JWTSecret               string   `yaml:"jwt_secret"`
+	JWTIssuer               string   `yaml:"jwt_issuer"`
+	JWTAudience             string   `yaml:"jwt_audience"`
 }
 
 // DefaultServerSpec returns default server configuration

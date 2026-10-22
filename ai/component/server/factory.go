@@ -18,6 +18,7 @@
 package server
 
 import (
+	"dubbo-admin-ai/config"
 	"dubbo-admin-ai/runtime"
 	"fmt"
 
@@ -30,13 +31,13 @@ func ServerFactory(spec *yaml.Node) (runtime.Component, error) {
 		return nil, fmt.Errorf("spec is nil")
 	}
 
-	var cfg ServerSpec
+	cfg := ServerSpec{Features: config.DefaultFeatureFlags()}
 	if err := spec.Decode(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to decode server spec: %w", err)
 	}
 	cfg.Authentication.applyDefaults()
 
-	return NewServerComponentWithAuthentication(
+	component, err := NewServerComponentWithAuthentication(
 		cfg.Port,
 		cfg.Host,
 		cfg.Debug,
@@ -45,4 +46,9 @@ func ServerFactory(spec *yaml.Node) (runtime.Component, error) {
 		cfg.WriteTimeout,
 		cfg.Authentication,
 	)
+	if err != nil {
+		return nil, err
+	}
+	component.(*ServerComponent).features = cfg.Features
+	return component, nil
 }

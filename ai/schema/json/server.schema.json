@@ -60,7 +60,7 @@
           "properties": {
             "mode": {
               "type": "string",
-              "enum": ["static"],
+              "enum": ["static", "jwt"],
               "default": "static"
             },
             "tenant_id": {
@@ -94,7 +94,29 @@
               "type": "boolean",
               "default": false,
               "description": "Run the one-time migration for sessions where both tenant and owner are absent."
+            },
+            "jwt_secret": {
+              "type": "string",
+              "minLength": 32,
+              "description": "HMAC secret for JWT authentication; provide through environment expansion."
+            },
+            "jwt_issuer": {
+              "type": "string",
+              "minLength": 1
+            },
+            "jwt_audience": {
+              "type": "string",
+              "minLength": 1
             }
+          }
+        },
+        "features": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "production_auth": { "type": "boolean", "default": false },
+            "usage_persistence": { "type": "boolean", "default": true },
+            "audit_events": { "type": "boolean", "default": true }
           }
         }
       }

@@ -24,17 +24,110 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"dubbo-admin-ai/security"
 	memorystore "dubbo-admin-ai/store/memory"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type rejectingAuthenticator struct{}
 
 func (rejectingAuthenticator) Authenticate(*http.Request) (security.AccessContext, error) {
 	return security.AccessContext{}, security.ErrAuthenticationRequired
+}
+
+func TestJWTAuthenticationFlowsIntoSessionOwnership(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	secret := []byte("01234567890123456789012345678901")
+	auth, err := security.NewJWTAuthenticator(security.JWTConfig{Secret: secret, Issuer: "issuer", Audience: "audience"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := memorystore.NewMemoryStore()
+	router, err := NewRouter(nil, store, store, auth)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = router.Close() })
+	claims := jwt.MapClaims{"iss": "issuer", "aud": "audience", "sub": "user-a", "tenant_id": "tenant-a", "exp": time.Now().Add(time.Minute).Unix()}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	value, _ := token.SignedString(secret)
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/ai/sessions", nil)
+	request.Header.Set("Authorization", "Bearer "+value)
+	request.Header.Set("X-Tenant-ID", "attacker")
+	response := httptest.NewRecorder()
+	router.GetEngine().ServeHTTP(response, request)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"tenant_id":"tenant-a"`) {
+		t.Fatalf("JWT session create = %d, body = %s", response.Code, response.Body.String())
+	}
+	var created struct {
+		Data struct {
+			SessionID string `json:"session_id"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	if created.Data.SessionID == "" {
+		t.Fatal("missing session ID")
+	}
+	for _, caller := range []struct {
+		name, tenant, user string
+		secret             []byte
+	}{
+		{"other user", "tenant-a", "user-b", secret},
+		{"other tenant", "tenant-b", "user-a", secret},
+		{"wrong signature", "tenant-a", "user-a", []byte("different-secret-0123456789012345")},
+	} {
+		t.Run(caller.name, func(t *testing.T) {
+			claims := jwt.MapClaims{"iss": "issuer", "aud": "audience", "sub": caller.user, "tenant_id": caller.tenant, "exp": time.Now().Add(time.Minute).Unix()}
+			value, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(caller.secret)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, route := range []struct {
+				method, path, body string
+				status             int
+				code               string
+			}{
+				{http.MethodGet, "/api/v1/ai/sessions/" + created.Data.SessionID, "", http.StatusNotFound, "RESOURCE_NOT_ACCESSIBLE"},
+				{http.MethodGet, "/api/v1/ai/sessions", "", http.StatusOK, ""},
+				{http.MethodPost, "/api/v1/ai/chat/stream", `{"message":"hello","sessionID":"` + created.Data.SessionID + `"}`, http.StatusBadRequest, "RESOURCE_NOT_ACCESSIBLE"},
+				{http.MethodDelete, "/api/v1/ai/sessions/" + created.Data.SessionID, "", http.StatusNotFound, "RESOURCE_NOT_ACCESSIBLE"},
+			} {
+				request := httptest.NewRequest(route.method, route.path, strings.NewReader(route.body))
+				request.Header.Set("Authorization", "Bearer "+value)
+				request.Header.Set("Content-Type", "application/json")
+				request.Header.Set("X-Tenant-ID", "tenant-a")
+				request.Header.Set("X-User-ID", "user-a")
+				response := httptest.NewRecorder()
+				router.GetEngine().ServeHTTP(response, request)
+				want, code := route.status, route.code
+				if caller.name == "wrong signature" {
+					want, code = http.StatusUnauthorized, "AUTHENTICATION_REQUIRED"
+				}
+				if response.Code != want || (code != "" && !strings.Contains(response.Body.String(), code)) {
+					t.Fatalf("%s %s = %d %s", route.method, route.path, response.Code, response.Body.String())
+				}
+				if want == http.StatusOK && !strings.Contains(response.Body.String(), `"total":0`) {
+					t.Fatalf("JWT list exposed another owner's session: %s", response.Body.String())
+				}
+			}
+		})
+	}
+	owner, err := auth.Authenticate(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sessions, err := store.List(t.Context(), owner); err != nil || len(sessions) != 1 {
+		t.Fatalf("unauthorized requests changed sessions: %v, %v", sessions, err)
+	}
+	if messages, err := store.AllMemory(t.Context(), owner, created.Data.SessionID); err != nil || len(messages) != 0 {
+		t.Fatalf("unauthorized chat persisted messages: %v, %v", messages, err)
+	}
 }
 
 type systemAuthenticator struct{}
