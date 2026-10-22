@@ -132,3 +132,61 @@ type TenantUsageModel struct {
 }
 
 func (TenantUsageModel) TableName() string { return "ai_tenant_usage" }
+
+type UsageEventModel struct {
+	ID              string `gorm:"primaryKey;size:64"`
+	SchemaVersion   string `gorm:"size:32"`
+	TenantID        string `gorm:"size:128;not null;index"`
+	UserID          string `gorm:"size:128;not null;index"`
+	SessionID       string `gorm:"size:64;index"`
+	InteractionID   string `gorm:"size:64;index"`
+	CallID          string `gorm:"size:128;index"`
+	CallType        string `gorm:"size:32;not null"`
+	Provider        string `gorm:"size:128"`
+	Model           string `gorm:"size:128"`
+	ProviderVersion string `gorm:"size:64"`
+	ModelVersion    string `gorm:"size:64"`
+	PolicyVersion   string `gorm:"size:64"`
+	AmountSource    string `gorm:"size:24;not null"`
+	InputTokens     *int
+	OutputTokens    *int
+	TotalTokens     *int
+	PricingVersion  string `gorm:"size:64"`
+	CostStatus      string `gorm:"size:24;not null"`
+	Cost            *float64
+	Status          string    `gorm:"size:32"`
+	ReasonCode      string    `gorm:"size:64"`
+	Attempt         int       `gorm:"not null;default:0"`
+	Retry           bool      `gorm:"not null;default:false"`
+	Auxiliary       bool      `gorm:"not null;default:false"`
+	CreatedAt       time.Time `gorm:"not null;index"`
+}
+
+func (UsageEventModel) TableName() string { return "ai_usage_events" }
+
+type AuditEventModel struct {
+	ID               string    `gorm:"primaryKey;size:64"`
+	SchemaVersion    string    `gorm:"size:32"`
+	TenantID         string    `gorm:"size:128;not null;index"`
+	UserID           string    `gorm:"size:128;not null;index"`
+	SessionID        string    `gorm:"size:64;index"`
+	InteractionID    string    `gorm:"size:64;index"`
+	CallID           string    `gorm:"size:128;index"`
+	ToolCallID       string    `gorm:"size:128;index"`
+	EventType        string    `gorm:"size:64;not null;index"`
+	Status           string    `gorm:"size:32"`
+	ReasonCode       string    `gorm:"size:64"`
+	PolicyVersion    string    `gorm:"size:64"`
+	ComponentVersion string    `gorm:"size:64"`
+	CreatedAt        time.Time `gorm:"not null;index"`
+}
+
+func (AuditEventModel) TableName() string { return "ai_audit_events" }
+
+// EventCapacityModel serializes reservations across Store instances and processes.
+type EventCapacityModel struct {
+	Kind       string `gorm:"primaryKey;size:16"`
+	EventCount int64  `gorm:"not null;default:0"`
+}
+
+func (EventCapacityModel) TableName() string { return "ai_event_capacity" }

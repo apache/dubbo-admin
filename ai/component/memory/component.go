@@ -55,6 +55,7 @@ type MemoryComponent struct {
 	cleanupHandlers       map[string]conversationstore.DerivedArtifactCleanupHandler
 	cleanupSessionCursor  conversationstore.CleanupCursor
 	cleanupArtifactCursor conversationstore.CleanupCursor
+	usageAuditPolicy      conversationstore.UsageAuditPolicy
 }
 
 func NewMemoryComponent(historyKey HistoryKey, maxTurns ...int) (runtime.Component, error) {
@@ -143,6 +144,8 @@ func (m *MemoryComponent) Init(rt *runtime.Runtime) error {
 		MaxTenantBytes: m.spec.Quota.MaxTenantBytes, MaxInMemoryEntities: m.spec.Quota.MaxInMemoryEntities,
 	}
 	lifecycle := m.GetLifecyclePolicy()
+	usageAudit := conversationstore.UsageAuditPolicy{Retention: time.Duration(m.spec.UsageAudit.RetentionSeconds) * time.Second, MaxUsageEvents: m.spec.UsageAudit.MaxUsageEvents, MaxAuditEvents: m.spec.UsageAudit.MaxAuditEvents, CleanupBatchSize: m.spec.UsageAudit.CleanupBatchSize}
+	m.usageAuditPolicy = usageAudit
 	backend := m.spec.Backend
 	if backend == "" {
 		backend = DefaultBackend
@@ -150,6 +153,7 @@ func (m *MemoryComponent) Init(rt *runtime.Runtime) error {
 	switch backend {
 	case "memory":
 		m.store = memorystore.NewMemoryStoreWithPolicies(quota, lifecycle)
+		m.store.(*memorystore.MemoryStore).SetUsageAuditPolicy(usageAudit)
 	case "gorm":
 		if m.spec.Database == nil {
 			return fmt.Errorf("database is required for gorm backend")
@@ -176,6 +180,7 @@ func (m *MemoryComponent) Init(rt *runtime.Runtime) error {
 			_ = gormStore.Close()
 			return fmt.Errorf("failed to migrate conversation database: %w", err)
 		}
+		gormStore.SetUsageAuditPolicy(usageAudit)
 		m.gormStore = gormStore
 		m.store = gormStore
 	default:
@@ -233,6 +238,19 @@ func (m *MemoryComponent) runCleanup() {
 
 func (m *MemoryComponent) runCleanupOnce(ctx context.Context, now time.Time, batchSize int) (int, error) {
 	access := security.SystemAccessContext()
+	usageAuditStore, ok := m.store.(conversationstore.UsageAuditMaintenanceStore)
+	if !ok {
+		return 0, fmt.Errorf("store does not support usage and audit cleanup")
+	}
+	usageCutoff := now.Add(-m.usageAuditPolicy.Retention)
+	usageDeleted, err := usageAuditStore.CleanupUsage(ctx, access, usageCutoff, m.usageAuditPolicy.CleanupBatchSize)
+	if err != nil {
+		return usageDeleted, err
+	}
+	auditDeleted, err := usageAuditStore.CleanupAudit(ctx, access, usageCutoff, m.usageAuditPolicy.CleanupBatchSize)
+	if err != nil {
+		return usageDeleted, err
+	}
 	deleted, nextSession, err := m.store.DeleteExpiredPage(ctx, access, now, m.cleanupSessionCursor, batchSize)
 	if err != nil {
 		return deleted, err
@@ -273,14 +291,14 @@ func (m *MemoryComponent) runCleanupOnce(ctx context.Context, now time.Time, bat
 		cleanedArtifact = true
 	}
 	if !cleanedArtifact {
-		return deleted, nil
+		return deleted + usageDeleted + auditDeleted, nil
 	}
 	finalized, nextSession, err := m.store.DeleteExpiredPage(ctx, access, now, m.cleanupSessionCursor, batchSize)
 	m.cleanupSessionCursor = nextSession
 	if !nextSession.Valid {
 		m.cleanupSessionCursor = conversationstore.CleanupCursor{}
 	}
-	return deleted + finalized, err
+	return deleted + finalized + usageDeleted + auditDeleted, err
 }
 
 // initLegacyMemory initializes the deprecated context-backed memory only when

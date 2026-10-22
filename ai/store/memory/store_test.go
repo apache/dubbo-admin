@@ -29,6 +29,36 @@ import (
 	"github.com/firebase/genkit/go/ai"
 )
 
+func TestAuditRecordsRetainCallIdentifiers(t *testing.T) {
+	s := NewMemoryStore()
+	access := security.MustAccessContext(security.Subject{TenantID: "tenant", UserID: "owner", AuthMethod: security.AuthMethodJWT})
+	ctx := security.WithAccessContext(context.Background(), access)
+	events := []conversationstore.AuditEvent{
+		{EventType: "interaction.start"},
+		{EventType: "model_call.end", CallID: "model-1"},
+		{EventType: "model_call.end", CallID: "model-2", Status: "error"},
+		{EventType: "tool_call.end", ToolCallID: "tool-1"},
+		{EventType: "tool_call.end", ToolCallID: "tool-2", Status: "error"},
+	}
+	for _, event := range events {
+		event.TenantID, event.InteractionID = "tenant", "interaction"
+		if err := s.RecordAudit(ctx, event); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if s.auditEvents.Len() != len(events) {
+		t.Fatalf("stored %d events", s.auditEvents.Len())
+	}
+	element := s.auditEvents.Front()
+	for i, expected := range events {
+		stored := element.Value.(conversationstore.AuditEvent)
+		if stored.InteractionID != "interaction" || stored.CallID != expected.CallID || stored.ToolCallID != expected.ToolCallID {
+			t.Fatalf("audit %d lost call identity: %+v", i, stored)
+		}
+		element = element.Next()
+	}
+}
+
 func TestCustomRetentionAppliesToDirectCreate(t *testing.T) {
 	quota := conversationstore.DefaultQuotaPolicy()
 	lifecycle := conversationstore.DefaultLifecyclePolicy()

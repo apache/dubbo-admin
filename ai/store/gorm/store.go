@@ -42,13 +42,15 @@ const DefaultMaxTurns = 100
 // It deliberately does not use database foreign keys: relationship checks and
 // deletion ordering are handled explicitly by the store transaction.
 type GormStore struct {
-	db        *gorm.DB
-	limit     int
-	quota     conversationstore.QuotaPolicy
-	lifecycle conversationstore.LifecyclePolicy
+	db          *gorm.DB
+	limit       int
+	quota       conversationstore.QuotaPolicy
+	lifecycle   conversationstore.LifecyclePolicy
+	usagePolicy conversationstore.UsageAuditPolicy
 }
 
 var _ conversationstore.BackendStore = (*GormStore)(nil)
+var _ conversationstore.UsageAuditMaintenanceStore = (*GormStore)(nil)
 
 // NewGormStore creates a store around an already opened Gorm database. The
 // optional limit exists for runtime configuration and tests; the default
@@ -87,7 +89,13 @@ func NewGormStoreWithPolicies(db *gorm.DB, quota conversationstore.QuotaPolicy, 
 	db.Config.DisableForeignKeyConstraintWhenMigrating = true
 	quota = quota.WithDefaults()
 	lifecycle = lifecycle.WithDefaults()
-	return &GormStore{db: db, limit: quota.MaxTurnsPerSession, quota: quota, lifecycle: lifecycle}, nil
+	return &GormStore{db: db, limit: quota.MaxTurnsPerSession, quota: quota, lifecycle: lifecycle, usagePolicy: conversationstore.DefaultUsageAuditPolicy()}, nil
+}
+
+func (s *GormStore) SetUsageAuditPolicy(policy conversationstore.UsageAuditPolicy) {
+	if s != nil {
+		s.usagePolicy = policy.WithDefaults()
+	}
 }
 
 // Migrate creates or updates the Store tables. Gorm's model associations are
@@ -100,10 +108,41 @@ func (s *GormStore) Migrate(ctx context.Context) error {
 	if err := db.AutoMigrate(
 		&SessionModel{}, &TurnModel{}, &MessageModel{}, &InteractionModel{},
 		&DerivedArtifactModel{}, &CleanupJobModel{}, &OutboxEventModel{}, &TenantUsageModel{},
+		&UsageEventModel{}, &AuditEventModel{}, &EventCapacityModel{},
 	); err != nil {
 		return err
 	}
 	return db.Transaction(func(tx *gorm.DB) error {
+		for _, entry := range []struct {
+			kind  string
+			model any
+		}{{"usage", &UsageEventModel{}}, {"audit", &AuditEventModel{}}} {
+			// Only initialize a missing counter. Never recount over a live counter:
+			// existing writers may be reserving capacity in other processes.
+			result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&EventCapacityModel{Kind: entry.kind, EventCount: -1})
+			if result.Error != nil {
+				return result.Error
+			}
+			// Lock before examining the initialization sentinel. Do not infer
+			// insertion from RowsAffected: MySQL clientFoundRows changes its meaning.
+			if err := tx.Model(&EventCapacityModel{}).Where("kind = ?", entry.kind).
+				Update("event_count", gorm.Expr("event_count + 0")).Error; err != nil {
+				return err
+			}
+			var capacity EventCapacityModel
+			if err := tx.First(&capacity, "kind = ?", entry.kind).Error; err != nil {
+				return err
+			}
+			if capacity.EventCount < 0 {
+				var count int64
+				if err := tx.Model(entry.model).Count(&count).Error; err != nil {
+					return err
+				}
+				if err := tx.Model(&EventCapacityModel{}).Where("kind = ?", entry.kind).Update("event_count", count).Error; err != nil {
+					return err
+				}
+			}
+		}
 		var artifacts []DerivedArtifactModel
 		if err := tx.Where("source_session_id = ?", "").Find(&artifacts).Error; err != nil {
 			return err
@@ -1535,4 +1574,102 @@ func supportedRole(role ai.Role) bool {
 
 func (s *GormStore) isExpired(session *SessionModel, now time.Time) bool {
 	return conversationstore.IsSessionExpired(session.ExpiresAt, session.UpdatedAt, now, s.lifecycle.Retention)
+}
+
+func (s *GormStore) RecordUsage(ctx context.Context, event conversationstore.UsageEvent) error {
+	access, err := security.AccessContextFromContext(ctx)
+	if err != nil || access.ValidateBusiness() != nil || event.TenantID == "" || event.TenantID != access.Subject.TenantID || (event.UserID != "" && event.UserID != access.Subject.UserID) {
+		return security.ErrResourceNotAccessible
+	}
+	event.UserID = access.Subject.UserID
+	if event.ID == "" {
+		event.ID = uuid.NewString()
+	}
+	if event.CreatedAt.IsZero() {
+		event.CreatedAt = time.Now()
+	}
+	return s.recordEvent(ctx, "usage", s.usagePolicy.MaxUsageEvents, &UsageEventModel{ID: event.ID, SchemaVersion: event.SchemaVersion, TenantID: event.TenantID, UserID: event.UserID, SessionID: event.SessionID, InteractionID: event.InteractionID, CallID: event.CallID, CallType: event.CallType, Provider: event.Provider, Model: event.Model, ProviderVersion: event.ProviderVersion, ModelVersion: event.ModelVersion, PolicyVersion: event.PolicyVersion, AmountSource: event.AmountSource, InputTokens: event.InputTokens, OutputTokens: event.OutputTokens, TotalTokens: event.TotalTokens, PricingVersion: event.PricingVersion, CostStatus: event.CostStatus, Cost: event.Cost, Status: event.Status, ReasonCode: event.ReasonCode, Attempt: event.Attempt, Retry: event.Retry, Auxiliary: event.Auxiliary, CreatedAt: event.CreatedAt})
+}
+
+func (s *GormStore) RecordAudit(ctx context.Context, event conversationstore.AuditEvent) error {
+	access, err := security.AccessContextFromContext(ctx)
+	if err != nil || access.ValidateBusiness() != nil || event.TenantID == "" || event.TenantID != access.Subject.TenantID || (event.UserID != "" && event.UserID != access.Subject.UserID) {
+		return security.ErrResourceNotAccessible
+	}
+	event.UserID = access.Subject.UserID
+	if event.ID == "" {
+		event.ID = uuid.NewString()
+	}
+	if event.CreatedAt.IsZero() {
+		event.CreatedAt = time.Now()
+	}
+	return s.recordEvent(ctx, "audit", s.usagePolicy.MaxAuditEvents, &AuditEventModel{ID: event.ID, SchemaVersion: event.SchemaVersion, TenantID: event.TenantID, UserID: event.UserID, SessionID: event.SessionID, InteractionID: event.InteractionID, CallID: event.CallID, ToolCallID: event.ToolCallID, EventType: event.EventType, Status: event.Status, ReasonCode: event.ReasonCode, PolicyVersion: event.PolicyVersion, ComponentVersion: event.ComponentVersion, CreatedAt: event.CreatedAt})
+}
+
+// recordEvent reserves a slot and inserts atomically. The conditional UPDATE
+// serializes writers in the database, including independent Store processes.
+func (s *GormStore) recordEvent(ctx context.Context, kind string, maximum int, model any) error {
+	return s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
+		result := tx.Model(&EventCapacityModel{}).Where("kind = ? AND event_count >= 0 AND event_count < ?", kind, maximum).
+			Update("event_count", gorm.Expr("event_count + 1"))
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return conversationstore.ErrResourceExhausted
+		}
+		return tx.Create(model).Error
+	})
+}
+
+func (s *GormStore) CleanupUsage(ctx context.Context, access security.AccessContext, cutoff time.Time, limit int) (int, error) {
+	return s.cleanupEvents(ctx, access, cutoff, limit, "usage", &UsageEventModel{})
+}
+
+func (s *GormStore) CleanupAudit(ctx context.Context, access security.AccessContext, cutoff time.Time, limit int) (int, error) {
+	return s.cleanupEvents(ctx, access, cutoff, limit, "audit", &AuditEventModel{})
+}
+
+func (s *GormStore) cleanupEvents(ctx context.Context, access security.AccessContext, cutoff time.Time, limit int, kind string, model any) (int, error) {
+	if err := access.Validate(); err != nil {
+		return 0, err
+	}
+	if !access.IsSystem() {
+		return 0, security.ErrResourceNotAccessible
+	}
+	if err := s.checkContext(ctx); err != nil {
+		return 0, err
+	}
+	if limit <= 0 || limit > s.usagePolicy.CleanupBatchSize {
+		limit = s.usagePolicy.CleanupBatchSize
+	}
+	cutoff = conversationstore.UsageAuditCleanupCutoff(cutoff, time.Now(), s.usagePolicy)
+	removed := 0
+	err := s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
+		// Lock the same capacity row before selecting deletions. A concurrent
+		// cleanup must not delete/count the same records twice.
+		if err := tx.Model(&EventCapacityModel{}).Where("kind = ?", kind).
+			Update("event_count", gorm.Expr("event_count + 0")).Error; err != nil {
+			return err
+		}
+		var ids []string
+		if err := tx.Model(model).Where("created_at < ?", cutoff).Order("created_at ASC, id ASC").
+			Limit(limit).Pluck("id", &ids).Error; err != nil {
+			return err
+		}
+		if len(ids) == 0 {
+			return nil
+		}
+		result := tx.Where("id IN ?", ids).Delete(model)
+		if result.Error != nil {
+			return result.Error
+		}
+		removed = int(result.RowsAffected)
+		return tx.Model(&EventCapacityModel{}).Where("kind = ?", kind).
+			Update("event_count", gorm.Expr("event_count - ?", removed)).Error
+	})
+	if err != nil {
+		return 0, err
+	}
+	return removed, nil
 }

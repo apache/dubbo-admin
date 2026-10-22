@@ -85,6 +85,43 @@ type LifecyclePolicy struct {
 	InteractionLease time.Duration
 }
 
+type UsageAuditPolicy struct {
+	Retention        time.Duration
+	MaxUsageEvents   int
+	MaxAuditEvents   int
+	CleanupBatchSize int
+}
+
+// UsageAuditCleanupCutoff never permits cleanup inside the retention window.
+func UsageAuditCleanupCutoff(cutoff, now time.Time, policy UsageAuditPolicy) time.Time {
+	oldestAllowed := now.Add(-policy.WithDefaults().Retention)
+	if cutoff.After(oldestAllowed) {
+		return oldestAllowed
+	}
+	return cutoff
+}
+
+func DefaultUsageAuditPolicy() UsageAuditPolicy {
+	return UsageAuditPolicy{Retention: 30 * 24 * time.Hour, MaxUsageEvents: 100000, MaxAuditEvents: 100000, CleanupBatchSize: 1000}
+}
+
+func (p UsageAuditPolicy) WithDefaults() UsageAuditPolicy {
+	d := DefaultUsageAuditPolicy()
+	if p.Retention <= 0 {
+		p.Retention = d.Retention
+	}
+	if p.MaxUsageEvents <= 0 {
+		p.MaxUsageEvents = d.MaxUsageEvents
+	}
+	if p.MaxAuditEvents <= 0 {
+		p.MaxAuditEvents = d.MaxAuditEvents
+	}
+	if p.CleanupBatchSize <= 0 {
+		p.CleanupBatchSize = d.CleanupBatchSize
+	}
+	return p
+}
+
 func DefaultLifecyclePolicy() LifecyclePolicy {
 	return LifecyclePolicy{
 		Retention: 24 * time.Hour, CleanupInterval: time.Hour,

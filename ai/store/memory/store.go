@@ -18,6 +18,7 @@
 package memory
 
 import (
+	"container/list"
 	"context"
 	"encoding/json"
 	"errors"
@@ -67,6 +68,7 @@ type MemoryStore struct {
 	limit              int
 	quota              conversationstore.QuotaPolicy
 	lifecycle          conversationstore.LifecyclePolicy
+	usagePolicy        conversationstore.UsageAuditPolicy
 	sessions           map[string]conversationstore.Session
 	history            map[string]*sessionHistory
 	interactions       map[string]conversationstore.Interaction
@@ -75,9 +77,14 @@ type MemoryStore struct {
 	derivedArtifacts   map[string]conversationstore.DerivedArtifact
 	cleanupJobs        map[string]conversationstore.CleanupJob
 	outbox             map[string]conversationstore.OutboxEvent
+	usageEvents        list.List
+	auditEvents        list.List
+	usageCleanupCursor *list.Element
+	auditCleanupCursor *list.Element
 }
 
 var _ conversationstore.BackendStore = (*MemoryStore)(nil)
+var _ conversationstore.UsageAuditMaintenanceStore = (*MemoryStore)(nil)
 
 // NewMemoryStore creates a MemoryStore. The optional limit exists for runtime
 // configuration and tests; the default matches MemorySpec.
@@ -98,10 +105,12 @@ func NewMemoryStoreWithPolicy(quota conversationstore.QuotaPolicy) *MemoryStore 
 func NewMemoryStoreWithPolicies(quota conversationstore.QuotaPolicy, lifecycle conversationstore.LifecyclePolicy) *MemoryStore {
 	quota = quota.WithDefaults()
 	lifecycle = lifecycle.WithDefaults()
+	usagePolicy := conversationstore.DefaultUsageAuditPolicy()
 	return &MemoryStore{
 		limit:              quota.MaxTurnsPerSession,
 		quota:              quota,
 		lifecycle:          lifecycle,
+		usagePolicy:        usagePolicy,
 		sessions:           make(map[string]conversationstore.Session),
 		history:            make(map[string]*sessionHistory),
 		interactions:       make(map[string]conversationstore.Interaction),
@@ -111,6 +120,15 @@ func NewMemoryStoreWithPolicies(quota conversationstore.QuotaPolicy, lifecycle c
 		cleanupJobs:        make(map[string]conversationstore.CleanupJob),
 		outbox:             make(map[string]conversationstore.OutboxEvent),
 	}
+}
+
+func (m *MemoryStore) SetUsageAuditPolicy(policy conversationstore.UsageAuditPolicy) {
+	if m == nil {
+		return
+	}
+	m.mu.Lock()
+	m.usagePolicy = policy.WithDefaults()
+	m.mu.Unlock()
 }
 
 func (m *MemoryStore) Create(ctx context.Context, access security.AccessContext, session *conversationstore.Session) error {
@@ -1379,14 +1397,151 @@ func (m *MemoryStore) isExpired(session conversationstore.Session, now time.Time
 	return conversationstore.IsSessionExpired(session.ExpiresAt, session.UpdatedAt, now, m.lifecycle.Retention)
 }
 
+func (m *MemoryStore) RecordUsage(ctx context.Context, event conversationstore.UsageEvent) error {
+	if err := checkContext(ctx); err != nil {
+		return err
+	}
+	access, err := security.AccessContextFromContext(ctx)
+	if err != nil || access.ValidateBusiness() != nil || event.TenantID == "" || event.TenantID != access.Subject.TenantID || (event.UserID != "" && event.UserID != access.Subject.UserID) {
+		return security.ErrResourceNotAccessible
+	}
+	event.UserID = access.Subject.UserID
+	if event.ID == "" {
+		event.ID = uuid.NewString()
+	}
+	if event.CreatedAt.IsZero() {
+		event.CreatedAt = time.Now()
+	}
+	m.mu.Lock()
+	if err := checkContext(ctx); err != nil {
+		m.mu.Unlock()
+		return err
+	}
+	if m.usageEvents.Len() >= m.usagePolicy.MaxUsageEvents {
+		m.mu.Unlock()
+		return conversationstore.ErrResourceExhausted
+	}
+	m.usageEvents.PushBack(event)
+	m.mu.Unlock()
+	return nil
+}
+
+func (m *MemoryStore) RecordAudit(ctx context.Context, event conversationstore.AuditEvent) error {
+	if err := checkContext(ctx); err != nil {
+		return err
+	}
+	access, err := security.AccessContextFromContext(ctx)
+	if err != nil || access.ValidateBusiness() != nil || event.TenantID == "" || event.TenantID != access.Subject.TenantID || (event.UserID != "" && event.UserID != access.Subject.UserID) {
+		return security.ErrResourceNotAccessible
+	}
+	event.UserID = access.Subject.UserID
+	if event.ID == "" {
+		event.ID = uuid.NewString()
+	}
+	if event.CreatedAt.IsZero() {
+		event.CreatedAt = time.Now()
+	}
+	m.mu.Lock()
+	if err := checkContext(ctx); err != nil {
+		m.mu.Unlock()
+		return err
+	}
+	if m.auditEvents.Len() >= m.usagePolicy.MaxAuditEvents {
+		m.mu.Unlock()
+		return conversationstore.ErrResourceExhausted
+	}
+	m.auditEvents.PushBack(event)
+	m.mu.Unlock()
+	return nil
+}
+
+func (m *MemoryStore) CleanupUsage(ctx context.Context, access security.AccessContext, cutoff time.Time, limit int) (int, error) {
+	if err := access.Validate(); err != nil {
+		return 0, err
+	}
+	if !access.IsSystem() {
+		return 0, security.ErrResourceNotAccessible
+	}
+	if err := checkContext(ctx); err != nil {
+		return 0, err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	cutoff = conversationstore.UsageAuditCleanupCutoff(cutoff, time.Now(), m.usagePolicy)
+	return cleanupEvents(ctx, &m.usageEvents, &m.usageCleanupCursor, cutoff, cleanupScanLimit(limit, m.usagePolicy.CleanupBatchSize))
+}
+
+func (m *MemoryStore) CleanupAudit(ctx context.Context, access security.AccessContext, cutoff time.Time, limit int) (int, error) {
+	if err := access.Validate(); err != nil {
+		return 0, err
+	}
+	if !access.IsSystem() {
+		return 0, security.ErrResourceNotAccessible
+	}
+	if err := checkContext(ctx); err != nil {
+		return 0, err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	cutoff = conversationstore.UsageAuditCleanupCutoff(cutoff, time.Now(), m.usagePolicy)
+	return cleanupEvents(ctx, &m.auditEvents, &m.auditCleanupCursor, cutoff, cleanupScanLimit(limit, m.usagePolicy.CleanupBatchSize))
+}
+
+func cleanupScanLimit(requested, configured int) int {
+	if requested <= 0 || requested > configured {
+		return configured
+	}
+	return requested
+}
+
+// A linked list permits bounded scanning and O(1) removals without copying the
+// unscanned tail. The cursor advances even when no expired records are found.
+func cleanupEvents(ctx context.Context, events *list.List, cursor **list.Element, cutoff time.Time, limit int) (int, error) {
+	if err := checkContext(ctx); err != nil {
+		return 0, err
+	}
+	count := min(limit, events.Len())
+	next := *cursor
+	if next == nil {
+		next = events.Front()
+	}
+	remove := make([]*list.Element, 0, count)
+	for i := 0; i < count; i++ {
+		if err := checkContext(ctx); err != nil {
+			return 0, err
+		}
+		var createdAt time.Time
+		switch event := next.Value.(type) {
+		case conversationstore.UsageEvent:
+			createdAt = event.CreatedAt
+		case conversationstore.AuditEvent:
+			createdAt = event.CreatedAt
+		}
+		if createdAt.Before(cutoff) {
+			remove = append(remove, next)
+		}
+		next = next.Next()
+		if next == nil {
+			next = events.Front()
+		}
+	}
+	if err := checkContext(ctx); err != nil {
+		return 0, err
+	}
+	// The entire list was visited: next may point to an element being removed.
+	if count == events.Len() {
+		next = nil
+	}
+	for _, element := range remove {
+		events.Remove(element)
+	}
+	*cursor = next
+	return len(remove), nil
+}
+
 func checkContext(ctx context.Context) error {
 	if ctx == nil {
 		return nil
 	}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-		return nil
-	}
+	return ctx.Err()
 }

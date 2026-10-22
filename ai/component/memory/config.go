@@ -29,12 +29,13 @@ const (
 )
 
 type MemorySpec struct {
-	Backend    string        `yaml:"backend"`
-	HistoryKey HistoryKey    `yaml:"history_key"` // History key name
-	MaxTurns   int           `yaml:"max_turns"`   // Maximum conversation turns
-	Database   *DatabaseSpec `yaml:"database"`
-	Quota      QuotaSpec     `yaml:"quota"`
-	Lifecycle  LifecycleSpec `yaml:"lifecycle"`
+	Backend    string         `yaml:"backend"`
+	HistoryKey HistoryKey     `yaml:"history_key"` // History key name
+	MaxTurns   int            `yaml:"max_turns"`   // Maximum conversation turns
+	Database   *DatabaseSpec  `yaml:"database"`
+	Quota      QuotaSpec      `yaml:"quota"`
+	Lifecycle  LifecycleSpec  `yaml:"lifecycle"`
+	UsageAudit UsageAuditSpec `yaml:"usage_audit"`
 }
 
 type QuotaSpec struct {
@@ -50,6 +51,13 @@ type LifecycleSpec struct {
 	CleanupIntervalSeconds  int `yaml:"cleanup_interval_seconds"`
 	CleanupBatchSize        int `yaml:"cleanup_batch_size"`
 	InteractionLeaseSeconds int `yaml:"interaction_lease_seconds"`
+}
+
+type UsageAuditSpec struct {
+	RetentionSeconds int `yaml:"retention_seconds"`
+	MaxUsageEvents   int `yaml:"max_usage_events"`
+	MaxAuditEvents   int `yaml:"max_audit_events"`
+	CleanupBatchSize int `yaml:"cleanup_batch_size"`
 }
 
 type DatabaseSpec struct {
@@ -97,6 +105,18 @@ func (s *MemorySpec) applyPolicyDefaults() {
 	if s.Lifecycle.InteractionLeaseSeconds == 0 {
 		s.Lifecycle.InteractionLeaseSeconds = 1800
 	}
+	if s.UsageAudit.RetentionSeconds == 0 {
+		s.UsageAudit.RetentionSeconds = 30 * 86400
+	}
+	if s.UsageAudit.MaxUsageEvents == 0 {
+		s.UsageAudit.MaxUsageEvents = 100000
+	}
+	if s.UsageAudit.MaxAuditEvents == 0 {
+		s.UsageAudit.MaxAuditEvents = 100000
+	}
+	if s.UsageAudit.CleanupBatchSize == 0 {
+		s.UsageAudit.CleanupBatchSize = 1000
+	}
 }
 
 func (s MemorySpec) Validate() error {
@@ -116,6 +136,9 @@ func (s MemorySpec) Validate() error {
 	}
 	if s.Lifecycle.RetentionSeconds <= 0 || s.Lifecycle.CleanupIntervalSeconds <= 0 || s.Lifecycle.CleanupBatchSize <= 0 || s.Lifecycle.InteractionLeaseSeconds <= 0 {
 		return fmt.Errorf("all lifecycle settings must be greater than 0")
+	}
+	if s.UsageAudit.RetentionSeconds <= 0 || s.UsageAudit.MaxUsageEvents <= 0 || s.UsageAudit.MaxAuditEvents <= 0 || s.UsageAudit.CleanupBatchSize <= 0 {
+		return fmt.Errorf("all usage_audit settings must be greater than 0")
 	}
 	if s.Database == nil {
 		if backend == "gorm" {

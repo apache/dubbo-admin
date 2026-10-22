@@ -100,6 +100,12 @@ func TestGormStore_QuotaContract(t *testing.T) {
 	})
 }
 
+func TestGormStore_UsageAuditContract(t *testing.T) {
+	storetest.RunUsageAuditContractTests(t, func() conversationstore.UsageAuditMaintenanceStore {
+		return newSQLiteStore(t, filepath.Join(t.TempDir(), "usage-audit.db"), 3)
+	})
+}
+
 func TestGormStore_MigratesAndAdoptsLegacySessions(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "legacy.db")
 	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})

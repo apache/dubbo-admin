@@ -35,6 +35,115 @@ var contractAccess = security.MustAccessContext(security.Subject{
 	TenantID: "tenant-a", UserID: "user-a", AuthMethod: security.AuthMethodStatic,
 })
 
+func RunUsageAuditContractTests(t *testing.T, newStore func() conversationstore.UsageAuditMaintenanceStore) {
+	t.Helper()
+	ctx := security.WithAccessContext(context.Background(), contractAccess)
+	old := time.Now().Add(-40 * 24 * time.Hour)
+	system := security.SystemAccessContext()
+	for _, kind := range []string{"usage", "audit"} {
+		t.Run(kind, func(t *testing.T) {
+			operations := func(s conversationstore.UsageAuditMaintenanceStore) (func(context.Context, string, time.Time) error, func(context.Context, security.AccessContext, time.Time, int) (int, error)) {
+				if kind == "usage" {
+					return func(ctx context.Context, id string, at time.Time) error {
+						return s.RecordUsage(ctx, conversationstore.UsageEvent{ID: id, TenantID: contractAccess.Subject.TenantID, UserID: contractAccess.Subject.UserID, CallType: conversationstore.UsageCallModel, AmountSource: conversationstore.UsageAmountUnknown, CostStatus: conversationstore.UsageCostUnknown, CreatedAt: at})
+					}, s.CleanupUsage
+				}
+				return func(ctx context.Context, id string, at time.Time) error {
+					return s.RecordAudit(ctx, conversationstore.AuditEvent{ID: id, TenantID: contractAccess.Subject.TenantID, UserID: contractAccess.Subject.UserID, EventType: "test", CreatedAt: at})
+				}, s.CleanupAudit
+			}
+			t.Run("system capability required", func(t *testing.T) {
+				record, cleanup := operations(newStore())
+				if err := record(ctx, "old", old); err != nil {
+					t.Fatal(err)
+				}
+				for _, access := range []security.AccessContext{
+					contractAccess,
+					security.MustAccessContext(security.Subject{TenantID: "tenant-a", UserID: "other", AuthMethod: security.AuthMethodStatic}),
+					security.MustAccessContext(security.Subject{TenantID: "tenant-b", UserID: "other", AuthMethod: security.AuthMethodStatic}),
+					security.MustAccessContext(security.Subject{TenantID: "tenant-a", UserID: "admin", AuthMethod: security.AuthMethodJWT, Scopes: []string{security.ScopeSessionAdmin}}),
+					security.MustAccessContext(security.Subject{TenantID: "system", UserID: "system", AuthMethod: security.AuthMethodSystem}),
+				} {
+					if n, err := cleanup(ctx, access, time.Now().Add(time.Hour), 10); n != 0 || !errors.Is(err, security.ErrResourceNotAccessible) {
+						t.Fatalf("unprivileged cleanup(%+v) = %d, %v", access.Subject, n, err)
+					}
+				}
+				if n, err := cleanup(ctx, system, time.Now(), 10); err != nil || n != 1 {
+					t.Fatalf("system cleanup = %d, %v", n, err)
+				}
+			})
+			t.Run("cancellation does not mutate", func(t *testing.T) {
+				record, cleanup := operations(newStore())
+				if err := record(ctx, "old", old); err != nil {
+					t.Fatal(err)
+				}
+				canceled, cancel := context.WithCancel(ctx)
+				cancel()
+				if err := record(canceled, "canceled", old); !errors.Is(err, context.Canceled) {
+					t.Fatalf("canceled write = %v", err)
+				}
+				if n, err := cleanup(canceled, system, time.Now(), 10); n != 0 || !errors.Is(err, context.Canceled) {
+					t.Fatalf("canceled cleanup = %d, %v", n, err)
+				}
+				if n, err := cleanup(ctx, system, time.Now(), 10); err != nil || n != 1 {
+					t.Fatalf("cleanup after cancellation = %d, %v", n, err)
+				}
+			})
+			t.Run("retention cannot be bypassed", func(t *testing.T) {
+				record, cleanup := operations(newStore())
+				if err := record(ctx, "recent", time.Now()); err != nil {
+					t.Fatal(err)
+				}
+				if err := record(ctx, "old", old); err != nil {
+					t.Fatal(err)
+				}
+				if n, err := cleanup(ctx, system, time.Now().Add(365*24*time.Hour), 10); err != nil || n != 1 {
+					t.Fatalf("future cutoff cleanup = %d, %v", n, err)
+				}
+				if n, err := cleanup(ctx, system, time.Now().Add(365*24*time.Hour), 10); err != nil || n != 0 {
+					t.Fatalf("recent event removed = %d, %v", n, err)
+				}
+			})
+			t.Run("concurrent capacity and release", func(t *testing.T) {
+				s := newStore()
+				configurable, ok := s.(interface {
+					SetUsageAuditPolicy(conversationstore.UsageAuditPolicy)
+				})
+				if !ok {
+					t.Fatal("backend lacks capacity configuration")
+				}
+				configurable.SetUsageAuditPolicy(conversationstore.UsageAuditPolicy{MaxUsageEvents: 2, MaxAuditEvents: 2, CleanupBatchSize: 1})
+				record, cleanup := operations(s)
+				results := make(chan error, 12)
+				for i := 0; i < cap(results); i++ {
+					go func(i int) { results <- record(ctx, fmt.Sprintf("record-%d", i), old) }(i)
+				}
+				success := 0
+				for i := 0; i < cap(results); i++ {
+					err := <-results
+					if err == nil {
+						success++
+					} else if !errors.Is(err, conversationstore.ErrResourceExhausted) {
+						t.Fatal(err)
+					}
+				}
+				if success != 2 {
+					t.Fatalf("successful writes = %d, want 2", success)
+				}
+				if n, err := cleanup(ctx, system, time.Now(), 100); err != nil || n != 1 {
+					t.Fatalf("bounded cleanup = %d, %v", n, err)
+				}
+				if err := record(ctx, "replacement", old); err != nil {
+					t.Fatalf("capacity not released: %v", err)
+				}
+				if err := record(ctx, "overflow", old); !errors.Is(err, conversationstore.ErrResourceExhausted) {
+					t.Fatalf("overflow = %v", err)
+				}
+			})
+		})
+	}
+}
+
 type authorizedStore struct {
 	conversationstore.BackendStore
 	access security.AccessContext
