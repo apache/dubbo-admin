@@ -78,8 +78,14 @@ func (ra *ReActAgent) run(ctx context.Context, chans *agent.Channels, state *int
 		}
 	}
 
+	if s == nil {
+		s = &interactionTrace{}
+	}
 	if s.Usage == nil {
 		s.Usage = &ai.GenerationUsage{}
+	}
+	if ra.messageStore != nil && state == nil {
+		return s.Usage, fmt.Errorf("interaction context snapshot not found")
 	}
 	s.Session = sessionID
 	s.Model = ra.model
@@ -143,15 +149,12 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 		if state == nil {
 			return false, fmt.Errorf("interaction state is required")
 		}
-		if _, err = ra.messageStore.IsTurnEmpty(ctx, access, s.Session, turnID); err != nil {
+		if _, err := ra.messageStore.IsTurnEmpty(ctx, access, s.Session, turnID); err != nil {
 			return false, err
 		}
 		messages = state.messages
 	} else {
 		messages = history.WindowMemory(s.Session)
-	}
-	if err != nil {
-		return false, fmt.Errorf("failed to load conversation history: %w", err)
 	}
 	modelMessages, err := modelInputView(messages)
 	if err != nil {
@@ -176,8 +179,12 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 		if reqs := resp.ToolRequests(); len(reqs) > 0 {
 			runtime.GetLogger().Debug("react: model requested tools", "count", len(reqs))
 			agent.EmitProgress(chans, "🔍 分析问题并调用工具中...\n")
-			if err := ra.execTools(ctx, history, state, s, reqs); err != nil {
+			message, err := ra.execTools(ctx, history, s, reqs)
+			if err != nil {
 				return false, err
+			}
+			if state != nil {
+				state.messages = append(state.messages, message)
 			}
 			return false, nil
 		}
@@ -203,11 +210,11 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 // A failed tool degrades (its error is recorded as the tool's output) rather
 // than aborting the interaction, so the model can still answer from whatever
 // other tools returned.
-func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemory, state *interactionState, s *interactionTrace, reqs []*ai.ToolRequest) error {
+func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemory, s *interactionTrace, reqs []*ai.ToolRequest) (*ai.Message, error) {
 	var parts []*ai.Part
 	for _, req := range reqs {
 		if err := ctx.Err(); err != nil {
-			return err
+			return nil, err
 		}
 		output, err := func() (toolOutput toolEngine.ToolOutput, callErr error) {
 			tctx, cancel := withTimeout(ctx, ra.toolTimeouts.For(req.Name))
@@ -218,11 +225,11 @@ func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemo
 			s.Degraded = true
 		}
 		if err := ctx.Err(); err != nil {
-			return err
+			return nil, err
 		}
 		outputJSON, err := json.Marshal(output)
 		if err != nil {
-			return fmt.Errorf("failed to marshal output: %w", err)
+			return nil, fmt.Errorf("failed to marshal output: %w", err)
 		}
 		parts = append(parts, ai.NewJSONPart(string(outputJSON)))
 	}
@@ -234,16 +241,15 @@ func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemo
 		turnID, _ := ctx.Value(turnIDContextKey).(uint64)
 		access, err := security.AccessContextFromContext(ctx)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if err := ra.messageStore.AddHistoryToTurn(persistenceContext(ctx), access, s.Session, turnID, message); err != nil {
-			return fmt.Errorf("failed to record tool output: %w", err)
+			return nil, fmt.Errorf("failed to record tool output: %w", err)
 		}
-		state.messages = append(state.messages, message)
 	} else {
 		history.AddHistory(s.Session, message)
 	}
-	return nil
+	return message, nil
 }
 
 // finish records the answer into history and streams it to the user, closing the

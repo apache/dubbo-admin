@@ -71,11 +71,11 @@ var ErrAgentStopping = errors.New("agent is stopping")
 const persistenceTimeout = 30 * time.Second
 
 type interactionState struct {
-	messages      []*ai.Message
 	access        security.AccessContext
 	turnID        uint64
 	interactionID string
 	prepared      bool
+	messages      []*ai.Message
 	persistCtx    context.Context
 	persistCancel context.CancelFunc
 }
@@ -95,6 +95,10 @@ func NewReActAgent(g *genkit.Genkit, spec *AgentSpec, toolTimeouts toolTimeoutRe
 
 // NewReActAgentWithStore shares conversation storage with memory and tools.
 func NewReActAgentWithStore(g *genkit.Genkit, messageStore conversationstore.MessageStore, spec *AgentSpec, toolTimeouts toolTimeoutResolver, hookManager *hooks.Manager, toolRefs []ai.ToolRef) (*ReActAgent, error) {
+	contextWindowTurns := spec.ContextWindowTurns
+	if contextWindowTurns <= 0 {
+		contextWindowTurns = defaultContextWindowTurns
+	}
 	ra := &ReActAgent{
 		registry:           g,
 		messageStore:       messageStore,
@@ -102,7 +106,7 @@ func NewReActAgentWithStore(g *genkit.Genkit, messageStore conversationstore.Mes
 		hookManager:        hookManager,
 		model:              spec.Model,
 		maxIterations:      spec.MaxIterations,
-		contextWindowTurns: spec.ContextWindowTurns,
+		contextWindowTurns: contextWindowTurns,
 		callTimeout:        time.Duration(spec.Timeout) * time.Second,
 		bufferSize:         max(spec.ChannelBufferSize, 1),
 	}
@@ -393,23 +397,27 @@ func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserI
 			}
 			return nil, nil, fmt.Errorf("failed to record user message: %w", err)
 		}
-		ctx := context.WithValue(parent, sessionIDContextKey, sessionID)
-		ctx = context.WithValue(ctx, turnIDContextKey, turnID)
-		ctx = context.WithValue(ctx, persistenceContextKey, persistCtx)
-		messages, loadErr := ra.messageStore.ContextWindowForTurn(parent, access, sessionID, turnID, ra.contextWindowTurns)
-		if loadErr != nil {
+		messages, err := ra.messageStore.ContextWindowForTurn(parent, access, sessionID, turnID, ra.contextWindowTurns)
+		if err != nil {
 			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(parent), persistenceTimeout)
-			defer cancel()
-			defer persistCancel()
 			var abortErr error
 			if isPrepared {
 				abortErr = ra.messageStore.FailInteraction(cleanupCtx, access, sessionID, interactionID, turnID)
 			} else {
 				abortErr = ra.messageStore.AbortTurnForTurn(cleanupCtx, access, sessionID, turnID)
 			}
-			return nil, nil, errors.Join(fmt.Errorf("failed to load conversation context: %w", loadErr), abortErr)
+			cancel()
+			persistCancel()
+			if abortErr != nil && !errors.Is(abortErr, conversationstore.ErrTurnNotFound) {
+				return nil, nil, fmt.Errorf("failed to load conversation context: %w (also failed to abort turn: %v)", err, abortErr)
+			}
+			return nil, nil, fmt.Errorf("failed to load conversation context: %w", err)
 		}
-		return ctx, &interactionState{messages: messages, access: access, turnID: turnID, interactionID: interactionID, prepared: isPrepared, persistCtx: persistCtx, persistCancel: persistCancel}, nil
+		state := &interactionState{access: access, turnID: turnID, interactionID: interactionID, prepared: isPrepared, messages: messages, persistCtx: persistCtx, persistCancel: persistCancel}
+		ctx := context.WithValue(parent, sessionIDContextKey, sessionID)
+		ctx = context.WithValue(ctx, turnIDContextKey, turnID)
+		ctx = context.WithValue(ctx, persistenceContextKey, persistCtx)
+		return ctx, state, nil
 	}
 
 	// Compatibility path for callers that construct ReActAgent directly in tests.
