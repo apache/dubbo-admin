@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"dubbo-admin-ai/component/agent"
+	compcontext "dubbo-admin-ai/component/context"
 	"dubbo-admin-ai/component/hooks"
 	"dubbo-admin-ai/component/memory"
 	rt "dubbo-admin-ai/runtime"
@@ -44,9 +45,14 @@ import (
 // per-interaction state lives in the Channels/history reached through Interact,
 // not on the agent.
 type ReActAgent struct {
-	registry     *genkit.Genkit
-	memoryCtx    context.Context
-	messageStore conversationstore.MessageStore
+	compiler         *compcontext.Compiler
+	compilationStore conversationstore.CompilationStore
+	compilerSpec     AgentSpec
+	templateRef      string
+	compiledTools    []compcontext.Tool
+	registry         *genkit.Genkit
+	memoryCtx        context.Context
+	messageStore     conversationstore.MessageStore
 
 	actPrompt    ai.Prompt // reasons with tools available (native function calling)
 	answerPrompt ai.Prompt // tool-less; forces a final answer when the budget is exhausted
@@ -71,6 +77,10 @@ var ErrAgentStopping = errors.New("agent is stopping")
 const persistenceTimeout = 30 * time.Second
 
 type interactionState struct {
+	turns         []conversationstore.TurnContext
+	recovery      conversationstore.ToolRecovery
+	templateRef   string
+	allowedTools  map[string]bool
 	access        security.AccessContext
 	turnID        uint64
 	interactionID string
@@ -86,15 +96,23 @@ func (s *interactionState) cancelPersistence() {
 	}
 }
 
-// NewReActAgent builds a ReActAgent, assembling its prompts up front so the
-// per-interaction hot path only executes them. It returns an error if the
-// configured prompt file is missing.
+// NewReActAgent retains the old constructor signature for callers migrating to
+// explicit conversation storage. Model calls now require NewReActAgentWithStore.
 func NewReActAgent(g *genkit.Genkit, spec *AgentSpec, toolTimeouts toolTimeoutResolver, hookManager *hooks.Manager, toolRefs []ai.ToolRef) (*ReActAgent, error) {
 	return NewReActAgentWithStore(g, nil, spec, toolTimeouts, hookManager, toolRefs)
 }
 
 // NewReActAgentWithStore shares conversation storage with memory and tools.
 func NewReActAgentWithStore(g *genkit.Genkit, messageStore conversationstore.MessageStore, spec *AgentSpec, toolTimeouts toolTimeoutResolver, hookManager *hooks.Manager, toolRefs []ai.ToolRef) (*ReActAgent, error) {
+	if messageStore == nil {
+		return nil, fmt.Errorf("conversation store is required; use NewReActAgentWithStore")
+	}
+	if spec == nil {
+		return nil, fmt.Errorf("agent specification required")
+	}
+	copySpec := *spec
+	copySpec.ApplyDefaults()
+	spec = &copySpec
 	contextWindowTurns := spec.ContextWindowTurns
 	if contextWindowTurns <= 0 {
 		contextWindowTurns = defaultContextWindowTurns
@@ -111,16 +129,14 @@ func NewReActAgentWithStore(g *genkit.Genkit, messageStore conversationstore.Mes
 		bufferSize:         max(spec.ChannelBufferSize, 1),
 	}
 
-	if messageStore == nil {
-		ra.memoryCtx = memory.NewMemoryContext(memory.ChatHistoryKey)
+	var ok bool
+	ra.compilationStore, ok = messageStore.(conversationstore.CompilationStore)
+	if !ok {
+		return nil, fmt.Errorf("conversation store does not support context compilation")
 	}
-
-	act, answer, err := ra.buildPrompts(g, spec, spec.Model, toolRefs)
-	if err != nil {
+	if err := ra.initCompiler(spec, toolRefs); err != nil {
 		return nil, err
 	}
-	ra.actPrompt = act
-	ra.answerPrompt = answer
 	return ra, nil
 }
 
@@ -397,7 +413,10 @@ func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserI
 			}
 			return nil, nil, fmt.Errorf("failed to record user message: %w", err)
 		}
-		messages, err := ra.messageStore.ContextWindowForTurn(parent, access, sessionID, turnID, ra.contextWindowTurns)
+		var messages []*ai.Message
+		if ra.compiler == nil {
+			messages, err = ra.messageStore.ContextWindowForTurn(parent, access, sessionID, turnID, ra.contextWindowTurns)
+		}
 		if err != nil {
 			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(parent), persistenceTimeout)
 			var abortErr error
@@ -414,6 +433,31 @@ func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserI
 			return nil, nil, fmt.Errorf("failed to load conversation context: %w", err)
 		}
 		state := &interactionState{access: access, turnID: turnID, interactionID: interactionID, prepared: isPrepared, messages: messages, persistCtx: persistCtx, persistCancel: persistCancel}
+		if ra.compiler != nil {
+			state.templateRef, err = ra.compilationStore.PinTemplate(parent, access, sessionID, ra.templateRef)
+			if err == nil {
+				limit := ra.contextWindowTurns
+				if ra.compilerSpec.ContextCompilerMode == "minimal" {
+					limit = 0
+				}
+				state.turns, err = ra.compilationStore.ContextTurns(parent, access, sessionID, turnID, limit, ra.compilerSpec.MaxCollectBytes)
+			}
+			if err == nil {
+				state.recovery, err = ra.compilationStore.RecoveryToolBatches(parent, access, sessionID, turnID, 16, min(conversationstore.MaxToolBatchBytes, ra.compilerSpec.MaxCollectBytes))
+			}
+			if err != nil {
+				if errors.Is(err, conversationstore.ErrResourceExhausted) {
+					err = fmt.Errorf("%w: bounded context snapshot", compcontext.ErrMandatoryBudget)
+				}
+				if isPrepared {
+					_ = ra.messageStore.FailInteraction(persistCtx, access, sessionID, interactionID, turnID)
+				} else {
+					_ = ra.messageStore.AbortTurnForTurn(persistCtx, access, sessionID, turnID)
+				}
+				persistCancel()
+				return nil, nil, err
+			}
+		}
 		ctx := context.WithValue(parent, sessionIDContextKey, sessionID)
 		ctx = context.WithValue(ctx, turnIDContextKey, turnID)
 		ctx = context.WithValue(ctx, persistenceContextKey, persistCtx)

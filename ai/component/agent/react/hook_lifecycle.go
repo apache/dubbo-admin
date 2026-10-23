@@ -19,6 +19,7 @@ package react
 
 import (
 	"context"
+	comp "dubbo-admin-ai/component/context"
 	"dubbo-admin-ai/component/hooks"
 	toolEngine "dubbo-admin-ai/component/tools/engine"
 	"dubbo-admin-ai/runtime"
@@ -32,6 +33,8 @@ import (
 // interactionTrace holds per-interaction hook metadata and token accounting.
 // It does not drive the loop or retain model/tool payloads.
 type interactionTrace struct {
+	ModelCallID    string
+	Compilation    *comp.CompilationReport
 	Session        string
 	InteractionID  string
 	Iteration      int
@@ -92,6 +95,7 @@ func executeModelCall(
 ) (resp *ai.ModelResponse, err error) {
 	startedAt := time.Now()
 	callID := uuid.NewString()
+	s.ModelCallID = callID
 	startState := hooks.State{
 		Event:         hooks.EventModelCallStart,
 		InteractionID: s.InteractionID,
@@ -160,6 +164,12 @@ func emitModelCallEnd(ctx context.Context, s *interactionTrace, callID string, s
 		FallbackReason: s.FallbackReason,
 		StartedAt:      startedAt,
 		EndedAt:        now,
+	}
+	if s.Compilation != nil {
+		endState.EstimatedInputTokens = s.Compilation.InputTokens
+		endState.TemplateRef = s.Compilation.TemplateRef
+		endState.CompilerVersion = s.Compilation.CompilerVersion
+		endState.EstimatorVersion = s.Compilation.EstimatorVersion
 	}
 	endState = withHookOutput(s.hookManager, hooks.EventModelCallEnd, "", endState, func() any {
 		return genAIOutputMessages(output)

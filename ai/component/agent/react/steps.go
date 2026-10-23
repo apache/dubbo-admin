@@ -102,6 +102,9 @@ func (ra *ReActAgent) run(ctx context.Context, chans *agent.Channels, state *int
 
 // runIteration makes one model call and executes its tools or streams its answer.
 func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, history *memory.HistoryMemory, state *interactionState, s *interactionTrace, forceAnswer bool) (done bool, err error) {
+	if ra.compiler != nil && ra.compilerSpec.ContextCompilerMode == "minimal" {
+		forceAnswer = true
+	}
 	iterationStartedAt := time.Now()
 	iterationCtx := emitHook(s.hookManager, ctx, hooks.State{
 		Event: hooks.EventIterationStart, InteractionID: s.InteractionID,
@@ -160,6 +163,28 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 	if err != nil {
 		return false, err
 	}
+	var executeOptions []ai.PromptExecuteOption
+	if ra.compiler != nil {
+		compiled, compileErr := ra.compile(ctx, state, s, forceAnswer)
+		if compileErr != nil {
+			return false, compileErr
+		}
+		adapter := compiledPrompt{registry: ra.registry, request: compiled}
+		view, renderErr := adapter.Render(ctx, nil)
+		if renderErr != nil {
+			return false, renderErr
+		}
+		modelMessages = view.Messages
+		prompt = adapter
+		s.Degraded = s.Degraded || compiled.Report.Degraded
+		s.Compilation = &compiled.Report
+		runtime.GetLogger().Debug("react: compiled context", "report", compiled.Report)
+		if _, err := ra.messageStore.IsTurnEmpty(ctx, state.access, s.Session, state.turnID); err != nil {
+			return false, err
+		}
+	} else {
+		executeOptions = []ai.PromptExecuteOption{ai.WithMessages(modelMessages...)}
+	}
 	// Model and tool deadlines are independent; cancellation still propagates.
 	resp, err := func() (*ai.ModelResponse, error) {
 		lctx, cancel := withTimeout(ctx, ra.callTimeout)
@@ -169,7 +194,7 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 				s.FallbackUsed = true
 				s.FallbackReason = hooks.FallbackReasonEmptyResponse
 			}
-		}, ai.WithMessages(modelMessages...))
+		}, executeOptions...)
 	}()
 	if err != nil {
 		return false, fmt.Errorf("failed to execute react prompt: %w", err)
@@ -179,6 +204,12 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 		if reqs := resp.ToolRequests(); len(reqs) > 0 {
 			runtime.GetLogger().Debug("react: model requested tools", "count", len(reqs))
 			agent.EmitProgress(chans, "🔍 分析问题并调用工具中...\n")
+			if ra.compiler != nil {
+				if err := ra.execCanonicalTools(ctx, state, s, reqs); err != nil {
+					return false, err
+				}
+				return false, nil
+			}
 			message, err := ra.execTools(ctx, history, s, reqs)
 			if err != nil {
 				return false, err
@@ -234,8 +265,8 @@ func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemo
 		parts = append(parts, ai.NewJSONPart(string(outputJSON)))
 	}
 	runtime.GetLogger().Debug("react: recorded tool results", "count", len(parts))
-	// ai.RoleTool messages are ignored by ai.WithMessages, so tool results are
-	// recorded as a model message.
+	// Compatibility representation for older in-process callers only. The
+	// production Compiler path uses canonical batches and native SDK pairing.
 	message := ai.NewMessage(ai.RoleModel, nil, parts...)
 	if ra.messageStore != nil {
 		turnID, _ := ctx.Value(turnIDContextKey).(uint64)
