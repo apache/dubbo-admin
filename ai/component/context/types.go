@@ -45,6 +45,11 @@ type SourceDescriptor struct {
 	RequiredPermission []string
 }
 type CollectRequest struct {
+	SummaryCalls             int
+	SummaryBacklog           bool
+	Summary                  *store.Summary
+	HistorySnapshot          store.HistorySnapshot
+	SummaryReason            string
 	Access                   security.AccessContext
 	SessionID, InteractionID string
 	TurnID                   uint64
@@ -67,6 +72,10 @@ type Event struct {
 	Batch *store.ToolBatch
 }
 type ContextItem struct {
+	SummarySequence              uint64
+	HistoryPrevious              uint64
+	HistorySequence              uint64
+	CoversThrough                uint64
 	Scope                        string
 	Trust                        string
 	Authority                    string
@@ -84,7 +93,12 @@ type ContextItem struct {
 
 // SourcePolicy is assigned at registration by the trusted composition root.
 type SourcePolicy struct {
-	Scope string
+	// SummaryDedup permits terminal-position deduplication without treating
+	// recovery details as complete Turns in history omission accounting.
+	SummaryDedup    bool
+	History         bool
+	HistoryCoverage bool
+	Scope           string
 	// Classifications are assigned by the server, never promoted by a Source.
 	Trust           string
 	Authority       string
@@ -128,12 +142,27 @@ type CompilationDecision struct {
 	EstimatedTokens                                     int
 }
 type CompilationReport struct {
+	Summary                                                                      *SummaryReport
+	HistoryOmissions                                                             []HistoryOmission
 	ContextTokens                                                                int
 	InteractionID, CompilerVersion, PolicyVersion, TemplateRef, EstimatorVersion string
 	InputTokens, ReservedOutput, SafetyMargin                                    int
 	Decisions                                                                    []CompilationDecision
 	Degraded                                                                     bool
 	DegradationReasons                                                           []string
+}
+
+// HistoryOmission identifies a missing interval by opaque terminal cursors:
+// (After, Through]. It makes no assumption that sequence numbers are contiguous.
+type HistoryOmission struct {
+	After, Through uint64
+	ReasonCode     string
+}
+
+type SummaryReport struct {
+	SnapshotUpper, Target, AvailableCovered, SelectedCovered uint64
+	Calls                                                    int
+	Backlog, FragmentPending                                 bool
 }
 type CompiledRequest struct {
 	ContextTokens                            int

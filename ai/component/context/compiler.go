@@ -103,13 +103,17 @@ func (c *Compiler) Register(source ContextSource, p SourcePolicy) error {
 }
 
 type candidate struct {
-	messages    []Message
-	required    bool
-	tokens      int
-	decision    int
-	bytes       int
-	sequence    string
-	unavailable bool
+	summarySequence uint64
+	historyPrevious uint64
+	historySequence uint64
+	coversThrough   uint64
+	messages        []Message
+	required        bool
+	tokens          int
+	decision        int
+	bytes           int
+	sequence        string
+	unavailable     bool
 }
 
 // Estimate counts UTF-8 bytes conservatively, plus protocol framing. This is an
@@ -175,8 +179,12 @@ func (c *Compiler) Compile(ctx context.Context, req CompileRequest) (*CompiledRe
 	out := &CompiledRequest{Model: req.Model, Phase: req.Phase, TemplateRef: req.TemplateRef, PolicyVersion: "core-v1", Tools: tools, OutputTokens: req.OutputTokens, SafetyMargin: req.SafetyMargin, Temperature: req.Temperature, TopP: req.TopP}
 	out.ContextTokens = req.ContextTokens
 	out.Messages = []Message{{Role: "system", Text: system}}
-	out.Report = CompilationReport{InteractionID: req.InteractionID, CompilerVersion: "v1", PolicyVersion: out.PolicyVersion, TemplateRef: req.TemplateRef, EstimatorVersion: "utf8-json-bytes-v1", ReservedOutput: req.OutputTokens, SafetyMargin: req.SafetyMargin}
+	out.Report = CompilationReport{InteractionID: req.InteractionID, CompilerVersion: "v2", PolicyVersion: out.PolicyVersion, TemplateRef: req.TemplateRef, EstimatorVersion: "utf8-json-bytes-v1", ReservedOutput: req.OutputTokens, SafetyMargin: req.SafetyMargin}
 	out.Report.ContextTokens = req.ContextTokens
+	if req.SummaryReason != "" {
+		out.Report.Degraded = true
+		out.Report.DegradationReasons = append(out.Report.DegradationReasons, req.SummaryReason)
+	}
 	base := Estimate(out.Messages) + Estimate(tools) + 64
 	available := req.ContextTokens - req.OutputTokens - req.SafetyMargin
 	var candidates []candidate
@@ -277,6 +285,16 @@ func (c *Compiler) Compile(ctx context.Context, req CompileRequest) (*CompiledRe
 			index := len(out.Report.Decisions)
 			out.Report.Decisions = append(out.Report.Decisions, d)
 			v := candidate{messages: messages, required: r.policy.Required, tokens: d.EstimatedTokens, bytes: len(JSON(messages)) + 1, decision: index}
+			if r.policy.History {
+				v.historySequence = item.HistorySequence
+				v.historyPrevious = item.HistoryPrevious
+			}
+			if r.policy.HistoryCoverage {
+				v.coversThrough = item.CoversThrough
+			}
+			if r.policy.SummaryDedup {
+				v.summarySequence = item.SummarySequence
+			}
 			if r.policy.RecentSuffix {
 				v.sequence = r.descriptor.ID
 			}
@@ -294,34 +312,67 @@ func (c *Compiler) Compile(ctx context.Context, req CompileRequest) (*CompiledRe
 	if used > available || usedBytes > req.MaxBytes {
 		return nil, ErrMandatoryBudget
 	}
-	selected := map[int]bool{}
-	// Optional history is collected chronologically; choose a recent suffix and
-	// never fill gaps with older turns after the first turn that does not fit.
-	blocked := map[string]bool{}
-	for i := len(candidates) - 1; i >= 0; i-- {
-		v := candidates[i]
-		if v.unavailable {
-			blocked[v.sequence] = true
-			continue
+	// First try summary + uncovered history. If the summary is excluded, select
+	// again over the original bounded history. Existence alone never deduplicates.
+	coverage := uint64(0)
+	summaryIndex := -1
+	for i, v := range candidates {
+		if v.coversThrough > 0 {
+			if summaryIndex >= 0 {
+				return nil, fmt.Errorf("multiple history coverage candidates")
+			}
+			coverage = v.coversThrough
+			summaryIndex = i
 		}
-		if v.required {
-			selected[i] = true
-			continue
-		}
-		if !blocked[v.sequence] && used+v.tokens <= available && usedBytes+v.bytes <= req.MaxBytes {
-			used += v.tokens
-			usedBytes += v.bytes
-			selected[i] = true
-		} else {
-			if v.sequence != "" {
+	}
+	selectCandidates := func(cover uint64, omitSummary bool) (map[int]bool, int, map[int]string) {
+		selected := map[int]bool{}
+		reasons := map[int]string{}
+		blocked := map[string]bool{}
+		tokens, bytes := used, usedBytes
+		for i := len(candidates) - 1; i >= 0; i-- {
+			v := candidates[i]
+			if (v.historySequence > 0 && v.historySequence <= cover) || (v.summarySequence > 0 && v.summarySequence <= cover) {
+				reasons[i] = "SUMMARY_COVERED"
+				continue
+			}
+			if v.unavailable {
 				blocked[v.sequence] = true
+				continue
 			}
-			d := &out.Report.Decisions[v.decision]
-			d.Status = "omitted"
-			d.ReasonCode = "GROUP_BUDGET_EXCEEDED"
-			if usedBytes+v.bytes > req.MaxBytes {
-				d.ReasonCode = "SOURCE_BYTE_LIMIT"
+			if v.required {
+				selected[i] = true
+				continue
 			}
+			if omitSummary && v.coversThrough > 0 {
+				reasons[i] = "SUMMARY_NOT_SELECTED"
+				continue
+			}
+			if !blocked[v.sequence] && tokens+v.tokens <= available && bytes+v.bytes <= req.MaxBytes {
+				tokens += v.tokens
+				bytes += v.bytes
+				selected[i] = true
+			} else {
+				if v.sequence != "" {
+					blocked[v.sequence] = true
+				}
+				reasons[i] = "GROUP_BUDGET_EXCEEDED"
+				if bytes+v.bytes > req.MaxBytes {
+					reasons[i] = "SOURCE_BYTE_LIMIT"
+				}
+			}
+		}
+		return selected, tokens, reasons
+	}
+	selected, total, reasons := selectCandidates(coverage, false)
+	if summaryIndex >= 0 && !selected[summaryIndex] {
+		selected, total, reasons = selectCandidates(0, true)
+	}
+	for i, reason := range reasons {
+		d := &out.Report.Decisions[candidates[i].decision]
+		d.Status = "omitted"
+		d.ReasonCode = reason
+		if reason != "SUMMARY_COVERED" {
 			out.Report.Degraded = true
 		}
 	}
@@ -330,7 +381,31 @@ func (c *Compiler) Compile(ctx context.Context, req CompileRequest) (*CompiledRe
 			out.Messages = append(out.Messages, v.messages...)
 		}
 	}
-	out.Report.InputTokens = used
+	if req.HistorySnapshot.Upper > 0 {
+		out.Report.Summary = &SummaryReport{SnapshotUpper: req.HistorySnapshot.Upper, Target: req.HistorySnapshot.Target, Calls: req.SummaryCalls, Backlog: req.SummaryBacklog}
+		if req.Summary != nil {
+			out.Report.Summary.AvailableCovered = req.Summary.Covered
+			out.Report.Summary.FragmentPending = req.Summary.Progress != nil
+		}
+		covered := uint64(0)
+		if summaryIndex >= 0 && selected[summaryIndex] {
+			covered = coverage
+			out.Report.Summary.SelectedCovered = coverage
+		}
+		through := req.HistorySnapshot.Upper
+		for i, v := range candidates {
+			if selected[i] && v.historySequence > 0 {
+				through = v.historyPrevious
+				break
+			}
+		}
+		if through > covered {
+			out.Report.HistoryOmissions = []HistoryOmission{{After: covered, Through: through, ReasonCode: "BOUNDED_HISTORY_GAP"}}
+			out.Report.Degraded = true
+			out.Report.DegradationReasons = append(out.Report.DegradationReasons, "BOUNDED_HISTORY_GAP")
+		}
+	}
+	out.Report.InputTokens = total
 	return out, nil
 }
 

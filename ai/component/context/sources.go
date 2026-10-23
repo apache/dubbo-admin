@@ -43,6 +43,8 @@ func (s SnapshotSource) Collect(ctx context.Context, req CollectRequest) (Collec
 			continue
 		}
 		item := ContextItem{ID: fmt.Sprintf("%s:%d", s.Kind, turn.ID), SourceID: s.Kind, SourceVersion: "v1", TenantID: turn.TenantID, OwnerID: turn.OwnerID, SessionID: req.SessionID, CanonicalID: fmt.Sprintf("turn:%s:%d", req.SessionID, turn.ID), GroupID: fmt.Sprintf("turn:%d", turn.ID), Version: 1}
+		item.HistorySequence = turn.Sequence
+		item.HistoryPrevious = turn.PreviousSequence
 		if turn.ByteLimited {
 			item.UnavailableReason = "SOURCE_BYTE_LIMIT"
 			result.Items = append(result.Items, item)
@@ -145,14 +147,14 @@ func RegisterCoreSources(c *Compiler) error {
 	if err := c.Register(RecoverySource{Notice: true}, SourcePolicy{Order: 11, Required: true, Kinds: []string{"evidence"}}); err != nil {
 		return err
 	}
-	if err := c.Register(RecoverySource{}, SourcePolicy{Order: 12, RecentSuffix: true, Kinds: []string{"recovered_batch"}}); err != nil {
+	if err := c.Register(RecoverySource{}, SourcePolicy{Order: 12, SummaryDedup: true, RecentSuffix: true, Kinds: []string{"recovered_batch"}}); err != nil {
 		return err
 	}
 	for _, v := range []struct {
 		kind string
 		p    SourcePolicy
 	}{
-		{"history", SourcePolicy{Order: 10, RecentSuffix: true, Kinds: []string{"user", "model", "legacy", "tool_batch"}}},
+		{"history", SourcePolicy{Order: 10, History: true, RecentSuffix: true, Kinds: []string{"user", "model", "legacy", "tool_batch"}}},
 		{"input", SourcePolicy{Order: 20, Required: true, Kinds: []string{"user", "model", "legacy"}}},
 		{"tools", SourcePolicy{Order: 30, Required: true, Kinds: []string{"tool_batch"}}},
 	} {
@@ -208,6 +210,7 @@ func (s RecoverySource) Collect(ctx context.Context, req CollectRequest) (Collec
 		item.CanonicalID = "batch:" + b.ID
 		item.GroupID = item.CanonicalID
 		item.Version = b.Version
+		item.SummarySequence = req.Recovery.TerminalSequences[b.TurnID]
 		result.Items = append(result.Items, item)
 	}
 	return result, nil
