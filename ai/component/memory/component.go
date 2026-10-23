@@ -186,6 +186,13 @@ func (m *MemoryComponent) Init(rt *runtime.Runtime) error {
 	default:
 		return fmt.Errorf("unsupported memory backend %q", backend)
 	}
+	if summaries, ok := m.store.(conversationstore.SummaryMaintenanceStore); ok {
+		if err := m.RegisterDerivedArtifactCleanupHandler(conversationstore.SummaryArtifactKind, conversationstore.DerivedArtifactCleanupFunc(func(ctx context.Context, artifact conversationstore.DerivedArtifact) error {
+			return summaries.DeleteSummary(ctx, security.SystemAccessContext(), artifact)
+		})); err != nil {
+			return err
+		}
+	}
 	rt.GetLogger().Info("Memory component initialized",
 		"history_key", m.historyKey,
 		"retention", time.Duration(m.spec.Lifecycle.RetentionSeconds)*time.Second)
