@@ -84,6 +84,10 @@ func RunCompilationContractTests(t *testing.T, newStore func() store.BackendStor
 				if err != nil || recovered.Omitted || len(recovered.Batches) != 1 || recovered.Batches[0].Calls[0].Status != "succeeded" || recovered.Batches[0].Calls[1].Status != "pending" {
 					t.Fatalf("released attempt unavailable: %+v %v", recovered, err)
 				}
+				snap, err := s.(store.SummaryStore).OpenHistorySnapshot(ctx, a, "compile", next.TurnID, 0)
+				if err != nil || recovered.TerminalSequences[prepared.TurnID] == 0 || recovered.TerminalSequences[prepared.TurnID] != snap.Upper {
+					t.Fatalf("recovery lost terminal journal provenance: %+v %+v %v", recovered, snap, err)
+				}
 				recovered.Batches[0].Calls[0].Output[0] = 'x'
 				again, err := c.RecoveryToolBatches(ctx, a, "compile", next.TurnID, 16, 65536)
 				if err != nil || !json.Valid(again.Batches[0].Calls[0].Output) {

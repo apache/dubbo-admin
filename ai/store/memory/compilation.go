@@ -74,6 +74,7 @@ func (m *MemoryStore) RecoveryToolBatches(ctx context.Context, a security.Access
 		}
 	}
 	size := 0
+	result.TerminalSequences = make(map[uint64]uint64)
 	for _, b := range recent {
 		data, err := json.Marshal(b)
 		if err != nil {
@@ -85,6 +86,9 @@ func (m *MemoryStore) RecoveryToolBatches(ctx context.Context, a security.Access
 		}
 		size += len(data)
 		result.Batches = append(result.Batches, cloneBatch(b))
+		if sequence := m.summaryTurns[id][b.TurnID]; sequence != 0 {
+			result.TerminalSequences[b.TurnID] = sequence
+		}
 	}
 	for i, j := 0, len(result.Batches)-1; i < j; i, j = i+1, j-1 {
 		result.Batches[i], result.Batches[j] = result.Batches[j], result.Batches[i]
@@ -256,6 +260,13 @@ func (m *MemoryStore) ContextTurns(ctx context.Context, a security.AccessContext
 		t := turns[i]
 		session := m.sessions[id]
 		item := store.TurnContext{TenantID: session.TenantID, OwnerID: session.OwnerID, ID: t.id, Status: t.status}
+		item.Dependencies = append([]store.MemoryDependency(nil), t.dependencies...)
+		if position := m.summaryTurns[id][t.id]; position > 0 {
+			item.Sequence = m.summaryHistory[id][position-1].Sequence
+			if position > 1 {
+				item.PreviousSequence = m.summaryHistory[id][position-2].Sequence
+			}
+		}
 		if item.Status == "" {
 			item.Status = store.InteractionStatusCompleted
 			if t.id == active {

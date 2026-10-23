@@ -43,11 +43,13 @@ func (s *GormStore) RecoveryToolBatches(ctx context.Context, a security.AccessCo
 			return store.ErrTurnNotFound
 		}
 		var rows []struct {
-			ID    string
-			Bytes int
+			ID               string
+			Bytes            int
+			TerminalSequence uint64
 		}
 		// Read sizes before payloads, including only released source Turns.
-		if err := tx.Table("ai_tool_batches AS b").Select("b.id, LENGTH(b.payload) AS bytes").Where("b.session_id = ? AND b.turn_id < ?", id, active).
+		if err := tx.Table("ai_tool_batches AS b").Select("b.id, LENGTH(b.payload) AS bytes, COALESCE(h.sequence, 0) AS terminal_sequence").
+			Joins("LEFT JOIN ai_history_entries h ON h.session_id = b.session_id AND h.turn_id = b.turn_id").Where("b.session_id = ? AND b.turn_id < ?", id, active).
 			Where("NOT EXISTS (SELECT 1 FROM ai_turns t WHERE t.id = b.turn_id AND t.session_id = b.session_id)").
 			Order("b.turn_id DESC").Order("b.sequence DESC").Limit(limit + 1).Scan(&rows).Error; err != nil {
 			return err
@@ -57,6 +59,7 @@ func (s *GormStore) RecoveryToolBatches(ctx context.Context, a security.AccessCo
 			rows = rows[:limit]
 		}
 		size := 0
+		result.TerminalSequences = make(map[uint64]uint64)
 		for _, row := range rows {
 			if size+row.Bytes > maxBytes {
 				result.Omitted = true
@@ -72,6 +75,9 @@ func (s *GormStore) RecoveryToolBatches(ctx context.Context, a security.AccessCo
 			}
 			size += row.Bytes
 			result.Batches = append(result.Batches, b)
+			if row.TerminalSequence > 0 {
+				result.TerminalSequences[b.TurnID] = row.TerminalSequence
+			}
 		}
 		return nil
 	}, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
@@ -270,6 +276,21 @@ func (s *GormStore) ContextTurns(ctx context.Context, a security.AccessContext, 
 		for i := len(turns) - 1; i >= 0; i-- {
 			t := turns[i]
 			item := store.TurnContext{TenantID: session.TenantID, OwnerID: session.OwnerID, ID: t.ID, Status: t.Status}
+			var position HistoryEntryModel
+			if err := tx.Where("session_id = ? AND turn_id = ?", id, t.ID).Find(&position).Error; err != nil {
+				return err
+			}
+			item.Sequence = position.Sequence
+			if len(t.Dependencies) > 0 {
+				if err := json.Unmarshal(t.Dependencies, &item.Dependencies); err != nil {
+					return err
+				}
+			}
+			if position.Sequence > 0 {
+				if err := tx.Model(&HistoryEntryModel{}).Select("COALESCE(MAX(sequence),0)").Where("session_id = ? AND sequence < ?", id, position.Sequence).Scan(&item.PreviousSequence).Error; err != nil {
+					return err
+				}
+			}
 			if blocked {
 				item.ByteLimited = true
 				result = append(result, item)

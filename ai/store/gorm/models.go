@@ -39,12 +39,15 @@ type SessionModel struct {
 func (SessionModel) TableName() string { return "ai_sessions" }
 
 type ToolBatchModel struct {
-	ID        string `gorm:"primaryKey;size:64"`
-	SessionID string `gorm:"size:64;not null;index"`
-	TurnID    uint64 `gorm:"not null;uniqueIndex:idx_ai_tool_sequence"`
-	Sequence  uint64 `gorm:"not null;uniqueIndex:idx_ai_tool_sequence"`
-	Version   uint64 `gorm:"not null"`
-	Payload   []byte `gorm:"not null"`
+	SummaryCheckedRule    string `gorm:"size:32"`
+	SummaryCheckedVersion uint64
+	SummarySensitive      bool
+	ID                    string `gorm:"primaryKey;size:64"`
+	SessionID             string `gorm:"size:64;not null;index"`
+	TurnID                uint64 `gorm:"not null;uniqueIndex:idx_ai_tool_sequence"`
+	Sequence              uint64 `gorm:"not null;uniqueIndex:idx_ai_tool_sequence"`
+	Version               uint64 `gorm:"not null"`
+	Payload               []byte `gorm:"not null"`
 }
 
 func (ToolBatchModel) TableName() string { return "ai_tool_batches" }
@@ -52,6 +55,7 @@ func (ToolBatchModel) TableName() string { return "ai_tool_batches" }
 // TurnModel is one persisted conversation turn. A nil CompletedAt identifies
 // the current active turn for a session.
 type TurnModel struct {
+	Dependencies  []byte
 	ID            uint64     `gorm:"primaryKey;autoIncrement"`
 	SessionID     string     `gorm:"size:64;not null;index"`
 	InteractionID string     `gorm:"size:64;index"`
@@ -67,11 +71,14 @@ func (TurnModel) TableName() string { return "ai_turns" }
 // MessageModel stores the complete Genkit message as JSON. Sequence is
 // scoped to a turn and provides deterministic message ordering.
 type MessageModel struct {
-	ID        uint64    `gorm:"primaryKey;autoIncrement"`
-	TurnID    uint64    `gorm:"not null;uniqueIndex:uidx_ai_message_turn_sequence"`
-	Sequence  uint64    `gorm:"not null;uniqueIndex:uidx_ai_message_turn_sequence"`
-	Payload   []byte    `gorm:"not null"`
-	CreatedAt time.Time `gorm:"not null"`
+	SummaryCheckedRule string `gorm:"size:32"`
+	SummarySensitive   bool
+	Role               string    `gorm:"size:24"`
+	ID                 uint64    `gorm:"primaryKey;autoIncrement"`
+	TurnID             uint64    `gorm:"not null;uniqueIndex:uidx_ai_message_turn_sequence"`
+	Sequence           uint64    `gorm:"not null;uniqueIndex:uidx_ai_message_turn_sequence"`
+	Payload            []byte    `gorm:"not null"`
+	CreatedAt          time.Time `gorm:"not null"`
 }
 
 func (MessageModel) TableName() string { return "ai_messages" }

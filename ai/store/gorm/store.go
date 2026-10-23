@@ -107,6 +107,7 @@ func (s *GormStore) Migrate(ctx context.Context) error {
 	}
 	db := s.db.WithContext(normalizeContext(ctx))
 	if err := db.AutoMigrate(
+		&HistoryEntryModel{}, &SummaryModel{},
 		&ToolBatchModel{},
 		&SessionModel{}, &TurnModel{}, &MessageModel{}, &InteractionModel{},
 		&DerivedArtifactModel{}, &CleanupJobModel{}, &OutboxEventModel{}, &TenantUsageModel{},
@@ -175,6 +176,25 @@ func (s *GormStore) Migrate(ctx context.Context) error {
 		if err := tx.Model(&TurnModel{}).Where("completed_at IS NOT NULL").Update("status", conversationstore.InteractionStatusCompleted).Error; err != nil {
 			return err
 		}
+		// Backfill metadata only, preserving the old completed-at/id ordering.
+		var legacy []TurnModel
+		if err := tx.Where("completed_at IS NOT NULL AND NOT EXISTS (SELECT 1 FROM ai_history_entries h WHERE h.session_id = ai_turns.session_id AND h.turn_id = ai_turns.id)").Order("completed_at ASC").Order("id ASC").Find(&legacy).Error; err != nil {
+			return err
+		}
+		for _, t := range legacy {
+			if err := recordSummaryHistory(tx, t.SessionID, t.ID, conversationstore.InteractionStatusCompleted); err != nil {
+				return err
+			}
+		}
+		var released []ToolBatchModel
+		if err := tx.Select("session_id, turn_id").Where("NOT EXISTS (SELECT 1 FROM ai_turns t WHERE t.id = ai_tool_batches.turn_id) AND NOT EXISTS (SELECT 1 FROM ai_history_entries h WHERE h.session_id = ai_tool_batches.session_id AND h.turn_id = ai_tool_batches.turn_id)").Group("session_id, turn_id").Order("turn_id ASC").Find(&released).Error; err != nil {
+			return err
+		}
+		for _, b := range released {
+			if err := recordSummaryHistory(tx, b.SessionID, b.TurnID, conversationstore.InteractionStatusFailed); err != nil {
+				return err
+			}
+		}
 		var sessions []SessionModel
 		if err := tx.Find(&sessions).Error; err != nil {
 			return err
@@ -190,17 +210,21 @@ func (s *GormStore) Migrate(ctx context.Context) error {
 				sessions[i].ExpiresAt = &expiresAt
 			}
 			var messageBytes, resultBytes int64
-			if err := tx.Table("ai_messages").Select("COALESCE(SUM(LENGTH(ai_messages.payload)), 0)").Joins("JOIN ai_turns ON ai_turns.id = ai_messages.turn_id").Where("ai_turns.session_id = ?", sessions[i].ID).Scan(&messageBytes).Error; err != nil {
+			if err := tx.Table("ai_messages").Select("COALESCE(SUM(LENGTH(ai_messages.payload) + CASE WHEN ai_messages.summary_checked_rule IS NOT NULL AND ai_messages.summary_checked_rule <> '' THEN ? ELSE 0 END), 0)", conversationstore.SummaryInspectionBytes).Joins("JOIN ai_turns ON ai_turns.id = ai_messages.turn_id").Where("ai_turns.session_id = ?", sessions[i].ID).Scan(&messageBytes).Error; err != nil {
 				return err
 			}
 			if err := tx.Model(&InteractionModel{}).Select("COALESCE(SUM(LENGTH(result)), 0)").Where("session_id = ?", sessions[i].ID).Scan(&resultBytes).Error; err != nil {
 				return err
 			}
 			var toolBytes int64
-			if err := tx.Model(&ToolBatchModel{}).Select("COALESCE(SUM(LENGTH(payload)), 0)").Where("session_id = ?", sessions[i].ID).Scan(&toolBytes).Error; err != nil {
+			if err := tx.Model(&ToolBatchModel{}).Select("COALESCE(SUM(LENGTH(payload) + CASE WHEN summary_checked_rule IS NOT NULL AND summary_checked_rule <> '' THEN ? ELSE 0 END), 0)", conversationstore.SummaryInspectionBytes).Where("session_id = ?", sessions[i].ID).Scan(&toolBytes).Error; err != nil {
 				return err
 			}
-			storedBytes := messageBytes + resultBytes + toolBytes
+			var summaryBytes int64
+			if err := tx.Model(&SummaryModel{}).Select("COALESCE(SUM(LENGTH(payload)),0)").Where("session_id = ?", sessions[i].ID).Scan(&summaryBytes).Error; err != nil {
+				return err
+			}
+			storedBytes := messageBytes + resultBytes + toolBytes + summaryBytes
 			if sessions[i].Status == conversationstore.SessionStatusDeleted {
 				storedBytes = 0
 			}
@@ -549,6 +573,12 @@ func cleanupSessionData(tx *gorm.DB, sessionID, tenantID string, now time.Time) 
 	if err := tx.Where("session_id = ?", sessionID).Delete(&ToolBatchModel{}).Error; err != nil {
 		return err
 	}
+	if err := tx.Where("session_id = ?", sessionID).Delete(&HistoryEntryModel{}).Error; err != nil {
+		return err
+	}
+	if err := tx.Where("session_id = ?", sessionID).Delete(&SummaryModel{}).Error; err != nil {
+		return err
+	}
 	if err := tx.Model(&TenantUsageModel{}).Where("tenant_id = ?", tenantID).Updates(map[string]any{
 		"session_count": gorm.Expr("CASE WHEN session_count > 0 THEN session_count - 1 ELSE 0 END"),
 		"stored_bytes":  gorm.Expr("CASE WHEN stored_bytes >= ? THEN stored_bytes - ? ELSE 0 END", session.StoredBytes, session.StoredBytes),
@@ -881,6 +911,9 @@ func (s *GormStore) PrepareInteraction(ctx context.Context, access security.Acce
 				}
 			}
 			turn := TurnModel{SessionID: sessionID, InteractionID: existing.ID, Status: conversationstore.InteractionStatusRunning, CreatedAt: now}
+			if err := checkSummaryHistoryCapacity(tx, sessionID); err != nil {
+				return err
+			}
 			if err := tx.Create(&turn).Error; err != nil {
 				return err
 			}
@@ -927,6 +960,9 @@ func (s *GormStore) PrepareInteraction(ctx context.Context, access security.Acce
 			return conversationstore.ErrResourceExhausted
 		}
 		interactionID := uuid.NewString()
+		if err := checkSummaryHistoryCapacity(tx, sessionID); err != nil {
+			return err
+		}
 		turn := TurnModel{SessionID: sessionID, InteractionID: interactionID, Status: conversationstore.InteractionStatusRunning, CreatedAt: now}
 		if err := tx.Create(&turn).Error; err != nil {
 			return err
@@ -1006,6 +1042,9 @@ func (s *GormStore) CompleteInteraction(ctx context.Context, access security.Acc
 		if err := tx.Model(&TurnModel{}).Where("id = ? AND session_id = ?", turnID, sessionID).Updates(map[string]any{"status": conversationstore.InteractionStatusCompleted, "completed_at": now}).Error; err != nil {
 			return err
 		}
+		if err := recordSummaryHistory(tx, sessionID, turnID, conversationstore.InteractionStatusCompleted); err != nil {
+			return err
+		}
 		return tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id = ?", sessionID, interactionID).Update("active_interaction_id", nil).Error
 	})
 }
@@ -1040,6 +1079,9 @@ func (s *GormStore) BeginTurn(ctx context.Context, access security.AccessContext
 	err := s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
 		session, err := s.findActiveSession(tx, access, sessionID, true)
 		if err != nil {
+			return err
+		}
+		if err := checkSummaryHistoryCapacity(tx, sessionID); err != nil {
 			return err
 		}
 		if session.ActiveInteractionID != nil && *session.ActiveInteractionID != "" {
@@ -1253,6 +1295,9 @@ func (s *GormStore) NextTurnForTurn(ctx context.Context, access security.AccessC
 			return fmt.Errorf("%w: current session's context is full, please create a new session", conversationstore.ErrTurnLimitReached)
 		}
 		completedAt := time.Now()
+		if err := recordSummaryHistory(tx, sessionID, turnID, conversationstore.InteractionStatusCompleted); err != nil {
+			return err
+		}
 		return tx.Model(&TurnModel{}).Where("id = ?", active.ID).Updates(map[string]any{"completed_at": completedAt, "status": conversationstore.InteractionStatusCompleted}).Error
 	})
 }
@@ -1282,6 +1327,9 @@ func (s *GormStore) deleteTurnAndReleaseUsage(tx *gorm.DB, tenantID, sessionID s
 	if err := tx.Where("id = ? AND session_id = ?", turnID, sessionID).First(&turn).Error; errors.Is(err, gorm.ErrRecordNotFound) {
 		return conversationstore.ErrTurnNotFound
 	} else if err != nil {
+		return err
+	}
+	if err := recordSummaryHistory(tx, sessionID, turnID, conversationstore.InteractionStatusFailed); err != nil {
 		return err
 	}
 	if err := tx.Where("turn_id = ?", turnID).Delete(&MessageModel{}).Error; err != nil {
@@ -1356,7 +1404,7 @@ func (s *GormStore) insertMessages(tx *gorm.DB, access security.AccessContext, s
 		if err != nil {
 			return fmt.Errorf("failed to encode message: %w", err)
 		}
-		models = append(models, MessageModel{TurnID: turnID, Sequence: nextSequence, Payload: payload, CreatedAt: time.Now()})
+		models = append(models, MessageModel{Role: string(message.Role), TurnID: turnID, Sequence: nextSequence, Payload: payload, CreatedAt: time.Now()})
 		addedBytes += int64(len(payload))
 		nextSequence++
 	}

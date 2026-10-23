@@ -34,13 +34,16 @@ const MaxToolBatchBytes = 1 << 20
 
 // TurnContext preserves the storage boundary; callers must not infer it from roles.
 type TurnContext struct {
-	ByteLimited bool
-	TenantID    string
-	OwnerID     string
-	ID          uint64
-	Status      string
-	Messages    []*ai.Message
-	Batches     []ToolBatch
+	PreviousSequence uint64
+	Sequence         uint64
+	Dependencies     []MemoryDependency
+	ByteLimited      bool
+	TenantID         string
+	OwnerID          string
+	ID               uint64
+	Status           string
+	Messages         []*ai.Message
+	Batches          []ToolBatch
 }
 
 // ToolBatch is a versioned canonical execution ledger, independent of SDK messages.
@@ -73,6 +76,9 @@ type ToolCall struct {
 type ToolRecovery struct {
 	Batches []ToolBatch
 	Omitted bool
+	// TerminalSequences is server-owned journal provenance, keyed by Turn ID.
+	// Missing positions (legacy records) must never be inferred from batch order.
+	TerminalSequences map[uint64]uint64
 }
 
 // CompilationStore is deliberately separate from the legacy MessageStore API.

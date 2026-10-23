@@ -38,6 +38,7 @@ import (
 const DefaultMaxTurns = 100
 
 type turn struct {
+	dependencies    []conversationstore.MemoryDependency
 	id              uint64
 	interactionID   string
 	status          string
@@ -57,6 +58,10 @@ type sessionHistory struct {
 
 // MemoryStore is the in-process implementation of the conversation Store.
 type MemoryStore struct {
+	summaryTurns       map[string]map[uint64]uint64
+	summaryChecks      map[string]map[string]conversationstore.SummaryInspection
+	summaryHistory     map[string][]conversationstore.HistoryEntry
+	summaries          map[string]conversationstore.Summary
 	toolBatches        map[string]conversationstore.ToolBatch
 	mu                 sync.RWMutex
 	limit              int
@@ -345,6 +350,10 @@ func (m *MemoryStore) DeleteExpired(ctx context.Context, access security.AccessC
 			continue
 		}
 		delete(m.history, sessionID)
+		delete(m.summaryHistory, sessionID)
+		delete(m.summaryTurns, sessionID)
+		delete(m.summaryChecks, sessionID)
+		delete(m.summaries, sessionID)
 		m.deleteToolBatchesLocked(sessionID)
 		for id, interaction := range m.interactions {
 			if interaction.SessionID == sessionID {
@@ -440,6 +449,10 @@ func (m *MemoryStore) DeleteExpiredPage(ctx context.Context, access security.Acc
 			continue
 		}
 		delete(m.history, item.id)
+		delete(m.summaryHistory, item.id)
+		delete(m.summaryTurns, item.id)
+		delete(m.summaryChecks, item.id)
+		delete(m.summaries, item.id)
 		m.deleteToolBatchesLocked(item.id)
 		for id, interaction := range m.interactions {
 			if interaction.SessionID == item.id {
@@ -792,15 +805,22 @@ func (m *MemoryStore) PrepareInteraction(ctx context.Context, access security.Ac
 			return nil, conversationstore.ErrInteractionInProgress
 		}
 		history := m.ensureHistoryLocked(sessionID)
+		terminalGrowth := 0
+		if history.active[interaction.TurnID] != nil {
+			terminalGrowth = 1
+		}
+		if len(m.summaryHistory[sessionID])+terminalGrowth >= conversationstore.MaxHistoryEntriesPerSession {
+			return nil, conversationstore.ErrResourceExhausted
+		}
 		if len(history.history) >= m.limit {
 			return nil, conversationstore.ErrResourceExhausted
 		}
-		additionalEntities := 1
-		if _, hasActiveTurn := history.active[interaction.TurnID]; hasActiveTurn {
-			additionalEntities = 0
-		}
+		additionalEntities := 1 // released active Turns are replaced by terminal metadata
 		if m.entityCountLocked()+additionalEntities > m.quota.MaxInMemoryEntities {
 			return nil, conversationstore.ErrResourceExhausted
+		}
+		if history.active[interaction.TurnID] != nil {
+			m.recordSummaryHistoryLocked(sessionID, interaction.TurnID, conversationstore.InteractionStatusFailed)
 		}
 		delete(history.active, interaction.TurnID)
 		history.nextID++
@@ -822,6 +842,9 @@ func (m *MemoryStore) PrepareInteraction(ctx context.Context, access security.Ac
 			return nil, conversationstore.ErrSessionBusy
 		}
 		if history := m.history[sessionID]; history != nil {
+			if history.active[active.TurnID] != nil {
+				m.recordSummaryHistoryLocked(sessionID, active.TurnID, conversationstore.InteractionStatusFailed)
+			}
 			delete(history.active, active.TurnID)
 		}
 		active.Status = conversationstore.InteractionStatusFailed
@@ -831,6 +854,9 @@ func (m *MemoryStore) PrepareInteraction(ctx context.Context, access security.Ac
 	}
 	history := m.ensureHistoryLocked(sessionID)
 	if len(history.history) >= m.limit {
+		return nil, conversationstore.ErrResourceExhausted
+	}
+	if len(m.summaryHistory[sessionID]) >= conversationstore.MaxHistoryEntriesPerSession {
 		return nil, conversationstore.ErrResourceExhausted
 	}
 	if m.entityCountLocked()+2 > m.quota.MaxInMemoryEntities {
@@ -869,11 +895,15 @@ func (m *MemoryStore) CompleteInteraction(ctx context.Context, access security.A
 		return conversationstore.ErrTurnNotFound
 	}
 	resultBytes := int64(len([]byte(result)))
+	if m.entityCountLocked()+1 > m.quota.MaxInMemoryEntities {
+		return conversationstore.ErrResourceExhausted
+	}
 	if m.sessionBytesLocked(sessionID)+resultBytes > m.quota.MaxSessionBytes || m.tenantBytesLocked(access.Subject.TenantID)+resultBytes > m.quota.MaxTenantBytes {
 		return conversationstore.ErrResourceExhausted
 	}
 	now := time.Now()
 	active.status = conversationstore.InteractionStatusCompleted
+	m.recordSummaryHistoryLocked(sessionID, turnID, conversationstore.InteractionStatusCompleted)
 	delete(history.active, turnID)
 	history.history = append(history.history, active)
 	interaction.Status = conversationstore.InteractionStatusCompleted
@@ -901,6 +931,9 @@ func (m *MemoryStore) FailInteraction(ctx context.Context, access security.Acces
 		return conversationstore.ErrTurnNotFound
 	}
 	if history := m.history[sessionID]; history != nil {
+		if history.active[turnID] != nil {
+			m.recordSummaryHistoryLocked(sessionID, turnID, conversationstore.InteractionStatusFailed)
+		}
 		delete(history.active, turnID)
 	}
 	interaction.Status = conversationstore.InteractionStatusFailed
@@ -923,6 +956,9 @@ func (m *MemoryStore) BeginTurn(ctx context.Context, access security.AccessConte
 		return 0, err
 	}
 	history := m.ensureHistoryLocked(sessionID)
+	if len(m.summaryHistory[sessionID]) >= conversationstore.MaxHistoryEntriesPerSession || m.entityCountLocked()+2 > m.quota.MaxInMemoryEntities {
+		return 0, conversationstore.ErrResourceExhausted
+	}
 	if len(history.active) > 0 {
 		return 0, conversationstore.ErrSessionBusy
 	}
@@ -990,7 +1026,11 @@ func messageBatchUsage(messages []*ai.Message) (int, int64, error) {
 }
 
 func (m *MemoryStore) sessionBytesLocked(sessionID string) int64 {
-	var total int64
+	total := int64(len(m.summaryChecks[sessionID])) * conversationstore.SummaryInspectionBytes
+	if v, ok := m.summaries[sessionID]; ok {
+		b, _ := json.Marshal(v)
+		total += int64(len(b))
+	}
 	for _, batch := range m.toolBatches {
 		if batch.SessionID == sessionID {
 			data, _ := json.Marshal(batch)
@@ -1031,6 +1071,13 @@ func (m *MemoryStore) tenantBytesLocked(tenantID string) int64 {
 
 func (m *MemoryStore) entityCountLocked() int {
 	total := len(m.sessions) + len(m.interactions) + len(m.toolBatches)
+	total += len(m.summaries)
+	for _, checks := range m.summaryChecks {
+		total += len(checks)
+	}
+	for _, entries := range m.summaryHistory {
+		total += len(entries)
+	}
 	for _, history := range m.history {
 		total += len(history.active) + len(history.history)
 		for _, current := range history.active {
@@ -1148,9 +1195,13 @@ func (m *MemoryStore) NextTurnForTurn(ctx context.Context, access security.Acces
 	if !ok {
 		return conversationstore.ErrTurnNotFound
 	}
+	if m.entityCountLocked()+1 > m.quota.MaxInMemoryEntities {
+		return conversationstore.ErrResourceExhausted
+	}
 	if len(history.history) >= m.limit {
 		return fmt.Errorf("%w: current session's context is full, please create a new session", conversationstore.ErrTurnLimitReached)
 	}
+	m.recordSummaryHistoryLocked(sessionID, turnID, conversationstore.InteractionStatusCompleted)
 	delete(history.active, turnID)
 	history.history = append(history.history, completed)
 	return nil
@@ -1175,6 +1226,7 @@ func (m *MemoryStore) AbortTurnForTurn(ctx context.Context, access security.Acce
 	if _, ok := history.active[turnID]; !ok {
 		return conversationstore.ErrTurnNotFound
 	}
+	m.recordSummaryHistoryLocked(sessionID, turnID, conversationstore.InteractionStatusFailed)
 	delete(history.active, turnID)
 	return nil
 }
