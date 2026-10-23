@@ -16,6 +16,7 @@ import (
 	rt "dubbo-admin-ai/runtime"
 
 	"dubbo-admin-ai/component/agent"
+	compcontext "dubbo-admin-ai/component/context"
 	"dubbo-admin-ai/schema"
 	"dubbo-admin-ai/security"
 	conversationstore "dubbo-admin-ai/store"
@@ -181,7 +182,8 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 				continue
 			}
 			if err != nil {
-				sseHandler.HandleError("agent_error", clientAgentError)
+				code, message := contextError(err)
+				sseHandler.HandleError(code, message)
 				rt.GetLogger().Error("Agent interaction error", "session_id", sessionID, "error_type", fmt.Sprintf("%T", err))
 				channels.Close()
 				return
@@ -280,7 +282,8 @@ func (h *AgentHandler) drainAndFinish(sseHandler *sse.SSEHandler, channels *agen
 		case err := <-channels.ErrorChan:
 			if err != nil {
 				rt.GetLogger().Error("Agent interaction error while draining", "session_id", sessionID, "error_type", fmt.Sprintf("%T", err))
-				sseHandler.HandleError("agent_error", clientAgentError)
+				code, message := contextError(err)
+				sseHandler.HandleError(code, message)
 			}
 		default:
 			if err := sseHandler.FinishStream(); err != nil {
@@ -290,6 +293,19 @@ func (h *AgentHandler) drainAndFinish(sseHandler *sse.SSEHandler, channels *agen
 			rt.GetLogger().Info("Stream processing completed", "session_id", sessionID)
 			return
 		}
+	}
+}
+
+func contextError(err error) (string, string) {
+	switch {
+	case errors.Is(err, compcontext.ErrMandatoryBudget):
+		return "CONTEXT_MANDATORY_BUDGET_EXCEEDED", "Required context exceeds the model input budget"
+	case errors.Is(err, compcontext.ErrTemplateInput):
+		return "PROMPT_REQUIRED_INPUT_MISSING", "A required server template value is unavailable"
+	case errors.Is(err, compcontext.ErrTemplateVersion):
+		return "PROMPT_VERSION_UNAVAILABLE", "The session template version is unavailable"
+	default:
+		return "agent_error", clientAgentError
 	}
 }
 
@@ -327,7 +343,11 @@ func (h *AgentHandler) CreateSession(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, NewAPIErrorResponse("AUTHENTICATION_REQUIRED", "Authentication required"))
 		return
 	}
-	sessionObj, err := h.sessionMgr.CreateSession(c.Request.Context(), access)
+	var templateRefs []string
+	if provider, ok := h.agent.(interface{ TemplateReference() string }); ok && provider.TemplateReference() != "" {
+		templateRefs = append(templateRefs, provider.TemplateReference())
+	}
+	sessionObj, err := h.sessionMgr.CreateSession(c.Request.Context(), access, templateRefs...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, NewErrorResponse("Failed to create session"))
 		return

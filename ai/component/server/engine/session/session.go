@@ -81,7 +81,7 @@ func NewManagerWithLifecycle(sessionStore conversationstore.SessionStore, mainte
 }
 
 // CreateSession creates a new active session in the configured Store.
-func (m *Manager) CreateSession(ctx context.Context, access security.AccessContext) (*Session, error) {
+func (m *Manager) CreateSession(ctx context.Context, access security.AccessContext, templateRefs ...string) (*Session, error) {
 	if err := m.requireStore(); err != nil {
 		return nil, err
 	}
@@ -96,6 +96,15 @@ func (m *Manager) CreateSession(ctx context.Context, access security.AccessConte
 		UpdatedAt: now,
 		ExpiresAt: &expiresAt,
 		Status:    "active",
+	}
+	if len(templateRefs) > 1 {
+		return nil, fmt.Errorf("only one template reference is allowed")
+	}
+	if len(templateRefs) == 1 {
+		if err := conversationstore.ValidateTemplateRef(templateRefs[0]); err != nil {
+			return nil, err
+		}
+		session.TemplateRef = templateRefs[0]
 	}
 	if err := m.policy.AuthorizeOwner(access, session.TenantID, session.OwnerID); err != nil {
 		return nil, err
