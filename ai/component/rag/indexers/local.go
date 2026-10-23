@@ -31,7 +31,7 @@ import (
 
 // Indexer types supported
 const (
-	IndexerTypeLocal   = "local"
+	IndexerTypeLocal    = "local"
 	IndexerTypePinecone = "pinecone"
 	// IndexerTypeMilvus is defined in milvus_const.go with build tag
 )
@@ -64,6 +64,11 @@ func NewLocalIndexer(g *genkit.Genkit, embedderModel string, targetIndex string,
 }
 
 func (idx *LocalIndexer) Store(ctx context.Context, docs []*schema.Document, opts ...indexer.Option) ([]string, error) {
+	prepared, err := prepareDocuments(docs)
+	if err != nil {
+		return nil, err
+	}
+	docs = prepared
 	implOpts := indexer.GetImplSpecificOptions(&CommonIndexerOptions{}, opts...)
 	_ = implOpts.Namespace
 	effectiveTarget := idx.target

@@ -56,12 +56,12 @@ type MilvusConfig struct {
 	Collection string // Collection name
 
 	// Vector configuration
-	Dimension  int
-	Embedder   string // Embedder model name
-	BatchSize  int
+	Dimension int
+	Embedder  string // Embedder model name
+	BatchSize int
 
 	// BM25 configuration (Milvus 2.5+)
-	EnableBM25 bool   // Enable built-in BM25 function for full-text search
+	EnableBM25 bool    // Enable built-in BM25 function for full-text search
 	BM25K1     float64 // BM25 k1 parameter (default: 1.2)
 	BM25B      float64 // BM25 b parameter (default: 0.75)
 
@@ -237,6 +237,11 @@ func (idx *MilvusIndexer) Store(ctx context.Context, docs []*schema.Document, op
 	if idx.client == nil {
 		return nil, fmt.Errorf("milvus client is not initialized")
 	}
+	prepared, err := prepareDocuments(docs)
+	if err != nil {
+		return nil, err
+	}
+	docs = prepared
 
 	_ = indexer.GetImplSpecificOptions(&CommonIndexerOptions{}, opts...)
 
@@ -340,16 +345,16 @@ func (idx *MilvusIndexer) Store(ctx context.Context, docs []*schema.Document, op
 
 	// Insert data - BM25 function will auto-generate sparse vectors if enabled
 	insertOption := milvusclient.NewColumnBasedInsertOption(idx.config.Collection, columns...)
-	_, err := idx.client.Insert(ctx, insertOption)
-	if err != nil {
-		return nil, fmt.Errorf("failed to insert into milvus: %w", err)
+	_, insertErr := idx.client.Insert(ctx, insertOption)
+	if insertErr != nil {
+		return nil, fmt.Errorf("failed to insert into milvus: %w", insertErr)
 	}
 
 	// Flush to ensure data is searchable
 	flushOption := milvusclient.NewFlushOption(idx.config.Collection)
-	_, err = idx.client.Flush(ctx, flushOption)
-	if err != nil {
-		return nil, fmt.Errorf("failed to flush collection: %w", err)
+	_, flushErr := idx.client.Flush(ctx, flushOption)
+	if flushErr != nil {
+		return nil, fmt.Errorf("failed to flush collection: %w", flushErr)
 	}
 
 	// Generate returned IDs

@@ -19,11 +19,9 @@ package hooks
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
-	"unicode/utf8"
 
 	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -98,7 +96,7 @@ func TestTracingHookDoesNotMaterializeContentForUnsampledSpan(t *testing.T) {
 	}
 }
 
-func TestTracingHookMaterializesContentForRecordingSpan(t *testing.T) {
+func TestTracingHookNeverMaterializesContent(t *testing.T) {
 	recorder := tracetest.NewSpanRecorder()
 	provider := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
 	t.Cleanup(func() { _ = provider.Shutdown(context.Background()) })
@@ -114,14 +112,14 @@ func TestTracingHookMaterializesContentForRecordingSpan(t *testing.T) {
 	})
 	ctx := manager.Emit(context.Background(), start)
 	manager.Emit(ctx, State{Event: EventModelCallEnd, Model: "test/model"})
-	if calls != 1 {
-		t.Fatalf("recording span materialized content %d times, want 1", calls)
+	if calls != 0 {
+		t.Fatalf("recording span materialized content %d times, want 0", calls)
 	}
 	spans := recorder.Ended()
 	if len(spans) != 1 {
 		t.Fatalf("ended spans = %d, want 1", len(spans))
 	}
-	assertSpanAttribute(t, spans[0].Attributes(), "gen_ai.input.messages", `[{"parts":[],"role":"user"}]`)
+	assertNoSpanAttribute(t, spans[0].Attributes(), "gen_ai.input.messages")
 }
 
 func TestStateAttributesClassifyToolAndStageEvents(t *testing.T) {
@@ -139,35 +137,6 @@ func TestStateAttributesClassifyToolAndStageEvents(t *testing.T) {
 	})
 	assertNoSpanAttribute(t, stageAttrs, "gen_ai.operation.name")
 	assertNoSpanAttribute(t, stageAttrs, "gen_ai.request.model")
-}
-
-func TestTracingHookContentPolicy(t *testing.T) {
-	state := State{Event: EventModelCallStart, Input: SnapshotContent(map[string]string{"message": "secret"})}
-	if attrs := contentAttributes(state, CaptureNone, true); len(attrs) != 0 {
-		t.Fatalf("CaptureNone attributes = %v, want none", attrs)
-	}
-	state.Input = SnapshotContent([]map[string]any{{
-		"role":  "user",
-		"parts": []map[string]any{{"type": "text", "content": strings.Repeat("x", truncatedContentLimit+100)}},
-	}})
-	attrs := contentAttributes(state, CaptureTruncated, true)
-	if len(attrs) != 1 || len(attrs[0].Value.AsString()) > truncatedContentLimit+4 {
-		t.Fatalf("truncated attribute length = %d", len(attrs[0].Value.AsString()))
-	}
-	var decoded []map[string]any
-	if err := json.Unmarshal([]byte(attrs[0].Value.AsString()), &decoded); err != nil {
-		t.Fatalf("truncated semantic content is not valid JSON: %v", err)
-	}
-}
-
-func TestFailedToolCallOmitsStandardResultContent(t *testing.T) {
-	state := State{
-		Event: EventToolCallEnd, Degraded: true, Error: "boom",
-		Output: SnapshotContent(map[string]string{"summary": "tool failed: boom"}),
-	}
-	if attrs := contentAttributes(state, CaptureFull, false); len(attrs) != 0 {
-		t.Fatalf("failed tool result attributes = %v, want none", attrs)
-	}
 }
 
 func TestStateAttributesExposeFallbackAndErrorType(t *testing.T) {
@@ -325,9 +294,6 @@ func TestTracingLargeMultibyteContent(t *testing.T) {
 			ctx := manager.Emit(context.Background(), start)
 			manager.Emit(ctx, end)
 			wantCalls := 0
-			if tc.sampled && tc.policy != CaptureNone {
-				wantCalls = 1
-			}
 			if inputCalls != wantCalls || outputCalls != wantCalls {
 				t.Fatalf("content provider calls = %d/%d, want %d each", inputCalls, outputCalls, wantCalls)
 			}
@@ -350,21 +316,8 @@ func TestTracingLargeMultibyteContent(t *testing.T) {
 						break
 					}
 				}
-				if tc.policy == CaptureNone {
-					if found {
-						t.Fatalf("capture none emitted %s (%d bytes)", key, len(value))
-					}
-					continue
-				}
-				if !found || len(value) > truncatedContentLimit || !utf8.ValidString(value) || !json.Valid([]byte(value)) {
-					t.Fatalf("%s: found=%v, bytes=%d, valid UTF-8=%v, valid JSON=%v", key, found, len(value), utf8.ValidString(value), json.Valid([]byte(value)))
-				}
-				var decoded []struct{ Parts []struct{ Content string } }
-				if err := json.Unmarshal([]byte(value), &decoded); err != nil {
-					t.Fatal(err)
-				}
-				if len(decoded) != 1 || len(decoded[0].Parts) != 1 || !strings.HasSuffix(decoded[0].Parts[0].Content, "…") {
-					t.Fatalf("%s did not preserve a truncated message and its text part", key)
+				if found {
+					t.Fatalf("metadata-only tracing emitted %s (%d bytes)", key, len(value))
 				}
 			}
 		})

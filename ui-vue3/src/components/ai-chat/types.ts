@@ -50,7 +50,8 @@ export interface ChatService<TContext = unknown> {
   sendChatMessage(
     message: string,
     sessionId?: string,
-    context?: TContext
+    context?: TContext,
+    idempotencyKey?: string
   ): Promise<ReadableStream<Uint8Array>>
 }
 
