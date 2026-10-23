@@ -100,6 +100,8 @@ func (e Event) toolCall() bool {
 // State is a read-only snapshot supplied to hooks. Go context propagation is
 // carried separately through context.Context and must not be stored here.
 type State struct {
+	CallType             string
+	Auxiliary            bool
 	EstimatedInputTokens int
 	TemplateRef          string
 	CompilerVersion      string

@@ -29,6 +29,7 @@ import (
 	compcontext "dubbo-admin-ai/component/context"
 	"dubbo-admin-ai/component/hooks"
 	"dubbo-admin-ai/component/memory"
+	"dubbo-admin-ai/component/memory/summary"
 	rt "dubbo-admin-ai/runtime"
 	"dubbo-admin-ai/schema"
 	"dubbo-admin-ai/security"
@@ -45,6 +46,9 @@ import (
 // per-interaction state lives in the Channels/history reached through Interact,
 // not on the agent.
 type ReActAgent struct {
+	summaryService   *summary.Service
+	summaryStore     conversationstore.SummaryStore
+	summaryCompiler  *compcontext.Compiler
 	compiler         *compcontext.Compiler
 	compilationStore conversationstore.CompilationStore
 	compilerSpec     AgentSpec
@@ -77,6 +81,7 @@ var ErrAgentStopping = errors.New("agent is stopping")
 const persistenceTimeout = 30 * time.Second
 
 type interactionState struct {
+	summaryResult summary.Result
 	turns         []conversationstore.TurnContext
 	recovery      conversationstore.ToolRecovery
 	templateRef   string
@@ -137,6 +142,9 @@ func NewReActAgentWithStore(g *genkit.Genkit, messageStore conversationstore.Mes
 	if err := ra.initCompiler(spec, toolRefs); err != nil {
 		return nil, err
 	}
+	if err := ra.initSummary(spec); err != nil {
+		return nil, err
+	}
 	return ra, nil
 }
 
@@ -157,6 +165,7 @@ func (ra *ReActAgent) Interact(parent context.Context, input *schema.UserInput, 
 		return chans
 	}
 	interactionStartedAt := time.Now()
+	interactionCtx = context.WithValue(interactionCtx, interactionTraceIDContextKey, interactionID)
 	interactionCtx = emitHook(ra.hookManager, interactionCtx, hooks.State{
 		Event:         hooks.EventInteractionStart,
 		InteractionID: interactionID,
@@ -445,6 +454,36 @@ func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserI
 			if err == nil {
 				state.recovery, err = ra.compilationStore.RecoveryToolBatches(parent, access, sessionID, turnID, 16, min(conversationstore.MaxToolBatchBytes, ra.compilerSpec.MaxCollectBytes))
 			}
+			if err == nil && ra.summaryService != nil && ra.compilerSpec.ContextCompilerMode != "minimal" {
+				summaryInteractionID := interactionID
+				if summaryInteractionID == "" {
+					summaryInteractionID, _ = parent.Value(interactionTraceIDContextKey).(string)
+				}
+				if summaryInteractionID == "" {
+					summaryInteractionID = fmt.Sprintf("turn:%s:%d", sessionID, turnID)
+				}
+				// Reject mandatory overflow before spending even an auxiliary model call.
+				var preflight *compcontext.CompiledRequest
+				preflight, err = ra.compile(parent, state, &interactionTrace{Session: sessionID, InteractionID: summaryInteractionID}, ra.maxIterations <= 1)
+				if err == nil {
+					keep := ra.contextWindowTurns
+					included := 0
+					omitted := false
+					for _, d := range preflight.Report.Decisions {
+						if d.SourceID == "history" {
+							if d.Status == "omitted" || d.Status == "rejected" {
+								omitted = true
+							} else {
+								included++
+							}
+						}
+					}
+					if omitted {
+						keep = min(keep, included)
+					}
+					state.summaryResult, err = ra.summaryService.Advance(parent, access, sessionID, summaryInteractionID, turnID, keep)
+				}
+			}
 			if err != nil {
 				if errors.Is(err, conversationstore.ErrResourceExhausted) {
 					err = fmt.Errorf("%w: bounded context snapshot", compcontext.ErrMandatoryBudget)
@@ -486,9 +525,10 @@ func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserI
 type contextKey string
 
 const (
-	sessionIDContextKey   contextKey = "session"
-	turnIDContextKey      contextKey = "turn"
-	persistenceContextKey contextKey = "persistence"
+	interactionTraceIDContextKey contextKey = "interaction_trace_id"
+	sessionIDContextKey          contextKey = "session"
+	turnIDContextKey             contextKey = "turn"
+	persistenceContextKey        contextKey = "persistence"
 )
 
 // GetMemory returns the agent's chat history store, or nil if it cannot be

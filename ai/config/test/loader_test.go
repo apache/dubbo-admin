@@ -109,6 +109,42 @@ func TestLoader_Component_Parse(t *testing.T) {
 	}
 }
 
+func TestLoader_ConversationSummary(t *testing.T) {
+	for _, tc := range []struct {
+		name, settings string
+		invalid        bool
+	}{
+		{"defaults", "enabled: true", false},
+		{"unknown field", "enabled: true\n    background_queue: true", true},
+		{"unbounded calls", "enabled: true\n    recovery_max_calls: 100000", true},
+		{"fragment too large", "enabled: true\n    fragment_bytes: 1000000", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			t.Setenv("SCHEMA_DIR", repoSchemaDir(t))
+			writeFile(t, filepath.Join(dir, "agent.yaml"), "type: agent\nspec:\n  model: fixture\n  prompt_base_path: ./prompts\n  conversation_summary:\n    "+tc.settings+"\n")
+			loader := config.NewLoader(filepath.Join(dir, "config.yaml"))
+			cfg, err := loader.LoadComponent("agent.yaml")
+			if tc.invalid {
+				if err == nil {
+					t.Fatal("invalid summary configuration accepted")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			var spec react.AgentSpec
+			if err := cfg.Spec.Decode(&spec); err != nil {
+				t.Fatal(err)
+			}
+			if !spec.ConversationSummary.Enabled || spec.ConversationSummary.FragmentBytes != 8192 || spec.ConversationSummary.RecoveryMaxCalls != 8 {
+				t.Fatalf("summary config/defaults lost: %+v", spec.ConversationSummary)
+			}
+		})
+	}
+}
+
 func TestLoader_MainConfig_Structural(t *testing.T) {
 	tests := []struct {
 		name       string

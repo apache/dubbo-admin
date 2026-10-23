@@ -14,6 +14,21 @@
       "additionalProperties": false,
       "required": ["model", "prompt_base_path"],
       "properties": {
+        "conversation_summary": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "model": { "type": "string", "maxLength": 256 },
+            "context_tokens": { "type": "integer", "minimum": 1 },
+            "timeout_seconds": { "type": "integer", "minimum": 1, "maximum": 300, "default": 10 },
+            "max_calls": { "type": "integer", "minimum": 1, "maximum": 32, "default": 2 },
+            "recovery_max_calls": { "type": "integer", "minimum": 1, "maximum": 64, "default": 8 },
+            "fragment_bytes": { "type": "integer", "minimum": 256, "maximum": 65536, "default": 8192 },
+            "max_output_bytes": { "type": "integer", "minimum": 256, "maximum": 65536, "default": 8192 },
+            "output_tokens": { "type": "integer", "minimum": 1, "default": 2048 },
+            "trigger_headroom_turns": { "type": "integer", "minimum": 1, "default": 2 }
+          }
+        },
         "context_compiler_mode": {
           "type": "string", "enum": ["enabled", "minimal"], "default": "enabled",
           "description": "minimal keeps mandatory compiler security/budgets while disabling history and tools."

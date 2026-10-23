@@ -17,7 +17,11 @@
 
 package react
 
-import "fmt"
+import (
+	"fmt"
+
+	"dubbo-admin-ai/component/memory/summary"
+)
 
 // AgentTypeReAct is the agent_type discriminator for the ReAct strategy.
 const AgentTypeReAct = "react"
@@ -36,6 +40,7 @@ const defaultContextWindowTurns = 10
 // iteration) or answers directly. The model settings below configure that one
 // call, so the config is flat — there is no multi-stage pipeline to describe.
 type AgentSpec struct {
+	ConversationSummary  summary.Config    `yaml:"conversation_summary"`
 	ContextCompilerMode  string            `yaml:"context_compiler_mode"`
 	ContextTokens        int               `yaml:"context_tokens"`
 	SafetyMargin         int               `yaml:"context_safety_margin"`
@@ -67,6 +72,7 @@ type AgentSpec struct {
 // ApplyDefaults fills values that are optional when AgentSpec is constructed
 // directly in Go. Schema-loaded configurations already receive these defaults.
 func (c *AgentSpec) ApplyDefaults() {
+	c.ConversationSummary.Defaults()
 	if c.ContextCompilerMode == "" {
 		c.ContextCompilerMode = "enabled"
 	}
@@ -95,6 +101,9 @@ func (c *AgentSpec) ApplyDefaults() {
 
 // Validate validates the configuration.
 func (c *AgentSpec) Validate() error {
+	if err := c.ConversationSummary.Validate(); err != nil {
+		return fmt.Errorf("invalid conversation_summary: %w", err)
+	}
 	if c.ContextCompilerMode != "" && c.ContextCompilerMode != "enabled" && c.ContextCompilerMode != "minimal" {
 		return fmt.Errorf("context_compiler_mode must be enabled or minimal")
 	}

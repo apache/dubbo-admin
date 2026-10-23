@@ -20,6 +20,7 @@ package react
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -28,6 +29,8 @@ import (
 	"time"
 
 	comp "dubbo-admin-ai/component/context"
+	"dubbo-admin-ai/security"
+	"dubbo-admin-ai/store"
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/openai/openai-go"
@@ -123,19 +126,52 @@ func (ra *ReActAgent) compile(ctx context.Context, state *interactionState, s *i
 			tools = append(tools, t)
 		}
 	}
-	result, err := ra.compiler.Compile(ctx, comp.CompileRequest{
-		CollectRequest: comp.CollectRequest{Access: state.access, SessionID: s.Session, InteractionID: s.InteractionID, TurnID: state.turnID, Turns: state.turns, Recovery: state.recovery, MaxItems: 1000, MaxBytes: ra.compilerSpec.MaxContextBytes, MaxCollectBytes: ra.compilerSpec.MaxCollectBytes, NotAfter: time.Now()},
+	request := comp.CompileRequest{
+		CollectRequest: comp.CollectRequest{Summary: state.summaryResult.Summary, HistorySnapshot: state.summaryResult.Snapshot, SummaryReason: state.summaryResult.Reason, Access: state.access, SessionID: s.Session, InteractionID: s.InteractionID, TurnID: state.turnID, Turns: state.turns, Recovery: state.recovery, MaxItems: 1000, MaxBytes: ra.compilerSpec.MaxContextBytes, MaxCollectBytes: ra.compilerSpec.MaxCollectBytes, NotAfter: time.Now()},
 		Model:          ra.model, Phase: phase, TemplateRef: state.templateRef, Variables: ra.compilerSpec.TemplateVariables, Tools: tools,
 		ContextTokens: ra.compilerSpec.ContextTokens, OutputTokens: ra.compilerSpec.MaxTokens, SafetyMargin: ra.compilerSpec.SafetyMargin, Temperature: ra.compilerSpec.Temperature, TopP: ra.compilerSpec.TopP,
-	})
+	}
+	request.SummaryCalls = state.summaryResult.Calls
+	request.SummaryBacklog = state.summaryResult.Backlog
+	// Refresh state before collection; a stale/removed summary cannot suppress history.
+	if request.Summary != nil && ra.summaryStore != nil {
+		current, readErr := ra.summaryStore.GetSummary(ctx, state.access, s.Session)
+		if summaryAccessFailure(readErr) {
+			return nil, readErr
+		}
+		if readErr != nil || current == nil || current.Version != request.Summary.Version {
+			request.Summary = nil
+			request.SummaryReason = "SUMMARY_VERSION_CHANGED"
+		}
+	}
+	result, err := ra.compiler.Compile(ctx, request)
 	if err != nil {
 		return nil, err
+	}
+	// At most one fallback selection after final provenance revalidation.
+	if request.Summary != nil && ra.summaryStore != nil {
+		current, readErr := ra.summaryStore.GetSummary(ctx, state.access, s.Session)
+		if summaryAccessFailure(readErr) {
+			return nil, readErr
+		}
+		if readErr != nil || current == nil || current.Version != request.Summary.Version {
+			request.Summary = nil
+			request.SummaryReason = "SUMMARY_VERSION_CHANGED"
+			result, err = ra.compiler.Compile(ctx, request)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 	state.allowedTools = map[string]bool{}
 	for _, t := range result.Tools {
 		state.allowedTools[t.Name] = true
 	}
 	return result, nil
+}
+
+func summaryAccessFailure(err error) bool {
+	return errors.Is(err, store.ErrSessionNotFound) || errors.Is(err, security.ErrResourceNotAccessible) || errors.Is(err, security.ErrAuthenticationRequired)
 }
 
 // compiledPrompt has no hidden prompt bindings. It adapts exactly one compiled

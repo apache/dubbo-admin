@@ -187,7 +187,8 @@ provider fixture checks the actual OpenAI-compatible request after Genkit:
 one system message, phase strategy, tools/schema, call-ID pairing, output limit
 and history restored by a fresh Agent. Tests need no external model credentials.
 
-Summary persistence, cursor-based summary recovery, cross-session Memory,
+Summary persistence and cursor-based recovery are described in
+[`../memory/summary/README.md`](../memory/summary/README.md). Cross-session Memory,
 frontend controls, resource scopes, dynamic plugins, a model-specific tokenizer,
 and a general cross-source evidence resolver remain outside this PR. New
 Summary/Memory Sources must use these same policies and budget/SDK boundary.

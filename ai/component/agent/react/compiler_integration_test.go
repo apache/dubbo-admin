@@ -50,9 +50,10 @@ import (
 )
 
 type providerFixture struct {
-	mu       sync.Mutex
-	requests []map[string]any
-	first    string
+	summaries bool
+	mu        sync.Mutex
+	requests  []map[string]any
+	first     string
 }
 
 func (f *providerFixture) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -71,6 +72,41 @@ func (f *providerFixture) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if index == 1 && f.first != "" {
 		message = f.first
 		reason = "tool_calls"
+	}
+	if f.summaries {
+		messages, _ := request["messages"].([]any)
+		if len(messages) > 0 {
+			firstMessage, _ := messages[0].(map[string]any)
+			system, _ := firstMessage["content"].(string)
+			if strings.HasPrefix(system, "Create a bounded rolling conversation summary.") {
+				last, _ := messages[len(messages)-1].(map[string]any)
+				content, _ := last["content"].(string)
+				if parts, ok := last["content"].([]any); ok {
+					for _, part := range parts {
+						p, _ := part.(map[string]any)
+						text, _ := p["text"].(string)
+						content += text
+					}
+				}
+				var input struct {
+					Previous store.SummaryPayload `json:"previous"`
+					Source   string               `json:"current_source"`
+					Evidence string               `json:"evidence"`
+				}
+				if err := json.Unmarshal([]byte(content), &input); err != nil {
+					http.Error(w, "bad summary input", 400)
+					return
+				}
+				payload := input.Previous
+				if strings.Contains(input.Evidence, "initial goal: identify outage") && len(payload.Goals) == 0 {
+					payload.Goals = []store.SummaryStatement{{Text: "earliest objective preserved", Sources: []string{input.Source}}}
+				}
+				body, _ := json.Marshal(payload)
+				encoded, _ := json.Marshal(map[string]any{"role": "assistant", "content": string(body)})
+				message = string(encoded)
+				reason = "stop"
+			}
+		}
 	}
 	_, _ = fmt.Fprintf(w, `{"id":"response-%d","object":"chat.completion","created":1,"model":"fixture","choices":[{"index":0,"message":%s,"finish_reason":"%s"}],"usage":{"prompt_tokens":17,"completion_tokens":5,"total_tokens":22}}`, index, message, reason)
 }

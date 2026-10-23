@@ -83,6 +83,10 @@ func NewUsageAuditRegistration(store conversationstore.UsageAuditStore, logger *
 		}
 		if options.UsagePersistence && state.Event == EventModelCallEnd {
 			usage := conversationstore.UsageEvent{ID: uuid.NewString(), SchemaVersion: options.SchemaVersion, TenantID: access.Subject.TenantID, UserID: access.Subject.UserID, SessionID: state.SessionID, InteractionID: state.InteractionID, CallID: state.CallID, CallType: conversationstore.UsageCallModel, Model: state.Model, PolicyVersion: options.PolicyVersion, AmountSource: conversationstore.UsageAmountUnknown, CostStatus: conversationstore.UsageCostUnknown, Status: audit.Status, ReasonCode: state.ReasonCode(), CreatedAt: now}
+			if state.CallType != "" {
+				usage.CallType = state.CallType
+			}
+			usage.Auxiliary = state.Auxiliary
 			if state.UsagePresent {
 				usage.AmountSource = conversationstore.UsageAmountProvider
 				usage.InputTokens = intPtr(state.InputTokens)
