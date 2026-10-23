@@ -161,6 +161,9 @@ func stateAttributes(state State) []attribute.KeyValue {
 	if state.ErrorType != "" {
 		attrs = append(attrs, attribute.String("error.type", state.ErrorType))
 	}
+	if state.EstimatorVersion != "" {
+		attrs = append(attrs, attribute.Int("ai.context.estimated_input_tokens", state.EstimatedInputTokens), attribute.String("ai.context.template_ref", state.TemplateRef), attribute.String("ai.context.compiler_version", state.CompilerVersion), attribute.String("ai.context.estimator_version", state.EstimatorVersion))
+	}
 	if state.Event == EventModelCallEnd && state.InputTokens > 0 {
 		attrs = append(attrs, attribute.Int("gen_ai.usage.input_tokens", state.InputTokens))
 	}

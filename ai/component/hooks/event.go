@@ -100,30 +100,34 @@ func (e Event) toolCall() bool {
 // State is a read-only snapshot supplied to hooks. Go context propagation is
 // carried separately through context.Context and must not be stored here.
 type State struct {
-	Event          Event
-	InteractionID  string
-	SessionID      string
-	Iteration      int
-	Stage          string
-	Model          string
-	ToolName       string
-	ToolCallID     string
-	CallID         string
-	Input          string
-	Output         string
-	Error          string
-	ErrorType      string
-	Degraded       bool
-	FallbackUsed   bool
-	FallbackReason string
-	InputTokens    int
-	OutputTokens   int
-	TotalTokens    int
-	UsagePresent   bool
-	StartedAt      time.Time
-	EndedAt        time.Time
-	inputContent   *lazyContentSnapshot
-	outputContent  *lazyContentSnapshot
+	EstimatedInputTokens int
+	TemplateRef          string
+	CompilerVersion      string
+	EstimatorVersion     string
+	Event                Event
+	InteractionID        string
+	SessionID            string
+	Iteration            int
+	Stage                string
+	Model                string
+	ToolName             string
+	ToolCallID           string
+	CallID               string
+	Input                string
+	Output               string
+	Error                string
+	ErrorType            string
+	Degraded             bool
+	FallbackUsed         bool
+	FallbackReason       string
+	InputTokens          int
+	OutputTokens         int
+	TotalTokens          int
+	UsagePresent         bool
+	StartedAt            time.Time
+	EndedAt              time.Time
+	inputContent         *lazyContentSnapshot
+	outputContent        *lazyContentSnapshot
 }
 
 type lazyContentSnapshot struct {

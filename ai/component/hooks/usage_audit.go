@@ -89,6 +89,12 @@ func NewUsageAuditRegistration(store conversationstore.UsageAuditStore, logger *
 				usage.OutputTokens = intPtr(state.OutputTokens)
 				usage.TotalTokens = intPtr(state.TotalTokens)
 			}
+			if state.EstimatorVersion != "" {
+				usage.EstimatedInputTokens = intPtr(state.EstimatedInputTokens)
+			}
+			usage.TemplateRef = state.TemplateRef
+			usage.CompilerVersion = state.CompilerVersion
+			usage.EstimatorVersion = state.EstimatorVersion
 			if err := store.RecordUsage(persistCtx, usage); err != nil {
 				logger.Warn("failed to record AI usage event", "event", state.Event, "error_type", ErrorType(err))
 			}
