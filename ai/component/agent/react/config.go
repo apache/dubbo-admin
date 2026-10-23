@@ -36,10 +36,21 @@ const defaultContextWindowTurns = 10
 // iteration) or answers directly. The model settings below configure that one
 // call, so the config is flat — there is no multi-stage pipeline to describe.
 type AgentSpec struct {
-	AgentType      string `yaml:"agent_type"`
-	Model          string `yaml:"model"`
-	PromptBasePath string `yaml:"prompt_base_path"`
-	PromptFile     string `yaml:"prompt_file"`
+	ContextCompilerMode  string            `yaml:"context_compiler_mode"`
+	ContextTokens        int               `yaml:"context_tokens"`
+	SafetyMargin         int               `yaml:"context_safety_margin"`
+	MaxContextBytes      int               `yaml:"max_context_bytes"`
+	MaxCollectBytes      int               `yaml:"max_collect_bytes"`
+	TemplateID           string            `yaml:"template_id"`
+	TemplateVersion      string            `yaml:"template_version"`
+	TemplateVariables    map[string]string `yaml:"template_variables,omitempty"`
+	TemplateArchiveFiles []string          `yaml:"template_archive_files,omitempty"`
+	AllowedTools         []string          `yaml:"allowed_tools,omitempty"`
+	ToolRequiredScopes   map[string]string `yaml:"tool_required_scopes,omitempty"`
+	AgentType            string            `yaml:"agent_type"`
+	Model                string            `yaml:"model"`
+	PromptBasePath       string            `yaml:"prompt_base_path"`
+	PromptFile           string            `yaml:"prompt_file"`
 	// MaxIterations bounds the reason-act loop. The last iteration always forces a
 	// tool-less answer, so the effective number of tool rounds is
 	// MaxIterations - 1; a value of 1 means "answer directly, never call tools".
@@ -56,6 +67,27 @@ type AgentSpec struct {
 // ApplyDefaults fills values that are optional when AgentSpec is constructed
 // directly in Go. Schema-loaded configurations already receive these defaults.
 func (c *AgentSpec) ApplyDefaults() {
+	if c.ContextCompilerMode == "" {
+		c.ContextCompilerMode = "enabled"
+	}
+	if c.ContextTokens == 0 {
+		c.ContextTokens = 32768
+	}
+	if c.SafetyMargin == 0 {
+		c.SafetyMargin = 1024
+	}
+	if c.MaxContextBytes == 0 {
+		c.MaxContextBytes = 8 << 20
+	}
+	if c.MaxCollectBytes == 0 {
+		c.MaxCollectBytes = 8 << 20
+	}
+	if c.TemplateID == "" {
+		c.TemplateID = "react"
+	}
+	if c.TemplateVersion == "" {
+		c.TemplateVersion = "1"
+	}
 	if c.ContextWindowTurns == 0 {
 		c.ContextWindowTurns = defaultContextWindowTurns
 	}
@@ -63,6 +95,15 @@ func (c *AgentSpec) ApplyDefaults() {
 
 // Validate validates the configuration.
 func (c *AgentSpec) Validate() error {
+	if c.ContextCompilerMode != "" && c.ContextCompilerMode != "enabled" && c.ContextCompilerMode != "minimal" {
+		return fmt.Errorf("context_compiler_mode must be enabled or minimal")
+	}
+	if c.ContextTokens < 0 || c.SafetyMargin < 0 || c.MaxContextBytes < 0 || c.MaxCollectBytes < 0 {
+		return fmt.Errorf("context budgets must not be negative")
+	}
+	if c.ContextTokens > 0 && c.ContextTokens <= c.MaxTokens+c.SafetyMargin {
+		return fmt.Errorf("context_tokens must exceed output reserve and safety margin")
+	}
 	if c.AgentType == "" {
 		return fmt.Errorf("agent_type is required")
 	}

@@ -20,6 +20,7 @@ package engine
 import (
 	compRag "dubbo-admin-ai/component/rag"
 	"dubbo-admin-ai/runtime"
+	"dubbo-admin-ai/security"
 	conversationstore "dubbo-admin-ai/store"
 	"fmt"
 
@@ -52,13 +53,24 @@ type MemoryToolInput struct {
 func getAllMemoryBySession(rt *runtime.Runtime, messageStore conversationstore.MessageStore) ai.Tool {
 	g := rt.GetGenkitRegistry()
 	return genkit.DefineTool(
-		g, GetAllMemoryTool, "Retrieve conversation history for a specific session. Use this when user references previous context (e.g., 'previous', 'earlier', 'that config', 'my setup') or when current question cannot be answered without missing prior context.",
+		g, GetAllMemoryTool, "Retrieve bounded recent conversation history for the current session. Older history may be omitted.",
 		func(ctx *ai.ToolContext, input MemoryToolInput) (ToolOutput, error) {
 			if input.SessionID == "" {
 				return ToolOutput{}, fmt.Errorf("sessionID is required")
 			}
 
-			history, err := messageStore.AllMemory(ctx, input.SessionID)
+			access, err := security.AccessContextFromContext(ctx)
+			if err != nil {
+				return ToolOutput{}, err
+			}
+			// A bounded active-turn query prevents this tool from loading all
+			// history before the Compiler can apply its final request budget.
+			prepared, ok := conversationstore.PreparedInteractionFromContext(ctx)
+			bounded, supported := messageStore.(conversationstore.CompilationStore)
+			if !ok || !supported {
+				return ToolOutput{}, fmt.Errorf("bounded history is unavailable")
+			}
+			history, err := bounded.ContextTurns(ctx, access, input.SessionID, prepared.TurnID, 3, 64<<10)
 			if err != nil {
 				return ToolOutput{}, fmt.Errorf("failed to load conversation history: %w", err)
 			}

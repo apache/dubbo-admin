@@ -144,7 +144,7 @@ func TestHooksLoaderExplicitRegistrationValues(t *testing.T) {
         protocol: http/protobuf
         service_name: custom-service
         sample_ratio: 0
-        capture_content: truncated
+        capture_content: none
 `)
 	if err != nil {
 		t.Fatal(err)
@@ -154,7 +154,7 @@ func TestHooksLoaderExplicitRegistrationValues(t *testing.T) {
 	if logging["enabled"] != false || !reflect.DeepEqual(logging["events"], []any{"tool_call.start", "tool_call.error"}) || !reflect.DeepEqual(logging["tools"], []any{"search", "lookup"}) || logging["config"].(map[string]any)["level"] != "warn" {
 		t.Fatalf("explicit logging values lost: %#v", logging)
 	}
-	wantTracing := map[string]any{"protocol": "http/protobuf", "service_name": "custom-service", "sample_ratio": 0, "capture_content": "truncated"}
+	wantTracing := map[string]any{"protocol": "http/protobuf", "service_name": "custom-service", "sample_ratio": 0, "capture_content": "none"}
 	if got := entries[1].(map[string]any)["config"]; !reflect.DeepEqual(got, wantTracing) {
 		t.Fatalf("tracing config = %#v, want %#v", got, wantTracing)
 	}

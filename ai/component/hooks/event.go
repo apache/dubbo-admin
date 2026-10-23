@@ -25,6 +25,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"dubbo-admin-ai/security"
 )
 
 // Event identifies a stable boundary in an agent interaction.
@@ -98,28 +100,34 @@ func (e Event) toolCall() bool {
 // State is a read-only snapshot supplied to hooks. Go context propagation is
 // carried separately through context.Context and must not be stored here.
 type State struct {
-	Event          Event
-	InteractionID  string
-	SessionID      string
-	Iteration      int
-	Stage          string
-	Model          string
-	ToolName       string
-	ToolCallID     string
-	Input          string
-	Output         string
-	Error          string
-	ErrorType      string
-	Degraded       bool
-	FallbackUsed   bool
-	FallbackReason string
-	InputTokens    int
-	OutputTokens   int
-	TotalTokens    int
-	StartedAt      time.Time
-	EndedAt        time.Time
-	inputContent   *lazyContentSnapshot
-	outputContent  *lazyContentSnapshot
+	EstimatedInputTokens int
+	TemplateRef          string
+	CompilerVersion      string
+	EstimatorVersion     string
+	Event                Event
+	InteractionID        string
+	SessionID            string
+	Iteration            int
+	Stage                string
+	Model                string
+	ToolName             string
+	ToolCallID           string
+	CallID               string
+	Input                string
+	Output               string
+	Error                string
+	ErrorType            string
+	Degraded             bool
+	FallbackUsed         bool
+	FallbackReason       string
+	InputTokens          int
+	OutputTokens         int
+	TotalTokens          int
+	UsagePresent         bool
+	StartedAt            time.Time
+	EndedAt              time.Time
+	inputContent         *lazyContentSnapshot
+	outputContent        *lazyContentSnapshot
 }
 
 type lazyContentSnapshot struct {
@@ -180,7 +188,7 @@ func ErrorMessage(err error) string {
 	if err == nil {
 		return ""
 	}
-	return err.Error()
+	return security.SafeError(err)
 }
 
 // ErrorType snapshots the concrete error type for OpenTelemetry error.type.
@@ -205,9 +213,10 @@ func SnapshotContent(value any) string {
 	if value == nil {
 		return ""
 	}
-	content, err := json.Marshal(value)
+	sanitized := security.DefaultSanitizer().SanitizeStructured(value)
+	content, err := json.Marshal(sanitized.Value)
 	if err == nil {
 		return string(content)
 	}
-	return strconv.Quote(fmt.Sprint(value))
+	return strconv.Quote(security.DefaultSanitizer().SanitizeText(fmt.Sprint(value)).Value)
 }
