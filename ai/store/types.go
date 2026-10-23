@@ -35,14 +35,15 @@ const (
 
 // Session is the persisted conversation session metadata.
 type Session struct {
-	ID        string
-	TenantID  string
-	OwnerID   string
-	Version   uint64
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	ExpiresAt *time.Time
-	Status    string
+	TemplateRef string
+	ID          string
+	TenantID    string
+	OwnerID     string
+	Version     uint64
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	ExpiresAt   *time.Time
+	Status      string
 }
 
 // Turn describes one conversation turn. A nil CompletedAt identifies the

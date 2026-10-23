@@ -23,6 +23,7 @@ import "time"
 // Associations are intentionally represented by ordinary indexed columns;
 // cleanup is performed explicitly by the Store without database foreign keys.
 type SessionModel struct {
+	TemplateRef         string     `gorm:"size:256"`
 	ID                  string     `gorm:"primaryKey;size:64"`
 	TenantID            string     `gorm:"size:128;index:idx_ai_session_owner,priority:1"`
 	OwnerID             string     `gorm:"size:128;index:idx_ai_session_owner,priority:2"`
@@ -36,6 +37,17 @@ type SessionModel struct {
 }
 
 func (SessionModel) TableName() string { return "ai_sessions" }
+
+type ToolBatchModel struct {
+	ID        string `gorm:"primaryKey;size:64"`
+	SessionID string `gorm:"size:64;not null;index"`
+	TurnID    uint64 `gorm:"not null;uniqueIndex:idx_ai_tool_sequence"`
+	Sequence  uint64 `gorm:"not null;uniqueIndex:idx_ai_tool_sequence"`
+	Version   uint64 `gorm:"not null"`
+	Payload   []byte `gorm:"not null"`
+}
+
+func (ToolBatchModel) TableName() string { return "ai_tool_batches" }
 
 // TurnModel is one persisted conversation turn. A nil CompletedAt identifies
 // the current active turn for a session.
@@ -134,32 +146,36 @@ type TenantUsageModel struct {
 func (TenantUsageModel) TableName() string { return "ai_tenant_usage" }
 
 type UsageEventModel struct {
-	ID              string `gorm:"primaryKey;size:64"`
-	SchemaVersion   string `gorm:"size:32"`
-	TenantID        string `gorm:"size:128;not null;index"`
-	UserID          string `gorm:"size:128;not null;index"`
-	SessionID       string `gorm:"size:64;index"`
-	InteractionID   string `gorm:"size:64;index"`
-	CallID          string `gorm:"size:128;index"`
-	CallType        string `gorm:"size:32;not null"`
-	Provider        string `gorm:"size:128"`
-	Model           string `gorm:"size:128"`
-	ProviderVersion string `gorm:"size:64"`
-	ModelVersion    string `gorm:"size:64"`
-	PolicyVersion   string `gorm:"size:64"`
-	AmountSource    string `gorm:"size:24;not null"`
-	InputTokens     *int
-	OutputTokens    *int
-	TotalTokens     *int
-	PricingVersion  string `gorm:"size:64"`
-	CostStatus      string `gorm:"size:24;not null"`
-	Cost            *float64
-	Status          string    `gorm:"size:32"`
-	ReasonCode      string    `gorm:"size:64"`
-	Attempt         int       `gorm:"not null;default:0"`
-	Retry           bool      `gorm:"not null;default:false"`
-	Auxiliary       bool      `gorm:"not null;default:false"`
-	CreatedAt       time.Time `gorm:"not null;index"`
+	EstimatedInputTokens *int
+	TemplateRef          string `gorm:"size:256"`
+	CompilerVersion      string `gorm:"size:64"`
+	EstimatorVersion     string `gorm:"size:64"`
+	ID                   string `gorm:"primaryKey;size:64"`
+	SchemaVersion        string `gorm:"size:32"`
+	TenantID             string `gorm:"size:128;not null;index"`
+	UserID               string `gorm:"size:128;not null;index"`
+	SessionID            string `gorm:"size:64;index"`
+	InteractionID        string `gorm:"size:64;index"`
+	CallID               string `gorm:"size:128;index"`
+	CallType             string `gorm:"size:32;not null"`
+	Provider             string `gorm:"size:128"`
+	Model                string `gorm:"size:128"`
+	ProviderVersion      string `gorm:"size:64"`
+	ModelVersion         string `gorm:"size:64"`
+	PolicyVersion        string `gorm:"size:64"`
+	AmountSource         string `gorm:"size:24;not null"`
+	InputTokens          *int
+	OutputTokens         *int
+	TotalTokens          *int
+	PricingVersion       string `gorm:"size:64"`
+	CostStatus           string `gorm:"size:24;not null"`
+	Cost                 *float64
+	Status               string    `gorm:"size:32"`
+	ReasonCode           string    `gorm:"size:64"`
+	Attempt              int       `gorm:"not null;default:0"`
+	Retry                bool      `gorm:"not null;default:false"`
+	Auxiliary            bool      `gorm:"not null;default:false"`
+	CreatedAt            time.Time `gorm:"not null;index"`
 }
 
 func (UsageEventModel) TableName() string { return "ai_usage_events" }

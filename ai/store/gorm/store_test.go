@@ -76,6 +76,12 @@ func TestGormStore_Contract(t *testing.T) {
 	}, 3)
 }
 
+func TestGormStore_CompilationContract(t *testing.T) {
+	storetest.RunCompilationContractTests(t, func() conversationstore.BackendStore {
+		return newSQLiteStore(t, filepath.Join(t.TempDir(), "compilation.db"), 10)
+	})
+}
+
 func TestGormStore_QuotaContract(t *testing.T) {
 	storetest.RunQuotaContractTests(t, func(quota conversationstore.QuotaPolicy) conversationstore.BackendStore {
 		path := filepath.Join(t.TempDir(), "quota.db")

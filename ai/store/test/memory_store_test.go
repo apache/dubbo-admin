@@ -38,6 +38,10 @@ func TestMemoryStore_Contract(t *testing.T) {
 	}, 3)
 }
 
+func TestMemoryStore_CompilationContract(t *testing.T) {
+	RunCompilationContractTests(t, func() conversationstore.BackendStore { return memorystore.NewMemoryStore(10) })
+}
+
 func TestMemoryStore_QuotaContract(t *testing.T) {
 	RunQuotaContractTests(t, func(quota conversationstore.QuotaPolicy) conversationstore.BackendStore {
 		return memorystore.NewMemoryStoreWithPolicy(quota)

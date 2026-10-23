@@ -29,6 +29,11 @@ func ValidateSession(session *Session) error {
 	if session == nil {
 		return errors.New("session is nil")
 	}
+	if session.TemplateRef != "" {
+		if err := ValidateTemplateRef(session.TemplateRef); err != nil {
+			return err
+		}
+	}
 	if strings.TrimSpace(session.ID) == "" {
 		return errors.New("session id is required")
 	}

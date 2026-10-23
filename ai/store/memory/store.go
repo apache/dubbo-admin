@@ -57,6 +57,7 @@ type sessionHistory struct {
 
 // MemoryStore is the in-process implementation of the conversation Store.
 type MemoryStore struct {
+	toolBatches        map[string]conversationstore.ToolBatch
 	mu                 sync.RWMutex
 	limit              int
 	quota              conversationstore.QuotaPolicy
@@ -100,6 +101,7 @@ func NewMemoryStoreWithPolicies(quota conversationstore.QuotaPolicy, lifecycle c
 	lifecycle = lifecycle.WithDefaults()
 	usagePolicy := conversationstore.DefaultUsageAuditPolicy()
 	return &MemoryStore{
+		toolBatches:        make(map[string]conversationstore.ToolBatch),
 		limit:              quota.MaxTurnsPerSession,
 		quota:              quota,
 		lifecycle:          lifecycle,
@@ -343,6 +345,7 @@ func (m *MemoryStore) DeleteExpired(ctx context.Context, access security.AccessC
 			continue
 		}
 		delete(m.history, sessionID)
+		m.deleteToolBatchesLocked(sessionID)
 		for id, interaction := range m.interactions {
 			if interaction.SessionID == sessionID {
 				delete(m.interactions, id)
@@ -437,6 +440,7 @@ func (m *MemoryStore) DeleteExpiredPage(ctx context.Context, access security.Acc
 			continue
 		}
 		delete(m.history, item.id)
+		m.deleteToolBatchesLocked(item.id)
 		for id, interaction := range m.interactions {
 			if interaction.SessionID == item.id {
 				delete(m.interactions, id)
@@ -987,9 +991,15 @@ func messageBatchUsage(messages []*ai.Message) (int, int64, error) {
 
 func (m *MemoryStore) sessionBytesLocked(sessionID string) int64 {
 	var total int64
+	for _, batch := range m.toolBatches {
+		if batch.SessionID == sessionID {
+			data, _ := json.Marshal(batch)
+			total += int64(len(data))
+		}
+	}
 	history := m.history[sessionID]
 	if history == nil {
-		return 0
+		return total
 	}
 	turns := append([]*turn(nil), history.history...)
 	for _, active := range history.active {
@@ -1020,7 +1030,7 @@ func (m *MemoryStore) tenantBytesLocked(tenantID string) int64 {
 }
 
 func (m *MemoryStore) entityCountLocked() int {
-	total := len(m.sessions) + len(m.interactions)
+	total := len(m.sessions) + len(m.interactions) + len(m.toolBatches)
 	for _, history := range m.history {
 		total += len(history.active) + len(history.history)
 		for _, current := range history.active {

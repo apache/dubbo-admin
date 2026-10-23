@@ -22,32 +22,36 @@ const (
 // UsageEvent contains privacy-safe accounting metadata. Token pointers retain
 // the distinction between an unavailable value and a real zero.
 type UsageEvent struct {
-	SchemaVersion   string
-	ID              string
-	TenantID        string
-	UserID          string
-	SessionID       string
-	InteractionID   string
-	CallID          string
-	CallType        string
-	Provider        string
-	Model           string
-	ProviderVersion string
-	ModelVersion    string
-	PolicyVersion   string
-	AmountSource    string
-	InputTokens     *int
-	OutputTokens    *int
-	TotalTokens     *int
-	PricingVersion  string
-	CostStatus      string
-	Cost            *float64
-	Status          string
-	ReasonCode      string
-	Attempt         int
-	Retry           bool
-	Auxiliary       bool
-	CreatedAt       time.Time
+	EstimatedInputTokens *int
+	TemplateRef          string
+	CompilerVersion      string
+	EstimatorVersion     string
+	SchemaVersion        string
+	ID                   string
+	TenantID             string
+	UserID               string
+	SessionID            string
+	InteractionID        string
+	CallID               string
+	CallType             string
+	Provider             string
+	Model                string
+	ProviderVersion      string
+	ModelVersion         string
+	PolicyVersion        string
+	AmountSource         string
+	InputTokens          *int
+	OutputTokens         *int
+	TotalTokens          *int
+	PricingVersion       string
+	CostStatus           string
+	Cost                 *float64
+	Status               string
+	ReasonCode           string
+	Attempt              int
+	Retry                bool
+	Auxiliary            bool
+	CreatedAt            time.Time
 }
 
 type AuditEvent struct {

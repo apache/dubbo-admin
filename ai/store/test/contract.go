@@ -1110,6 +1110,7 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Backe
 // Store backends. Memory-only entity capacity is covered by MemoryStore tests.
 func RunQuotaContractTests(t *testing.T, newStore func(conversationstore.QuotaPolicy) conversationstore.BackendStore) {
 	t.Helper()
+	RunCompilationQuotaContractTests(t, newStore)
 	t.Run("failed interactions do not consume turn quota", func(t *testing.T) {
 		quota := conversationstore.DefaultQuotaPolicy()
 		quota.MaxTurnsPerSession = 1

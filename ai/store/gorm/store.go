@@ -107,6 +107,7 @@ func (s *GormStore) Migrate(ctx context.Context) error {
 	}
 	db := s.db.WithContext(normalizeContext(ctx))
 	if err := db.AutoMigrate(
+		&ToolBatchModel{},
 		&SessionModel{}, &TurnModel{}, &MessageModel{}, &InteractionModel{},
 		&DerivedArtifactModel{}, &CleanupJobModel{}, &OutboxEventModel{}, &TenantUsageModel{},
 		&UsageEventModel{}, &AuditEventModel{}, &EventCapacityModel{},
@@ -195,7 +196,11 @@ func (s *GormStore) Migrate(ctx context.Context) error {
 			if err := tx.Model(&InteractionModel{}).Select("COALESCE(SUM(LENGTH(result)), 0)").Where("session_id = ?", sessions[i].ID).Scan(&resultBytes).Error; err != nil {
 				return err
 			}
-			storedBytes := messageBytes + resultBytes
+			var toolBytes int64
+			if err := tx.Model(&ToolBatchModel{}).Select("COALESCE(SUM(LENGTH(payload)), 0)").Where("session_id = ?", sessions[i].ID).Scan(&toolBytes).Error; err != nil {
+				return err
+			}
+			storedBytes := messageBytes + resultBytes + toolBytes
 			if sessions[i].Status == conversationstore.SessionStatusDeleted {
 				storedBytes = 0
 			}
@@ -539,6 +544,9 @@ func cleanupSessionData(tx *gorm.DB, sessionID, tenantID string, now time.Time) 
 		return err
 	}
 	if err := tx.Where("session_id = ?", sessionID).Delete(&InteractionModel{}).Error; err != nil {
+		return err
+	}
+	if err := tx.Where("session_id = ?", sessionID).Delete(&ToolBatchModel{}).Error; err != nil {
 		return err
 	}
 	if err := tx.Model(&TenantUsageModel{}).Where("tenant_id = ?", tenantID).Updates(map[string]any{
@@ -1498,6 +1506,9 @@ func scopeSessions(query *gorm.DB, access security.AccessContext) *gorm.DB {
 }
 
 func deleteSessionData(tx *gorm.DB, sessionID string) error {
+	if err := tx.Where("session_id = ?", sessionID).Delete(&ToolBatchModel{}).Error; err != nil {
+		return err
+	}
 	var turns []TurnModel
 	if err := tx.Where("session_id = ?", sessionID).Find(&turns).Error; err != nil {
 		return err
@@ -1519,14 +1530,16 @@ func deleteSessionData(tx *gorm.DB, sessionID string) error {
 
 func sessionModelFromDomain(session *conversationstore.Session) SessionModel {
 	return SessionModel{
-		ID: session.ID, TenantID: session.TenantID, OwnerID: session.OwnerID, Version: session.Version,
+		TemplateRef: session.TemplateRef,
+		ID:          session.ID, TenantID: session.TenantID, OwnerID: session.OwnerID, Version: session.Version,
 		CreatedAt: session.CreatedAt, UpdatedAt: session.UpdatedAt, ExpiresAt: session.ExpiresAt, Status: session.Status,
 	}
 }
 
 func sessionDomainFromModel(model *SessionModel) *conversationstore.Session {
 	return &conversationstore.Session{
-		ID: model.ID, TenantID: model.TenantID, OwnerID: model.OwnerID, Version: model.Version,
+		TemplateRef: model.TemplateRef,
+		ID:          model.ID, TenantID: model.TenantID, OwnerID: model.OwnerID, Version: model.Version,
 		CreatedAt: model.CreatedAt, UpdatedAt: model.UpdatedAt, ExpiresAt: model.ExpiresAt, Status: model.Status,
 	}
 }
@@ -1575,7 +1588,7 @@ func (s *GormStore) RecordUsage(ctx context.Context, event conversationstore.Usa
 	if event.CreatedAt.IsZero() {
 		event.CreatedAt = time.Now()
 	}
-	return s.recordEvent(ctx, "usage", s.usagePolicy.MaxUsageEvents, &UsageEventModel{ID: event.ID, SchemaVersion: event.SchemaVersion, TenantID: event.TenantID, UserID: event.UserID, SessionID: event.SessionID, InteractionID: event.InteractionID, CallID: event.CallID, CallType: event.CallType, Provider: event.Provider, Model: event.Model, ProviderVersion: event.ProviderVersion, ModelVersion: event.ModelVersion, PolicyVersion: event.PolicyVersion, AmountSource: event.AmountSource, InputTokens: event.InputTokens, OutputTokens: event.OutputTokens, TotalTokens: event.TotalTokens, PricingVersion: event.PricingVersion, CostStatus: event.CostStatus, Cost: event.Cost, Status: event.Status, ReasonCode: event.ReasonCode, Attempt: event.Attempt, Retry: event.Retry, Auxiliary: event.Auxiliary, CreatedAt: event.CreatedAt})
+	return s.recordEvent(ctx, "usage", s.usagePolicy.MaxUsageEvents, &UsageEventModel{ID: event.ID, SchemaVersion: event.SchemaVersion, TenantID: event.TenantID, UserID: event.UserID, SessionID: event.SessionID, InteractionID: event.InteractionID, CallID: event.CallID, CallType: event.CallType, Provider: event.Provider, Model: event.Model, ProviderVersion: event.ProviderVersion, ModelVersion: event.ModelVersion, PolicyVersion: event.PolicyVersion, AmountSource: event.AmountSource, InputTokens: event.InputTokens, OutputTokens: event.OutputTokens, TotalTokens: event.TotalTokens, PricingVersion: event.PricingVersion, CostStatus: event.CostStatus, Cost: event.Cost, Status: event.Status, ReasonCode: event.ReasonCode, Attempt: event.Attempt, Retry: event.Retry, Auxiliary: event.Auxiliary, CreatedAt: event.CreatedAt, EstimatedInputTokens: event.EstimatedInputTokens, TemplateRef: event.TemplateRef, CompilerVersion: event.CompilerVersion, EstimatorVersion: event.EstimatorVersion})
 }
 
 func (s *GormStore) RecordAudit(ctx context.Context, event conversationstore.AuditEvent) error {
