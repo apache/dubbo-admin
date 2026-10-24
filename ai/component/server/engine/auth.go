@@ -35,7 +35,7 @@ import (
 
 const jwtClaimsContextKey = "dubbo-admin-ai.jwt-claims"
 
-// Limit remote JWKS attempts, including failures, to one per refresh window.
+// Cache lifetime after success and retry cooldown after failure.
 const jwksRefreshInterval = 30 * time.Second
 
 type jwksRefresh struct {
@@ -65,6 +65,7 @@ type JWTVerifier struct {
 	mu          sync.RWMutex
 	keys        map[string]*rsa.PublicKey
 	nextRefresh time.Time
+	now         func() time.Time
 	refreshing  *jwksRefresh
 }
 
@@ -123,8 +124,12 @@ func (v *JWTVerifier) keyForToken(ctx context.Context, token *jwt.Token) (any, e
 	}
 	v.mu.RLock()
 	key := v.keys[kid]
+	fresh := v.clock().Before(v.nextRefresh)
 	v.mu.RUnlock()
-	if key != nil {
+	if fresh {
+		if key == nil {
+			return nil, errors.New("JWT kid is unknown")
+		}
 		return key, nil
 	}
 	if err := v.refresh(ctx); err != nil {
@@ -132,11 +137,22 @@ func (v *JWTVerifier) keyForToken(ctx context.Context, token *jwt.Token) (any, e
 	}
 	v.mu.RLock()
 	key = v.keys[kid]
+	fresh = v.clock().Before(v.nextRefresh)
 	v.mu.RUnlock()
+	if !fresh {
+		return nil, errors.New("JWKS cache expired")
+	}
 	if key == nil {
 		return nil, fmt.Errorf("JWT kid %q is unknown", kid)
 	}
 	return key, nil
+}
+
+func (v *JWTVerifier) clock() time.Time {
+	if v.now != nil {
+		return v.now()
+	}
+	return time.Now()
 }
 
 func (v *JWTVerifier) refresh(ctx context.Context) error {
@@ -153,12 +169,14 @@ func (v *JWTVerifier) refresh(ctx context.Context) error {
 			return flight.err
 		}
 	}
-	if time.Now().Before(v.nextRefresh) {
+	if v.clock().Before(v.nextRefresh) {
 		v.mu.Unlock()
-		return nil // The caller rejects any kid absent from the cached keys.
+		return nil // Use the cache, or reject if a failed refresh left it empty.
 	}
 	flight := &jwksRefresh{done: make(chan struct{})}
 	v.refreshing = flight
+	// Expired keys must not remain usable when refreshing fails.
+	v.keys = nil
 	v.mu.Unlock()
 
 	// All concurrent misses share this attempt. The initiating request owns its
@@ -166,7 +184,7 @@ func (v *JWTVerifier) refresh(ctx context.Context) error {
 	err := v.fetchKeys(ctx)
 	v.mu.Lock()
 	flight.err = err
-	v.nextRefresh = time.Now().Add(jwksRefreshInterval)
+	v.nextRefresh = v.clock().Add(jwksRefreshInterval)
 	v.refreshing = nil
 	close(flight.done)
 	v.mu.Unlock()
@@ -183,6 +201,9 @@ func (v *JWTVerifier) fetchKeys(ctx context.Context) error {
 		if item.KeyType != "RSA" || item.Algorithm != "RS256" || item.Use != "sig" || item.KeyID == "" {
 			continue
 		}
+		if _, exists := keys[item.KeyID]; exists {
+			return errors.New("JWKS contains duplicate kid")
+		}
 		modulus, err := base64.RawURLEncoding.DecodeString(item.Modulus)
 		if err != nil || len(modulus) == 0 {
 			return fmt.Errorf("invalid JWKS modulus for %q", item.KeyID)
@@ -192,10 +213,14 @@ func (v *JWTVerifier) fetchKeys(ctx context.Context) error {
 			return fmt.Errorf("invalid JWKS exponent for %q", item.KeyID)
 		}
 		e := new(big.Int).SetBytes(exponent)
-		if !e.IsInt64() || e.Sign() <= 0 || e.Int64() > int64(^uint(0)>>1) {
+		if !e.IsInt64() || e.Int64() < 3 || e.Bit(0) == 0 || e.Int64() > int64(^uint(0)>>1) {
 			return fmt.Errorf("invalid JWKS exponent for %q", item.KeyID)
 		}
-		keys[item.KeyID] = &rsa.PublicKey{N: new(big.Int).SetBytes(modulus), E: int(e.Int64())}
+		n := new(big.Int).SetBytes(modulus)
+		if n.BitLen() < 2048 || n.Bit(0) == 0 {
+			return errors.New("invalid JWKS RSA modulus")
+		}
+		keys[item.KeyID] = &rsa.PublicKey{N: n, E: int(e.Int64())}
 	}
 	if len(keys) == 0 {
 		return errors.New("JWKS contains no usable RS256 signing keys")

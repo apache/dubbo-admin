@@ -82,10 +82,16 @@ console:
     accessToken:
       enabled: false
       # issuer: dubbo-admin
-      # keyId: admin-key-1
-      # privateKeyFile: /etc/dubbo-admin/keys/access-token-private.pem
       # ttl: 1800
       # audiences: [dubbo-admin-ai]
+      # Use keys + activeKeyId even when configuring a single key.
+      # activeKeyId: key-new
+      # keys:
+      #   - keyId: key-old
+      #     privateKeyFile: /etc/dubbo-admin/keys/old.pem
+      #   - keyId: key-new
+      #     privateKeyFile: /etc/dubbo-admin/keys/new.pem
+      # Restart Admin after changing keys.
 
 # [Optional] config for data storage, default is memory
 store:

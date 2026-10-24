@@ -18,7 +18,9 @@
 package auth
 
 import (
+	"crypto/rsa"
 	"errors"
+	"sort"
 	"time"
 
 	configauth "github.com/apache/dubbo-admin/pkg/config/console/auth"
@@ -57,11 +59,25 @@ func NewTokenIssuer(cfg *configauth.AccessTokenConfig) (*TokenIssuer, error) {
 	if cfg == nil || !cfg.Enabled {
 		return &TokenIssuer{}, nil
 	}
-	if cfg.PrivateKey == nil {
+	var active *rsa.PrivateKey
+	public := jose.JSONWebKeySet{}
+	seen := map[string]bool{}
+	for _, key := range cfg.Keys {
+		if key.KeyID == "" || seen[key.KeyID] || key.PrivateKey == nil {
+			return nil, errors.New("AI access token keys must be loaded and have unique nonempty IDs")
+		}
+		seen[key.KeyID] = true
+		if key.KeyID == cfg.ActiveKeyID {
+			active = key.PrivateKey
+		}
+		public.Keys = append(public.Keys, jose.JSONWebKey{Key: &key.PrivateKey.PublicKey, KeyID: key.KeyID, Algorithm: string(jose.RS256), Use: "sig"})
+	}
+	if active == nil {
 		return nil, errors.New("AI access token RSA private key is missing")
 	}
-	options := (&jose.SignerOptions{}).WithType("JWT").WithHeader(jose.HeaderKey("kid"), cfg.KeyID)
-	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.RS256, Key: cfg.PrivateKey}, options)
+	sort.Slice(public.Keys, func(a, b int) bool { return public.Keys[a].KeyID < public.Keys[b].KeyID })
+	options := (&jose.SignerOptions{}).WithType("JWT").WithHeader(jose.HeaderKey("kid"), cfg.ActiveKeyID)
+	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.RS256, Key: active}, options)
 	if err != nil {
 		return nil, err
 	}
@@ -69,9 +85,7 @@ func NewTokenIssuer(cfg *configauth.AccessTokenConfig) (*TokenIssuer, error) {
 		enabled: true,
 		config:  cfg,
 		signer:  signer,
-		jwks: jose.JSONWebKeySet{Keys: []jose.JSONWebKey{{
-			Key: &cfg.PrivateKey.PublicKey, KeyID: cfg.KeyID, Algorithm: string(jose.RS256), Use: "sig",
-		}}},
+		jwks:    public,
 	}, nil
 }
 
