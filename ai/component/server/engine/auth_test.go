@@ -18,14 +18,17 @@
 package engine
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -78,11 +81,114 @@ func TestJWTVerifierMiddlewareAndKeyRotation(t *testing.T) {
 	keys["key-2"] = &key2.PublicKey
 	mu.Unlock()
 	rotated := signAITestToken(t, key2, "key-2", "dubbo-admin", "dubbo-admin-ai", "user:2", time.Now().Add(time.Minute), time.Now())
+	assertAIStatus(t, router, http.MethodGet, "/api/v1/ai/test", "Bearer "+rotated, http.StatusUnauthorized)
+	expireJWKSWindow(verifier)
 	assertAIStatus(t, router, http.MethodGet, "/api/v1/ai/test", "Bearer "+rotated, http.StatusNoContent)
 	mu.Lock()
 	defer mu.Unlock()
 	if requests != 2 {
 		t.Fatalf("JWKS requests = %d, want initial load and unknown-kid refresh", requests)
+	}
+}
+
+func expireJWKSWindow(v *JWTVerifier) {
+	v.mu.Lock()
+	v.nextRefresh = time.Time{}
+	v.mu.Unlock()
+}
+
+func TestJWKSRefreshWindowAndFailure(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if requests.Add(1) > 1 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(jwksForTest(map[string]*rsa.PublicKey{"known": &key.PublicKey}))
+	}))
+	defer server.Close()
+	v, err := NewJWTVerifier(JWTAuthConfig{JWKSURL: server.URL}, server.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, wantRequests := range []int32{1, 2} {
+		if wantRequests == 2 {
+			expireJWKSWindow(v)
+		}
+		var wg sync.WaitGroup
+		for i := 0; i < 50; i++ {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				token := jwt.New(jwt.SigningMethodRS256)
+				token.Header["kid"] = fmt.Sprintf("unknown-%d", i)
+				if _, err := v.keyForToken(context.Background(), token); err == nil {
+					t.Error("unknown kid accepted")
+				}
+			}(i)
+		}
+		wg.Wait()
+		if got := requests.Load(); got != wantRequests {
+			t.Fatalf("requests = %d, want %d", got, wantRequests)
+		}
+	}
+	token := jwt.New(jwt.SigningMethodRS256)
+	token.Header["kid"] = "known"
+	if _, err := v.keyForToken(context.Background(), token); err != nil {
+		t.Fatalf("cached key unavailable after refresh failure: %v", err)
+	}
+}
+
+func TestJWKSRefreshRequestCancellation(t *testing.T) {
+	started := make(chan struct{})
+	cancelled := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(started)
+		<-r.Context().Done()
+		close(cancelled)
+	}))
+	defer server.Close()
+	v := &JWTVerifier{client: NewJWKSClient(server.URL, server.Client()), keys: map[string]*rsa.PublicKey{}}
+	router := gin.New()
+	router.Use(v.Middleware())
+	router.GET("/api/v1/ai/test", func(c *gin.Context) { c.Status(http.StatusOK) })
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/ai/test", nil).WithContext(ctx)
+	// A parseable unverified header is sufficient to reach the key lookup.
+	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"RS256","kid":"unknown"}`))
+	req.Header.Set("Authorization", "Bearer "+header+".e30.AA")
+	done := make(chan struct{})
+	recorder := httptest.NewRecorder()
+	go func() { router.ServeHTTP(recorder, req); close(done) }()
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("fetch not started")
+	}
+	// A concurrent waiter can cancel independently of the initiating request.
+	waitCtx, cancelWait := context.WithCancel(context.Background())
+	cancelWait()
+	if err := v.refresh(waitCtx); err != context.Canceled {
+		t.Fatalf("wait cancellation: %v", err)
+	}
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("request cancellation did not stop refresh")
+	}
+	select {
+	case <-cancelled:
+	case <-time.After(time.Second):
+		t.Fatal("upstream request not cancelled")
+	}
+	if recorder.Code != http.StatusUnauthorized || recorder.Header().Get("WWW-Authenticate") != "Bearer" {
+		t.Fatalf("unexpected response: %d", recorder.Code)
 	}
 }
 
