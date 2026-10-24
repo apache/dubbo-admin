@@ -22,6 +22,7 @@ import (
 
 	"dubbo-admin-ai/component/hooks"
 	"dubbo-admin-ai/component/memory"
+	"dubbo-admin-ai/component/models"
 	"dubbo-admin-ai/component/tools"
 	"dubbo-admin-ai/runtime"
 	conversationstore "dubbo-admin-ai/store"
@@ -102,7 +103,19 @@ func (a *AgentComponent) Init(rt *runtime.Runtime) error {
 		// become visible to the already initialized Agent.
 		hookManager = component.GetManager()
 	}
-	reactAgent, err := NewReActAgentWithStore(rt.GetGenkitRegistry(), messageStore, &a.spec, toolTimeouts, hookManager, toolRefs)
+	// Resolve the model's endpoint quirks so every call in the loop spells the
+	// request the way that endpoint expects. Absent models fall back to the
+	// conservative defaults rather than failing the agent.
+	compat := models.ResolveCompat(nil, nil)
+	if modelsComp, modelsErr := rt.GetComponent("models"); modelsErr == nil {
+		if mc, ok := modelsComp.(*models.ModelsComponent); ok {
+			compat = mc.CompatFor(a.spec.Model)
+		} else {
+			return fmt.Errorf("invalid models component type")
+		}
+	}
+
+	reactAgent, err := NewReActAgentWithStore(rt.GetGenkitRegistry(), messageStore, &a.spec, toolTimeouts, hookManager, toolRefs, compat)
 	if err != nil {
 		return fmt.Errorf("failed to create ReAct agent: %w", err)
 	}
