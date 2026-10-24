@@ -18,9 +18,11 @@
 package service
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"math"
+	"math/big"
 	"strconv"
 	"strings"
 )
@@ -34,7 +36,22 @@ func decodeGenericInvokeArgs(parameterTypes []string, args []json.RawMessage) ([
 	for index, arg := range args {
 		decodedArg, err := decodeGenericInvokeArg(parameterTypes[index], arg)
 		if err != nil {
-			return nil, fmt.Errorf("invalid argument at index %d for type %s: %w", index, strings.TrimSpace(parameterTypes[index]), err)
+			expected := strings.TrimSpace(parameterTypes[index])
+
+			fieldErr := &GenericInvokeArgumentError{
+				Field:    fmt.Sprintf("args[%d]", index),
+				Expected: expected,
+				Actual:   genericJSONType(arg),
+				Cause:    err,
+				Kind:     ArgumentErrorType,
+			}
+
+			return nil, fmt.Errorf(
+				"invalid argument at index %d for type %s: %w",
+				index,
+				expected,
+				fieldErr,
+			)
 		}
 		decodedArgs[index] = decodedArg
 	}
@@ -42,8 +59,14 @@ func decodeGenericInvokeArgs(parameterTypes []string, args []json.RawMessage) ([
 }
 
 func decodeGenericInvokeArg(parameterType string, raw json.RawMessage) (any, error) {
+	parameterType = strings.TrimSpace(parameterType)
 	if isNullRawMessage(raw) {
-		return nil, nil
+		switch parameterType {
+		case "byte", "short", "int", "long", "float", "double", "boolean", "char":
+			return nil, fmt.Errorf("null is not allowed for primitive type %s", parameterType)
+		default:
+			return nil, nil
+		}
 	}
 	if parameterType == "" {
 		return decodeJSONValue(raw)
@@ -54,6 +77,18 @@ func decodeGenericInvokeArg(parameterType string, raw json.RawMessage) (any, err
 	}
 
 	switch parameterType {
+	case "java.lang.String", "String":
+		var value string
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return nil, fmt.Errorf("expected JSON string: %w", err)
+		}
+		return value, nil
+	case "boolean", "java.lang.Boolean":
+		var value bool
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return nil, fmt.Errorf("expected JSON boolean: %w", err)
+		}
+		return value, nil
 	case "byte", "java.lang.Byte":
 		return decodeInt8Raw(raw)
 	case "short", "java.lang.Short":
@@ -157,6 +192,9 @@ func decodeFloat32Raw(raw json.RawMessage) (float32, error) {
 	if err != nil {
 		return 0, err
 	}
+	if math.Abs(value) > math.MaxFloat32 {
+		return 0, fmt.Errorf("value %v out of float32 range", value)
+	}
 	return float32(value), nil
 }
 
@@ -240,14 +278,39 @@ func parseInt64Text(text string) (int64, error) {
 	if text == "" {
 		return 0, fmt.Errorf("empty value")
 	}
-	if strings.ContainsAny(text, ".eE") {
-		value, err := parseFloat64Text(text)
-		if err != nil {
-			return 0, err
-		}
-		return int64FromFloat(value)
+
+	// Bound numeric input before arbitrary-precision parsing.
+	const (
+		maxNumericTextLen = 64
+		maxExponent       = 64
+	)
+	if len(text) > maxNumericTextLen {
+		return 0, fmt.Errorf("integer value is too long")
 	}
-	return strconv.ParseInt(text, 10, 64)
+	if !strings.ContainsAny(text, ".eE") {
+		return strconv.ParseInt(text, 10, 64)
+	}
+
+	// Reject excessive exponents before allocating big integers.
+	if index := strings.IndexAny(text, "eE"); index >= 0 {
+		exp, err := strconv.ParseInt(text[index+1:], 10, 64)
+		if err != nil || exp < -maxExponent || exp > maxExponent {
+			return 0, fmt.Errorf("invalid integer exponent in %q", text)
+		}
+	}
+
+	// Parse exactly without float64 precision loss.
+	value, ok := new(big.Rat).SetString(text)
+	if !ok {
+		return 0, fmt.Errorf("invalid integer value %q", text)
+	}
+	if !value.IsInt() {
+		return 0, fmt.Errorf("value %q is not an integer", text)
+	}
+	if !value.Num().IsInt64() {
+		return 0, fmt.Errorf("value %q out of int64 range", text)
+	}
+	return value.Num().Int64(), nil
 }
 
 func parseFloat64Text(text string) (float64, error) {
@@ -265,19 +328,29 @@ func parseFloat64Text(text string) (float64, error) {
 	return value, nil
 }
 
-func int64FromFloat(value float64) (int64, error) {
-	if math.IsNaN(value) || math.IsInf(value, 0) {
-		return 0, fmt.Errorf("invalid numeric value")
-	}
-	if math.Trunc(value) != value {
-		return 0, fmt.Errorf("value %v is not an integer", value)
-	}
-	if value < math.MinInt64 || value > math.MaxInt64 {
-		return 0, fmt.Errorf("value %v out of range", value)
-	}
-	return int64(value), nil
-}
-
 func isNullRawMessage(raw json.RawMessage) bool {
 	return strings.TrimSpace(string(raw)) == "null"
+}
+
+func genericJSONType(raw json.RawMessage) string {
+	raw = bytes.TrimSpace(raw)
+
+	if !json.Valid(raw) {
+		return "invalid JSON"
+	}
+
+	switch raw[0] {
+	case '"':
+		return "string"
+	case '{':
+		return "object"
+	case '[':
+		return "array"
+	case 't', 'f':
+		return "boolean"
+	case 'n':
+		return "null"
+	default:
+		return "number"
+	}
 }
