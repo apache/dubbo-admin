@@ -138,8 +138,8 @@ func TestJWKSRefreshWindowAndFailure(t *testing.T) {
 	}
 	token := jwt.New(jwt.SigningMethodRS256)
 	token.Header["kid"] = "known"
-	if _, err := v.keyForToken(context.Background(), token); err != nil {
-		t.Fatalf("cached key unavailable after refresh failure: %v", err)
+	if _, err := v.keyForToken(context.Background(), token); err == nil {
+		t.Fatal("expired cached key accepted after refresh failure")
 	}
 }
 
@@ -217,6 +217,88 @@ func TestJWTVerifierRejectsInvalidClaims(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assertAIStatus(t, router, http.MethodGet, "/api/v1/ai/test", "Bearer "+tt.token, http.StatusUnauthorized)
+		})
+	}
+}
+
+func TestJWKSExpiryRevokesRemovedKey(t *testing.T) {
+	old, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stage atomic.Int32
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		keys := map[string]*rsa.PublicKey{"new": &newKey.PublicKey}
+		if stage.Load() == 0 {
+			keys["old"] = &old.PublicKey
+		}
+		if stage.Load() == 2 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(jwksForTest(keys))
+	}))
+	defer server.Close()
+	now := time.Now()
+	v := &JWTVerifier{config: JWTAuthConfig{Issuer: "admin", Audience: "ai"}, client: NewJWKSClient(server.URL, server.Client()), now: func() time.Time { return now }}
+	if err := v.refresh(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	r := gin.New()
+	r.Use(v.Middleware())
+	r.GET("/api/v1/ai/test", func(c *gin.Context) { c.Status(http.StatusNoContent) })
+	oldToken := signAITestToken(t, old, "old", "admin", "ai", "user", time.Now().Add(time.Hour), time.Now())
+	newToken := signAITestToken(t, newKey, "new", "admin", "ai", "user", time.Now().Add(time.Hour), time.Now())
+	for _, token := range []string{oldToken, newToken} {
+		assertAIStatus(t, r, http.MethodGet, "/api/v1/ai/test", "Bearer "+token, http.StatusNoContent)
+	}
+	stage.Store(1)
+	now = now.Add(jwksRefreshInterval)
+	assertAIStatus(t, r, http.MethodGet, "/api/v1/ai/test", "Bearer "+oldToken, http.StatusUnauthorized)
+	assertAIStatus(t, r, http.MethodGet, "/api/v1/ai/test", "Bearer "+newToken, http.StatusNoContent)
+	stage.Store(2)
+	now = now.Add(jwksRefreshInterval)
+	for i := 0; i < 5; i++ {
+		assertAIStatus(t, r, http.MethodGet, "/api/v1/ai/test", "Bearer "+newToken, http.StatusUnauthorized)
+	}
+	if calls.Load() != 3 {
+		t.Fatalf("JWKS calls = %d", calls.Load())
+	}
+	stage.Store(1)
+	now = now.Add(jwksRefreshInterval)
+	assertAIStatus(t, r, http.MethodGet, "/api/v1/ai/test", "Bearer "+newToken, http.StatusNoContent)
+}
+
+func TestJWKSRejectsAmbiguousAndInvalidKeys(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, kind := range []string{"duplicate", "modulus", "exponent", "empty"} {
+		t.Run(kind, func(t *testing.T) {
+			doc := jwksForTest(map[string]*rsa.PublicKey{"key": &key.PublicKey})
+			items := doc["keys"].([]map[string]any)
+			switch kind {
+			case "duplicate":
+				doc["keys"] = append(items, items[0])
+			case "modulus":
+				items[0]["n"] = "AQ"
+			case "exponent":
+				items[0]["e"] = "Ag"
+			case "empty":
+				doc["keys"] = []any{}
+			}
+			s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _ = json.NewEncoder(w).Encode(doc) }))
+			defer s.Close()
+			if _, err := NewJWTVerifier(JWTAuthConfig{JWKSURL: s.URL}, s.Client()); err == nil {
+				t.Fatal("invalid JWKS accepted")
+			}
 		})
 	}
 }

@@ -200,18 +200,18 @@ func TestConfigValidateOIDCRequiresOpenIDScope(t *testing.T) {
 func TestAccessTokenConfigValidation(t *testing.T) {
 	t.Run("disabled does not load key", func(t *testing.T) {
 		cfg := validConfig()
-		cfg.AccessToken = &AccessTokenConfig{PrivateKeyFile: "/does/not/exist"}
+		cfg.AccessToken = &AccessTokenConfig{Keys: []AccessTokenKey{{PrivateKeyFile: "/does/not/exist"}}}
 		if err := cfg.Validate(); err != nil {
 			t.Fatalf("Validate() error = %v", err)
 		}
 	})
 
-	t.Run("enabled requires key file", func(t *testing.T) {
+	t.Run("enabled requires keys", func(t *testing.T) {
 		cfg := validConfig()
 		cfg.AccessToken = &AccessTokenConfig{Enabled: true}
 		err := cfg.Validate()
-		if err == nil || !strings.Contains(err.Error(), "privateKeyFile") {
-			t.Fatalf("Validate() error = %v, want privateKeyFile error", err)
+		if err == nil || !strings.Contains(err.Error(), "keys") {
+			t.Fatalf("Validate() error = %v, want keys error", err)
 		}
 	})
 
@@ -231,7 +231,7 @@ func TestAccessTokenConfigValidation(t *testing.T) {
 			if err := cfg.Validate(); err != nil {
 				t.Fatalf("Validate() error = %v", err)
 			}
-			if cfg.AccessToken.PrivateKey == nil || cfg.AccessToken.TTL != DefaultAccessTokenTTL {
+			if cfg.AccessToken.Keys[0].PrivateKey == nil || cfg.AccessToken.TTL != DefaultAccessTokenTTL {
 				t.Fatalf("validated access token = %+v", cfg.AccessToken)
 			}
 		})
@@ -245,9 +245,43 @@ func validGitHubProvider(id string) ProviderConfig {
 	}
 }
 
+func TestAccessTokenMultipleKeys(t *testing.T) {
+	oldPath := writeRSAKey(t, 2048, false)
+	newPath := writeRSAKey(t, 2048, true)
+	for _, tt := range []struct {
+		name   string
+		change func(*AccessTokenConfig)
+		bad    bool
+	}{
+		{"valid", func(c *AccessTokenConfig) {}, false},
+		{"duplicate", func(c *AccessTokenConfig) { c.Keys[1].KeyID = "old" }, true},
+		{"empty ID", func(c *AccessTokenConfig) { c.Keys[0].KeyID = " " }, true},
+		{"missing active", func(c *AccessTokenConfig) { c.ActiveKeyID = "missing" }, true},
+		{"empty keys", func(c *AccessTokenConfig) { c.Keys = []AccessTokenKey{} }, true},
+		{"empty active ID", func(c *AccessTokenConfig) { c.ActiveKeyID = "" }, true},
+		{"missing file", func(c *AccessTokenConfig) { c.Keys[0].PrivateKeyFile = "/missing" }, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &AccessTokenConfig{Enabled: true, Issuer: "admin", Audiences: []string{"ai"}, ActiveKeyID: "new", Keys: []AccessTokenKey{{KeyID: "old", PrivateKeyFile: oldPath}, {KeyID: "new", PrivateKeyFile: newPath}}}
+			tt.change(c)
+			if err := c.validate(); (err != nil) != tt.bad {
+				t.Fatalf("validate = %v", err)
+			}
+			if !tt.bad {
+				if c.Keys[0].PrivateKey == nil || c.Keys[1].PrivateKey == nil {
+					t.Fatal("keys not loaded")
+				}
+				if err := c.validate(); err != nil {
+					t.Fatalf("repeated validation: %v", err)
+				}
+			}
+		})
+	}
+}
+
 func validAccessTokenConfig(path string) *AccessTokenConfig {
 	return &AccessTokenConfig{
-		Enabled: true, Issuer: "dubbo-admin", KeyID: "key-1", PrivateKeyFile: path,
+		Enabled: true, Issuer: "dubbo-admin", ActiveKeyID: "key-1", Keys: []AccessTokenKey{{KeyID: "key-1", PrivateKeyFile: path}},
 		Audiences: []string{"dubbo-admin-ai"},
 	}
 }

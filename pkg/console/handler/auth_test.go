@@ -123,8 +123,8 @@ func TestAuthHandlerAccessTokenAndJWKS(t *testing.T) {
 	cfg := &configauth.Config{
 		Methods: []string{configauth.MethodPassword}, User: "admin", Password: "secret", ExpirationTime: 3600,
 		AccessToken: &configauth.AccessTokenConfig{
-			Enabled: true, Issuer: "dubbo-admin", KeyID: "admin-key-1", TTL: 1800,
-			Audiences: []string{"dubbo-admin-ai"}, PrivateKey: key,
+			Enabled: true, Issuer: "dubbo-admin", ActiveKeyID: "admin-key-1", TTL: 1800,
+			Audiences: []string{"dubbo-admin-ai"}, Keys: []configauth.AccessTokenKey{{KeyID: "admin-key-1", PrivateKey: key}},
 		},
 	}
 	issuer, err := consoleauth.NewTokenIssuer(cfg.AccessToken)

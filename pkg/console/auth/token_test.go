@@ -36,8 +36,8 @@ func TestTokenIssuerSignsPrincipalAndPublishesPublicJWKS(t *testing.T) {
 		t.Fatal(err)
 	}
 	issuer, err := NewTokenIssuer(&configauth.AccessTokenConfig{
-		Enabled: true, Issuer: "dubbo-admin", KeyID: "admin-key-1", TTL: 1800,
-		Audiences: []string{"dubbo-admin-ai"}, PrivateKey: key,
+		Enabled: true, Issuer: "dubbo-admin", ActiveKeyID: "admin-key-1", TTL: 1800,
+		Audiences: []string{"dubbo-admin-ai"}, Keys: []configauth.AccessTokenKey{{KeyID: "admin-key-1", PrivateKey: key}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -83,5 +83,47 @@ func TestTokenIssuerDisabled(t *testing.T) {
 	}
 	if _, err := issuer.Issue(LocalPrincipal("admin"), time.Now()); err == nil {
 		t.Fatal("disabled issuer created a token")
+	}
+}
+
+func TestTokenIssuerMultipleKeysAndRotation(t *testing.T) {
+	old, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys := []configauth.AccessTokenKey{{KeyID: "old", PrivateKey: old}, {KeyID: "new", PrivateKey: newKey}}
+	for _, active := range []string{"old", "new"} {
+		issuer, err := NewTokenIssuer(&configauth.AccessTokenConfig{Enabled: true, Issuer: "admin", Audiences: []string{"ai"}, TTL: 1800, ActiveKeyID: active, Keys: keys})
+		if err != nil {
+			t.Fatal(err)
+		}
+		response, err := issuer.Issue(LocalPrincipal("admin"), time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		parsed, err := josejwt.ParseSigned(response.AccessToken, []jose.SignatureAlgorithm{jose.RS256})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if parsed.Headers[0].KeyID != active {
+			t.Fatal("wrong active key")
+		}
+		jwks := issuer.JWKS()
+		if len(jwks.Keys) != 2 || jwks.Keys[0].KeyID != "new" || jwks.Keys[1].KeyID != "old" {
+			t.Fatal("JWKS not complete or sorted")
+		}
+		for _, key := range jwks.Keys {
+			if !key.IsPublic() {
+				t.Fatal("private key published")
+			}
+		}
+		var claims AccessTokenClaims
+		if err := parsed.Claims(jwks.Key(active)[0].Key, &claims); err != nil {
+			t.Fatal(err)
+		}
 	}
 }

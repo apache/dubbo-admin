@@ -59,12 +59,17 @@ type ProviderConfig struct {
 }
 
 type AccessTokenConfig struct {
-	Enabled        bool            `json:"enabled" yaml:"enabled"`
-	Issuer         string          `json:"issuer" yaml:"issuer"`
+	ActiveKeyID string           `json:"activeKeyId,omitempty" yaml:"activeKeyId,omitempty"`
+	Keys        []AccessTokenKey `json:"keys,omitempty" yaml:"keys,omitempty"`
+	Enabled     bool             `json:"enabled" yaml:"enabled"`
+	Issuer      string           `json:"issuer" yaml:"issuer"`
+	TTL         int              `json:"ttl" yaml:"ttl"`
+	Audiences   []string         `json:"audiences" yaml:"audiences"`
+}
+
+type AccessTokenKey struct {
 	KeyID          string          `json:"keyId" yaml:"keyId"`
 	PrivateKeyFile string          `json:"privateKeyFile" yaml:"privateKeyFile"`
-	TTL            int             `json:"ttl" yaml:"ttl"`
-	Audiences      []string        `json:"audiences" yaml:"audiences"`
 	PrivateKey     *rsa.PrivateKey `json:"-" yaml:"-"`
 }
 
@@ -128,14 +133,14 @@ func (c *AccessTokenConfig) validate() error {
 	if c == nil || !c.Enabled {
 		return nil
 	}
-	if c.PrivateKeyFile == "" {
-		return errors.New("auth accessToken: privateKeyFile is required when enabled")
+	if len(c.Keys) == 0 {
+		return errors.New("auth accessToken: keys are required when enabled")
 	}
 	if c.Issuer == "" {
 		return errors.New("auth accessToken: issuer is required when enabled")
 	}
-	if c.KeyID == "" {
-		return errors.New("auth accessToken: keyId is required when enabled")
+	if strings.TrimSpace(c.ActiveKeyID) == "" {
+		return errors.New("auth accessToken: activeKeyId is required when enabled")
 	}
 	if len(c.Audiences) == 0 {
 		return errors.New("auth accessToken: at least one audience is required when enabled")
@@ -151,23 +156,45 @@ func (c *AccessTokenConfig) validate() error {
 	if c.TTL < 0 {
 		return errors.New("auth accessToken: ttl must be greater than 0")
 	}
-	encoded, err := os.ReadFile(c.PrivateKeyFile)
+	seen := map[string]bool{}
+	for index := range c.Keys {
+		item := &c.Keys[index]
+		if strings.TrimSpace(item.KeyID) == "" || seen[item.KeyID] {
+			return errors.New("auth accessToken: keys must have unique nonempty keyId values")
+		}
+		seen[item.KeyID] = true
+		key, err := loadAccessTokenKey(item.PrivateKeyFile)
+		if err != nil {
+			return fmt.Errorf("auth accessToken key %q: %w", item.KeyID, err)
+		}
+		item.PrivateKey = key
+	}
+	if !seen[c.ActiveKeyID] {
+		return errors.New("auth accessToken: activeKeyId must select a configured key")
+	}
+	return nil
+}
+
+func loadAccessTokenKey(path string) (*rsa.PrivateKey, error) {
+	encoded, err := os.ReadFile(path)
 	if err != nil {
-		return fmt.Errorf("auth accessToken: read privateKeyFile: %w", err)
+		return nil, fmt.Errorf("auth accessToken: read privateKeyFile: %w", err)
 	}
 	block, _ := pem.Decode(encoded)
 	if block == nil {
-		return errors.New("auth accessToken: privateKeyFile is not a PEM private key")
+		return nil, errors.New("auth accessToken: privateKeyFile is not a PEM private key")
 	}
 	key, err := parseRSAPrivateKey(block.Bytes)
 	if err != nil {
-		return fmt.Errorf("auth accessToken: parse privateKeyFile: %w", err)
+		return nil, fmt.Errorf("auth accessToken: parse privateKeyFile: %w", err)
 	}
 	if key.N.BitLen() < 2048 {
-		return errors.New("auth accessToken: RSA private key must be at least 2048 bits")
+		return nil, errors.New("auth accessToken: RSA private key must be at least 2048 bits")
 	}
-	c.PrivateKey = key
-	return nil
+	if err := key.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid RSA private key: %w", err)
+	}
+	return key, nil
 }
 
 func parseRSAPrivateKey(der []byte) (*rsa.PrivateKey, error) {
