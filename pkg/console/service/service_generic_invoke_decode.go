@@ -278,11 +278,28 @@ func parseInt64Text(text string) (int64, error) {
 	if text == "" {
 		return 0, fmt.Errorf("empty value")
 	}
+
+	// Bound numeric input before arbitrary-precision parsing.
+	const (
+		maxNumericTextLen = 64
+		maxExponent       = 64
+	)
+	if len(text) > maxNumericTextLen {
+		return 0, fmt.Errorf("integer value is too long")
+	}
 	if !strings.ContainsAny(text, ".eE") {
 		return strconv.ParseInt(text, 10, 64)
 	}
 
-	// Parse decimals and exponents exactly, without float64 rounding.
+	// Reject excessive exponents before allocating big integers.
+	if index := strings.IndexAny(text, "eE"); index >= 0 {
+		exp, err := strconv.ParseInt(text[index+1:], 10, 64)
+		if err != nil || exp < -maxExponent || exp > maxExponent {
+			return 0, fmt.Errorf("invalid integer exponent in %q", text)
+		}
+	}
+
+	// Parse exactly without float64 precision loss.
 	value, ok := new(big.Rat).SetString(text)
 	if !ok {
 		return 0, fmt.Errorf("invalid integer value %q", text)

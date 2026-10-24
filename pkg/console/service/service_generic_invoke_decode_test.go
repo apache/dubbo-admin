@@ -160,3 +160,133 @@ func TestDecodeGenericInvokeArgsAcceptsValidBoundaries(t *testing.T) {
 		})
 	}
 }
+
+func TestParseInt64TextExponentBounds(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    int64
+		wantErr bool
+	}{
+		{
+			name:  "normal scientific notation",
+			input: "1e3",
+			want:  1000,
+		},
+		{
+			name:  "exact integer from decimal",
+			input: "1.5e1",
+			want:  15,
+		},
+		{
+			name:  "max int64 precision",
+			input: "9.223372036854775807e18",
+			want:  9223372036854775807,
+		},
+		{
+			name:  "min int64 precision",
+			input: "-9.223372036854775808e18",
+			want:  -9223372036854775808,
+		},
+		{
+			name:    "huge positive exponent",
+			input:   "1e999999999",
+			wantErr: true,
+		},
+		{
+			name:    "huge negative exponent",
+			input:   "1e-999999999",
+			wantErr: true,
+		},
+		{
+			name:    "zero with huge exponent",
+			input:   "0e999999999",
+			wantErr: true,
+		},
+		{
+			name:    "fractional value",
+			input:   "1e-1",
+			wantErr: true,
+		},
+		{
+			name:    "int64 overflow",
+			input:   "1e64",
+			wantErr: true,
+		},
+		{
+			name:    "positive exponent boundary exceeded",
+			input:   "1e65",
+			wantErr: true,
+		},
+		{
+			name:    "negative exponent boundary exceeded",
+			input:   "1e-65",
+			wantErr: true,
+		},
+		{
+			name:    "numeric text too long",
+			input:   strings.Repeat("1", 65),
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseInt64Text(tt.input)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected error for %q, got %d", tt.input, got)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if got != tt.want {
+				t.Fatalf("want %d, got %d", tt.want, got)
+			}
+		})
+	}
+}
+
+func TestDecodeGenericInvokeArgsRejectsExcessiveExponent(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+	}{
+		{"huge positive exponent", "1e999999999"},
+		{"huge negative exponent", "1e-999999999"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := decodeGenericInvokeArgs(
+				[]string{"long"},
+				[]json.RawMessage{json.RawMessage(tt.raw)},
+			)
+			if err == nil {
+				t.Fatal("expected decoding error")
+			}
+
+			var fieldErr *GenericInvokeArgumentError
+			if !errors.As(err, &fieldErr) {
+				t.Fatalf("expected structured error, got %v", err)
+			}
+			if fieldErr.Field != "args[0]" {
+				t.Errorf("expected args[0], got %s", fieldErr.Field)
+			}
+			if fieldErr.Expected != "long" {
+				t.Errorf("expected long, got %s", fieldErr.Expected)
+			}
+			if fieldErr.Actual != "number" {
+				t.Errorf("expected number, got %s", fieldErr.Actual)
+			}
+			if fieldErr.Kind != ArgumentErrorType {
+				t.Errorf("expected type error, got %s", fieldErr.Kind)
+			}
+		})
+	}
+}
