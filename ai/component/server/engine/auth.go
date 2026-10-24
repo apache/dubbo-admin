@@ -35,6 +35,14 @@ import (
 
 const jwtClaimsContextKey = "dubbo-admin-ai.jwt-claims"
 
+// Limit remote JWKS attempts, including failures, to one per refresh window.
+const jwksRefreshInterval = 30 * time.Second
+
+type jwksRefresh struct {
+	done chan struct{}
+	err  error
+}
+
 type JWTAuthConfig struct {
 	JWKSURL  string
 	Issuer   string
@@ -52,10 +60,12 @@ type Claims struct {
 }
 
 type JWTVerifier struct {
-	config JWTAuthConfig
-	client *JWKSClient
-	mu     sync.RWMutex
-	keys   map[string]*rsa.PublicKey
+	config      JWTAuthConfig
+	client      *JWKSClient
+	mu          sync.RWMutex
+	keys        map[string]*rsa.PublicKey
+	nextRefresh time.Time
+	refreshing  *jwksRefresh
 }
 
 func NewJWTVerifier(config JWTAuthConfig, client *http.Client) (*JWTVerifier, error) {
@@ -78,7 +88,9 @@ func (v *JWTVerifier) Middleware() gin.HandlerFunc {
 			return
 		}
 		claims := &Claims{}
-		token, err := jwt.ParseWithClaims(strings.TrimSpace(header[7:]), claims, v.keyForToken,
+		token, err := jwt.ParseWithClaims(strings.TrimSpace(header[7:]), claims, func(token *jwt.Token) (any, error) {
+			return v.keyForToken(c.Request.Context(), token)
+		},
 			jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Alg()}),
 			jwt.WithIssuer(v.config.Issuer), jwt.WithAudience(v.config.Audience),
 			jwt.WithExpirationRequired(), jwt.WithIssuedAt(), jwt.WithLeeway(30*time.Second),
@@ -101,7 +113,7 @@ func ClaimsFromContext(c *gin.Context) (*Claims, bool) {
 	return claims, ok
 }
 
-func (v *JWTVerifier) keyForToken(token *jwt.Token) (any, error) {
+func (v *JWTVerifier) keyForToken(ctx context.Context, token *jwt.Token) (any, error) {
 	if token.Method != jwt.SigningMethodRS256 {
 		return nil, errors.New("only RS256 is accepted")
 	}
@@ -115,7 +127,7 @@ func (v *JWTVerifier) keyForToken(token *jwt.Token) (any, error) {
 	if key != nil {
 		return key, nil
 	}
-	if err := v.refresh(context.Background()); err != nil {
+	if err := v.refresh(ctx); err != nil {
 		return nil, err
 	}
 	v.mu.RLock()
@@ -128,6 +140,40 @@ func (v *JWTVerifier) keyForToken(token *jwt.Token) (any, error) {
 }
 
 func (v *JWTVerifier) refresh(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	v.mu.Lock()
+	if flight := v.refreshing; flight != nil {
+		v.mu.Unlock()
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-flight.done:
+			return flight.err
+		}
+	}
+	if time.Now().Before(v.nextRefresh) {
+		v.mu.Unlock()
+		return nil // The caller rejects any kid absent from the cached keys.
+	}
+	flight := &jwksRefresh{done: make(chan struct{})}
+	v.refreshing = flight
+	v.mu.Unlock()
+
+	// All concurrent misses share this attempt. The initiating request owns its
+	// context; cancellation also ends the fetch for the waiting requests.
+	err := v.fetchKeys(ctx)
+	v.mu.Lock()
+	flight.err = err
+	v.nextRefresh = time.Now().Add(jwksRefreshInterval)
+	v.refreshing = nil
+	close(flight.done)
+	v.mu.Unlock()
+	return err
+}
+
+func (v *JWTVerifier) fetchKeys(ctx context.Context) error {
 	document, err := v.client.Fetch(ctx)
 	if err != nil {
 		return err
