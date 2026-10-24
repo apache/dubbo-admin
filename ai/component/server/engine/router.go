@@ -31,7 +31,7 @@ type Router struct {
 	sessionMgr *session.Manager
 }
 
-func NewRouter(agent agent.Agent, sessionStore conversationstore.SessionStore) *Router {
+func NewRouter(agent agent.Agent, sessionStore conversationstore.SessionStore, middleware ...gin.HandlerFunc) *Router {
 	sessionMgr := session.NewManager(sessionStore)
 	handler := NewAgentHandler(agent, sessionMgr)
 
@@ -41,16 +41,17 @@ func NewRouter(agent agent.Agent, sessionStore conversationstore.SessionStore) *
 		sessionMgr: sessionMgr,
 	}
 
-	router.setupRoutes()
+	router.setupRoutes(middleware...)
 	return router
 }
 
-func (r *Router) setupRoutes() {
+func (r *Router) setupRoutes(middleware ...gin.HandlerFunc) {
 	// Add CORS middleware
 	r.engine.Use(corsMiddleware())
 
 	// API v1 group
 	v1 := r.engine.Group("/api/v1/ai")
+	v1.Use(middleware...)
 	{
 		// Chat endpoints
 		v1.POST("/chat/stream", r.handler.StreamChat) // Streaming chat

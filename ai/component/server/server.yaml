@@ -6,3 +6,8 @@ spec:
   cors_origins: ["*"] # CORS origins
   read_timeout: 30 # Read timeout in seconds
   write_timeout: 30 # Write timeout in seconds
+  auth:
+    enabled: false
+    # jwks_url: "http://dubbo-admin:8888/api/v1/auth/jwks"
+    # issuer: "dubbo-admin"
+    # audience: "dubbo-admin-ai"

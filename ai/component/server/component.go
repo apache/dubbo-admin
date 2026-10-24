@@ -44,30 +44,19 @@ type ServerComponent struct {
 	corsOrigins  []string
 	readTimeout  int
 	writeTimeout int
+	auth         AuthSpec
+	jwtVerifier  *engine.JWTVerifier
 }
 
-func NewServerComponent(
-	port int,
-	host string,
-	debug bool,
-	corsOrigins []string,
-	timeouts ...int,
-) (runtime.Component, error) {
-	readTimeout := 30
-	writeTimeout := 30
-	if len(timeouts) > 0 {
-		readTimeout = timeouts[0]
-	}
-	if len(timeouts) > 1 {
-		writeTimeout = timeouts[1]
-	}
+func NewServerComponent(spec ServerSpec) (runtime.Component, error) {
 	return &ServerComponent{
-		port:         port,
-		host:         host,
-		debug:        debug,
-		corsOrigins:  corsOrigins,
-		readTimeout:  readTimeout,
-		writeTimeout: writeTimeout,
+		port:         spec.Port,
+		host:         spec.Host,
+		debug:        spec.Debug,
+		corsOrigins:  spec.CORSOrigins,
+		readTimeout:  spec.ReadTimeout,
+		writeTimeout: spec.WriteTimeout,
+		auth:         spec.Auth,
 	}, nil
 }
 
@@ -96,11 +85,23 @@ func (s *ServerComponent) Validate() error {
 	if s.writeTimeout <= 0 {
 		return fmt.Errorf("write_timeout must be greater than 0")
 	}
+	if err := s.auth.Validate(); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (s *ServerComponent) Init(rt *runtime.Runtime) error {
 	s.rt = rt
+	if s.auth.Enabled {
+		verifier, err := engine.NewJWTVerifier(engine.JWTAuthConfig{
+			JWKSURL: s.auth.JWKSURL, Issuer: s.auth.Issuer, Audience: s.auth.Audience,
+		}, nil)
+		if err != nil {
+			return fmt.Errorf("initialize AI JWT authentication: %w", err)
+		}
+		s.jwtVerifier = verifier
+	}
 	rt.GetLogger().Info("Server component initialized",
 		"port", s.port,
 		"host", s.host)
@@ -153,7 +154,11 @@ func (s *ServerComponent) Start() error {
 	}
 
 	// Create router with AI interface
-	router := engine.NewRouter(agentComponent.Agent, sessionStore)
+	var authMiddleware []gin.HandlerFunc
+	if s.jwtVerifier != nil {
+		authMiddleware = append(authMiddleware, s.jwtVerifier.Middleware())
+	}
+	router := engine.NewRouter(agentComponent.Agent, sessionStore, authMiddleware...)
 	s.router = router
 
 	// Add health check endpoint
