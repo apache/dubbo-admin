@@ -153,6 +153,16 @@ export const routes: Readonly<RouteRecordType[]> = [
                 }
               },
               {
+                path: '/log/:pathId',
+                name: 'applicationDomain.log',
+                component: () => import('../views/resources/applications/tabs/log.vue'),
+                meta: {
+                  tab: true,
+                  icon: 'material-symbols:description-outline',
+                  back: '/resources/applications/list'
+                }
+              },
+              {
                 path: '/config/:pathId',
                 name: 'applicationDomain.config',
                 component: () => import('../views/resources/applications/tabs/config.vue'),
@@ -223,6 +233,16 @@ export const routes: Readonly<RouteRecordType[]> = [
                 meta: {
                   tab: true,
                   icon: 'material-symbols-light:monitor-heart-outline',
+                  back: '/resources/instances/list'
+                }
+              },
+              {
+                path: '/log/:name/:pathId?/:appName?',
+                name: 'instanceDomain.log',
+                component: () => import('../views/resources/instances/tabs/log.vue'),
+                meta: {
+                  tab: true,
+                  icon: 'material-symbols:description-outline',
                   back: '/resources/instances/list'
                 }
               },

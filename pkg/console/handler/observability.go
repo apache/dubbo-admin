@@ -38,6 +38,7 @@ type DashboardType string
 const (
 	MetricDashboard DashboardType = "metric"
 	TraceDashboard  DashboardType = "trace"
+	LogDashboard    DashboardType = "log"
 )
 
 type Dimension string
@@ -56,10 +57,13 @@ func GetGrafanaDashboard(ctx consolectx.Context, dim Dimension, dashboardType Da
 			grafanaDashboards = ctx.Config().Console.MetricDashboards
 		case TraceDashboard:
 			grafanaDashboards = ctx.Config().Console.TraceDashboards
+		case LogDashboard:
+			grafanaDashboards = ctx.Config().Console.LogDashboards
 		}
 		if grafanaDashboards == nil {
 			c.JSON(http.StatusOK, model.NewBizErrorResp(bizerror.New(bizerror.NotFoundError,
 				fmt.Sprintf("please configure grafana dashboard for %s %s in config yaml", dim, dashboardType))))
+			return
 		}
 
 		var fullURL string
@@ -70,7 +74,11 @@ func GetGrafanaDashboard(ctx consolectx.Context, dim Dimension, dashboardType Da
 			if err = c.ShouldBindQuery(&req); err != nil {
 				break
 			}
-			fullURL, err = service.GetAppDashboard(grafanaDashboards.AppDashboardURL, &req)
+			if dashboardType == LogDashboard {
+				fullURL, err = service.GetApplicationLogDashboard(grafanaDashboards.AppDashboardURL, &req)
+			} else {
+				fullURL, err = service.GetAppDashboard(grafanaDashboards.AppDashboardURL, &req)
+			}
 		case InstanceDimension:
 			var req model.InstanceDashboardReq
 			if err = c.ShouldBindQuery(&req); err != nil {
@@ -100,10 +108,14 @@ func GetGrafanaDashboard(ctx consolectx.Context, dim Dimension, dashboardType Da
 }
 
 func getInstanceDashboard(ctx consolectx.Context, baseURL *url.URL, req *model.InstanceDashboardReq, dashboardType DashboardType) (string, error) {
-	if dashboardType == TraceDashboard {
+	switch dashboardType {
+	case TraceDashboard:
 		return service.GetInstanceTraceDashboard(ctx, baseURL, req)
+	case LogDashboard:
+		return service.GetInstanceLogDashboard(ctx, baseURL, req)
+	default:
+		return service.GetInstanceDashboard(ctx, baseURL, req)
 	}
-	return service.GetInstanceDashboard(ctx, baseURL, req)
 }
 
 func GetPrometheus(ctx consolectx.Context) gin.HandlerFunc {
@@ -115,6 +127,42 @@ func GetPrometheus(ctx consolectx.Context) gin.HandlerFunc {
 		resp := ctx.Config().Observability.PrometheusBaseURL.String()
 		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
 		return
+	}
+}
+
+func GetTraceStartTime(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req model.TraceStartTimeReq
+		if err := c.ShouldBindQuery(&req); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+		result, err := service.GetTraceStartTime(ctx.AppContext(), ctx.Config().Observability.JaegerBaseURL, req.TraceID)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, model.NewSuccessResp(result))
+	}
+}
+
+func GetTraceLogDashboard(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req model.TraceLogDashboardReq
+		if err := c.ShouldBindQuery(&req); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+		if ctx.Config().Console.LogDashboards == nil {
+			util.HandleServiceError(c, bizerror.New(bizerror.NotFoundError, "trace log dashboard is not configured"))
+			return
+		}
+		fullURL, err := service.GetTraceLogDashboard(ctx.Config().Console.LogDashboards.TraceDashboardURL, &req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, model.NewSuccessResp(model.DashboardResp{FullURL: fullURL}))
 	}
 }
 

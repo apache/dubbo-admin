@@ -53,6 +53,13 @@ export const getInstanceTracingDashboard = (params: any): Promise<any> => {
     params
   })
 }
+export const getInstanceLogDashboard = (params: any): Promise<any> => {
+  return request({
+    url: '/instance/log-dashboard',
+    method: 'get',
+    params
+  })
+}
 
 /**
  * @description Obtain whether the execution log is enabled.

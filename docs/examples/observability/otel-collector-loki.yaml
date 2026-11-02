@@ -1,0 +1,64 @@
+# Reference configuration only.
+# Not deployed by Dubbo Admin release.
+# OTel Collector Contrib 0.112.0. Adapt namespace, pod labels, and endpoint.
+# Requires a DaemonSet with /var/log/pods mounted and permission to list pods.
+# Contract: app + pod_ip + timestamp + raw Body are required; trace_id,
+# level, pod_name, and logger are optional. Loki must map app to an index
+# label and pod_ip to structured metadata; never index trace_id.
+receivers:
+  filelog:
+    include: [/var/log/pods/dubbo-samples-shop_*/*/*.log]
+    start_at: end
+    include_file_path: true
+    operators:
+      - type: container
+      - type: json_parser
+        parse_from: body
+        parse_to: attributes
+        if: 'body matches "^\\{"'
+        on_error: send
+      - type: regex_parser
+        parse_from: body
+        parse_to: attributes
+        regex: '^\S+\s+\S+\s+(?P<level>TRACE|DEBUG|INFO|WARN|ERROR|FATAL)\s+\[[^\]]+\]\s+(?P<logger>\S+)'
+        if: 'body matches "(TRACE|DEBUG|INFO|WARN|ERROR|FATAL)\\s+\\["'
+        on_error: send
+      - type: regex_parser
+        parse_from: body
+        parse_to: attributes
+        regex: 'trace_id=(?P<trace_id>[0-9a-fA-F]{32}|[0-9a-fA-F]{16})'
+        if: 'body matches "trace_id=[0-9a-fA-F]{16}"'
+        on_error: send
+processors:
+  k8sattributes:
+    auth_type: serviceAccount
+    filter:
+      namespace: dubbo-samples-shop
+    extract:
+      metadata: [k8s.pod.ip, k8s.pod.uid, k8s.pod.name, k8s.namespace.name]
+      labels:
+        - tag_name: app
+          key: app
+          from: pod
+    pod_association:
+      - sources:
+          - from: resource_attribute
+            name: k8s.pod.uid
+  transform/identity:
+    error_mode: ignore
+    log_statements:
+      - context: resource
+        statements:
+          - set(attributes["pod_ip"], attributes["k8s.pod.ip"])
+      - context: log
+        statements:
+          - set(attributes["pod_name"], resource.attributes["k8s.pod.name"]) where resource.attributes["k8s.pod.name"] != nil
+exporters:
+  otlphttp/loki:
+    endpoint: http://loki.logging.svc:3100/otlp
+service:
+  pipelines:
+    logs:
+      receivers: [filelog]
+      processors: [k8sattributes, transform/identity]
+      exporters: [otlphttp/loki]
