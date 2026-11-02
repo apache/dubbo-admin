@@ -59,9 +59,11 @@ type AdminConfig struct {
 }
 
 type MCPConfig struct {
-	Enabled bool   `json:"enabled" yaml:"enabled"`
-	Path    string `json:"path,omitempty" yaml:"path"`
-	APIKey  string `json:"apiKey,omitempty" yaml:"apiKey"`
+	Enabled       bool   `json:"enabled" yaml:"enabled"`
+	Path          string `json:"path,omitempty" yaml:"path"`
+	APIKey        string `json:"apiKey,omitempty" yaml:"apiKey"`
+	OAuthIssuer   string `json:"oauthIssuer,omitempty" yaml:"oauthIssuer"`
+	OAuthAudience string `json:"oauthAudience,omitempty" yaml:"oauthAudience"`
 }
 
 var _ = &AdminConfig{}

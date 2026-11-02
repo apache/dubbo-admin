@@ -18,14 +18,21 @@
 package zkwatcher
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/dubbogo/go-zookeeper/zk"
-	set "github.com/duke-git/lancet/v2/datastructure/set"
-
-	"github.com/apache/dubbo-admin/pkg/core/logger"
 )
+
+// Connection is the subset of zk.Conn used by a recursive watch.
+type Connection interface {
+	GetW(string) ([]byte, *zk.Stat, *zk.Watcher, error)
+	ChildrenW(string) ([]string, *zk.Stat, *zk.Watcher, error)
+	RemoveWatcher(*zk.Watcher) bool
+	State() zk.State
+}
 
 type EventType string
 
@@ -35,202 +42,223 @@ const (
 	NodeChanged EventType = "NodeChanged"
 )
 
-// ZookeeperEvent represents a zookeeper event
 type ZookeeperEvent struct {
-	Type EventType
-	// node path
-	Path string
-	// node data
-	Data string
-	// whether it is a leaf node
+	Type     EventType
+	Path     string
+	Data     string
 	LeafNode bool
 }
 
-// RecursiveWatcher recursive watcher
+var errStopped = errors.New("zookeeper watcher stopped")
+
+// RecursiveWatcher owns one snapshot and the watches installed while reading it.
+// A topology change invalidates the snapshot so the reflector can reconcile deletes.
 type RecursiveWatcher struct {
-	conn      *zk.Conn
+	conn      Connection
 	basePath  string
 	eventChan chan ZookeeperEvent
+	errorChan chan error
 	stopChan  chan struct{}
+	doneChan  chan struct{}
 	mu        sync.Mutex
+	started   bool
+	stopped   bool
+	err       error
+	workers   sync.WaitGroup
+	snapshot  []ZookeeperEvent
 }
 
-// NewRecursiveWatcher create a new recursive watcher
-func NewRecursiveWatcher(conn *zk.Conn, basePath string) *RecursiveWatcher {
-	return &RecursiveWatcher{
+func NewRecursiveWatcher(conn Connection, basePath string) *RecursiveWatcher {
+	rw := &RecursiveWatcher{
 		conn:      conn,
 		basePath:  basePath,
 		eventChan: make(chan ZookeeperEvent, 1000),
+		errorChan: make(chan error, 1),
 		stopChan:  make(chan struct{}),
+		doneChan:  make(chan struct{}),
 	}
+	go func() {
+		<-rw.stopChan
+		rw.workers.Wait()
+		close(rw.eventChan)
+		close(rw.errorChan)
+		close(rw.doneChan)
+	}()
+	return rw
 }
 
-// StartAsync begin watching
+// StartAsync reads the entire tree before returning, with watches already armed.
+// Each RecursiveWatcher may only be started once.
 func (rw *RecursiveWatcher) StartAsync() error {
-	logger.Infof("Start watching path: %s", rw.basePath)
-	// Recursively watch the initial path
-	return rw.watchPathRecursively(rw.basePath)
+	rw.mu.Lock()
+	if rw.stopped {
+		rw.mu.Unlock()
+		return errStopped
+	}
+	if rw.started {
+		rw.mu.Unlock()
+		return errors.New("zookeeper watcher already started")
+	}
+	rw.started = true
+	// Keep the counter positive until every initial worker has been registered.
+	rw.workers.Add(1)
+	rw.mu.Unlock()
+	defer rw.workers.Done()
+
+	if err := rw.watchPathRecursively(rw.basePath); err != nil {
+		rw.cancel(err)
+		return err
+	}
+	if err := rw.checkConnection(); err != nil {
+		rw.cancel(err)
+		return err
+	}
+	rw.workers.Add(1)
+	go rw.monitorConnection()
+	return rw.Err()
 }
 
-// Stop watching
 func (rw *RecursiveWatcher) Stop() {
-	logger.Infof("Stop watching path: %s", rw.basePath)
-	close(rw.stopChan)
-	close(rw.eventChan)
+	rw.cancel(nil)
+	<-rw.doneChan
 }
 
-// EventChan return event channel
+func (rw *RecursiveWatcher) cancel(err error) {
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
+	if rw.stopped {
+		return
+	}
+	rw.stopped = true
+	rw.err = err
+	if err != nil {
+		rw.errorChan <- err
+	}
+	close(rw.stopChan)
+}
+
+func (rw *RecursiveWatcher) Err() error {
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
+	if rw.err != nil {
+		return rw.err
+	}
+	if rw.stopped {
+		return errStopped
+	}
+	return nil
+}
+
+// Snapshot must be called after StartAsync returns successfully.
+func (rw *RecursiveWatcher) Snapshot() []ZookeeperEvent {
+	return rw.snapshot
+}
+
 func (rw *RecursiveWatcher) EventChan() <-chan ZookeeperEvent {
 	return rw.eventChan
 }
 
-// watchPathRecursively watch path recursively
-func (rw *RecursiveWatcher) watchPathRecursively(path string) error {
-	// Watch data changes for the current path
-	go rw.watchDataChanges(path)
+func (rw *RecursiveWatcher) ErrorChan() <-chan error {
+	return rw.errorChan
+}
 
-	// Get children of current path and watch
-	children, _, err := rw.conn.Children(path)
-	if err != nil {
-		logger.Errorf("Failed to get children of path: %s, cause: %v", path, err)
+func (rw *RecursiveWatcher) watchPathRecursively(path string) error {
+	if err := rw.Err(); err != nil {
 		return err
 	}
-	// Watch children list changes
-	go rw.watchChildrenChanges(path)
+	data, stat, dataWatch, err := rw.conn.GetW(path)
+	if err != nil {
+		return fmt.Errorf("GetW %s: %w", path, err)
+	}
+	rw.snapshot = append(rw.snapshot, ZookeeperEvent{
+		Type:     NodeCreated,
+		Path:     path,
+		Data:     string(data),
+		LeafNode: stat.NumChildren == 0,
+	})
+	rw.workers.Add(1)
+	go rw.watchDataChanges(path, dataWatch)
 
-	// Recursively watch child nodes
+	if err := rw.Err(); err != nil {
+		return err
+	}
+	children, _, childWatch, err := rw.conn.ChildrenW(path)
+	if err != nil {
+		return fmt.Errorf("ChildrenW %s: %w", path, err)
+	}
+	rw.workers.Add(1)
+	go rw.watchChildrenChanges(path, childWatch)
 	for _, child := range children {
-		childPath := path + "/" + child
-		if err := rw.watchPathRecursively(childPath); err != nil {
-			logger.Errorf("Failed to watch subpath %s: %v", childPath, err)
+		if err := rw.watchPathRecursively(path + "/" + child); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
-// watchDataChanges watch node data changes
-func (rw *RecursiveWatcher) watchDataChanges(path string) {
-	logger.Debugf("Watching data changes for path: %s", path)
+func (rw *RecursiveWatcher) watchDataChanges(path string, watcher *zk.Watcher) {
+	defer rw.workers.Done()
+	defer func() { rw.conn.RemoveWatcher(watcher) }()
 	for {
-
 		select {
 		case <-rw.stopChan:
 			return
-		default:
-		}
-
-		// Get data and set up watch
-		data, stat, watcher, err := rw.conn.GetW(path)
-		if err != nil {
-			logger.Errorf("Failed to watch data changes for path %s, cause: %v", path, err)
-			time.Sleep(time.Second)
-			continue
-		}
-		rw.eventChan <- ZookeeperEvent{
-			Type:     NodeCreated,
-			Path:     path,
-			Data:     string(data),
-			LeafNode: stat.NumChildren == 0,
-		}
-
-		select {
-		case event := <-watcher.EvtCh:
-			if event.Type == zk.EventNodeDataChanged {
-				logger.Debugf("node data changed: %s", path)
-
-				// Re-watch data changes
-				go rw.watchDataChanges(path)
-				return
-			} else if event.Type == zk.EventNodeDeleted {
-				// Node deleted, stop watching
-				logger.Debugf("node deleted: %s", path)
-				rw.eventChan <- ZookeeperEvent{
-					Type:     NodeDeleted,
-					Path:     path,
-					LeafNode: stat.NumChildren == 0,
-				}
+		case event, ok := <-watcher.EvtCh:
+			if !ok || event.Err != nil || event.Type != zk.EventNodeDataChanged {
+				rw.cancel(fmt.Errorf("data watch invalidated at %s (open=%t): %v", path, ok, event))
 				return
 			}
-		case <-rw.stopChan:
+		}
+		rw.conn.RemoveWatcher(watcher)
+		data, stat, next, err := rw.conn.GetW(path)
+		if err != nil {
+			rw.cancel(fmt.Errorf("GetW %s: %w", path, err))
 			return
 		}
-
-		// If node exists but no changes, continue watching
-		if stat != nil {
-			continue
+		watcher = next
+		select {
+		case rw.eventChan <- ZookeeperEvent{
+			Type: NodeChanged, Path: path, Data: string(data), LeafNode: stat.NumChildren == 0,
+		}:
+		case <-rw.stopChan:
+			return
 		}
 	}
 }
 
-// watchChildrenChanges watch child node changes
-func (rw *RecursiveWatcher) watchChildrenChanges(path string) {
-	logger.Debugf("Watching child node changes for path: %s", path)
+func (rw *RecursiveWatcher) watchChildrenChanges(path string, watcher *zk.Watcher) {
+	defer rw.workers.Done()
+	defer rw.conn.RemoveWatcher(watcher)
+	select {
+	case <-rw.stopChan:
+	case event, ok := <-watcher.EvtCh:
+		// Children watches are one-shot. Reconcile the whole tree instead of
+		// missing descendants removed or recreated while rearming the watch.
+		rw.cancel(fmt.Errorf("children watch invalidated at %s (open=%t): %v", path, ok, event))
+	}
+}
+
+func (rw *RecursiveWatcher) monitorConnection() {
+	defer rw.workers.Done()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 	for {
-		// Check if stopped
+		if err := rw.checkConnection(); err != nil {
+			rw.cancel(err)
+			return
+		}
 		select {
 		case <-rw.stopChan:
 			return
-		default:
-		}
-
-		// Get child nodes and set up watch
-		children, stat, watcher, err := rw.conn.ChildrenW(path)
-		if err != nil {
-			logger.Errorf("Failed to watch child node changes for path %s: %v", path, err)
-			time.Sleep(time.Second)
-			continue
-		}
-
-		select {
-		case event := <-watcher.EvtCh:
-			if event.Type == zk.EventNodeChildrenChanged {
-				logger.Debugf("Child node list changed: %s", path)
-
-				// Get current child nodes
-				newChildren, _, err := rw.conn.Children(path)
-				if err != nil {
-					logger.Debugf("Failed to get new child nodes: %v", err)
-					continue
-				}
-				// Calculate added and deleted child nodes
-				newChildSet := set.FromSlice(newChildren)
-				oldChildSet := set.FromSlice(children)
-				addedChildren := newChildSet.Minus(oldChildSet)
-				deletedChildren := oldChildSet.Minus(newChildSet)
-
-				// watch newly added child nodes
-				for _, c := range addedChildren.ToSlice() {
-					childPath := path + "/" + c
-					logger.Debugf("New child node added: %s", childPath)
-					// Recursively watch new node
-					go func() {
-						err := rw.watchPathRecursively(childPath)
-						if err != nil {
-							logger.Errorf("Failed to watch subpath %s: %v", childPath, err)
-						}
-					}()
-				}
-
-				// Check for deleted child nodes
-				for _, c := range deletedChildren.ToSlice() {
-					logger.Debugf("child node %s of %s deleted", c, path)
-				}
-
-				// Re-watch child node changes
-				go rw.watchChildrenChanges(path)
-				return
-			} else if event.Type == zk.EventNodeDeleted {
-				// Parent node deleted, stop watching
-				logger.Debugf("parent node %s deleted, stop watching children changes", path)
-				return
-			}
-		case <-rw.stopChan:
-			return
-		}
-
-		// If node exists but no changes, continue watching
-		if stat != nil {
-			continue
+		case <-ticker.C:
 		}
 	}
+}
+
+func (rw *RecursiveWatcher) checkConnection() error {
+	state := rw.conn.State()
+	if state != zk.StateHasSession && state != zk.StateConnectedReadOnly {
+		return fmt.Errorf("zookeeper connection is %s", state)
+	}
+	return nil
 }

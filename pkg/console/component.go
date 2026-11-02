@@ -41,6 +41,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	"github.com/apache/dubbo-admin/pkg/mcp"
+	mcpruntime "github.com/apache/dubbo-admin/pkg/mcp/runtime"
 )
 
 func init() {
@@ -169,6 +170,10 @@ func (c *consoleWebServer) registerMCPEndpoints(coreRt runtime.Runtime, engine *
 		authStatus = "with-auth"
 	}
 	logger.Sugar().Infof("MCP endpoint registered at %s (%s)", path, authStatus)
+
+	businessHandler := mcpruntime.NewHandler(consoleCtx, cfg.MCP, mcpruntime.Options{})
+	mcpruntime.RegisterRoutes(engine, businessHandler)
+	logger.Sugar().Info("MCP business endpoints registered")
 }
 
 func (c *consoleWebServer) startHttpServer(errChan chan error) *http.Server {

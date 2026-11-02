@@ -23,6 +23,7 @@ import (
 
 	"github.com/apache/dubbo-admin/pkg/config/app"
 	"github.com/apache/dubbo-admin/pkg/console/counter"
+	"github.com/apache/dubbo-admin/pkg/core/discovery"
 	"github.com/apache/dubbo-admin/pkg/core/manager"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	"github.com/apache/dubbo-admin/pkg/core/versioning"
@@ -94,4 +95,16 @@ func (c *context) RuleVersioning() *versioning.Service {
 		return nil
 	}
 	return versioningComp.Service()
+}
+
+func (c *context) DiscoverySyncState(mesh string) discovery.SyncState {
+	comp, err := c.coreRt.GetComponent(runtime.ResourceDiscovery)
+	if err != nil {
+		return discovery.SyncState{}
+	}
+	source, ok := comp.(discovery.ResourceDiscovery)
+	if !ok {
+		return discovery.SyncState{}
+	}
+	return source.SyncState(mesh)
 }

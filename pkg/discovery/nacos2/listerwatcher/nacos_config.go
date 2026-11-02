@@ -53,6 +53,7 @@ type ConfigListerWatcher[T coremodel.Resource] struct {
 	searchExpr     string
 	nacosGroup     string
 	stopWatch      bool
+	watchHealth    func(error)
 }
 
 func NewConfigListerWatcher(
@@ -106,8 +107,10 @@ func (lw *ConfigListerWatcher[T]) Watch(_ metav1.ListOptions) (watch.Interface, 
 		err := lw.fetchAndProcessConfigs()
 		if err != nil {
 			logger.Errorf("fetchAndProcessConfigs %s in nacos %s failed, cause: %s", lw.rk, lw.nacosAddress(), err.Error())
+			lw.reportHealth(err)
 			return
 		}
+		lw.reportHealth(nil)
 		costs := time.Now().UnixMilli() - startTime.UnixMilli()
 		logger.Debugf("fetchAndProcessConfigs succeed %s in nacos %s, costs %dms", lw.rk, lw.nacosAddress(), costs)
 
@@ -118,6 +121,16 @@ func (lw *ConfigListerWatcher[T]) Watch(_ metav1.ListOptions) (watch.Interface, 
 	}
 	lw.scheduler.StartAsync()
 	return lw, nil
+}
+
+func (lw *ConfigListerWatcher[T]) SetWatchHealthHandler(handler func(error)) {
+	lw.watchHealth = handler
+}
+
+func (lw *ConfigListerWatcher[T]) reportHealth(err error) {
+	if lw.watchHealth != nil {
+		lw.watchHealth(err)
+	}
 }
 
 func (lw *ConfigListerWatcher[T]) fetchAllConfigs() ([]coremodel.Resource, error) {
@@ -156,7 +169,9 @@ func (lw *ConfigListerWatcher[T]) fetchAndProcessConfigs() error {
 			return err
 		}
 		for _, item := range configPage.PageItems {
-			lw.processConfig(item)
+			if err := lw.processConfig(item); err != nil {
+				return err
+			}
 		}
 		if configPage.TotalCount <= pageNum*pageSize {
 			break
@@ -172,7 +187,7 @@ func (lw *ConfigListerWatcher[T]) fetchAndProcessConfigs() error {
 		err := lw.unsubscribeConfig(dataId, lw.nacosGroup)
 		if err != nil {
 			logger.Errorf("unsubscribe failed, cause: %s", err)
-			continue
+			return err
 		}
 		// only one go routine, thread safe
 		delete(lw.watchingCfg, dataId)
@@ -240,13 +255,13 @@ func (lw *ConfigListerWatcher[T]) listPage(pageNum int, pageSize int) (*nacosmod
 	return configPage, nil
 }
 
-func (lw *ConfigListerWatcher[T]) processConfig(item nacosmodel.ConfigItem) {
+func (lw *ConfigListerWatcher[T]) processConfig(item nacosmodel.ConfigItem) error {
 	// convert to resource
 	res := lw.toResourceFunc(lw.mesh(), item.DataId, item.Content)
 	// if resource is nil, skip the event emitting and other operations
 	if res == nil {
 		logger.Warnf("config %s to resource failed, raw content: %s", item.DataId, item.Content)
-		return
+		return fmt.Errorf("cannot normalize config %s", item.DataId)
 	}
 	// emit event
 	lw.resultChan <- watch.Event{
@@ -256,14 +271,15 @@ func (lw *ConfigListerWatcher[T]) processConfig(item nacosmodel.ConfigItem) {
 	// subscribe config if not watched
 	if _, exists := lw.watchingCfg[item.DataId]; exists {
 		lw.watchingCfg[item.DataId] = true
-		return
+		return nil
 	}
 	err := lw.subscribeConfig(item.DataId, item.Group)
 	if err != nil {
 		logger.Errorf("subscribe config %s failed in nacos %s, cause: %v", item.DataId, lw.nacosAddress(), err)
-		return
+		return err
 	}
 	lw.watchingCfg[item.DataId] = true
+	return nil
 }
 
 func (lw *ConfigListerWatcher[T]) ResourceKind() coremodel.ResourceKind {
