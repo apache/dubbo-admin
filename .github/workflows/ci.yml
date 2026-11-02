@@ -24,6 +24,28 @@ on:
       - develop
 
 jobs:
+  trace-to-metric-contract:
+    name: Trace to Metric Contract (Collector 0.112.0)
+    runs-on: ubuntu-latest
+    if: github.repository == 'apache/dubbo-admin'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install YAML parser
+        run: python -m pip install PyYAML==6.0.2
+      - name: Extract the pinned Collector binary
+        env:
+          COLLECTOR_IMAGE: otel/opentelemetry-collector-contrib:0.112.0
+        run: |
+          container=$(docker create "$COLLECTOR_IMAGE")
+          trap 'docker rm "$container"' EXIT
+          docker cp "$container:/otelcol-contrib" "$RUNNER_TEMP/otelcol-contrib"
+          chmod +x "$RUNNER_TEMP/otelcol-contrib"
+      - name: Check provisioning and execute release OTTL against fixtures
+        run: python scripts/verify-trace-metric-collector.py --collector "$RUNNER_TEMP/otelcol-contrib"
+
   license-check:
     name: License Check
     runs-on: ubuntu-latest
