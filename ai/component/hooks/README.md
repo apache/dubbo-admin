@@ -21,6 +21,7 @@ spec:
         service_name: dubbo-admin-ai
         sample_ratio: 1.0
         capture_content: none # none | truncated | full; opt-in tracing payloads
+        capture_reasoning: none # none | truncated | full; opt-in model reasoning content
 ```
 
 ## Configuration-based registration
@@ -106,6 +107,22 @@ defers serialization until the created span reports `IsRecording()`. `truncated`
 limits each exported JSON attribute to 4096 bytes; `full` should only be used
 in a controlled environment.
 
+`capture_reasoning` is an independent axis that controls only the model
+reasoning (thinking) content carried inside the message parts, which the
+OpenTelemetry generative AI conventions model as a `reasoning` part of
+`gen_ai.input.messages` and `gen_ai.output.messages`. It is orthogonal to
+`capture_content`:
+
+| `capture_content` | `capture_reasoning` | Effect |
+| --- | --- | --- |
+| `none` | any | No content attribute is exported at all |
+| `truncated` / `full` | `none` | Messages are exported without any reasoning part |
+| `truncated` / `full` | `truncated` | Reasoning parts are kept, their content is truncated |
+| `truncated` / `full` | `full` | Reasoning parts are kept verbatim |
+
+The reasoning policy is applied before the overall content truncation, so
+removing the reasoning parts also frees the content budget.
+
 ## Available events
 
 Hooks observe lifecycle events. `hooks.schema.json` enumerates these 16 values
@@ -149,7 +166,7 @@ docker run --rm --name dubbo-admin-jaeger \
 Use `protocol: grpc`, set `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317`,
 start dubbo-admin, and complete one Agent interaction. Open
 `http://localhost:16686`, select the configured `service_name`, and verify the
-trace tree contains `invoke_agent`, `chat <model>`, and any
+trace tree contains `invoke_agent dubbo-admin-sre-agent`, `chat <model>`, and any
 `execute_tool <tool>` spans.
 
 The opt-in integration test loads hook registrations through the configuration

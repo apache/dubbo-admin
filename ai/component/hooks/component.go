@@ -48,11 +48,12 @@ const (
 )
 
 type TracingSpec struct {
-	Enabled        bool    `yaml:"enabled"`
-	Protocol       string  `yaml:"protocol"`
-	ServiceName    string  `yaml:"service_name"`
-	SampleRatio    float64 `yaml:"sample_ratio"`
-	CaptureContent string  `yaml:"capture_content"`
+	Enabled          bool    `yaml:"enabled"`
+	Protocol         string  `yaml:"protocol"`
+	ServiceName      string  `yaml:"service_name"`
+	SampleRatio      float64 `yaml:"sample_ratio"`
+	CaptureContent   string  `yaml:"capture_content"`
+	CaptureReasoning string  `yaml:"capture_reasoning"`
 }
 
 type Component struct {
@@ -99,10 +100,25 @@ func (s TracingSpec) validate() error {
 	}
 	switch s.CaptureContent {
 	case CaptureNone, CaptureTruncated, CaptureFull:
-		return nil
 	default:
 		return fmt.Errorf("tracing capture_content must be one of %q, %q, or %q", CaptureNone, CaptureTruncated, CaptureFull)
 	}
+	switch s.captureReasoningPolicy() {
+	case CaptureNone, CaptureTruncated, CaptureFull:
+	default:
+		return fmt.Errorf("tracing capture_reasoning must be one of %q, %q, or %q", CaptureNone, CaptureTruncated, CaptureFull)
+	}
+	return nil
+}
+
+// captureReasoningPolicy returns the configured reasoning capture policy. An
+// unset value defaults to CaptureNone so the reasoning content of a model is
+// never captured accidentally.
+func (s TracingSpec) captureReasoningPolicy() string {
+	if s.CaptureReasoning == "" {
+		return CaptureNone
+	}
+	return s.CaptureReasoning
 }
 
 func (c *Component) Init(rt *runtime.Runtime) error {
@@ -149,6 +165,7 @@ func (c *Component) initTracing(rt *runtime.Runtime, spec TracingSpec) error {
 		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(spec.SampleRatio))),
 	)
 	registration := NewTracingRegistration(provider.Tracer("dubbo-admin-ai/hooks"), spec.CaptureContent)
+	registration.CaptureReasoning = spec.captureReasoningPolicy()
 	if err := c.manager.Register(registration); err != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()

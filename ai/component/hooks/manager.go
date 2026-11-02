@@ -34,14 +34,20 @@ type Hook func(context.Context, State) context.Context
 
 // Registration declares which events and tools a Hook observes.
 type Registration struct {
-	Events         []Event
-	Tools          []string
+	Events []Event
+	Tools  []string
 	// CaptureContent opts into payload capture. When true, State.Input and
 	// State.Output are materialized eagerly before the hook is called.
 	// Built-in hooks may use the unexported lazyContent field to defer
 	// serialization until a recording span or structured log is emitted;
 	// external hooks always receive eagerly-snapshotted content.
 	CaptureContent bool
+	// CaptureReasoning declares how the reasoning parts of the captured
+	// payloads are treated: CaptureNone drops them, CaptureTruncated keeps
+	// them with a shortened content and CaptureFull keeps them unchanged.
+	// An unset value defaults to CaptureNone so reasoning content is never
+	// captured unless a hook asks for it.
+	CaptureReasoning string
 	// DerivesContext grants this hook sole ownership of context propagation.
 	// A Manager rejects a second registration with this capability and requires
 	// every selected lifecycle Start event to include its matching End event.
@@ -51,13 +57,14 @@ type Registration struct {
 }
 
 type compiledRegistration struct {
-	events         map[Event]struct{}
-	tools          map[string]struct{}
-	allTools       bool
-	captureContent bool
-	derivesContext bool
-	lazyContent    bool
-	hook           Hook
+	events           map[Event]struct{}
+	tools            map[string]struct{}
+	allTools         bool
+	captureContent   bool
+	captureReasoning string
+	derivesContext   bool
+	lazyContent      bool
+	hook             Hook
 }
 
 var contextLifecyclePairs = [][2]Event{
@@ -92,14 +99,19 @@ func (m *Manager) Register(reg Registration) error {
 	if len(reg.Events) == 0 {
 		return fmt.Errorf("at least one hook event is required")
 	}
+	captureReasoning, err := normalizeCaptureReasoning(reg.CaptureReasoning)
+	if err != nil {
+		return err
+	}
 
 	compiled := compiledRegistration{
-		events:         make(map[Event]struct{}, len(reg.Events)),
-		tools:          make(map[string]struct{}, len(reg.Tools)),
-		captureContent: reg.CaptureContent,
-		derivesContext: reg.DerivesContext,
-		lazyContent:    reg.lazyContent,
-		hook:           reg.Hook,
+		events:           make(map[Event]struct{}, len(reg.Events)),
+		tools:            make(map[string]struct{}, len(reg.Tools)),
+		captureContent:   reg.CaptureContent,
+		captureReasoning: captureReasoning,
+		derivesContext:   reg.DerivesContext,
+		lazyContent:      reg.lazyContent,
+		hook:             reg.Hook,
 	}
 	needsToolSelector := false
 	for _, event := range reg.Events {
@@ -171,6 +183,28 @@ func (m *Manager) HasHooks() bool {
 	return m != nil && m.hasHooks.Load()
 }
 
+// ReasoningPolicy reports the reasoning capture policy declared by the
+// registered hooks. The most permissive policy wins because every hook that
+// captures payloads shares the same content, and CaptureNone is reported when
+// no hook declares another policy.
+func (m *Manager) ReasoningPolicy() string {
+	if m == nil {
+		return CaptureNone
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	policy := CaptureNone
+	for _, reg := range m.registrations {
+		switch reg.captureReasoning {
+		case CaptureFull:
+			return CaptureFull
+		case CaptureTruncated:
+			policy = CaptureTruncated
+		}
+	}
+	return policy
+}
+
 // Emit dispatches one event and returns the context derived by matching hooks.
 func (m *Manager) Emit(ctx context.Context, state State) context.Context {
 	if ctx == nil {
@@ -196,8 +230,14 @@ func (m *Manager) Emit(ctx context.Context, state State) context.Context {
 			hookState.inputContent = nil
 			hookState.outputContent = nil
 		} else if !reg.lazyContent {
-			hookState.Input = state.snapshotInputContent()
-			hookState.Output = state.snapshotOutputContent()
+			// The eager content is materialized before the hook runs, so the
+			// reasoning policy is applied to it right away.
+			hookState.Input = ApplyReasoningPolicy(state.snapshotInputContent(), reg.captureReasoning)
+			hookState.Output = ApplyReasoningPolicy(state.snapshotOutputContent(), reg.captureReasoning)
+		} else {
+			// The lazy content is materialized inside the hook, so the policy
+			// travels with the state and is applied on access.
+			hookState.reasoningPolicy = reg.captureReasoning
 		}
 		derived := m.invoke(ctx, hookState, reg.hook)
 		if reg.derivesContext {

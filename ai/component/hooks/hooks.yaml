@@ -35,4 +35,8 @@ spec:
         protocol: grpc
         service_name: dubbo-admin-ai
         sample_ratio: 1.0
+        # Content policy for model and tool payloads: none | truncated | full.
         capture_content: none
+        # Reasoning (thinking) policy, independent of capture_content:
+        # none | truncated | full.
+        capture_reasoning: none

@@ -120,6 +120,9 @@ type State struct {
 	EndedAt        time.Time
 	inputContent   *lazyContentSnapshot
 	outputContent  *lazyContentSnapshot
+	// reasoningPolicy filters the reasoning parts of the captured content.
+	// The Manager sets it from the registration that captured the content.
+	reasoningPolicy string
 }
 
 type lazyContentSnapshot struct {
@@ -161,17 +164,28 @@ func (s State) WithOutputContent(provider func() any) State {
 }
 
 func (s State) snapshotInputContent() string {
-	if s.Input != "" {
-		return s.Input
+	content := s.Input
+	if content == "" {
+		content = s.inputContent.snapshot()
 	}
-	return s.inputContent.snapshot()
+	return s.applyReasoningPolicy(content)
 }
 
 func (s State) snapshotOutputContent() string {
-	if s.Output != "" {
-		return s.Output
+	content := s.Output
+	if content == "" {
+		content = s.outputContent.snapshot()
 	}
-	return s.outputContent.snapshot()
+	return s.applyReasoningPolicy(content)
+}
+
+// applyReasoningPolicy removes or truncates the reasoning parts of the
+// captured content according to the policy of the hook registration.
+func (s State) applyReasoningPolicy(content string) string {
+	if s.reasoningPolicy == "" || content == "" {
+		return content
+	}
+	return ApplyReasoningPolicy(content, s.reasoningPolicy)
 }
 
 // ErrorMessage snapshots an error without exposing a mutable implementation
