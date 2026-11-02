@@ -60,3 +60,17 @@ func TestManagerUsesSharedStore(t *testing.T) {
 		t.Fatalf("backing Store AllMemory() error = %v, want ErrSessionNotFound", err)
 	}
 }
+
+func TestManagerPinsTemplateInSessionCreation(t *testing.T) {
+	s := memorystore.NewMemoryStore()
+	manager := NewManager(s, nil)
+	defer manager.Close()
+	created, err := manager.CreateSession(context.Background(), testutils.TestAccess(), "react@1:content")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, err := s.Get(context.Background(), testutils.TestAccess(), created.ID)
+	if err != nil || stored.TemplateRef != "react@1:content" {
+		t.Fatalf("session template was not created atomically: %+v %v", stored, err)
+	}
+}
