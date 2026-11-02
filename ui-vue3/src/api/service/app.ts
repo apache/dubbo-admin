@@ -72,6 +72,13 @@ export const getApplicationTraceDashboard = (params: any): Promise<any> => {
     params
   })
 }
+export const getApplicationLogDashboard = (params: any): Promise<any> => {
+  return request({
+    url: '/application/log-dashboard',
+    method: 'get',
+    params
+  })
+}
 export const listApplicationEvent = (params: {
   appName?: string
   mesh?: string

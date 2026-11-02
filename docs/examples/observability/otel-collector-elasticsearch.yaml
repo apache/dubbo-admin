@@ -1,0 +1,72 @@
+# Reference configuration only.
+# Not deployed by Dubbo Admin release.
+# OTel Collector Contrib 0.112.0 + Elasticsearch 8.18.0.
+# Adapt namespace, pod labels, Elasticsearch endpoint, and index.
+# Requires a DaemonSet with /var/log/pods mounted and permission to list pods.
+# Raw mapping stores timestamp as @timestamp and unmodified Body as raw log.
+# app and pod_ip are required LogRecord attributes; trace_id, level,
+# pod_name, and logger are optional LogRecord attributes.
+receivers:
+  filelog:
+    include: [/var/log/pods/dubbo-samples-shop_*/*/*.log]
+    start_at: end
+    include_file_path: true
+    operators:
+      - type: container
+      - type: json_parser
+        parse_from: body
+        parse_to: attributes
+        if: 'body matches "^\\{"'
+        on_error: send
+      - type: regex_parser
+        parse_from: body
+        parse_to: attributes
+        regex: '^\S+\s+\S+\s+(?P<level>TRACE|DEBUG|INFO|WARN|ERROR|FATAL)\s+\[[^\]]+\]\s+(?P<logger>\S+)'
+        if: 'body matches "(TRACE|DEBUG|INFO|WARN|ERROR|FATAL)\\s+\\["'
+        on_error: send
+      - type: regex_parser
+        parse_from: body
+        parse_to: attributes
+        regex: 'trace_id=(?P<trace_id>[0-9a-fA-F]{32}|[0-9a-fA-F]{16})'
+        if: 'body matches "trace_id=[0-9a-fA-F]{16}"'
+        on_error: send
+processors:
+  k8sattributes:
+    auth_type: serviceAccount
+    filter:
+      namespace: dubbo-samples-shop
+    extract:
+      metadata: [k8s.pod.ip, k8s.pod.uid, k8s.pod.name, k8s.namespace.name]
+      labels:
+        - tag_name: app
+          key: app
+          from: pod
+    pod_association:
+      - sources:
+          - from: resource_attribute
+            name: k8s.pod.uid
+  transform/raw_fields:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        statements:
+          - set(attributes["app"], resource.attributes["app"])
+          - set(attributes["pod_ip"], resource.attributes["k8s.pod.ip"])
+          - set(attributes["pod_name"], resource.attributes["k8s.pod.name"]) where resource.attributes["k8s.pod.name"] != nil
+          - set(attributes["level"], severity_text) where attributes["level"] == nil and severity_text != ""
+  batch:
+    timeout: 2s
+    send_batch_size: 256
+exporters:
+  elasticsearch:
+    endpoints: [http://elasticsearch.logging.svc:9200]
+    logs_index: dubbo-logs
+    mapping:
+      mode: raw
+    timeout: 30s
+service:
+  pipelines:
+    logs:
+      receivers: [filelog]
+      processors: [k8sattributes, transform/raw_fields, batch]
+      exporters: [elasticsearch]

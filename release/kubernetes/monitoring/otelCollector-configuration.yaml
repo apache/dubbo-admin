@@ -39,6 +39,22 @@ data:
         pod_association:
           - sources:
               - from: connection
+      transform/dubbo_application:
+        error_mode: ignore
+        trace_statements:
+          - context: span
+            statements:
+              - set(attributes["dubbo.application"], resource.attributes["service.name"]) where attributes["rpc.system"] == "apache_dubbo" and attributes["rpc.service"] != nil and attributes["rpc.method"] != nil and resource.attributes["service.name"] != nil
+              # Keep rpc.service intact; older dubbo-go emits [group/]interface[:version].
+              - set(attributes["dubbo.metric.interface"], attributes["rpc.service"]) where attributes["rpc.system"] == "apache_dubbo" and attributes["rpc.service"] != nil and attributes["rpc.service"] != ""
+              - replace_pattern(attributes["dubbo.metric.interface"], "^[^/]+/", "") where attributes["rpc.system"] == "apache_dubbo" and attributes["dubbo.metric.interface"] != nil
+              - set(attributes["dubbo.metric.version"], attributes["dubbo.metric.interface"]) where attributes["rpc.system"] == "apache_dubbo" and attributes["dubbo.version"] == nil and attributes["dubbo.metric.interface"] != nil and IsMatch(attributes["dubbo.metric.interface"], ":[^:]+$")
+              - replace_pattern(attributes["dubbo.metric.version"], "^.*:", "") where attributes["rpc.system"] == "apache_dubbo" and attributes["dubbo.metric.version"] != nil
+              - replace_pattern(attributes["dubbo.metric.interface"], ":[^:]+$", "") where attributes["rpc.system"] == "apache_dubbo" and attributes["dubbo.metric.interface"] != nil
+              - set(attributes["dubbo.metric.group"], attributes["rpc.service"]) where attributes["rpc.system"] == "apache_dubbo" and attributes["dubbo.group"] == nil and IsMatch(attributes["rpc.service"], "^[^/]+/.+")
+              - replace_pattern(attributes["dubbo.metric.group"], "/.*$", "") where attributes["rpc.system"] == "apache_dubbo" and attributes["dubbo.metric.group"] != nil
+              - set(attributes["dubbo.metric.group"], attributes["dubbo.group"]) where attributes["rpc.system"] == "apache_dubbo" and attributes["rpc.service"] != nil and attributes["rpc.service"] != "" and attributes["dubbo.group"] != nil and attributes["dubbo.group"] != ""
+              - set(attributes["dubbo.metric.version"], attributes["dubbo.version"]) where attributes["rpc.system"] == "apache_dubbo" and attributes["rpc.service"] != nil and attributes["rpc.service"] != "" and attributes["dubbo.version"] != nil and attributes["dubbo.version"] != ""
     exporters:
       otlp/jaeger:
         endpoint: "jaeger.monitoring.svc:4317"
@@ -48,5 +64,5 @@ data:
       pipelines:
         traces:
           receivers: [otlp]
-          processors: [k8sattributes]
+          processors: [k8sattributes, transform/dubbo_application]
           exporters: [otlp/jaeger]
