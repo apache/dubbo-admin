@@ -6,8 +6,11 @@ spec:
   cors_origins: [] # Explicitly list trusted browser origins when needed
   read_timeout: 30 # Read timeout in seconds
   write_timeout: 30 # Write timeout in seconds
-  authentication:
-    mode: static
+  auth:
+    enabled: false
+    # jwks_url: "http://dubbo-admin:8888/api/v1/auth/jwks"
+    # issuer: dubbo-admin
+    # audience: dubbo-admin-ai
     tenant_id: default
     user_id: local-user
     roles: [user]

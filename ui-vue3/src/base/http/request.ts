@@ -29,6 +29,7 @@ import router from '@/router'
 import { useMeshStore } from '@/stores/mesh'
 import { message } from 'ant-design-vue'
 import { HTTP_STATUS } from './constants'
+import { accessTokenManager } from '@/auth/accessToken'
 
 // 白名单：对于这些 URL 不进行 message 错误提示 不要 URL 前面的 /
 const SILENT_ERROR_URLS = ['promQL/query']
@@ -101,6 +102,7 @@ response.use(
 
     // Handle 401 unauthorized
     if (response?.status === 401) {
+      accessTokenManager.clear()
       removeAuthState()
       try {
         const current = router.currentRoute?.value

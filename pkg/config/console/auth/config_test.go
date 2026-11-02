@@ -18,6 +18,12 @@
 package auth
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -191,9 +197,113 @@ func TestConfigValidateOIDCRequiresOpenIDScope(t *testing.T) {
 	}
 }
 
+func TestAccessTokenConfigValidation(t *testing.T) {
+	t.Run("disabled does not load key", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.AccessToken = &AccessTokenConfig{Keys: []AccessTokenKey{{PrivateKeyFile: "/does/not/exist"}}}
+		if err := cfg.Validate(); err != nil {
+			t.Fatalf("Validate() error = %v", err)
+		}
+	})
+
+	t.Run("enabled requires keys", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.AccessToken = &AccessTokenConfig{Enabled: true}
+		err := cfg.Validate()
+		if err == nil || !strings.Contains(err.Error(), "keys") {
+			t.Fatalf("Validate() error = %v, want keys error", err)
+		}
+	})
+
+	t.Run("rejects undersized RSA key", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.AccessToken = validAccessTokenConfig(writeRSAKey(t, 1024, false))
+		err := cfg.Validate()
+		if err == nil || !strings.Contains(err.Error(), "2048") {
+			t.Fatalf("Validate() error = %v, want 2048-bit error", err)
+		}
+	})
+
+	for _, pkcs8 := range []bool{false, true} {
+		t.Run(map[bool]string{false: "PKCS1", true: "PKCS8"}[pkcs8], func(t *testing.T) {
+			cfg := validConfig()
+			cfg.AccessToken = validAccessTokenConfig(writeRSAKey(t, 2048, pkcs8))
+			if err := cfg.Validate(); err != nil {
+				t.Fatalf("Validate() error = %v", err)
+			}
+			if cfg.AccessToken.Keys[0].PrivateKey == nil || cfg.AccessToken.TTL != DefaultAccessTokenTTL {
+				t.Fatalf("validated access token = %+v", cfg.AccessToken)
+			}
+		})
+	}
+}
+
 func validGitHubProvider(id string) ProviderConfig {
 	return ProviderConfig{
 		Type: ProviderTypeGitHub, ClientID: "id", ClientSecret: "secret",
 		RedirectURL: "https://admin.example/api/v1/auth/providers/" + id + "/callback", PostLoginRedirectURL: "https://admin.example/admin/",
 	}
+}
+
+func TestAccessTokenMultipleKeys(t *testing.T) {
+	oldPath := writeRSAKey(t, 2048, false)
+	newPath := writeRSAKey(t, 2048, true)
+	for _, tt := range []struct {
+		name   string
+		change func(*AccessTokenConfig)
+		bad    bool
+	}{
+		{"valid", func(c *AccessTokenConfig) {}, false},
+		{"duplicate", func(c *AccessTokenConfig) { c.Keys[1].KeyID = "old" }, true},
+		{"empty ID", func(c *AccessTokenConfig) { c.Keys[0].KeyID = " " }, true},
+		{"missing active", func(c *AccessTokenConfig) { c.ActiveKeyID = "missing" }, true},
+		{"empty keys", func(c *AccessTokenConfig) { c.Keys = []AccessTokenKey{} }, true},
+		{"empty active ID", func(c *AccessTokenConfig) { c.ActiveKeyID = "" }, true},
+		{"missing file", func(c *AccessTokenConfig) { c.Keys[0].PrivateKeyFile = "/missing" }, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &AccessTokenConfig{Enabled: true, Issuer: "admin", Audiences: []string{"ai"}, ActiveKeyID: "new", Keys: []AccessTokenKey{{KeyID: "old", PrivateKeyFile: oldPath}, {KeyID: "new", PrivateKeyFile: newPath}}}
+			tt.change(c)
+			if err := c.validate(); (err != nil) != tt.bad {
+				t.Fatalf("validate = %v", err)
+			}
+			if !tt.bad {
+				if c.Keys[0].PrivateKey == nil || c.Keys[1].PrivateKey == nil {
+					t.Fatal("keys not loaded")
+				}
+				if err := c.validate(); err != nil {
+					t.Fatalf("repeated validation: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func validAccessTokenConfig(path string) *AccessTokenConfig {
+	return &AccessTokenConfig{
+		Enabled: true, Issuer: "dubbo-admin", ActiveKeyID: "key-1", Keys: []AccessTokenKey{{KeyID: "key-1", PrivateKeyFile: path}},
+		Audiences: []string{"dubbo-admin-ai"},
+	}
+}
+
+func writeRSAKey(t *testing.T, bits int, pkcs8 bool) string {
+	t.Helper()
+	key, err := rsa.GenerateKey(rand.Reader, bits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	der := x509.MarshalPKCS1PrivateKey(key)
+	blockType := "RSA PRIVATE KEY"
+	if pkcs8 {
+		der, err = x509.MarshalPKCS8PrivateKey(key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		blockType = "PRIVATE KEY"
+	}
+	path := filepath.Join(t.TempDir(), "key.pem")
+	if err := os.WriteFile(path, pem.EncodeToMemory(&pem.Block{Type: blockType, Bytes: der}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
 }

@@ -21,10 +21,12 @@ import (
 	"context"
 	"dubbo-admin-ai/component/hooks"
 	toolEngine "dubbo-admin-ai/component/tools/engine"
+	"dubbo-admin-ai/providerusage"
 	"dubbo-admin-ai/runtime"
 	"errors"
 	"fmt"
 	"github.com/firebase/genkit/go/ai"
+	"github.com/google/uuid"
 	"time"
 )
 
@@ -41,6 +43,7 @@ type interactionTrace struct {
 	FallbackUsed   bool
 	FallbackReason string
 	Degraded       bool
+	FinalAnswer    string
 }
 
 func emitStageEnd(s *interactionTrace, ctx context.Context, startedAt time.Time, err error) {
@@ -89,6 +92,7 @@ func executeModelCall(
 	opts ...ai.PromptExecuteOption,
 ) (resp *ai.ModelResponse, err error) {
 	startedAt := time.Now()
+	callID := uuid.NewString()
 	startState := hooks.State{
 		Event:         hooks.EventModelCallStart,
 		InteractionID: s.InteractionID,
@@ -96,19 +100,21 @@ func executeModelCall(
 		Iteration:     s.Iteration,
 		Stage:         s.Stage,
 		Model:         s.Model,
+		CallID:        callID,
 		StartedAt:     startedAt,
 	}
 	startState = withHookInput(s.hookManager, hooks.EventModelCallStart, "", startState, func() any {
 		return genAIInputMessages(input)
 	})
 	ctx = emitHook(s.hookManager, ctx, startState)
+	ctx = providerusage.WithObservation(ctx)
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			err = fmt.Errorf("model call panicked: %v", recovered)
-			emitModelCallEnd(ctx, s, startedAt, resp, err)
+			emitModelCallEnd(ctx, s, callID, startedAt, resp, err)
 			panic(recovered)
 		}
-		emitModelCallEnd(ctx, s, startedAt, resp, err)
+		emitModelCallEnd(ctx, s, callID, startedAt, resp, err)
 	}()
 	resp, err = prompt.Execute(ctx, opts...)
 	if err == nil && resp == nil {
@@ -120,7 +126,7 @@ func executeModelCall(
 	return resp, err
 }
 
-func emitModelCallEnd(ctx context.Context, s *interactionTrace, startedAt time.Time, output any, err error) {
+func emitModelCallEnd(ctx context.Context, s *interactionTrace, callID string, startedAt time.Time, output any, err error) {
 	now := time.Now()
 	// Emit error event if the call failed
 	if err != nil {
@@ -131,6 +137,7 @@ func emitModelCallEnd(ctx context.Context, s *interactionTrace, startedAt time.T
 			Iteration:      s.Iteration,
 			Stage:          s.Stage,
 			Model:          s.Model,
+			CallID:         callID,
 			Error:          hooks.ErrorMessage(err),
 			ErrorType:      hooks.ErrorType(err),
 			FallbackUsed:   s.FallbackUsed,
@@ -148,6 +155,7 @@ func emitModelCallEnd(ctx context.Context, s *interactionTrace, startedAt time.T
 		Iteration:      s.Iteration,
 		Stage:          s.Stage,
 		Model:          s.Model,
+		CallID:         callID,
 		Error:          hooks.ErrorMessage(err),
 		ErrorType:      hooks.ErrorType(err),
 		FallbackUsed:   s.FallbackUsed,
@@ -162,6 +170,14 @@ func emitModelCallEnd(ctx context.Context, s *interactionTrace, startedAt time.T
 		endState.InputTokens = response.Usage.InputTokens
 		endState.OutputTokens = response.Usage.OutputTokens
 		endState.TotalTokens = response.Usage.TotalTokens
+		endState.UsagePresent = true
+	}
+	if tokens, observed := providerusage.FromContext(ctx); observed {
+		endState.UsagePresent = tokens != nil
+		endState.InputTokens, endState.OutputTokens, endState.TotalTokens = 0, 0, 0
+		if tokens != nil {
+			endState.InputTokens, endState.OutputTokens, endState.TotalTokens = tokens.Input, tokens.Output, tokens.Total
+		}
 	}
 	emitHook(s.hookManager, ctx, endState)
 }
@@ -197,7 +213,7 @@ func (ra *ReActAgent) executeToolCall(ctx context.Context, s *interactionTrace, 
 		// Degrade instead of aborting: record the failure as a tool output so the
 		// next iteration can still compose an answer from the remaining context.
 		runtime.GetLogger().Warn("tool call failed, continuing with degraded context",
-			"tool", req.Name, "error", callErr)
+			"tool", req.Name, "error_type", hooks.ErrorType(callErr))
 		output = toolEngine.ToolOutput{
 			ToolName: req.Name,
 			Summary:  fmt.Sprintf("tool %q failed: %v", req.Name, callErr),

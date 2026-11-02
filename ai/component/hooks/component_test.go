@@ -118,9 +118,9 @@ func TestComponentRequestsContentOnlyForTracingCapture(t *testing.T) {
 		}
 	})
 
-	t.Run("tracing full capture", func(t *testing.T) {
+	t.Run("tracing metadata only", func(t *testing.T) {
 		component := NewComponent(Spec{Tracing: TracingSpec{
-			Enabled: true, ServiceName: "test", SampleRatio: 1, CaptureContent: CaptureFull,
+			Enabled: true, ServiceName: "test", SampleRatio: 1, CaptureContent: CaptureNone,
 		}})
 		if err := component.Init(runtime.NewRuntime()); err != nil {
 			t.Fatalf("Init() error = %v", err)
@@ -131,13 +131,22 @@ func TestComponentRequestsContentOnlyForTracingCapture(t *testing.T) {
 			}
 		})
 		manager := component.GetActiveManager()
-		if !manager.NeedsContent(EventModelCallStart, "") {
-			t.Fatal("tracing hook did not request model content")
+		if manager.NeedsContent(EventModelCallStart, "") {
+			t.Fatal("tracing hook requested model content")
 		}
-		if !manager.NeedsContent(EventToolCallStart, "lookup_service") {
-			t.Fatal("tracing hook did not request tool content")
+		if manager.NeedsContent(EventToolCallStart, "lookup_service") {
+			t.Fatal("tracing hook requested tool content")
 		}
 	})
+}
+
+func TestComponentRejectsTracingContentCapture(t *testing.T) {
+	for _, capture := range []string{CaptureTruncated, CaptureFull} {
+		spec := Spec{Tracing: TracingSpec{Enabled: true, ServiceName: "test", SampleRatio: 1, CaptureContent: capture}}
+		if err := NewComponent(spec).Validate(); err == nil {
+			t.Fatalf("Validate() accepted capture_content %q", capture)
+		}
+	}
 }
 
 func TestComponentValidatesTraceProtocol(t *testing.T) {

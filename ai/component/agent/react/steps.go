@@ -142,20 +142,33 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 	var messages []*ai.Message
 	turnID, _ := ctx.Value(turnIDContextKey).(uint64)
 	if ra.messageStore != nil {
+		access, accessErr := security.AccessContextFromContext(ctx)
+		if accessErr != nil {
+			return false, accessErr
+		}
+		// Revalidate session access and active-turn existence before each model call.
+		// The emptiness result is intentionally ignored; keep using the stable snapshot.
+		if _, err := ra.messageStore.IsTurnEmpty(ctx, access, s.Session, turnID); err != nil {
+			return false, err
+		}
 		messages = state.messages
 	} else {
 		messages = history.WindowMemory(s.Session)
+	}
+	modelMessages, err := modelInputView(messages)
+	if err != nil {
+		return false, err
 	}
 	// Model and tool deadlines are independent; cancellation still propagates.
 	resp, err := func() (*ai.ModelResponse, error) {
 		lctx, cancel := withTimeout(ctx, ra.callTimeout)
 		defer cancel()
-		return executeModelCall(lctx, s, prompt, messages, func(resp *ai.ModelResponse, err error) {
+		return executeModelCall(lctx, s, prompt, modelMessages, func(resp *ai.ModelResponse, err error) {
 			if err == nil && forceAnswer && resp.Text() == "" {
 				s.FallbackUsed = true
 				s.FallbackReason = hooks.FallbackReasonEmptyResponse
 			}
-		}, ai.WithMessages(messages...))
+		}, ai.WithMessages(modelMessages...))
 	}()
 	if err != nil {
 		return false, fmt.Errorf("failed to execute react prompt: %w", err)
@@ -169,6 +182,7 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 			if err != nil {
 				return false, err
 			}
+			// Legacy HistoryMemory callers may run without interaction state.
 			if state != nil {
 				state.messages = append(state.messages, message)
 			}
@@ -184,6 +198,7 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 		runtime.GetLogger().Warn("react: empty forced answer, using fallback")
 		answer = fallbackAnswer
 	}
+	s.FinalAnswer = answer
 	if err := ra.finish(ctx, chans, history, s.Session, turnID, answer); err != nil {
 		return false, err
 	}
