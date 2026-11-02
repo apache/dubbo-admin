@@ -115,6 +115,9 @@ func TestNewInteractionBuildsStableContextSnapshot(t *testing.T) {
 	if got, want := messageTextList(state.messages), []string{"first question", "first answer", "follow-up"}; fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("context snapshot = %v, want %v", got, want)
 	}
+	if err := store.NextTurnForTurn(ctx, access, "snapshot-session", state.turnID); err != nil {
+		t.Fatalf("NextTurnForTurn(snapshot) error = %v", err)
+	}
 
 	other, err := store.BeginTurn(ctx, access, "snapshot-session")
 	if err != nil {
@@ -201,6 +204,35 @@ func TestNewInteractionAbortsTurnWhenContextLoadFails(t *testing.T) {
 	}
 	if len(messages) != 0 {
 		t.Fatalf("failed context load left turn messages behind: %#v", messages)
+	}
+}
+
+func TestPreparedInteractionCanRetryAfterContextLoadFails(t *testing.T) {
+	ctx := testutils.ContextWithTestAccess(context.Background())
+	access := testutils.TestAccess()
+	baseStore := memorystore.NewMemoryStore(10)
+	const sessionID = "prepared-context-failure"
+	createAgentSession(t, baseStore, sessionID)
+	prepared, err := baseStore.PrepareInteraction(ctx, access, sessionID, "request", "hash", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := &trackingContextStore{Store: baseStore, fail: errors.New("context unavailable")}
+	ra := &ReActAgent{messageStore: store, contextWindowTurns: 5}
+	parent := conversationstore.WithPreparedInteraction(ctx, prepared)
+	if _, _, err := ra.newInteraction(parent, &schema.UserInput{Content: "hello"}, sessionID); err == nil || !strings.Contains(err.Error(), "failed to load conversation context") {
+		t.Fatalf("newInteraction() error = %v, want context load failure", err)
+	}
+	assertNoStoredMessages(t, baseStore, sessionID)
+	retried, err := baseStore.PrepareInteraction(ctx, access, sessionID, "request", "hash", time.Minute)
+	if err != nil {
+		t.Fatalf("PrepareInteraction(retry) error = %v", err)
+	}
+	if retried.InteractionID != prepared.InteractionID || retried.TurnID == prepared.TurnID {
+		t.Fatalf("retried interaction = %#v, original = %#v", retried, prepared)
+	}
+	if err := baseStore.FailInteraction(ctx, access, sessionID, retried.InteractionID, retried.TurnID); err != nil {
+		t.Fatal(err)
 	}
 }
 

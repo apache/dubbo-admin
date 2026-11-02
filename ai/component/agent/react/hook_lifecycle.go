@@ -41,6 +41,7 @@ type interactionTrace struct {
 	FallbackUsed   bool
 	FallbackReason string
 	Degraded       bool
+	FinalAnswer    string
 }
 
 func emitStageEnd(s *interactionTrace, ctx context.Context, startedAt time.Time, err error) {
@@ -197,7 +198,7 @@ func (ra *ReActAgent) executeToolCall(ctx context.Context, s *interactionTrace, 
 		// Degrade instead of aborting: record the failure as a tool output so the
 		// next iteration can still compose an answer from the remaining context.
 		runtime.GetLogger().Warn("tool call failed, continuing with degraded context",
-			"tool", req.Name, "error", callErr)
+			"tool", req.Name, "error_type", hooks.ErrorType(callErr))
 		output = toolEngine.ToolOutput{
 			ToolName: req.Name,
 			Summary:  fmt.Sprintf("tool %q failed: %v", req.Name, callErr),

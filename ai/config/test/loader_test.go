@@ -319,6 +319,26 @@ spec:
 	}
 }
 
+func TestLoader_MemoryRejectsExplicitZeroQuota(t *testing.T) {
+	for _, spec := range []string{
+		"  max_turns: 0\n",
+		"  quota:\n    max_sessions_per_tenant: 0\n",
+		"  quota:\n    max_events_per_turn: 0\n",
+		"  quota:\n    max_session_bytes: 0\n",
+		"  quota:\n    max_tenant_bytes: 0\n",
+		"  quota:\n    max_in_memory_entities: 0\n",
+	} {
+		t.Run(strings.TrimSpace(spec), func(t *testing.T) {
+			dir := t.TempDir()
+			t.Setenv("SCHEMA_DIR", repoSchemaDir(t))
+			writeFile(t, filepath.Join(dir, "memory.yaml"), "type: memory\nspec:\n"+spec)
+			loader := config.NewLoader(filepath.Join(dir, "config.yaml"))
+			_, err := loader.LoadComponent("memory.yaml")
+			mustContain(t, err, "structural error")
+		})
+	}
+}
+
 func TestLoader_MemoryGormRequiresDatabase(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("SCHEMA_DIR", repoSchemaDir(t))
