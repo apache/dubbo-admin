@@ -20,7 +20,7 @@ spec:
         protocol: grpc # grpc | http/protobuf
         service_name: dubbo-admin-ai
         sample_ratio: 1.0
-        capture_content: none # none | truncated | full; opt-in tracing payloads
+        capture_content: none # payload capture is disabled by the baseline policy
 ```
 
 ## Configuration-based registration
@@ -99,12 +99,10 @@ export OTEL_EXPORTER_OTLP_HEADERS=authorization=Bearer%20token
 
 The default ports are conventionally 4317 for gRPC and 4318 for HTTP/protobuf.
 
-`capture_content` defaults to `none` deliberately: model messages and tool
-payloads may contain credentials or user data. Payloads are not serialized on
-the agent hot path unless a matching hook explicitly opts in; the tracing hook
-defers serialization until the created span reports `IsRecording()`. `truncated`
-limits each exported JSON attribute to 4096 bytes; `full` should only be used
-in a controlled environment.
+`capture_content` is fixed to `none`: normal telemetry must not contain model
+messages, model output, tool arguments, or tool results. A content-level
+diagnostic facility requires separate authorization, redaction, retention, and
+auditing and is not provided by this component.
 
 ## Available events
 

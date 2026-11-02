@@ -37,9 +37,11 @@ describe('aiService.sendChatMessage', () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, body: stream })
     vi.stubGlobal('fetch', fetchMock)
 
-    await aiService.sendChatMessage('hello', 'session-1', context)
+    await aiService.sendChatMessage('hello', 'session-1', context, 'request-1')
 
     const request = fetchMock.mock.calls[0][1] as RequestInit
+    const headers = request.headers as Record<string, string>
+    expect(headers['Idempotency-Key']).toBe('request-1')
     expect(JSON.parse(String(request.body))).toEqual({
       message: 'hello',
       sessionID: 'session-1',
@@ -51,7 +53,7 @@ describe('aiService.sendChatMessage', () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, body: new ReadableStream() })
     vi.stubGlobal('fetch', fetchMock)
 
-    await aiService.sendChatMessage('hello', 'session-1')
+    await aiService.sendChatMessage('hello', 'session-1', undefined, 'request-2')
 
     const request = fetchMock.mock.calls[0][1] as RequestInit
     expect(JSON.parse(String(request.body))).toEqual({
@@ -63,8 +65,14 @@ describe('aiService.sendChatMessage', () => {
   it('rejects successful responses without a stream body', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, body: null }))
 
+    await expect(
+      aiService.sendChatMessage('hello', 'session-1', undefined, 'request-3')
+    ).rejects.toThrow('AI service returned an empty response body')
+  })
+
+  it('requires the caller to own the logical request key', async () => {
     await expect(aiService.sendChatMessage('hello', 'session-1')).rejects.toThrow(
-      'AI service returned an empty response body'
+      'An idempotency key is required'
     )
   })
 })
