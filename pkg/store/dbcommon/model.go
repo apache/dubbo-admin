@@ -19,6 +19,7 @@ package dbcommon
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -41,6 +42,13 @@ type ResourceModel struct {
 	Data         []byte    `gorm:"type:text;not null"`                     // JSON-encoded resource data
 	CreatedAt    time.Time `gorm:"autoCreateTime"`                         // Automatically set on creation
 	UpdatedAt    time.Time `gorm:"autoUpdateTime"`                         // Automatically updated on modification
+}
+
+// VersionedResourceModel is used only for resource kinds that opt into
+// conditional mutations. Other resource tables retain the existing schema.
+type VersionedResourceModel struct {
+	ResourceModel
+	Version uint64 `gorm:"not null;default:1"`
 }
 
 // TableNameForKind returns the table name for a given ResourceKind
@@ -96,6 +104,10 @@ func toSnakeCase(s string) string {
 // ToResource converts the database model back to a Resource object
 // Unmarshals the JSON data and returns the typed resource
 func (rm *ResourceModel) ToResource() (model.Resource, error) {
+	return rm.ToResourceWithVersion(0)
+}
+
+func (rm *ResourceModel) ToResourceWithVersion(version uint64) (model.Resource, error) {
 	newFunc, err := model.ResourceSchemaRegistry().NewResourceFunc(model.ResourceKind(rm.ResourceKind))
 	if err != nil {
 		return nil, err
@@ -103,6 +115,9 @@ func (rm *ResourceModel) ToResource() (model.Resource, error) {
 	resource := newFunc()
 	if err := json.Unmarshal(rm.Data, resource); err != nil {
 		return nil, err
+	}
+	if versioned, ok := resource.(interface{ SetResourceVersion(string) }); ok && version > 0 {
+		versioned.SetResourceVersion(strconv.FormatUint(version, 10))
 	}
 	return resource, nil
 }

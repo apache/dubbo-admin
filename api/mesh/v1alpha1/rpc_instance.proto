@@ -38,6 +38,9 @@ message RPCInstance {
 
   string preferSerialization = 13;
 
+  // Absent for registries that do not publish a health signal.
+  optional bool available = 14;
+
   map<string, string> tags = 51;
 
   repeated Endpoint endpoints = 52;
