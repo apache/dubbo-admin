@@ -22,6 +22,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -118,5 +119,59 @@ func TestStoreHooksFinalizeOrAbortBeforeInteractionEnd(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// The agent span is the trace root, so it has to carry the conversation and
+// the final answer. Backends read the trace input and output from it, and an
+// empty root renders as a trace without any message.
+func TestAgentSpanCarriesConversationAndAnswer(t *testing.T) {
+	ctx := context.Background()
+	recorder := tracetest.NewSpanRecorder()
+	provider := trace.NewTracerProvider(trace.WithSpanProcessor(recorder))
+	t.Cleanup(func() { _ = provider.Shutdown(ctx) })
+	manager := hooks.NewManager(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err := manager.Register(hooks.NewTracingRegistration(provider.Tracer("agent-span"), hooks.CaptureFull)); err != nil {
+		t.Fatal(err)
+	}
+
+	ra := testAgent(nil, 1, nil)
+	ra.hookManager = manager
+	ra.bufferSize = 16
+	ra.actPrompt = &stubPrompt{resp: textResp("服务正常")}
+	ra.answerPrompt = ra.actPrompt
+	channels := ra.Interact(ctx, &schema.UserInput{Content: "查一下 order-service"}, "session")
+	select {
+	case <-channels.Done():
+	case <-time.After(5 * time.Second):
+		t.Fatal("interaction did not finish")
+	}
+
+	var agentSpan trace.ReadOnlySpan
+	for _, span := range recorder.Ended() {
+		if span.Name() == "invoke_agent "+hooks.AgentName {
+			agentSpan = span
+		}
+	}
+	if agentSpan == nil {
+		t.Fatalf("no agent span among %d ended spans", len(recorder.Ended()))
+	}
+	attrs := map[string]string{}
+	for _, attr := range agentSpan.Attributes() {
+		attrs[string(attr.Key)] = attr.Value.AsString()
+	}
+	input, ok := attrs["gen_ai.input.messages"]
+	if !ok {
+		t.Fatal("agent span has no gen_ai.input.messages")
+	}
+	if !strings.Contains(input, "查一下 order-service") {
+		t.Fatalf("agent span input does not carry the conversation: %s", input)
+	}
+	output, ok := attrs["gen_ai.output.messages"]
+	if !ok {
+		t.Fatal("agent span has no gen_ai.output.messages")
+	}
+	if !strings.Contains(output, "服务正常") {
+		t.Fatalf("agent span output does not carry the answer: %s", output)
 	}
 }

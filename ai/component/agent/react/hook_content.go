@@ -50,6 +50,15 @@ func genAIOutputMessages(output any) any {
 	return convertGenAIMessages([]*ai.Message{response.Message}, string(response.FinishReason))
 }
 
+// genAIAssistantMessages renders the agent's final answer as a GenAI assistant
+// message, so the agent span can carry the answer the user actually receives.
+func genAIAssistantMessages(answer string) any {
+	if answer == "" {
+		return nil
+	}
+	return convertGenAIMessages([]*ai.Message{ai.NewMessage(ai.RoleModel, nil, ai.NewTextPart(answer))}, "")
+}
+
 func convertGenAIMessages(messages []*ai.Message, finishReason string) []genAIMessage {
 	converted := make([]genAIMessage, 0, len(messages))
 	for _, message := range messages {
@@ -63,6 +72,14 @@ func convertGenAIMessages(messages []*ai.Message, finishReason string) []genAIMe
 				continue
 			case part.IsText():
 				parts = append(parts, genAIMessagePart{Type: "text", Content: part.Text})
+			case part.IsReasoning():
+				// The generative AI semantic conventions model the thinking
+				// content of a model as a reasoning part that only carries a
+				// type and a content field.
+				if part.Text == "" {
+					continue
+				}
+				parts = append(parts, genAIMessagePart{Type: "reasoning", Content: part.Text})
 			case part.IsToolRequest() && part.ToolRequest != nil:
 				parts = append(parts, genAIMessagePart{
 					Type:      "tool_call",

@@ -204,10 +204,22 @@ func (ra *ReActAgent) Interact(parent context.Context, input *schema.UserInput, 
 				StartedAt:     interactionStartedAt,
 				EndedAt:       endedAt,
 			}
-			if interactionState != nil && interactionState.Usage != nil {
-				endState.InputTokens = interactionState.Usage.InputTokens
-				endState.OutputTokens = interactionState.Usage.OutputTokens
-				endState.TotalTokens = interactionState.Usage.TotalTokens
+			if interactionState != nil {
+				// The agent span closes here, so this is the only point where
+				// the whole conversation and the final answer are both known.
+				// Backends read the trace input and output from the trace root,
+				// so they are attached to the span that closes it.
+				endState = withHookInput(ra.hookManager, hooks.EventInteractionEnd, "", endState, func() any {
+					return genAIInputMessages(interactionState.Conversation)
+				})
+				endState = withHookOutput(ra.hookManager, hooks.EventInteractionEnd, "", endState, func() any {
+					return genAIAssistantMessages(interactionState.Answer)
+				})
+				if interactionState.Usage != nil {
+					endState.InputTokens = interactionState.Usage.InputTokens
+					endState.OutputTokens = interactionState.Usage.OutputTokens
+					endState.TotalTokens = interactionState.Usage.TotalTokens
+				}
 			}
 			emitHook(ra.hookManager, interactionCtx, endState)
 			chans.Close()

@@ -141,6 +141,9 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 	} else {
 		messages = history.WindowMemory(s.Session)
 	}
+	// The agent span reports the conversation this call worked on, so the
+	// trace root shows the turn instead of an empty trace.
+	s.Conversation = messages
 	// Model and tool deadlines are independent; cancellation still propagates.
 	resp, err := func() (*ai.ModelResponse, error) {
 		lctx, cancel := withTimeout(ctx, ra.callTimeout)
@@ -179,6 +182,7 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 		runtime.GetLogger().Warn("react: empty forced answer, using fallback")
 		answer = fallbackAnswer
 	}
+	s.Answer = answer
 	if err := ra.finish(ctx, chans, history, s.Session, turnID, answer); err != nil {
 		return false, err
 	}

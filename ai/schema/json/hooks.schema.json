@@ -65,6 +65,14 @@
                     "full"
                   ],
                   "default": "none"
+                },
+                "capture_reasoning": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "truncated",
+                    "full"
+                  ]
                 }
               }
             }
@@ -157,6 +165,14 @@
             "full"
           ],
           "default": "none"
+        },
+        "capture_reasoning": {
+          "type": "string",
+          "enum": [
+            "none",
+            "truncated",
+            "full"
+          ]
         }
       }
     },
