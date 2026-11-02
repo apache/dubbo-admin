@@ -19,10 +19,12 @@ package zk
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dubbogo/go-zookeeper/zk"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
 	"github.com/apache/dubbo-admin/pkg/core/clients"
 	"github.com/apache/dubbo-admin/pkg/core/events"
@@ -32,6 +34,8 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/store"
 )
 
+const zkConfigRootPath = "/dubbo/config"
+
 type RuleGovernor struct {
 	cfg         *discoverycfg.Config
 	storeRouter store.Router
@@ -40,7 +44,9 @@ type RuleGovernor struct {
 }
 
 func NewZKRuleGovernor(cfg *discoverycfg.Config, router store.Router, emitter events.Emitter) (*RuleGovernor, error) {
-	address := cfg.Address.Registry
+	// Runtime dynamic configuration is stored in the config-center endpoint;
+	// it may intentionally differ from the service registry endpoint.
+	address := cfg.Address.ConfigCenter
 	conn, err := clients.NewZKConnection(address)
 	if err != nil {
 		return nil, err
@@ -54,11 +60,14 @@ func NewZKRuleGovernor(cfg *discoverycfg.Config, router store.Router, emitter ev
 }
 
 func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
-	path := "/dubbo/config/" + r.ResourceMeta().Name
-	content, err := meshresource.MarshalRuleSpec(r.ResourceSpec())
+	path := ruleConfigPath(r)
+	content, err := meshresource.EncodeRule(r)
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.YamlError,
 			fmt.Sprintf("failed to marshal resource spec, res: %s", r.String()))
+	}
+	if err := g.ensurePath(ruleConfigGroupPath()); err != nil {
+		return err
 	}
 	_, err = g.conn.Create(path, content, 0, zk.WorldACL(zk.PermAll))
 	if err != nil {
@@ -81,13 +90,19 @@ func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
 }
 
 func (g *RuleGovernor) UpdateRule(r coremodel.Resource) error {
-	path := "/dubbo/config/" + r.ResourceMeta().Name
-	content, err := meshresource.MarshalRuleSpec(r.ResourceSpec())
+	path := ruleConfigPath(r)
+	content, err := meshresource.EncodeRule(r)
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.YamlError,
 			fmt.Sprintf("failed to marshal resource spec, res: %s", r.String()))
 	}
 	_, err = g.conn.Set(path, content, -1)
+	if err == zk.ErrNoNode {
+		if ensureErr := g.ensurePath(ruleConfigGroupPath()); ensureErr != nil {
+			return ensureErr
+		}
+		_, err = g.conn.Create(path, content, 0, zk.WorldACL(zk.PermAll))
+	}
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.ZKError,
 			fmt.Sprintf("failed to update zk node, path: %s", path))
@@ -105,7 +120,7 @@ func (g *RuleGovernor) UpdateRule(r coremodel.Resource) error {
 }
 
 func (g *RuleGovernor) DeleteRule(r coremodel.Resource) error {
-	path := "/dubbo/config/" + r.ResourceMeta().Name
+	path := ruleConfigPath(r)
 	err := g.conn.Delete(path, -1)
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.ZKError,
@@ -118,6 +133,40 @@ func (g *RuleGovernor) DeleteRule(r coremodel.Resource) error {
 	err = st.Delete(r)
 	if err != nil {
 		logger.Warnf("delete resource from store failed, res: %s, cause: %v", r.String(), err)
+	}
+	return nil
+}
+
+func ruleConfigPath(r coremodel.Resource) string {
+	return ruleConfigGroupPath() + "/" + r.ResourceMeta().Name
+}
+
+func ruleConfigGroupPath() string {
+	return zkConfigRootPath + "/" + constants.RuleConfigGroup
+}
+
+// ensurePath creates every component of a grouped config path. ZooKeeper's
+// Create operation is not recursive, and a fresh config center may not yet
+// contain /dubbo/config/dubbo.
+func (g *RuleGovernor) ensurePath(targetPath string) error {
+	parts := strings.Split(strings.Trim(targetPath, "/"), "/")
+	current := ""
+	for _, part := range parts {
+		if part == "" {
+			continue
+		}
+		current += "/" + part
+		exists, _, err := g.conn.Exists(current)
+		if err != nil {
+			return bizerror.Wrap(err, bizerror.ZKError, fmt.Sprintf("failed to check zk node, path: %s", current))
+		}
+		if exists {
+			continue
+		}
+		_, err = g.conn.Create(current, nil, 0, zk.WorldACL(zk.PermAll))
+		if err != nil && err != zk.ErrNodeExists {
+			return bizerror.Wrap(err, bizerror.ZKError, fmt.Sprintf("failed to create zk node, path: %s", current))
+		}
 	}
 	return nil
 }

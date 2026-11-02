@@ -227,11 +227,13 @@ func (s *failingResourceStore) Add(obj interface{}) error {
 }
 
 func setupRollbackTestEnv(t *testing.T, wrapVersionStore ...func(store.ResourceStore) store.ResourceStore) *testContext {
+	affinityStore := memoryst.NewMemoryResourceStore(meshresource.AffinityRouteKind)
 	conditionStore := memoryst.NewMemoryResourceStore(meshresource.ConditionRouteKind)
 	dynamicConfigStore := memoryst.NewMemoryResourceStore(meshresource.DynamicConfigKind)
+	scriptStore := memoryst.NewMemoryResourceStore(meshresource.ScriptRouteKind)
 	tagStore := memoryst.NewMemoryResourceStore(meshresource.TagRouteKind)
 	versionStore := memoryst.NewMemoryResourceStore(meshresource.RuleVersionKind)
-	for _, s := range []store.ManagedResourceStore{conditionStore, dynamicConfigStore, tagStore, versionStore} {
+	for _, s := range []store.ManagedResourceStore{affinityStore, conditionStore, dynamicConfigStore, scriptStore, tagStore, versionStore} {
 		require.NoError(t, s.Init(nil))
 	}
 
@@ -240,8 +242,10 @@ func setupRollbackTestEnv(t *testing.T, wrapVersionStore ...func(store.ResourceS
 		versioningVersionStore = wrapVersionStore[0](versionStore)
 	}
 	stores := map[coremodel.ResourceKind]store.ResourceStore{
+		meshresource.AffinityRouteKind:  affinityStore,
 		meshresource.ConditionRouteKind: conditionStore,
 		meshresource.DynamicConfigKind:  dynamicConfigStore,
+		meshresource.ScriptRouteKind:    scriptStore,
 		meshresource.TagRouteKind:       tagStore,
 		meshresource.RuleVersionKind:    versioningVersionStore,
 	}

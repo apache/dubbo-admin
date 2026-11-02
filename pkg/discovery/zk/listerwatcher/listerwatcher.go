@@ -44,6 +44,7 @@ type ListerWatcher[T coremodel.Resource] struct {
 	rk                   coremodel.ResourceKind
 	conn                 *zk.Conn
 	cfg                  *discoverycfg.Config
+	zkAddress            string
 	toUpsertResourceFunc ToUpsertResourceFunc
 	toDeleteResourceFunc ToDeleteResourceFunc
 	newResourceFunc      coremodel.NewResourceFunc
@@ -59,6 +60,21 @@ func NewListerWatcher(
 	toDeleteResourceFunc ToDeleteResourceFunc,
 	basePath string,
 	cfg *discoverycfg.Config) (*ListerWatcher[coremodel.Resource], error) {
+	return NewListerWatcherWithAddress(rk, toResourceFunc, toDeleteResourceFunc, basePath, cfg, cfg.Address.Registry)
+}
+
+// NewListerWatcherWithAddress is used when a resource lives in a dedicated
+// config-center endpoint instead of the service registry endpoint.
+func NewListerWatcherWithAddress(
+	rk coremodel.ResourceKind,
+	toResourceFunc ToUpsertResourceFunc,
+	toDeleteResourceFunc ToDeleteResourceFunc,
+	basePath string,
+	cfg *discoverycfg.Config,
+	zkAddress string) (*ListerWatcher[coremodel.Resource], error) {
+	if zkAddress == "" {
+		zkAddress = cfg.Address.Registry
+	}
 	newResourceFunc, err := coremodel.ResourceSchemaRegistry().NewResourceFunc(rk)
 	if err != nil {
 		return nil, err
@@ -67,7 +83,7 @@ func NewListerWatcher(
 	if err != nil {
 		return nil, err
 	}
-	conn, err := clients.NewZKConnection(cfg.Address.Registry)
+	conn, err := clients.NewZKConnection(zkAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -78,6 +94,7 @@ func NewListerWatcher(
 		basePath:             basePath,
 		conn:                 conn,
 		cfg:                  cfg,
+		zkAddress:            zkAddress,
 		newResourceFunc:      newResourceFunc,
 		newResListFunc:       newResListFunc,
 		resultChan:           make(chan watch.Event, 1000),
@@ -198,6 +215,9 @@ func (lw *ListerWatcher[T]) handleEvent(event zkwatcher.ZookeeperEvent) {
 }
 
 func (lw *ListerWatcher[T]) zkAddr() string {
+	if lw.zkAddress != "" {
+		return lw.zkAddress
+	}
 	return lw.cfg.Address.Registry
 }
 
