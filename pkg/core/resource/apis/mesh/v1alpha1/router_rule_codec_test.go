@@ -43,6 +43,30 @@ func TestAffinityRuleCodecUsesPublicAffinityAwareField(t *testing.T) {
 	require.Equal(t, res.Spec, decoded.(*AffinityRouteResource).Spec)
 }
 
+func TestServiceAffinityRuleRequiresColonSeparatedKeyAndName(t *testing.T) {
+	const service = "org.apache.dubbo.samples.CommentService"
+	res := NewAffinityRouteResourceWithAttributes(service+"::.affinity-router", "mesh")
+	res.Spec = &meshproto.AffinityRoute{
+		ConfigVersion: "v3.1", Scope: "service", Key: service + "::",
+		Affinity: &meshproto.AffinityAware{Key: "region", Ratio: 1},
+	}
+	require.NoError(t, ValidateRule(res))
+	raw, err := EncodeRule(res)
+	require.NoError(t, err)
+	decoded, err := DecodeRule(AffinityRouteKind, "mesh", res.Name, string(raw))
+	require.NoError(t, err)
+	require.Equal(t, res.Spec.Key, decoded.(*AffinityRouteResource).Spec.Key)
+
+	res.Name = service + ".affinity-router"
+	require.Error(t, ValidateRule(res))
+	res.Name = service + "::.affinity-router"
+	res.Spec.Key = service
+	require.ErrorContains(t, ValidateRule(res), "interface:version:group")
+	res.Spec.Key = service + ":1.0:group-a"
+	res.Name = res.Spec.Key + ".affinity-router"
+	require.NoError(t, ValidateRule(res))
+}
+
 func TestScriptRuleCodecAndValidation(t *testing.T) {
 	res := NewScriptRouteResourceWithAttributes("provider.script-router", "mesh")
 	res.Spec = &meshproto.ScriptRoute{
