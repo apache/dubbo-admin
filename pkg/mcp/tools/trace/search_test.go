@@ -89,10 +89,24 @@ func TestJaegerProviderSearchTracesBuildsRequest(t *testing.T) {
 	if query.Get("start") != "1700000000000000" || query.Get("end") != "1700003600000000" {
 		t.Fatalf("unexpected time window: %v", query)
 	}
-	if query.Get("minDuration") != "250000" {
+	// Jaeger parses minDuration with time.ParseDuration, so the wire format is a
+	// duration string and not a bare microsecond count.
+	minDuration := query.Get("minDuration")
+	if minDuration != "250ms" {
 		t.Fatalf("unexpected min duration: %v", query)
 	}
-	if query.Get("limit") != "17" {
+	// The stub does not validate the parameter like Jaeger does, so the value is
+	// parsed here to keep a unit-less microsecond count from slipping through.
+	parsed, err := time.ParseDuration(minDuration)
+	if err != nil {
+		t.Fatalf("min duration %q is not a duration Jaeger can parse: %v", minDuration, err)
+	}
+	if parsed != 250*time.Millisecond {
+		t.Fatalf("unexpected parsed min duration: %v", parsed)
+	}
+	// One trace more than the caller asked for is requested, so a full result
+	// proves that more traces match than were returned.
+	if query.Get("limit") != "18" {
 		t.Fatalf("unexpected limit: %v", query)
 	}
 	if result.Total != 1 || len(result.Traces) != 1 || result.SourceEngine != "jaeger" {
@@ -436,5 +450,51 @@ func TestSearchTracesToolResultIsSerializable(t *testing.T) {
 	// The tool result envelope must be serializable as well.
 	if _, err := json.Marshal(result); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestJaegerProviderSearchTracesReportsTruncationAtTheBackendLimit(t *testing.T) {
+	// The provider is asked for one trace more than the caller wants, so a result
+	// that reached the limit proves that more traces match than were returned.
+	// Without the extra trace a full result would look complete.
+	available := 30
+	traces := make([]string, 0, available)
+	for i := 0; i < available; i++ {
+		traces = append(traces, `{"traceID":"trace`+strconv.Itoa(i)+`","spans":[{"spanID":"01","operationName":"op","references":[],"startTime":`+strconv.Itoa(1000000+i)+`,"duration":10,"tags":[],"logs":[],"processID":"p1"}],"processes":{"p1":{"serviceName":"shop-order","tags":[]}}}`)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+		if limit > len(traces) {
+			limit = len(traces)
+		}
+		_, _ = w.Write([]byte(`{"data":[` + strings.Join(traces[:limit], ",") + `]}`))
+	}))
+	defer server.Close()
+	provider := newSearchProvider(t, server.URL)
+
+	// The backend has fewer traces than the caller asked for, so the result is
+	// complete even though the request asked for one trace more.
+	result, err := provider.SearchTraces(context.Background(), TraceSearchQuery{Service: "shop-order", Limit: 50})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Truncated {
+		t.Fatal("did not expect the result to be truncated")
+	}
+	if len(result.Traces) != available || result.Total != available {
+		t.Fatalf("unexpected result: %d traces, total %d", len(result.Traces), result.Total)
+	}
+
+	// The backend reached the requested limit, so more traces match than were
+	// returned and the agent has to be told about it.
+	result, err = provider.SearchTraces(context.Background(), TraceSearchQuery{Service: "shop-order", Limit: 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Truncated {
+		t.Fatal("expected the result to be marked as truncated")
+	}
+	if len(result.Traces) != 20 || result.Total != 20 {
+		t.Fatalf("unexpected result: %d traces, total %d", len(result.Traces), result.Total)
 	}
 }

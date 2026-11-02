@@ -439,4 +439,4 @@ observability:
 
 诊断工具不会记录完整 PromQL、Bearer Token 或完整 trace attributes。工具只读，不提供流量、配置或部署变更能力。
 
-`search_traces` 必须提供 `service` 锚点，默认请求 20 条、最多 100 条，本地最多保留 50 条摘要，超出时 `truncated` 为 `true`。`analyze_trace` 最多输出 32 跳关键路径、10 个慢 span、50 个错误 span、50 个 GenAI 明细，并给出一句话结论。分析器只读取 `gen_ai.*` 元数据属性，不回显 prompt、completion 与工具入参等 Opt-In 内容。
+`search_traces` 必须提供 `service` 锚点，默认请求 20 条、最多 100 条，本地最多保留 100 条摘要；后端命中条数上限时 `truncated` 为 `true`。`analyze_trace` 最多输出 32 跳关键路径、10 个慢 span、20 个错误 span、20 个 GenAI 明细，并给出一句话结论。分析器只读取 `gen_ai.*` 元数据属性，不回显 prompt、completion 与工具入参等 Opt-In 内容。

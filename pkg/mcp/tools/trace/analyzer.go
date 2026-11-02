@@ -130,7 +130,7 @@ func BuildTraceAnalysis(trace *Trace) *TraceAnalysis {
 	analysis.ServiceBreakdown = breakdown
 	analysis.ServiceCount = maxInt(trace.ServiceCount, len(breakdown))
 
-	slowSpans := buildSlowSpans(nodes, wallClock, criticalPathSet, analysis)
+	slowSpans := buildSlowSpans(nodes, wallClock, criticalPathSet)
 	analysis.SlowSpans = make([]SlowSpan, 0, len(slowSpans))
 	for _, entry := range slowSpans {
 		analysis.SlowSpans = append(analysis.SlowSpans, entry.slow)
@@ -374,6 +374,13 @@ func analysisEnvelope(nodes []*analysisSpan, trace *Trace) (int64, string) {
 	if !hasStart {
 		return trace.DurationMicros, trace.StartTime
 	}
+	// The provider envelope covers every raw span, the node envelope only the
+	// retained ones. A clipped span list would make the node envelope shorter
+	// than the trace and inflate every latency percentage that uses it as the
+	// denominator, so the provider value is preferred whenever it is available.
+	if trace.DurationMicros > 0 {
+		return trace.DurationMicros, startText
+	}
 	return maxEnd - minStart, startText
 }
 
@@ -431,7 +438,7 @@ type slowSpanEntry struct {
 // buildSlowSpans ranks the spans by the time they consumed on their own.
 // The exclusive time is returned alongside the report so the summary can quote it
 // even for spans that are not part of the critical path.
-func buildSlowSpans(nodes []*analysisSpan, wallClock int64, criticalPath map[int]struct{}, analysis *TraceAnalysis) []slowSpanEntry {
+func buildSlowSpans(nodes []*analysisSpan, wallClock int64, criticalPath map[int]struct{}) []slowSpanEntry {
 	candidates := make([]slowSpanEntry, 0, len(nodes))
 	for _, node := range nodes {
 		span := node.span
@@ -455,9 +462,12 @@ func buildSlowSpans(nodes []*analysisSpan, wallClock int64, criticalPath map[int
 		}
 		return candidates[i].position < candidates[j].position
 	})
+	// The list is a ranking, so cutting it to the top entries does not lose any
+	// analysis data. The truncated flag stays untouched: it would tell the agent
+	// that the diagnosis is based on incomplete data, and a ranking is complete
+	// even when only its best entries are reported.
 	if len(candidates) > maxSlowSpans {
 		candidates = candidates[:maxSlowSpans]
-		analysis.Truncated = true
 	}
 	return candidates
 }
@@ -812,7 +822,7 @@ func minInt64(a, b int64) int64 {
 	return b
 }
 
-// requestContext derives the outbound request context from the console context.
+// traceRequestContext derives the outbound request context from the console context.
 func traceRequestContext(ctx consolectx.Context) context.Context {
 	if ctx == nil || ctx.AppContext() == nil {
 		return context.Background()

@@ -624,6 +624,59 @@ func TestBuildCriticalPathStopsAtBudgetWithoutTruncation(t *testing.T) {
 	}
 }
 
+func TestBuildTraceAnalysisUsesProviderEnvelopeForClippedSpans(t *testing.T) {
+	// The provider computes the duration over every raw span and only then clips
+	// the span list. The analysis has to use the provider envelope as the
+	// latency denominator, otherwise the reported duration is shorter than the
+	// one the search reported and every latency percentage is inflated.
+	trace := &Trace{
+		TraceID:        testTraceID,
+		DurationMicros: 500000,
+		Truncated:      true,
+		Spans: []Span{
+			spanAt(0, "01", "", "frontend", "GET /checkout", 100000),
+			spanAt(10000, "02", "01", "order-service", "checkout", 80000),
+		},
+	}
+	analysis := BuildTraceAnalysis(trace)
+	if analysis.DurationMicros != 500000 {
+		t.Fatalf("duration = %d, want %d", analysis.DurationMicros, 500000)
+	}
+	// The service breakdown divides by the envelope, so the frontend service
+	// covers a fifth of the whole trace and not of the retained spans only.
+	var frontend *ServiceLatency
+	for _, entry := range analysis.ServiceBreakdown {
+		if entry.ServiceName == "frontend" {
+			frontend = &entry
+			break
+		}
+	}
+	if frontend == nil {
+		t.Fatalf("expected a frontend entry in the breakdown: %#v", analysis.ServiceBreakdown)
+	}
+	if frontend.SharePercent != 20 {
+		t.Fatalf("frontend share = %v, want 20", frontend.SharePercent)
+	}
+}
+
+func TestBuildTraceAnalysisDoesNotReportTruncationForTheSlowSpanRanking(t *testing.T) {
+	// The slow span list is a ranking: cutting it to the best entries does not
+	// lose any analysis data. The truncated flag would tell the agent that the
+	// diagnosis is based on incomplete data, so it must stay unset.
+	spans := make([]Span, 0, maxSlowSpans+5)
+	for i := 0; i < maxSlowSpans+5; i++ {
+		spans = append(spans, spanAt(int64(i)*1000, fmt.Sprintf("%02d", i), "", "frontend", "GET /checkout", 10000))
+	}
+	trace := &Trace{TraceID: testTraceID, Spans: spans}
+	analysis := BuildTraceAnalysis(trace)
+	if len(analysis.SlowSpans) != maxSlowSpans {
+		t.Fatalf("slow spans = %d, want %d", len(analysis.SlowSpans), maxSlowSpans)
+	}
+	if analysis.Truncated {
+		t.Fatal("did not expect the analysis to be truncated by the slow span ranking")
+	}
+}
+
 func TestBuildTraceAnalysisHandlesSpansWithoutSpanID(t *testing.T) {
 	// Both spans share an empty span id. An index keyed by the business id would
 	// let one span overwrite the other and mislabel the critical path.

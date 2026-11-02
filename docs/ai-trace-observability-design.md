@@ -208,8 +208,8 @@ sequenceDiagram
 
 在此基础上新增两组上限：
 
-- **搜索侧**：`maxSearchTraces`（默认 20，上限 100）限制 `TraceSearchResult.Traces` 的长度；超过则 `Truncated = true`。
-- **分析侧**：`maxCriticalPath`（默认 32）、`maxServiceBreakdown`（默认 50）、`maxSlowSpans`（默认 10）、`maxErrorSpans`（默认 20）、`maxDependencyEdges`（默认 50）、`maxGenAICalls`（默认 20）。超出部分丢弃并在 `TraceAnalysis.Truncated` 上置位。
+- **搜索侧**：`maxSearchLimit`（默认 20，上限 100）限制 `TraceSearchResult.Traces` 的长度，`maxSearchTraceSummaries`（100）限制本地保留的摘要数。Provider 侧按调用方条数再多取一条用于探测是否还有更多匹配，命中该上限即置 `Truncated = true`；否则一个刚好装满的结果会被误读为"已看全"。
+- **分析侧**：`maxCriticalPath`（默认 32）、`maxServiceBreakdown`（默认 50）、`maxSlowSpans`（默认 10）、`maxErrorSpans`（默认 20）、`maxDependencyEdges`（默认 50）、`maxGenAICalls`（默认 20）。超出部分丢弃，**只有在真正丢失分析数据时**才在 `TraceAnalysis.Truncated` 上置位：`maxCriticalPath` 截断的是仍在延续的链路，属于丢数据；`maxSlowSpans` 截断的是排名结果，不丢分析数据，因此不置位。
 
 数据最小化上有一条硬规则：**分析器只读取元数据属性，不把 `gen_ai.input.messages`、`gen_ai.output.messages`、`gen_ai.tool.call.arguments`、`gen_ai.tool.call.result` 复制进工具输出**。这些属性在 semconv 中是 `Opt-In` 级别，本身就可能包含 PII；分析器只消费 `gen_ai.request.model`、`gen_ai.usage.*` 这类聚合量。
 
@@ -253,7 +253,9 @@ wait(S)    = covered(S)
 3. 重复直到到达叶子（无子节点）。整条链路即为 `TraceAnalysis.CriticalPath`。
 4. 每一跳记录 `CriticalPathEntry`：`spanId`、`serviceName`、`operationName`、`startTime`、`durationMicros`、`selfMicros`、`waitMicros`。
 
-这样得到的链路恰好满足：链路上每一跳的 `end` 都不晚于其父节点的 `end`，且链尾的 `end` 等于 trace 的墙钟终点。链路上的 `selfMicros` 之和是这条 trace 的「不可压缩耗时」。
+这样得到的链路满足：链路上每一跳的 `end` 都不晚于其父节点的 `end`。在 span 列表未被裁剪时，链尾的 `end` 等于 trace 的墙钟终点；列表被 `maxTraceSpans` 裁剪时，关键路径只在保留下来的 span 上计算，链尾可能早于 provider 给出的墙钟终点（此时 `durationMicros` 取 provider 的完整包络，见 §5.2）。
+
+链路上的 `selfMicros` 之和是**这条关键路径上**的不可压缩耗时，不是整条 trace 的不可压缩耗时：不在关键路径上的并行分支同样有 self time，不计入这个和。它是 trace 实际工作量的下界，不是上界。
 
 `SlowSpan` 则按 **self time 降序**取前 N（默认 10），并用 `onCriticalPath` 标记该 span 是否落在关键路径上。self time 排名与 critical path 互补：前者回答「谁自己最慢」，后者回答「请求是怎么被拖长的」。
 
@@ -466,7 +468,7 @@ wait(S)    = covered(S)
 | 上游响应体过大 | 超过 `maxTraceResponseBytes` | `isError=true`，「jaeger response exceeds %d bytes」 |
 | 响应不一致 | `data` 长度 ≠ 1 或 traceId 不匹配 | `isError=true`，「jaeger returned an inconsistent response for trace %s」 |
 | 搜索结果为空 | 正常返回 | **`isError=false`**，`traces: []`、`total: 0`；这是合法业务结果而非错误 |
-| 搜索被裁剪 | 命中条数超过 `maxSearchTraces` | `isError=false`，`truncated: true` |
+| 搜索被裁剪 | Provider 命中条数上限（按调用方条数再多取一条探测） | `isError=false`，`truncated: true` |
 | 分析基于裁剪数据 | 底层 `Trace.Truncated` 为真 | `isError=false`，`TraceAnalysis.Truncated = true`，Agent 需在结论中注明数据不完整 |
 | 参数非法 | `startTime`/`endTime` 非 RFC3339、`tags` 格式错误、`minDurationMs` 为负 | `isError=true`，指明具体参数 |
 
@@ -479,7 +481,7 @@ wait(S)    = covered(S)
 | 凭据不外泄 | `TraceProviderConfig.BearerToken` 只用于出站请求的 `Authorization: Bearer <token>` 头，不进入任何工具输出；`TracingConfig.Sanitize()` 在配置展示时把 `BearerToken` 替换为 `config.SanitizedValue`；`get_observability_capabilities` 只返回 provider 的 `name` 与 `type` |
 | 租户隔离 | `TraceProviderConfig.Tenant` 通过 `X-Scope-OrgID` 头（常量 `tenantHeader`）传给后端，不出现在响应中 |
 | TraceID 掩码 | 日志中的 trace_id 经 `maskedTraceID()` 处理，仅保留末 8 位并加 `...` 前缀 |
-| 传输错误净化 | Go 的 `http.Client` 返回 `*url.Error`，其 message 内嵌完整请求 URL（含 query string）。**失败日志**中的传输错误经 `sanitizeTransportError()` 解包为内层错误，只保留 `dial tcp ...` 这类诊断信息，避免检索条件与 `tags` 值被写进日志。**工具返回**按设计保留上游错误原文——工具结果本就要进入模型上下文，用户可以直接追问「上一次调用的模型与返回结果是什么」；其中可能携带的业务敏感数据目前**没有过滤机制**，见 14.2 |
+| 传输错误净化 | Go 的 `http.Client` 返回 `*url.Error`，其 message 内嵌完整请求 URL（含 query string）。**失败日志**与**工具返回**中的传输错误都经 `sanitizeTransportError()` 解包为内层错误，只保留 `dial tcp ...` 这类诊断信息，避免检索条件、`tags` 值与被配置为 endpoint 的凭据进入日志或模型上下文。为杜绝凭据经 URL 泄漏，`newJaegerProvider` 拒绝带 query 或 fragment 的 endpoint，凭据只允许走 `bearerToken`。工具结果中**上游响应体**的业务敏感数据目前仍**没有过滤机制**，见 14.2 |
 | 服务名 | `service` 既是检索锚点也是链路内的服务标识。它是基础设施元数据（与 OTel 的 resource 属性 `service.name` 同类），不是用户数据也不是凭据；设计文档 §9 明确要求失败日志记录服务名。真正需要防范的是 `tags` 过滤值、span 属性里的业务字段以及内容类属性 |
 | 错误体回显 | 上游错误体读取上限 `maxTraceErrorBodyBytes = 4096`，避免把超长 HTML 错误页灌进模型上下文 |
 | 属性值截断 | 单属性值上限 512 字节，UTF-8 安全截断（`truncateUTF8`） |
@@ -622,13 +624,13 @@ go test ./pkg/mcp/tools/trace/...
 - [ ] **T4** 多 provider 检索合并的配置参数 `tracing.searchProviders`（留空时行为不变），Phase 3。
 - [ ] **T5** 检索结果携带采样信息，让 Agent 在返回 0 条时提示「当前采样率 X，结论仅供参考」，Phase 2。
 - [ ] **T6** GenAI 异常事件的 severity 表达（以事件属性承载 severity number），按需启用。
-- [ ] **T7** **工具返回的敏感内容过滤机制尚未实现**。当前工具返回按设计保留上游错误原文与上游数据，工具入参/返回值可能包含用户标识与业务数据。生产环境需要按部署场景决定过滤/脱敏口径（例如按工具白名单、按属性名过滤、或在 Collector 侧统一处理）。机制未实现，代码中已留 TODO 标记。
+- [ ] **T7** **工具返回的敏感内容过滤机制尚未实现**。传输错误已经净化：请求 URL（endpoint 路径与全部检索条件）不会进入工具返回，只有 `dial tcp ...` 这类诊断信息与模型自选的 traceId / service 锚点保留。**仍未净化**的是上游响应体与 span 内容——工具入参/返回值可能包含用户标识与业务数据。生产环境需要按部署场景决定过滤/脱敏口径（例如按工具白名单、按属性名过滤、或在 Collector 侧统一处理）。机制未实现，代码中已留 TODO 标记。
 
 ### 14.3 风险
 
 | 风险 | 影响 | 缓解 |
 | -- | -- | -- |
-| `maxTraceSpans = 500` 在超大 trace 上裁剪子树 | 关键路径断裂、self time 失真 | 明确标记 `truncated`；在 Phase 3 引入采样式采样或按服务子树裁剪 |
+| `maxTraceSpans = 500` 在超大 trace 上裁剪子树 | 关键路径断裂、self time 失真 | 明确标记 `truncated`；延迟分母改用 provider 的完整包络，裁剪不再让占比虚高，但关键路径本身仍只在保留的 span 上计算；Phase 3 引入采样式采样或按服务子树裁剪 |
 | 错误根因误判（中间层也是 ERROR） | 结论指向错误的服务 | 根因规则基于「无失败后代」；同时保留全部 `errorSpans` 供 Agent 复核 |
 | 规范持续演进导致属性漂移 | 分析器识别不到 GenAI span | 钉住 commit；识别逻辑对未知 `gen_ai.operation.name` 做宽松归类（未知值仍标记为 GenAI span） |
 | 与 #1607 的标签口径不一致 | Phase 2 联动失败 | Phase 1 结束前与 #1607 的 `dubbo.application` / `dubbo.metric.interface` 对齐命名 |

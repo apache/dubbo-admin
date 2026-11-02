@@ -117,6 +117,20 @@ func newJaegerProvider(cfg observabilitycfg.TraceProviderConfig) (*jaegerProvide
 	if err != nil {
 		return nil, fmt.Errorf("invalid jaeger endpoint: %w", err)
 	}
+	if baseURL.Scheme != "http" && baseURL.Scheme != "https" {
+		return nil, fmt.Errorf("invalid jaeger endpoint: scheme must be http or https")
+	}
+	if baseURL.Host == "" {
+		return nil, fmt.Errorf("invalid jaeger endpoint: host is missing")
+	}
+	// A query string on the endpoint would be carried into every request URL and
+	// into the transport error of a failed lookup, which reaches the tool result
+	// and the model context. Credentials belong in bearerToken, so the query is
+	// rejected instead of being forwarded. The error message does not repeat the
+	// endpoint, because the endpoint is exactly what may hold the secret.
+	if baseURL.RawQuery != "" || baseURL.Fragment != "" {
+		return nil, fmt.Errorf("invalid jaeger endpoint: query parameters are not supported, use bearerToken for credentials")
+	}
 	return &jaegerProvider{
 		config:  cfg,
 		baseURL: baseURL,
@@ -146,10 +160,12 @@ func (p *jaegerProvider) GetTraceByID(ctx context.Context, traceID string) (*Tra
 	resp, err := p.client.Do(req)
 	if err != nil {
 		p.logFailure(traceID, startedAt, 0, "transport", err)
-		// The tool result keeps the transport error as it is: the result enters
-		// the model context and the model has to be able to answer which lookup
-		// failed and why. The failure log is sanitized instead.
-		return nil, fmt.Errorf("jaeger trace query failed: %w", err)
+		// The transport error embeds the request URL, which repeats the configured
+		// endpoint and carries the retrieval conditions. It is sanitized before it
+		// reaches the tool result and the model context. The trace identifier is
+		// kept, because the model chose it and has to be able to report which
+		// lookup failed.
+		return nil, fmt.Errorf("jaeger trace query failed for trace %s: %w", traceID, sanitizedTransportError(err))
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
@@ -217,10 +233,17 @@ func (p *jaegerProvider) SearchTraces(ctx context.Context, query TraceSearchQuer
 		values.Set("end", strconv.FormatInt(query.EndTime.UnixMicro(), 10))
 	}
 	if query.MinDuration > 0 {
-		values.Set("minDuration", strconv.FormatInt(query.MinDuration.Microseconds(), 10))
+		// Jaeger parses minDuration with time.ParseDuration, so the value has to
+		// carry a unit. A bare microsecond count is rejected with a 400
+		// ("missing unit in duration"), so the duration is sent in its string
+		// form ("250ms") instead.
+		values.Set("minDuration", query.MinDuration.String())
 	}
 	if query.Limit > 0 {
-		values.Set("limit", strconv.Itoa(query.Limit))
+		// One trace more than the caller asked for is requested. A full result
+		// then proves that more traces match than were returned, which is what
+		// the truncated flag has to tell the agent.
+		values.Set("limit", strconv.Itoa(query.Limit+1))
 	}
 
 	endpoint := *p.baseURL
@@ -242,10 +265,12 @@ func (p *jaegerProvider) SearchTraces(ctx context.Context, query TraceSearchQuer
 	resp, err := p.client.Do(req)
 	if err != nil {
 		p.logSearchFailure(query, startedAt, 0, "transport", err)
-		// The tool result keeps the transport error as it is: the result enters
-		// the model context and the model has to be able to answer which lookup
-		// failed and why. The failure log is sanitized instead.
-		return nil, fmt.Errorf("jaeger trace search failed: %w", err)
+		// The transport error embeds the request URL, which repeats the configured
+		// endpoint and carries the retrieval conditions. It is sanitized before it
+		// reaches the tool result and the model context. The service anchor is
+		// kept, because the model chose it and has to be able to report which
+		// lookup failed.
+		return nil, fmt.Errorf("jaeger trace search failed for service %s: %w", query.Service, sanitizedTransportError(err))
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
@@ -267,7 +292,7 @@ func (p *jaegerProvider) SearchTraces(ctx context.Context, query TraceSearchQuer
 		p.logSearchFailure(query, startedAt, resp.StatusCode, "upstream_error", nil)
 		return nil, fmt.Errorf("jaeger trace search failed: %s", upstream.Errors[0].Message)
 	}
-	result := summarizeJaegerTraces(upstream.Data)
+	result := summarizeJaegerTraces(upstream.Data, query.Limit)
 	logger.Sugar().Infow("trace search completed", "provider", p.config.Name, "engine", p.config.Type, "service", query.Service, "elapsed_ms", time.Since(startedAt).Milliseconds(), "traces", len(result.Traces), "total", result.Total, "truncated", result.Truncated)
 	return result, nil
 }
@@ -280,8 +305,8 @@ type jaegerTraceSummary struct {
 }
 
 // summarizeJaegerTraces converts the raw traces into bounded per-trace summaries.
-func summarizeJaegerTraces(traces []jaegerTrace) *TraceSearchResult {
-	result := &TraceSearchResult{Total: len(traces), Traces: []TraceSummary{}, SourceEngine: "jaeger"}
+func summarizeJaegerTraces(traces []jaegerTrace, limit int) *TraceSearchResult {
+	result := &TraceSearchResult{Traces: []TraceSummary{}, SourceEngine: "jaeger"}
 	summaries := make([]jaegerTraceSummary, 0, len(traces))
 	for _, trace := range traces {
 		summary, startMicros := summarizeJaegerTrace(trace)
@@ -293,6 +318,15 @@ func summarizeJaegerTraces(traces []jaegerTrace) *TraceSearchResult {
 		}
 		return summaries[i].summary.TraceID < summaries[j].summary.TraceID
 	})
+	// The provider was asked for one trace more than the caller wants, so a
+	// result that reached that limit proves that more traces match than were
+	// returned. Without the extra trace a full result would look complete.
+	total := len(traces)
+	if limit > 0 && len(summaries) > limit {
+		result.Truncated = true
+		summaries = summaries[:limit]
+		total = limit
+	}
 	if len(summaries) > maxSearchTraceSummaries {
 		summaries = summaries[:maxSearchTraceSummaries]
 		result.Truncated = true
@@ -300,6 +334,7 @@ func summarizeJaegerTraces(traces []jaegerTrace) *TraceSearchResult {
 	for _, item := range summaries {
 		result.Traces = append(result.Traces, item.summary)
 	}
+	result.Total = total
 	return result
 }
 
@@ -643,21 +678,21 @@ func (p *jaegerProvider) logSearchFailure(query TraceSearchQuery, startedAt time
 	logger.Sugar().Warnw("trace search failed", fields...)
 }
 
-// TODO: the tool result currently returns the upstream error text unchanged, and
-// that text can contain the retrieval conditions, for example the request URL
-// with the service, the operation and the trace identifier. The tool result
-// itself can also carry sensitive data, such as user identifiers or business
-// data of the returned spans. A production deployment has to decide per
-// deployment scenario whether the tool result is filtered or redacted. That
-// mechanism is not implemented yet, this round only records the decision.
+// TODO: the tool result still returns the upstream error text of a failed
+// response unchanged, and that text can carry sensitive data of the returned
+// spans, such as user identifiers or business data. The request URL is no
+// longer part of it, because the transport error is sanitized. A production
+// deployment still has to decide per deployment scenario whether the span
+// content of the tool result is filtered or redacted. That mechanism is not
+// implemented yet, this round only records the decision.
 
 // sanitizeTransportError removes the request URL from a transport failure.
 // http.Client.Do reports transport problems as *url.Error, whose message embeds
 // the full request URL including the query string. The query carries the caller's
 // filters and may contain business identifiers or secrets, so only the inner
 // error is kept: it still explains the failure ("dial tcp ...: connection refused")
-// without repeating the payload. The function guards the failure logs only, the
-// tool result keeps the original error.
+// without repeating the payload. The function guards the failure logs and the
+// tool result.
 func sanitizeTransportError(err error) error {
 	if err == nil {
 		return nil
@@ -670,4 +705,14 @@ func sanitizeTransportError(err error) error {
 		return urlErr.Err
 	}
 	return err
+}
+
+// sanitizedTransportError returns the sanitized form of a transport failure and
+// never returns nil. The tool result needs a message in every case, while the
+// failure logs only add the field when there is something to report.
+func sanitizedTransportError(err error) error {
+	if sanitized := sanitizeTransportError(err); sanitized != nil {
+		return sanitized
+	}
+	return errors.New("unknown transport error")
 }

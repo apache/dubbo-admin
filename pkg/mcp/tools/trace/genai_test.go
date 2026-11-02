@@ -310,3 +310,25 @@ func TestGenAIAnalysisEmbedsSummaryInTraceAnalysis(t *testing.T) {
 		t.Fatalf("unexpected generative AI summary: %#v", analysis.GenAI)
 	}
 }
+
+func TestGenAIIntAttributeAcceptsIntegralScientificNotation(t *testing.T) {
+	// The attribute map is filled from a JSON payload, so a number arrives as a
+	// float64 and the formatter renders it with the 'g' format: 1000000 becomes
+	// "1e+06". A plain integer parse drops such a value silently, which would
+	// report a million token model call as a call without any token.
+	attributes := map[string]string{
+		"gen_ai.usage.input_tokens":  "1e+06",
+		"gen_ai.usage.output_tokens": "1500000",
+		"gen_ai.usage.total_tokens":  "12.5",
+	}
+	if got := genAIIntAttribute(attributes, "gen_ai.usage.input_tokens"); got != 1000000 {
+		t.Fatalf("input tokens = %d, want %d", got, 1000000)
+	}
+	if got := genAIIntAttribute(attributes, "gen_ai.usage.output_tokens"); got != 1500000 {
+		t.Fatalf("output tokens = %d, want %d", got, 1500000)
+	}
+	// A fractional value is not a token count and must not be rounded.
+	if got := genAIIntAttribute(attributes, "gen_ai.usage.total_tokens"); got != 0 {
+		t.Fatalf("total tokens = %d, want %d", got, 0)
+	}
+}

@@ -18,6 +18,7 @@
 package trace
 
 import (
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -360,11 +361,30 @@ func genAIIntAttribute(attributes map[string]string, name string) int {
 	if !ok {
 		return 0
 	}
-	parsed, err := strconv.Atoi(strings.TrimSpace(raw))
+	return parseIntegralAttribute(strings.TrimSpace(raw))
+}
+
+// parseIntegralAttribute reads an integer attribute value. The attribute map is
+// filled from the provider payload, where a number arrives as a JSON number.
+// The decoder turns it into a float64 and the formatter renders it with the
+// 'g' format, so a token count of 1000000 becomes "1e+06". A plain integer
+// parse drops such a value silently, so the integral scientific notation is
+// accepted as well.
+func parseIntegralAttribute(raw string) int {
+	if raw == "" {
+		return 0
+	}
+	if parsed, err := strconv.Atoi(raw); err == nil {
+		return parsed
+	}
+	value, err := strconv.ParseFloat(raw, 64)
 	if err != nil {
 		return 0
 	}
-	return parsed
+	if value != math.Trunc(value) || value > math.MaxInt64 || value < math.MinInt64 {
+		return 0
+	}
+	return int(value)
 }
 
 func addString(target map[string]struct{}, value string) {

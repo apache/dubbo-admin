@@ -157,11 +157,11 @@ func TestJaegerProviderSearchFailureDoesNotLeakQueryPayload(t *testing.T) {
 		}
 	}
 	// The recorded error must not repeat the request URL either.
-	errors := traceLogErrorFields(t, lines)
-	if len(errors) == 0 {
+	recordedErrors := traceLogErrorFields(t, lines)
+	if len(recordedErrors) == 0 {
 		t.Fatal("expected the failure to record the error")
 	}
-	for _, value := range errors {
+	for _, value := range recordedErrors {
 		for _, forbidden := range []string{"/api/traces", "secret-service", "secret-operation", "secret-value"} {
 			if strings.Contains(value, forbidden) {
 				t.Fatalf("expected the error to omit %q, got %q", forbidden, value)
@@ -199,21 +199,26 @@ func TestJaegerProviderTraceFailureDoesNotLeakTraceID(t *testing.T) {
 
 // The tool result reaches the model context, so it keeps the transport detail of
 // the upstream failure: the model has to be able to answer which lookup failed
-// and why. The failure log on the other side must not repeat the request URL.
-func TestJaegerProviderToolResultKeepsTransportDetailButLogDoesNot(t *testing.T) {
+// and why. The request URL must not appear in it, neither in the tool result nor
+// in the failure log: it repeats the configured endpoint and carries the
+// retrieval conditions, and an endpoint may be configured with a credential.
+func TestJaegerProviderToolResultKeepsTransportDetailButNotTheURL(t *testing.T) {
 	provider := newSearchProvider(t, "http://127.0.0.1:1")
 	offset := traceLogOffset(t)
 	_, err := provider.GetTraceByID(context.Background(), testTraceID)
 	if err == nil {
 		t.Fatal("expected a transport failure")
 	}
-	// The retrieval conditions may reappear in the tool result: the model built
-	// them itself and it has to be able to report them back to the user.
+	// The trace identifier may reappear in the tool result: the model built it
+	// itself and it has to be able to report the failed lookup back to the user.
 	if !strings.Contains(err.Error(), testTraceID) {
 		t.Fatalf("expected the tool result to keep the trace identifier: %s", err.Error())
 	}
-	if !strings.Contains(err.Error(), "/api/traces/") {
-		t.Fatalf("expected the tool result to keep the request URL: %s", err.Error())
+	// The request URL must not: it repeats the endpoint path and the query
+	// string. The "dial tcp host:port" form of the inner error stays, it names
+	// the host that refused the connection without repeating the payload.
+	if strings.Contains(err.Error(), "/api/traces/") {
+		t.Fatalf("expected the tool result to omit the request URL: %s", err.Error())
 	}
 	if !strings.Contains(err.Error(), "connection refused") {
 		t.Fatalf("expected the tool result to keep the diagnostic detail: %s", err.Error())
