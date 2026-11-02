@@ -197,7 +197,8 @@ func TestLoader_Component_DefaultInjection(t *testing.T) {
 				if err := cfg.Spec.Decode(&spec); err != nil {
 					t.Fatalf("decode server spec: %v", err)
 				}
-				if spec.Port != 8888 || spec.Host != "0.0.0.0" || spec.ReadTimeout != 30 || spec.WriteTimeout != 30 {
+				if spec.Port != 8888 || spec.Host != "127.0.0.1" || spec.ReadTimeout != 30 || spec.WriteTimeout != 30 ||
+					spec.Authentication.Mode != "static" || spec.Authentication.TenantID != "default" || spec.Authentication.UserID != "local-user" {
 					t.Fatalf("server defaults not injected: %+v", spec)
 				}
 			},

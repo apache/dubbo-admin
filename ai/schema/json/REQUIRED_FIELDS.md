@@ -75,11 +75,13 @@ This document defines required-field policy for configuration schemas.
 | `type` | yes | Must be `server`. |
 | `spec` | yes | Object. |
 | `spec.port` | no | Default: `8888`, range `1..65535`. |
-| `spec.host` | no | Default: `0.0.0.0`. |
+| `spec.host` | no | Default: `127.0.0.1`. Static authentication is loopback-only unless explicitly overridden. |
 | `spec.debug` | no | Default: `false`. |
-| `spec.cors_origins` | no | Default: `[*]`. |
+| `spec.cors_origins` | no | Default: `[]`; trusted browser origins must be listed explicitly. |
 | `spec.read_timeout` | no | Default: `30`, integer `>= 1`. |
 | `spec.write_timeout` | no | Default: `30`, integer `>= 1`. |
+| `spec.authentication.allow_insecure_static_auth` | no | Default: `false`; development-only opt-in for non-loopback static authentication. |
+| `spec.authentication.adopt_legacy_sessions` | no | Default: `false`; explicitly runs legacy ownership adoption. |
 
 ## RAG Component (`component/rag/rag.yaml`)
 

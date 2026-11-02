@@ -24,9 +24,11 @@ import (
 	"testing"
 	"time"
 
+	"dubbo-admin-ai/security"
 	conversationstore "dubbo-admin-ai/store"
 	gormstore "dubbo-admin-ai/store/gorm"
 	storetest "dubbo-admin-ai/store/test"
+	"dubbo-admin-ai/testutils"
 
 	"github.com/firebase/genkit/go/ai"
 	"gorm.io/driver/sqlite"
@@ -50,27 +52,129 @@ func newSQLiteStore(t *testing.T, path string, limits ...int) *gormstore.GormSto
 	return store
 }
 
+type legacySessionModel struct {
+	ID        string `gorm:"primaryKey;size:64"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Status    string
+}
+
+func (legacySessionModel) TableName() string { return "ai_sessions" }
+
 func TestGormStore_Contract(t *testing.T) {
-	storetest.RunStoreContractTests(t, func() conversationstore.Store {
+	storetest.RunStoreContractTests(t, func() conversationstore.BackendStore {
 		return newSQLiteStore(t, filepath.Join(t.TempDir(), "contract.db"), 3)
 	}, 3)
+}
+
+func TestGormStore_MigratesAndAdoptsLegacySessions(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "legacy.db")
+	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&legacySessionModel{}); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	if err := db.Create(&legacySessionModel{ID: "legacy", CreatedAt: now, UpdatedAt: now, Status: "active"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	store, err := gormstore.NewGormStore(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Migrate(context.Background()); err != nil {
+		t.Fatalf("Migrate() legacy schema error = %v", err)
+	}
+	access := testutils.TestAccess()
+	partialTenant := gormstore.SessionModel{ID: "partial-tenant", TenantID: "tenant-existing", CreatedAt: now, UpdatedAt: now, Status: "active", Version: 1}
+	partialOwner := gormstore.SessionModel{ID: "partial-owner", OwnerID: "owner-existing", CreatedAt: now, UpdatedAt: now, Status: "active", Version: 1}
+	if err := store.DB().Create(&partialTenant).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DB().Create(&partialOwner).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	adopted, err := store.AdoptLegacySessions(context.Background(), security.SystemAccessContext(), access.Subject.TenantID, access.Subject.UserID)
+	if err != nil || adopted != 1 {
+		t.Fatalf("AdoptLegacySessions() = %d, %v", adopted, err)
+	}
+	got, err := store.Get(context.Background(), access, "legacy")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.TenantID != access.Subject.TenantID || got.OwnerID != access.Subject.UserID || got.Version != 1 || got.ExpiresAt == nil {
+		t.Fatalf("adopted session = %+v", got)
+	}
+	for id, want := range map[string][2]string{
+		"partial-tenant": {"tenant-existing", ""},
+		"partial-owner":  {"", "owner-existing"},
+	} {
+		var row gormstore.SessionModel
+		if err := store.DB().First(&row, "id = ?", id).Error; err != nil {
+			t.Fatal(err)
+		}
+		if row.TenantID != want[0] || row.OwnerID != want[1] {
+			t.Fatalf("partially owned session %q changed to tenant=%q owner=%q", id, row.TenantID, row.OwnerID)
+		}
+	}
+	admin := security.MustAccessContext(security.Subject{
+		TenantID: access.Subject.TenantID, UserID: "admin", Scopes: []string{security.ScopeSessionAdmin}, AuthMethod: security.AuthMethodStatic,
+	})
+	for _, id := range []string{"partial-tenant", "partial-owner"} {
+		if _, err := store.Get(context.Background(), admin, id); !errors.Is(err, conversationstore.ErrSessionNotFound) {
+			t.Fatalf("admin Get(%q) error = %v, want ErrSessionNotFound", id, err)
+		}
+	}
+	listed, err := store.List(context.Background(), admin)
+	if err != nil {
+		t.Fatalf("admin List() error = %v", err)
+	}
+	for _, session := range listed {
+		if session.ID == "partial-tenant" || session.ID == "partial-owner" {
+			t.Fatalf("admin List() returned partially owned session %+v", session)
+		}
+	}
+}
+
+func TestGormStore_UsesExactIdentityComparison(t *testing.T) {
+	store := newSQLiteStore(t, filepath.Join(t.TempDir(), "identity.db"))
+	now := time.Now()
+	expiresAt := now.Add(time.Hour)
+	for _, session := range []gormstore.SessionModel{
+		{ID: "case-tenant", TenantID: "TEST-TENANT", OwnerID: "test-user", Version: 1, CreatedAt: now, UpdatedAt: now, ExpiresAt: &expiresAt, Status: "active"},
+		{ID: "case-owner", TenantID: "test-tenant", OwnerID: "TEST-USER", Version: 1, CreatedAt: now, UpdatedAt: now, ExpiresAt: &expiresAt, Status: "active"},
+	} {
+		if err := store.DB().Create(&session).Error; err != nil {
+			t.Fatalf("seed case-variant session %q: %v", session.ID, err)
+		}
+	}
+	access := testutils.TestAccess()
+	for _, id := range []string{"case-tenant", "case-owner"} {
+		if _, err := store.Get(context.Background(), access, id); !errors.Is(err, conversationstore.ErrSessionNotFound) {
+			t.Fatalf("Get(%q) error = %v, want ErrSessionNotFound", id, err)
+		}
+	}
 }
 
 func TestGormStore_RestartRecovery(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "conversation.db")
 	ctx := context.Background()
+	access := testutils.TestAccess()
 	first := newSQLiteStore(t, path)
-	session := &conversationstore.Session{ID: "restart-session", CreatedAt: time.Now(), UpdatedAt: time.Now(), Status: "active"}
-	if err := first.Create(ctx, session); err != nil {
+	session := testutils.TestSession("restart-session", time.Now())
+	if err := first.Create(ctx, access, session); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	if err := first.AddHistory(ctx, session.ID, ai.NewSystemTextMessage("system"), ai.NewUserTextMessage("hello")); err != nil {
+	if err := first.AddHistory(ctx, access, session.ID, ai.NewSystemTextMessage("system"), ai.NewUserTextMessage("hello")); err != nil {
 		t.Fatalf("AddHistory() error = %v", err)
 	}
-	if err := first.NextTurn(ctx, session.ID); err != nil {
+	if err := first.NextTurn(ctx, access, session.ID); err != nil {
 		t.Fatalf("NextTurn() error = %v", err)
 	}
-	if err := first.AddHistory(ctx, session.ID, ai.NewModelTextMessage("answer")); err != nil {
+	if err := first.AddHistory(ctx, access, session.ID, ai.NewModelTextMessage("answer")); err != nil {
 		t.Fatalf("second AddHistory() error = %v", err)
 	}
 	if err := first.Close(); err != nil {
@@ -78,7 +182,7 @@ func TestGormStore_RestartRecovery(t *testing.T) {
 	}
 
 	second := newSQLiteStore(t, path)
-	got, err := second.AllMemory(ctx, session.ID)
+	got, err := second.AllMemory(ctx, access, session.ID)
 	if err != nil {
 		t.Fatalf("AllMemory() after restart error = %v", err)
 	}
@@ -90,40 +194,37 @@ func TestGormStore_RestartRecovery(t *testing.T) {
 func TestGormStore_MultiInstanceSharedDataAndDelete(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "shared.db")
 	ctx := context.Background()
+	access := testutils.TestAccess()
 	first := newSQLiteStore(t, path)
 	second := newSQLiteStore(t, path)
-	session := &conversationstore.Session{ID: "shared-session", CreatedAt: time.Now(), UpdatedAt: time.Now(), Status: "active"}
-	if err := first.Create(ctx, session); err != nil {
+	session := testutils.TestSession("shared-session", time.Now())
+	if err := first.Create(ctx, access, session); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	if err := first.AddHistory(ctx, session.ID, ai.NewUserTextMessage("from-first")); err != nil {
+	if err := first.AddHistory(ctx, access, session.ID, ai.NewUserTextMessage("from-first")); err != nil {
 		t.Fatalf("first AddHistory() error = %v", err)
 	}
-	got, err := second.WindowMemory(ctx, session.ID)
+	got, err := second.WindowMemory(ctx, access, session.ID)
 	if err != nil {
 		t.Fatalf("second WindowMemory() error = %v", err)
 	}
 	if len(got) != 1 || got[0].Text() != "from-first" {
 		t.Fatalf("second WindowMemory() = %#v, want first instance message", got)
 	}
-	if err := second.Delete(ctx, session.ID); err != nil {
+	if err := second.Delete(ctx, access, session.ID); err != nil {
 		t.Fatalf("second Delete() error = %v", err)
 	}
-	if messages, err := first.AllMemory(ctx, session.ID); err != nil || len(messages) != 0 {
-		t.Fatalf("first AllMemory() after shared delete = %#v, %v", messages, err)
+	if _, err := first.AllMemory(ctx, access, session.ID); !errors.Is(err, conversationstore.ErrSessionNotFound) {
+		t.Fatalf("first AllMemory() after shared delete error = %v, want ErrSessionNotFound", err)
 	}
 }
 
 func TestGormStore_AddHistoryRollsBackWhenMessageWriteFails(t *testing.T) {
 	store := newSQLiteStore(t, filepath.Join(t.TempDir(), "rollback.db"))
 	ctx := context.Background()
-	session := &conversationstore.Session{
-		ID:        "rollback-session",
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Status:    "active",
-	}
-	if err := store.Create(ctx, session); err != nil {
+	access := testutils.TestAccess()
+	session := testutils.TestSession("rollback-session", time.Now())
+	if err := store.Create(ctx, access, session); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
 
@@ -140,7 +241,7 @@ func TestGormStore_AddHistoryRollsBackWhenMessageWriteFails(t *testing.T) {
 		t.Fatalf("register failure callback error = %v", err)
 	}
 
-	if err := store.AddHistory(ctx, session.ID, ai.NewUserTextMessage("should rollback")); err == nil {
+	if err := store.AddHistory(ctx, access, session.ID, ai.NewUserTextMessage("should rollback")); err == nil {
 		t.Fatal("AddHistory() succeeded, want injected write failure")
 	}
 
@@ -165,16 +266,12 @@ func TestGormStore_AddHistoryRollsBackWhenMessageWriteFails(t *testing.T) {
 func TestGormStore_MessageSequenceIsUniquePerTurn(t *testing.T) {
 	store := newSQLiteStore(t, filepath.Join(t.TempDir(), "sequence.db"))
 	ctx := context.Background()
-	session := &conversationstore.Session{
-		ID:        "sequence-session",
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Status:    "active",
-	}
-	if err := store.Create(ctx, session); err != nil {
+	access := testutils.TestAccess()
+	session := testutils.TestSession("sequence-session", time.Now())
+	if err := store.Create(ctx, access, session); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	if err := store.AddHistory(ctx, session.ID, ai.NewUserTextMessage("first")); err != nil {
+	if err := store.AddHistory(ctx, access, session.ID, ai.NewUserTextMessage("first")); err != nil {
 		t.Fatalf("AddHistory() error = %v", err)
 	}
 
@@ -205,13 +302,10 @@ func TestGormStore_MessageSequenceIsUniquePerTurn(t *testing.T) {
 func TestGormStore_DeleteExpiredDoesNotDeleteRefreshedSession(t *testing.T) {
 	store := newSQLiteStore(t, filepath.Join(t.TempDir(), "expired-race.db"))
 	now := time.Now()
-	session := &conversationstore.Session{
-		ID:        "expired-race-session",
-		CreatedAt: now.Add(-25 * time.Hour),
-		UpdatedAt: now.Add(-25 * time.Hour),
-		Status:    "active",
-	}
-	if err := store.Create(context.Background(), session); err != nil {
+	access := testutils.TestAccess()
+	session := testutils.TestSession("expired-race-session", now.Add(-25*time.Hour))
+	session.ExpiresAt = nil
+	if err := store.Create(context.Background(), access, session); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
 
@@ -237,14 +331,14 @@ func TestGormStore_DeleteExpiredDoesNotDeleteRefreshedSession(t *testing.T) {
 		t.Fatalf("register refresh callback error = %v", err)
 	}
 
-	deleted, err := store.DeleteExpired(context.Background(), now)
+	deleted, err := store.DeleteExpired(context.Background(), security.SystemAccessContext(), now)
 	if err != nil {
 		t.Fatalf("DeleteExpired() error = %v", err)
 	}
 	if deleted != 0 {
 		t.Fatalf("DeleteExpired() = %d, want 0 for refreshed session", deleted)
 	}
-	if _, err := store.Get(context.Background(), session.ID); err != nil {
+	if _, err := store.Get(context.Background(), access, session.ID); err != nil {
 		t.Fatalf("Get() after refreshed cleanup error = %v", err)
 	}
 }
@@ -262,11 +356,12 @@ func TestGormStore_NoForeignKeysAndInvalidPayload(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	session := &conversationstore.Session{ID: "invalid-payload", CreatedAt: time.Now(), UpdatedAt: time.Now(), Status: "active"}
-	if err := store.Create(ctx, session); err != nil {
+	access := testutils.TestAccess()
+	session := testutils.TestSession("invalid-payload", time.Now())
+	if err := store.Create(ctx, access, session); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	if err := store.AddHistory(ctx, session.ID, ai.NewUserTextMessage("valid")); err != nil {
+	if err := store.AddHistory(ctx, access, session.ID, ai.NewUserTextMessage("valid")); err != nil {
 		t.Fatalf("AddHistory() error = %v", err)
 	}
 	var turn gormstore.TurnModel
@@ -276,7 +371,7 @@ func TestGormStore_NoForeignKeysAndInvalidPayload(t *testing.T) {
 	if err := store.DB().Model(&gormstore.MessageModel{}).Where("turn_id = ?", turn.ID).Update("payload", []byte("{")).Error; err != nil {
 		t.Fatalf("corrupt payload error = %v", err)
 	}
-	_, err := store.WindowMemory(ctx, session.ID)
+	_, err := store.WindowMemory(ctx, access, session.ID)
 	if !containsMessageDecodeError(err) {
 		t.Fatalf("WindowMemory() error = %v, want decode error", err)
 	}

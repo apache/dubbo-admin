@@ -11,7 +11,7 @@ import (
 	compRag "dubbo-admin-ai/component/rag"
 	toolEngine "dubbo-admin-ai/component/tools/engine"
 	"dubbo-admin-ai/runtime"
-	conversationstore "dubbo-admin-ai/store"
+	"dubbo-admin-ai/testutils"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
@@ -98,22 +98,24 @@ func TestMemoryToolReadsInjectedStore(t *testing.T) {
 		t.Fatalf("GetStore() error = %v", err)
 	}
 	now := time.Now()
-	session := &conversationstore.Session{ID: "memory-tool-session", CreatedAt: now, UpdatedAt: now, Status: "active"}
-	if err := store.Create(context.Background(), session); err != nil {
+	access := testutils.TestAccess()
+	session := testutils.TestSession("memory-tool-session", now)
+	if err := store.Create(context.Background(), access, session); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	turnID, err := store.BeginTurn(context.Background(), session.ID)
+	turnID, err := store.BeginTurn(context.Background(), access, session.ID)
 	if err != nil {
 		t.Fatalf("BeginTurn() error = %v", err)
 	}
-	if err := store.AddHistoryToTurn(context.Background(), session.ID, turnID, ai.NewUserTextMessage("from shared store")); err != nil {
+	if err := store.AddHistoryToTurn(context.Background(), access, session.ID, turnID, ai.NewUserTextMessage("from shared store")); err != nil {
 		t.Fatalf("AddHistory() error = %v", err)
 	}
 
 	if _, err := toolEngine.NewInternalToolManager(rt); err != nil {
 		t.Fatalf("NewInternalToolManager() error = %v", err)
 	}
-	output, err := toolEngine.Call(context.Background(), rt.GetGenkitRegistry(), toolEngine.GetAllMemoryTool, map[string]any{
+	ctx := testutils.ContextWithTestAccess(context.Background())
+	output, err := toolEngine.Call(ctx, rt.GetGenkitRegistry(), toolEngine.GetAllMemoryTool, map[string]any{
 		"session_id": session.ID,
 	})
 	if err != nil {

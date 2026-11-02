@@ -27,8 +27,10 @@ import (
 
 	"dubbo-admin-ai/component/hooks"
 	"dubbo-admin-ai/schema"
+	"dubbo-admin-ai/security"
 	conversationstore "dubbo-admin-ai/store"
 	memorystore "dubbo-admin-ai/store/memory"
+	"dubbo-admin-ai/testutils"
 	"github.com/firebase/genkit/go/ai"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
@@ -39,8 +41,8 @@ type observedTurnStore struct {
 	turnID uint64
 }
 
-func (s *observedTurnStore) BeginTurn(ctx context.Context, sessionID string) (uint64, error) {
-	id, err := s.MessageStore.BeginTurn(ctx, sessionID)
+func (s *observedTurnStore) BeginTurn(ctx context.Context, access security.AccessContext, sessionID string) (uint64, error) {
+	id, err := s.MessageStore.BeginTurn(ctx, access, sessionID)
 	s.turnID = id
 	return id, err
 }
@@ -58,11 +60,12 @@ func TestStoreHooksFinalizeOrAbortBeforeInteractionEnd(t *testing.T) {
 		{"panic", &panicPrompt{}, 0, hooks.EventInteractionError},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := testutils.ContextWithTestAccess(context.Background())
+			access := testutils.TestAccess()
 			store := memorystore.NewMemoryStore(2)
 			now := time.Now()
 			const sessionID = "hooks-store"
-			if err := store.Create(ctx, &conversationstore.Session{ID: sessionID, CreatedAt: now, UpdatedAt: now, Status: "active"}); err != nil {
+			if err := store.Create(ctx, access, testutils.TestSession(sessionID, now)); err != nil {
 				t.Fatal(err)
 			}
 			observed := &observedTurnStore{MessageStore: store}
@@ -78,7 +81,7 @@ func TestStoreHooksFinalizeOrAbortBeforeInteractionEnd(t *testing.T) {
 			if err := manager.Register(hooks.Registration{Events: hooks.AllEvents(), Tools: []string{hooks.AllTools}, Hook: func(ctx context.Context, state hooks.State) context.Context {
 				events = append(events, state.Event)
 				if state.Event == hooks.EventInteractionEnd {
-					_, endTurnErr = store.IsTurnEmpty(context.Background(), sessionID, observed.turnID)
+					_, endTurnErr = store.IsTurnEmpty(context.Background(), access, sessionID, observed.turnID)
 				}
 				return ctx
 			}}); err != nil {
@@ -98,7 +101,7 @@ func TestStoreHooksFinalizeOrAbortBeforeInteractionEnd(t *testing.T) {
 			if len(ra.active) != 0 {
 				t.Fatal("completed interaction remains active")
 			}
-			messages, err := store.AllMemory(ctx, sessionID)
+			messages, err := store.AllMemory(ctx, access, sessionID)
 			if err != nil || len(messages) != tc.messages {
 				t.Fatalf("persisted messages=%d, want=%d, err=%v", len(messages), tc.messages, err)
 			}

@@ -20,6 +20,7 @@ package engine
 import (
 	compRag "dubbo-admin-ai/component/rag"
 	"dubbo-admin-ai/runtime"
+	"dubbo-admin-ai/security"
 	conversationstore "dubbo-admin-ai/store"
 	"fmt"
 
@@ -58,7 +59,11 @@ func getAllMemoryBySession(rt *runtime.Runtime, messageStore conversationstore.M
 				return ToolOutput{}, fmt.Errorf("sessionID is required")
 			}
 
-			history, err := messageStore.AllMemory(ctx, input.SessionID)
+			access, err := security.AccessContextFromContext(ctx)
+			if err != nil {
+				return ToolOutput{}, err
+			}
+			history, err := messageStore.AllMemory(ctx, access, input.SessionID)
 			if err != nil {
 				return ToolOutput{}, fmt.Errorf("failed to load conversation history: %w", err)
 			}

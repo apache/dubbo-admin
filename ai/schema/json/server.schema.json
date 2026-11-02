@@ -22,7 +22,7 @@
         "host": {
           "type": "string",
           "minLength": 1,
-          "default": "0.0.0.0"
+          "default": "127.0.0.1"
         },
         "debug": {
           "type": "boolean",
@@ -30,7 +30,7 @@
         },
         "cors_origins": {
           "type": "array",
-          "default": ["*"],
+          "default": [],
           "items": {
             "type": "string"
           }
@@ -44,6 +44,58 @@
           "type": "integer",
           "minimum": 1,
           "default": 30
+        },
+        "authentication": {
+          "type": "object",
+          "additionalProperties": false,
+          "default": {
+            "mode": "static",
+            "tenant_id": "default",
+            "user_id": "local-user",
+            "roles": ["user"],
+            "scopes": [],
+            "allow_insecure_static_auth": false,
+            "adopt_legacy_sessions": false
+          },
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["static"],
+              "default": "static"
+            },
+            "tenant_id": {
+              "type": "string",
+              "minLength": 1,
+              "default": "default"
+            },
+            "user_id": {
+              "type": "string",
+              "minLength": 1,
+              "default": "local-user"
+            },
+            "roles": {
+              "type": "array",
+              "default": ["user"],
+              "items": {"type": "string", "minLength": 1},
+              "uniqueItems": true
+            },
+            "scopes": {
+              "type": "array",
+              "default": [],
+              "items": {"type": "string", "minLength": 1},
+              "uniqueItems": true
+            },
+            "allow_insecure_static_auth": {
+              "type": "boolean",
+              "default": false,
+              "description": "Permit development-only static authentication on a non-loopback listener."
+            },
+            "adopt_legacy_sessions": {
+              "type": "boolean",
+              "default": false,
+              "description": "Run the one-time migration for sessions where both tenant and owner are absent."
+            }
+          }
         }
       }
     }
