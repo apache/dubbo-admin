@@ -27,6 +27,9 @@ import (
 // Provider hides backend wire formats behind a stable trace lookup contract.
 type Provider interface {
 	GetTraceByID(ctx context.Context, traceID string) (*Trace, error)
+	// SearchTraces discovers candidate traces without knowing a trace identifier up
+	// front. Implementations must keep the result bounded.
+	SearchTraces(ctx context.Context, query TraceSearchQuery) (*TraceSearchResult, error)
 }
 
 func newProvider(cfg observabilitycfg.TraceProviderConfig) (Provider, error) {

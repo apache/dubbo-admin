@@ -67,6 +67,8 @@ func TestRegisterObservabilityTools(t *testing.T) {
 		{name: "query_prometheus", required: []string{"query"}},
 		{name: "query_prometheus_range", required: []string{"query", "startTime", "endTime", "step"}},
 		{name: "get_trace_by_id", required: []string{"traceId"}},
+		{name: "search_traces", required: []string{"service"}},
+		{name: "analyze_trace", required: []string{"traceId"}},
 		{name: "get_observability_capabilities"},
 	}
 	for _, test := range tests {

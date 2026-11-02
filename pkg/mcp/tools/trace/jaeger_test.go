@@ -21,6 +21,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	observabilitycfg "github.com/apache/dubbo-admin/pkg/config/observability"
@@ -95,5 +96,34 @@ func TestNormalizeJaegerTraceTruncatesSpans(t *testing.T) {
 	result := normalizeJaegerTrace(input)
 	if !result.Truncated || result.SpanCount != maxTraceSpans+1 || result.ReturnedSpanCount != maxTraceSpans {
 		t.Fatalf("expected trace truncation, got %#v", result)
+	}
+}
+
+func TestNewJaegerProviderRejectsEndpointWithQuery(t *testing.T) {
+	// A credential in the endpoint query would be carried into every request URL
+	// and into the transport error of a failed lookup, which reaches the tool
+	// result and the model context. Credentials belong in bearerToken.
+	const endpoint = "https://jaeger.example?api_key=super-secret"
+	_, err := newJaegerProvider(observabilitycfg.TraceProviderConfig{
+		Name: "jaeger-main", Type: observabilitycfg.TraceProviderJaeger, Endpoint: endpoint,
+	})
+	if err == nil {
+		t.Fatal("expected an endpoint with a query string to be rejected")
+	}
+	// The rejection message must not repeat the endpoint, because the endpoint
+	// is exactly what holds the secret.
+	if strings.Contains(err.Error(), "super-secret") {
+		t.Fatalf("expected the rejection to omit the endpoint: %s", err.Error())
+	}
+}
+
+func TestNewJaegerProviderRejectsInvalidEndpoint(t *testing.T) {
+	for _, endpoint := range []string{"jaeger.example:16686", "ftp://jaeger.example", "https://", ""} {
+		_, err := newJaegerProvider(observabilitycfg.TraceProviderConfig{
+			Name: "jaeger-main", Type: observabilitycfg.TraceProviderJaeger, Endpoint: endpoint,
+		})
+		if err == nil {
+			t.Fatalf("expected the endpoint %q to be rejected", endpoint)
+		}
 	}
 }

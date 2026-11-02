@@ -18,7 +18,6 @@
 package trace
 
 import (
-	"context"
 	"fmt"
 	"regexp"
 
@@ -44,11 +43,7 @@ func GetTraceByID(ctx consolectx.Context, args map[string]any) (*common.ToolResu
 	if err != nil {
 		return common.ErrorResult(err), nil
 	}
-	requestCtx := context.Background()
-	if ctx.AppContext() != nil {
-		requestCtx = ctx.AppContext()
-	}
-	result, err := provider.GetTraceByID(requestCtx, traceID)
+	result, err := provider.GetTraceByID(traceRequestContext(ctx), traceID)
 	if err != nil {
 		return common.ErrorResult(err), nil
 	}
