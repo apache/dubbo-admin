@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"dubbo-admin-ai/component/agent"
+	"dubbo-admin-ai/component/hooks"
 	"dubbo-admin-ai/schema"
 	"dubbo-admin-ai/security"
 	conversationstore "dubbo-admin-ai/store"
@@ -115,6 +116,9 @@ func TestNewInteractionBuildsStableContextSnapshot(t *testing.T) {
 	if got, want := messageTextList(state.messages), []string{"first question", "first answer", "follow-up"}; fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("context snapshot = %v, want %v", got, want)
 	}
+	if err := store.NextTurnForTurn(ctx, access, "snapshot-session", state.turnID); err != nil {
+		t.Fatalf("NextTurnForTurn(snapshot) error = %v", err)
+	}
 
 	other, err := store.BeginTurn(ctx, access, "snapshot-session")
 	if err != nil {
@@ -184,6 +188,73 @@ func TestRunAppendsToolOutputToContextSnapshotWithoutReloading(t *testing.T) {
 	}
 }
 
+func TestRunRechecksSessionAccessBeforeNextModelCall(t *testing.T) {
+	ctx := testutils.ContextWithTestAccess(context.Background())
+	access := testutils.TestAccess()
+	baseStore := memorystore.NewMemoryStore(10)
+	const sessionID = "revoked-snapshot-session"
+	createAgentSession(t, baseStore, sessionID)
+	store := &trackingContextStore{Store: baseStore}
+
+	g := genkit.Init(ctx)
+	genkit.DefineTool(g, "snapshot_tool", "returns snapshot evidence", func(ctx *ai.ToolContext, input map[string]any) (map[string]any, error) {
+		return map[string]any{"tool_name": "snapshot_tool", "summary": "evidence"}, nil
+	})
+	script := &scriptPrompt{resps: []*ai.ModelResponse{
+		toolReqResp("snapshot_tool", map[string]any{}),
+		textResp("must not be generated"),
+	}}
+	manager := hooks.NewManager(nil)
+	var deleted bool
+	var deleteErr error
+	if err := manager.Register(hooks.Registration{
+		Events: []hooks.Event{hooks.EventIterationStart},
+		Hook: func(ctx context.Context, event hooks.State) context.Context {
+			if event.Iteration == 2 {
+				// Revoke access after tool output has been persisted, so only the
+				// next iteration's access check can prevent another model call.
+				deleteErr = baseStore.Delete(ctx, access, sessionID)
+				deleted = true
+			}
+			return ctx
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	ra := &ReActAgent{
+		registry:      g,
+		messageStore:  store,
+		hookManager:   manager,
+		actPrompt:     script,
+		answerPrompt:  script,
+		toolTimeouts:  newToolTimeoutResolver(defaultToolTimeoutSeconds, nil),
+		maxIterations: 2,
+	}
+	interactionCtx, state, err := ra.newInteraction(ctx, &schema.UserInput{Content: "use a tool"}, sessionID)
+	if err != nil {
+		t.Fatalf("newInteraction() error = %v", err)
+	}
+	defer state.cancelPersistence()
+	defer func() { _ = baseStore.AbortTurnForTurn(context.Background(), access, sessionID, state.turnID) }()
+
+	_, err = ra.run(interactionCtx, nil, state, &interactionTrace{})
+	if !deleted || deleteErr != nil {
+		t.Fatalf("session deletion reached = %v, error = %v", deleted, deleteErr)
+	}
+	if !errors.Is(err, conversationstore.ErrSessionNotFound) {
+		t.Fatalf("run() error = %v, want ErrSessionNotFound", err)
+	}
+	if script.calls != 1 {
+		t.Fatalf("model calls = %d, want 1 before session deletion", script.calls)
+	}
+	if len(state.messages) != 2 || !strings.Contains(state.messages[1].Text(), "snapshot_tool") {
+		t.Fatalf("tool output missing from stable snapshot: %v", messageTextList(state.messages))
+	}
+	if store.calls.Load() != 1 {
+		t.Fatalf("context window loaded %d times, want once per interaction", store.calls.Load())
+	}
+}
+
 func TestNewInteractionAbortsTurnWhenContextLoadFails(t *testing.T) {
 	ctx := testutils.ContextWithTestAccess(context.Background())
 	access := testutils.TestAccess()
@@ -201,6 +272,35 @@ func TestNewInteractionAbortsTurnWhenContextLoadFails(t *testing.T) {
 	}
 	if len(messages) != 0 {
 		t.Fatalf("failed context load left turn messages behind: %#v", messages)
+	}
+}
+
+func TestPreparedInteractionCanRetryAfterContextLoadFails(t *testing.T) {
+	ctx := testutils.ContextWithTestAccess(context.Background())
+	access := testutils.TestAccess()
+	baseStore := memorystore.NewMemoryStore(10)
+	const sessionID = "prepared-context-failure"
+	createAgentSession(t, baseStore, sessionID)
+	prepared, err := baseStore.PrepareInteraction(ctx, access, sessionID, "request", "hash", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := &trackingContextStore{Store: baseStore, fail: errors.New("context unavailable")}
+	ra := &ReActAgent{messageStore: store, contextWindowTurns: 5}
+	parent := conversationstore.WithPreparedInteraction(ctx, prepared)
+	if _, _, err := ra.newInteraction(parent, &schema.UserInput{Content: "hello"}, sessionID); err == nil || !strings.Contains(err.Error(), "failed to load conversation context") {
+		t.Fatalf("newInteraction() error = %v, want context load failure", err)
+	}
+	assertNoStoredMessages(t, baseStore, sessionID)
+	retried, err := baseStore.PrepareInteraction(ctx, access, sessionID, "request", "hash", time.Minute)
+	if err != nil {
+		t.Fatalf("PrepareInteraction(retry) error = %v", err)
+	}
+	if retried.InteractionID != prepared.InteractionID || retried.TurnID == prepared.TurnID {
+		t.Fatalf("retried interaction = %#v, original = %#v", retried, prepared)
+	}
+	if err := baseStore.FailInteraction(ctx, access, sessionID, retried.InteractionID, retried.TurnID); err != nil {
+		t.Fatal(err)
 	}
 }
 
