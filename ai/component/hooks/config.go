@@ -130,10 +130,11 @@ type configuredHook struct {
 // tracingOptions excludes enabled: enabling a list entry belongs on the entry,
 // while the legacy TracingSpec keeps its original Go/YAML contract.
 type tracingOptions struct {
-	Protocol       string  `yaml:"protocol"`
-	ServiceName    string  `yaml:"service_name"`
-	SampleRatio    float64 `yaml:"sample_ratio"`
-	CaptureContent string  `yaml:"capture_content"`
+	Protocol         string  `yaml:"protocol"`
+	ServiceName      string  `yaml:"service_name"`
+	SampleRatio      float64 `yaml:"sample_ratio"`
+	CaptureContent   string  `yaml:"capture_content"`
+	CaptureReasoning string  `yaml:"capture_reasoning"`
 }
 
 func (s Spec) normalizedHooks() ([]configuredHook, error) {
@@ -238,11 +239,11 @@ func (s HookSpec) normalized() (configuredHook, error) {
 		if len(h.tools) != 1 || h.tools[0] != AllTools {
 			return h, fmt.Errorf("tracing requires all tools (tools: [\"*\"])")
 		}
-		options := tracingOptions{Protocol: ProtocolGRPC, ServiceName: "dubbo-admin-ai", SampleRatio: 1, CaptureContent: CaptureNone}
+		options := tracingOptions{Protocol: ProtocolGRPC, ServiceName: "dubbo-admin-ai", SampleRatio: 1, CaptureContent: CaptureNone, CaptureReasoning: CaptureNone}
 		if err := decodeHookConfig(&s.Config, &options); err != nil {
 			return h, err
 		}
-		h.tracing = TracingSpec{Enabled: h.enabled, Protocol: options.Protocol, ServiceName: options.ServiceName, SampleRatio: options.SampleRatio, CaptureContent: options.CaptureContent}
+		h.tracing = TracingSpec{Enabled: h.enabled, Protocol: options.Protocol, ServiceName: options.ServiceName, SampleRatio: options.SampleRatio, CaptureContent: options.CaptureContent, CaptureReasoning: options.CaptureReasoning}
 		if err := h.tracing.validate(); err != nil {
 			return h, err
 		}
