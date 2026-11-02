@@ -81,7 +81,7 @@ func (f *Factory) NewListWatchers(config *discoverycfg.Config) ([]controller.Res
 		meshresource.ZKMetadataKind,
 		toUpsertZKMetadataResource,
 		toDeleteZKMetadataResource,
-		"/dubbo/metadata",
+		"/dubbo",
 		config,
 	)
 	if err != nil {
@@ -144,7 +144,7 @@ func toDeleteZKConfigResource(mesh, nodePath string) coremodel.Resource {
 
 func toUpsertZKMetadataResource(mesh, nodePath, nodeData string) coremodel.Resource {
 	paths := strings.Split(nodePath, constants.PathSeparator)
-	if len(paths) < 5 {
+	if len(paths) < 5 || (paths[2] != "metadata" && (len(paths) != 5 || paths[3] != "providers")) {
 		return nil
 	}
 	res := meshresource.NewZKMetadataResourceWithAttributes(nodePath, mesh)
@@ -157,10 +157,12 @@ func toUpsertZKMetadataResource(mesh, nodePath, nodeData string) coremodel.Resou
 
 func toDeleteZKMetadataResource(mesh, nodePath string) coremodel.Resource {
 	paths := strings.Split(nodePath, constants.PathSeparator)
-	if len(paths) < 5 {
+	if len(paths) < 5 || (paths[2] != "metadata" && (len(paths) != 5 || paths[3] != "providers")) {
 		return nil
 	}
-	return meshresource.NewZKMetadataResourceWithAttributes(nodePath, mesh)
+	res := meshresource.NewZKMetadataResourceWithAttributes(nodePath, mesh)
+	res.Spec.NodePath = nodePath
+	return res
 }
 
 type ZooKeeperInstance struct {

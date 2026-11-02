@@ -19,11 +19,14 @@ package subscriber
 
 import (
 	"fmt"
+	"net/url"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"k8s.io/client-go/tools/cache"
 
+	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/common/constants"
 	"github.com/apache/dubbo-admin/pkg/core/events"
@@ -81,9 +84,7 @@ func (z *ZKMetadataEventSubscriber) ProcessEvent(event events.Event) error {
 			logger.Errorf(errStr)
 			return bizerror.New(bizerror.EventError, errStr)
 		}
-		// Metadata is an ephemeral znode, dubbo client only adds/updates the metadata znode and never deletes.
-		// And we can't identify the service only by the node path, so for delete event, we just ignored
-		logger.Infof("ignored zk metadata delete event")
+		processErr = z.processApplicationMetadataDelete(oldObj)
 	}
 	if processErr != nil {
 		logger.Errorf("process zk metadata event failed, cause: %s, event: %s", processErr.Error(), event.String())
@@ -95,6 +96,13 @@ func (z *ZKMetadataEventSubscriber) ProcessEvent(event events.Event) error {
 
 func (z *ZKMetadataEventSubscriber) processUpsert(metadataRes *meshresource.ZKMetadataResource) error {
 	paths := strings.Split(metadataRes.Spec.NodePath, constants.PathSeparator)
+	if len(paths) == 5 && paths[1] == "dubbo" && paths[3] == "providers" {
+		resource := zkInterfaceRegistration(metadataRes.Mesh, metadataRes.Spec.NodePath)
+		if resource == nil {
+			return fmt.Errorf("invalid zk provider registration %q", metadataRes.Spec.NodePath)
+		}
+		return z.upsertApplicationMetadata(resource)
+	}
 	if len(paths) < 2 {
 		return bizerror.New(bizerror.ZKError, fmt.Sprintf("invalid zk metadata node path: %s", metadataRes.Spec.NodePath))
 	}
@@ -105,7 +113,73 @@ func (z *ZKMetadataEventSubscriber) processUpsert(metadataRes *meshresource.ZKMe
 		return processMetadataUpsert[*meshresource.ServiceConsumerMetadataResource](
 			metadataRes, meshresource.ToServiceConsumerMetadataByRawData, z.storeRouter, z.emitter)
 	}
+	if app, revision, ok := applicationMetadataPath(metadataRes.Spec.NodePath); ok {
+		resource, err := meshresource.ParseRPCInstanceMetadata(metadataRes.Mesh, app, revision, metadataRes.Spec.NodeData)
+		if err != nil {
+			return err
+		}
+		return z.upsertApplicationMetadata(resource)
+	}
 	logger.Warnf("unknown metadata, node path: %s, node data: %s", metadataRes.Spec.NodePath, metadataRes.Spec.NodeData)
+	return nil
+}
+
+func applicationMetadataPath(path string) (string, string, bool) {
+	parts := strings.Split(path, constants.PathSeparator)
+	if len(parts) != 5 || parts[1] != "dubbo" || parts[2] != "metadata" ||
+		parts[3] == "" || parts[4] == "" {
+		return "", "", false
+	}
+	return parts[3], parts[4], true
+}
+
+func (z *ZKMetadataEventSubscriber) upsertApplicationMetadata(resource *meshresource.RPCInstanceMetadataResource) error {
+	st, err := z.storeRouter.ResourceKindRoute(meshresource.RPCInstanceMetadataKind)
+	if err != nil {
+		return err
+	}
+	old, exists, err := st.GetByKey(resource.ResourceKey())
+	if err != nil {
+		return err
+	}
+	if !exists {
+		if err := st.Add(resource); err != nil {
+			return err
+		}
+		z.emitter.Send(events.NewResourceChangedEvent(cache.Added, nil, resource))
+		return nil
+	}
+	if err := st.Update(resource); err != nil {
+		return err
+	}
+	z.emitter.Send(events.NewResourceChangedEvent(cache.Updated, old.(coremodel.Resource), resource))
+	return nil
+}
+
+func (z *ZKMetadataEventSubscriber) processApplicationMetadataDelete(resource *meshresource.ZKMetadataResource) error {
+	if resource.Spec == nil {
+		return nil
+	}
+	key := zkInterfaceRegistration(resource.Mesh, resource.Spec.NodePath)
+	if key == nil {
+		app, revision, ok := applicationMetadataPath(resource.Spec.NodePath)
+		if !ok {
+			return nil
+		}
+		key = meshresource.NewRPCInstanceMetadataResourceWithAttributes(app+"@"+revision, resource.Mesh)
+	}
+	st, err := z.storeRouter.ResourceKindRoute(meshresource.RPCInstanceMetadataKind)
+	if err != nil {
+		return err
+	}
+	old, exists, err := st.GetByKey(key.ResourceKey())
+	if err != nil || !exists {
+		return err
+	}
+	if err := st.Delete(old); err != nil {
+		return err
+	}
+	z.emitter.Send(events.NewResourceChangedEvent(cache.Deleted, old.(coremodel.Resource), nil))
 	return nil
 }
 
@@ -190,4 +264,51 @@ func recordMetadataPlatformEvent(router store.Router, res coremodel.Resource, ac
 			ServiceName: item.Spec.ServiceName,
 		})
 	}
+}
+
+func zkInterfaceRegistration(mesh, path string) *meshresource.RPCInstanceMetadataResource {
+	parts := strings.Split(path, constants.PathSeparator)
+	if len(parts) != 5 || parts[1] != "dubbo" || parts[3] != "providers" {
+		return nil
+	}
+	decoded, err := url.PathUnescape(parts[4])
+	if err != nil {
+		return nil
+	}
+	endpoint, err := url.Parse(decoded)
+	if err != nil || endpoint.Hostname() == "" || endpoint.Scheme == "" {
+		return nil
+	}
+	port, err := strconv.ParseInt(endpoint.Port(), 10, 64)
+	if err != nil || port <= 0 {
+		return nil
+	}
+	app := endpoint.Query().Get(constants.Application)
+	service := parts[2]
+	if service == "" {
+		return nil
+	}
+	group, version := endpoint.Query().Get(constants.GroupKey), endpoint.Query().Get(constants.VersionKey)
+	available := endpoint.Query().Get("disabled") != "true" && endpoint.Query().Get("enabled") != "false"
+	if weight := endpoint.Query().Get("weight"); weight != "" {
+		value, err := strconv.ParseFloat(weight, 64)
+		if err != nil {
+			return nil
+		}
+		available = available && value > 0
+	}
+	name := fmt.Sprintf("interface:%s:%s:%s:%d:%s:%s:%s",
+		service, app, endpoint.Hostname(), port, group, version, endpoint.Scheme)
+	res := meshresource.NewRPCInstanceMetadataResourceWithAttributes(name, mesh)
+	res.Spec = &meshproto.RPCInstanceMetadata{
+		App:          app,
+		InstanceName: meshresource.BuildInstanceResName(app, endpoint.Hostname(), port),
+		Available:    &available,
+		Services: map[string]*meshproto.ServiceInfo{
+			meshresource.BuildServiceIdentityKey(service, version, group): {
+				Name: service, Group: group, Version: version, Protocol: endpoint.Scheme, Port: port,
+			},
+		},
+	}
+	return res
 }

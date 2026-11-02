@@ -100,11 +100,9 @@ func (n *NacosServiceEventSubscriber) processUpsert(
 	serviceRes *meshresource.NacosServiceResource,
 	eventType cache.DeltaType,
 ) error {
-	providerRe := regexp.MustCompile(`^providers:[\w.]+(?::[\w.]*:|::[\w.]*)?$`)
 	consumerRe := regexp.MustCompile(`^consumers:[\w.]+(?::[\w.]*:|::[\w.]*)?$`)
-	if providerRe.MatchString(serviceRes.Name) {
-		logger.Infof("interface-level service ignored, service name: %s", serviceRes.Name)
-		return nil
+	if strings.HasPrefix(serviceRes.Name, "providers:") {
+		return n.reconcileNacosMetadata(serviceRes)
 	}
 	if consumerRe.MatchString(serviceRes.Name) {
 		return n.processConsumerMetadataUpsert(oldServiceRes, serviceRes, eventType)
@@ -217,7 +215,7 @@ func (n *NacosServiceEventSubscriber) processRPCInstanceUpsert(
 ) error {
 	convertFunc := func(i int, instance *meshproto.NacosInstance) maputil.Entry[string, *meshresource.RPCInstanceResource] {
 
-		res := meshresource.ToRPCInstance(serviceRes.Mesh, serviceRes.Name, instance.Ip, instance.Port, instance.Metadata)
+		res := nacosRPCInstance(serviceRes, instance)
 		return maputil.Entry[string, *meshresource.RPCInstanceResource]{
 			Key:   res.ResourceKey(),
 			Value: res,
@@ -283,15 +281,13 @@ func (n *NacosServiceEventSubscriber) processRPCInstanceUpsert(
 	logger.Debugf("process rpc instance upsert event, oldInstances: %s, newInstances: %s, offlineInstances: %s, addInstances: %s, updateInstances: %s",
 		maputil.Keys(oldInstances), maputil.Keys(newInstances), maputil.Keys(offlineInstances), maputil.Keys(addInstances), updateInstances)
 	n.recordNacosInstanceEvents(oldServiceRes, serviceRes, eventType)
-	return nil
+	return n.reconcileNacosMetadata(serviceRes)
 }
 
 func (n *NacosServiceEventSubscriber) processDelete(serviceRes *meshresource.NacosServiceResource, eventType cache.DeltaType) error {
-	providerRe := regexp.MustCompile(`^providers:[\w.]+(?::[\w.]*:|::[\w.]*)?$`)
 	consumerRe := regexp.MustCompile(`^consumers:[\w.]+(?::[\w.]*:|::[\w.]*)?$`)
-	if providerRe.MatchString(serviceRes.Name) {
-		logger.Infof("interface-level service ignored, service name: %s", serviceRes.Name)
-		return nil
+	if strings.HasPrefix(serviceRes.Name, "providers:") {
+		return n.deleteNacosMetadata(serviceRes)
 	}
 	if consumerRe.MatchString(serviceRes.Name) {
 		return n.processServiceConsumerDelete(serviceRes, eventType)
@@ -350,7 +346,7 @@ func (n *NacosServiceEventSubscriber) processRPCInstanceDelete(serviceRes *meshr
 		n.emitter.Send(events.NewResourceChangedEvent(cache.Deleted, item, nil))
 	})
 	n.recordNacosInstanceEvents(serviceRes, nil, eventType)
-	return nil
+	return n.deleteNacosMetadata(serviceRes)
 }
 
 func (n *NacosServiceEventSubscriber) recordNacosInstanceEvents(
@@ -483,7 +479,7 @@ func buildNacosRPCInstanceMap(serviceRes *meshresource.NacosServiceResource) map
 		return result
 	}
 	for _, item := range serviceRes.Spec.Instances {
-		res := meshresource.ToRPCInstance(serviceRes.Mesh, serviceRes.Name, item.Ip, item.Port, item.Metadata)
+		res := nacosRPCInstance(serviceRes, item)
 		result[res.ResourceKey()] = res
 	}
 	return result
