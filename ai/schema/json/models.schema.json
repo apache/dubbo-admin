@@ -4,7 +4,10 @@
   "title": "Models Component Config",
   "type": "object",
   "additionalProperties": false,
-  "required": ["type", "spec"],
+  "required": [
+    "type",
+    "spec"
+  ],
   "properties": {
     "type": {
       "const": "models"
@@ -12,7 +15,11 @@
     "spec": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["default_model", "default_embedding", "providers"],
+      "required": [
+        "default_model",
+        "default_embedding",
+        "providers"
+      ],
       "properties": {
         "default_model": {
           "type": "string",
@@ -38,7 +45,9 @@
     "provider": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["base_url"],
+      "required": [
+        "base_url"
+      ],
       "properties": {
         "api_key": {
           "type": "string",
@@ -66,13 +75,19 @@
           "type": "object",
           "default": {},
           "additionalProperties": true
+        },
+        "compat": {
+          "$ref": "#/$defs/compat"
         }
       }
     },
     "model_info": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "key"],
+      "required": [
+        "name",
+        "key"
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -84,20 +99,31 @@
         },
         "type": {
           "type": "string",
-          "enum": ["chat", "multimodal", "code"],
+          "enum": [
+            "chat",
+            "multimodal",
+            "code"
+          ],
           "default": "chat"
         },
         "config": {
           "type": "object",
           "default": {},
           "additionalProperties": true
+        },
+        "compat": {
+          "$ref": "#/$defs/compat"
         }
       }
     },
     "embedder_info": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "key", "dimensions"],
+      "required": [
+        "name",
+        "key",
+        "dimensions"
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -109,7 +135,12 @@
         },
         "type": {
           "type": "string",
-          "enum": ["text", "image", "audio", "multimodal"],
+          "enum": [
+            "text",
+            "image",
+            "audio",
+            "multimodal"
+          ],
           "default": "text"
         },
         "dimensions": {
@@ -120,6 +151,96 @@
           "type": "object",
           "default": {},
           "additionalProperties": true
+        }
+      }
+    },
+    "compat": {
+      "type": "object",
+      "default": {},
+      "additionalProperties": false,
+      "properties": {
+        "thinking_format": {
+          "type": "string",
+          "enum": [
+            "openai",
+            "qwen",
+            "qwen-chat-template",
+            "deepseek",
+            "chat-template",
+            "openrouter",
+            "string-thinking"
+          ]
+        },
+        "thinking_field": {
+          "type": "string"
+        },
+        "send_back_thinking": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "field",
+            "tags",
+            "never"
+          ]
+        },
+        "thinking_budget_field": {
+          "type": "string",
+          "enum": [
+            "thinking_budget",
+            "thinking_token_budget",
+            "thinking_budget_tokens"
+          ]
+        },
+        "thinking_tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "ignore_leading_whitespace": {
+          "type": "boolean",
+          "default": false
+        },
+        "max_tokens_field": {
+          "type": "string",
+          "enum": [
+            "max_tokens",
+            "max_completion_tokens"
+          ]
+        },
+        "supports_developer_role": {
+          "type": "boolean",
+          "default": false
+        },
+        "supports_strict_mode": {
+          "type": "boolean",
+          "default": false
+        },
+        "supports_store": {
+          "type": "boolean",
+          "default": false
+        },
+        "supports_forced_tool_choice": {
+          "type": "boolean",
+          "default": true
+        },
+        "supports_forced_tool_choice_with_thinking": {
+          "type": "boolean",
+          "default": true
+        },
+        "requires_tool_result_name": {
+          "type": "boolean",
+          "default": false
+        },
+        "requires_assistant_after_tool_result": {
+          "type": "boolean",
+          "default": false
+        },
+        "backfill_thinking_field": {
+          "type": "boolean",
+          "default": false
         }
       }
     }

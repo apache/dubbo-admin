@@ -6,6 +6,33 @@ spec:
     dashscope:
       api_key: "${DASHSCOPE_API_KEY}"
       base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+      # Endpoint quirks. Applied to every model below unless a model overrides
+      # an individual field. See component/models/compat.go for the semantics of
+      # each key and the evidence behind its default.
+      compat:
+        # Qwen spells the thinking switch as a top-level enable_thinking.
+        thinking_format: "qwen"
+        # Cap thinking tokens. Thinking and the answer share max_tokens, so an
+        # uncapped reasoning-heavy turn can emit neither an answer nor a tool
+        # call, which just spins the next iteration of the agent loop.
+        thinking_budget_field: "thinking_budget"
+        # "max_tokens" is understood by a much wider set of endpoints than
+        # "max_completion_tokens".
+        max_tokens_field: "max_tokens"
+        # Only "system" is accepted here.
+        supports_developer_role: false
+        # The Qwen family rejects tool definitions carrying "strict".
+        supports_strict_mode: false
+        # Measured 2026-10-04: "required" is not enforced, and not rejected
+        # either — asked a question needing no tool, "required" and "auto"
+        # behaved identically, both answering in prose. So an agent that
+        # depends on forcing gets no error and no tool call.
+        supports_forced_tool_choice: false
+        # Unverified for this endpoint. The empty <think></think> block ahead
+        # of a tool call was observed with Ollama + Qwen3, not here; this is
+        # set defensively and has no effect until the streaming path consumes
+        # it.
+        ignore_leading_whitespace: true
       models:
         - name: "qwen-max"
           key: "qwen-max"
@@ -50,6 +77,9 @@ spec:
     siliconflow:
       api_key: "${SILICONFLOW_API_KEY}"
       base_url: "https://api.siliconflow.cn/v1"
+      # Left unconfigured on purpose: the conservative defaults (max_tokens,
+      # system role, no strict, no store) suit an OpenAI-compatible gateway, and
+      # guessing from the base URL would be wrong behind a proxy.
       models:
         - name: "gpt-3.5-turbo"
           key: "gpt-3.5-turbo"

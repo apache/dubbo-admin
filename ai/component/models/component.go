@@ -21,6 +21,7 @@ import (
 	"dubbo-admin-ai/runtime"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/core/api"
@@ -35,6 +36,10 @@ type ModelsComponent struct {
 	defaultModel     string
 	defaultEmbedding string
 	providers        map[string]ProviderConfig
+	// compatByModel holds the fully resolved compatibility settings for every
+	// configured model, keyed by "<provider>/<name>" — the same spelling
+	// default_model uses. Populated during Init.
+	compatByModel map[string]ResolvedCompat
 }
 
 // NewModelsComponent creates a Models component instance
@@ -75,12 +80,56 @@ func (m *ModelsComponent) Validate() error {
 		if provider.BaseURL == "" {
 			return fmt.Errorf("provider %s base_url is required", name)
 		}
+		// Reject cross-field compat mistakes here rather than letting them
+		// surface as an unexplained 400 in the middle of a conversation
+		// (ADR-008).
+		if provider.Compat != nil {
+			if err := provider.Compat.Validate(name); err != nil {
+				return err
+			}
+		}
+		for _, model := range provider.Models {
+			if model.Compat == nil {
+				continue
+			}
+			if err := model.Compat.Validate(fmt.Sprintf("%s/%s", name, model.Name)); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
 
+// CompatFor returns the resolved compatibility settings for a model spelled
+// "<provider>/<name>", matching the default_model format. Models with no
+// config entry fall back to their provider's settings, and then to the
+// conservative defaults, so callers never have to handle a missing entry.
+func (m *ModelsComponent) CompatFor(modelName string) ResolvedCompat {
+	if resolved, ok := m.compatByModel[modelName]; ok {
+		return resolved
+	}
+	providerName, _, found := strings.Cut(modelName, "/")
+	if !found {
+		return ResolveCompat(nil, nil)
+	}
+	if provider, ok := m.providers[providerName]; ok {
+		return ResolveCompat(provider.Compat, nil)
+	}
+	return ResolveCompat(nil, nil)
+}
+
 func (m *ModelsComponent) Init(rt *runtime.Runtime) error {
 	var plugins []api.Plugin
+
+	// Resolve compatibility settings up front so the agent can look them up by
+	// model name without re-reading the config on every model call.
+	m.compatByModel = make(map[string]ResolvedCompat, len(m.providers))
+	for providerName, cfg := range m.providers {
+		for _, modelCfg := range cfg.Models {
+			key := fmt.Sprintf("%s/%s", providerName, modelCfg.Name)
+			m.compatByModel[key] = ResolveCompat(cfg.Compat, modelCfg.Compat)
+		}
+	}
 
 	for providerName, cfg := range m.providers {
 		if cfg.APIKey == "" {

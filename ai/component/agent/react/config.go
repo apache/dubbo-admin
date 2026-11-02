@@ -51,6 +51,14 @@ type AgentSpec struct {
 	TopP               float64        `yaml:"top_p,omitempty"` // 0 means "unset" — the provider default is used
 	MaxTokens          int            `yaml:"max_tokens"`
 	Timeout            int            `yaml:"timeout"` // per model-call timeout (seconds)
+
+	// ReasoningEffort requests extended thinking. Empty means off. The value
+	// is an abstract level, not an endpoint's own vocabulary: each provider
+	// spells it differently (reasoning_effort, thinking.type, enable_thinking,
+	// reasoning.effort) and the endpoint's spelling is chosen by the model's
+	// compat block, not here. Set it only after checking that the endpoint
+	// accepts it non-streamed — some only support it in streaming mode.
+	ReasoningEffort string `yaml:"reasoning_effort,omitempty"`
 }
 
 // ApplyDefaults fills values that are optional when AgentSpec is constructed
@@ -60,6 +68,11 @@ func (c *AgentSpec) ApplyDefaults() {
 		c.ContextWindowTurns = defaultContextWindowTurns
 	}
 }
+
+// reasoningEffortLevels are the abstract effort levels a model config may
+// request. Endpoints accept different subsets, so an unsupported level is
+// rejected at startup rather than forwarded and rejected by the endpoint.
+var reasoningEffortLevels = []string{"minimal", "low", "medium", "high", "xhigh"}
 
 // Validate validates the configuration.
 func (c *AgentSpec) Validate() error {
@@ -87,6 +100,19 @@ func (c *AgentSpec) Validate() error {
 	for name, t := range c.ToolTimeouts {
 		if t <= 0 {
 			return fmt.Errorf("tool_timeouts[%q] must be greater than 0", name)
+		}
+	}
+	if c.ReasoningEffort != "" {
+		known := false
+		for _, level := range reasoningEffortLevels {
+			if c.ReasoningEffort == level {
+				known = true
+				break
+			}
+		}
+		if !known {
+			return fmt.Errorf("reasoning_effort must be one of %v or empty to disable, got %q",
+				reasoningEffortLevels, c.ReasoningEffort)
 		}
 	}
 	// temperature 0 is a valid (deterministic) setting, so the lower bound is
