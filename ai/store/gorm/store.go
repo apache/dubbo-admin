@@ -253,7 +253,7 @@ func (s *GormStore) Migrate(ctx context.Context) error {
 			byTenant[sessions[i].TenantID] = current
 		}
 		var memories []MemoryLedgerModel
-		if err := tx.Select("tenant_id, payload").Find(&memories).Error; err != nil {
+		if err := tx.Select("id, tenant_id, payload").Find(&memories).Error; err != nil {
 			return err
 		}
 		for _, row := range memories {
