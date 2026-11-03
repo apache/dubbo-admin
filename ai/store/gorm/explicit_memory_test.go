@@ -11,6 +11,7 @@ package gormstore_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -212,5 +213,65 @@ func TestExplicitMemoryRestartAndArtifactRollback(t *testing.T) {
 	settings, err := s.GetMemorySettings(ctx, a)
 	if err != nil || settings.Generation != 2 {
 		t.Fatal("generation lost on restart", settings, err)
+	}
+}
+
+func TestMigrateRebuildsMemoryLedgerReservation(t *testing.T) {
+	ctx := context.Background()
+	a := testutils.TestAccess()
+	s := newSQLiteStore(t, filepath.Join(t.TempDir(), "memory-migration.db"), 20)
+
+	r, err := s.SaveMemory(ctx, a, store.MemoryWrite{Generation: 1, StateVersion: 1, ScopeType: "user", MemoryType: "preference", FactKey: "response.language", Value: "Chinese"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Simulate pre-fix accounting, where each ledger reserved its whole
+	// serialized payload instead of only its Memory records.
+	var row gormstore.MemoryLedgerModel
+	if err := s.DB().Where("id = ?", store.MemoryOwnerKey(a.Subject.TenantID, a.Subject.UserID)).First(&row).Error; err != nil {
+		t.Fatal(err)
+	}
+	var ledger store.MemoryLedger
+	if err := json.Unmarshal(row.Payload, &ledger); err != nil {
+		t.Fatal(err)
+	}
+	contentBytes := store.MemoryContentBytes(ledger)
+	legacy := int64(len(row.Payload))
+	if legacy <= contentBytes {
+		t.Fatalf("fixture does not exercise divergent accounting: legacy=%d content=%d", legacy, contentBytes)
+	}
+	if err := s.DB().Model(&gormstore.MemoryLedgerModel{}).Where("id = ?", row.ID).Update("stored_bytes", legacy).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DB().Model(&gormstore.TenantUsageModel{}).Where("tenant_id = ?", a.Subject.TenantID).Update("stored_bytes", legacy).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	if err := s.Migrate(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	var rebuilt gormstore.MemoryLedgerModel
+	if err := s.DB().Where("id = ?", row.ID).First(&rebuilt).Error; err != nil {
+		t.Fatal(err)
+	}
+	var usage gormstore.TenantUsageModel
+	if err := s.DB().Where("tenant_id = ?", a.Subject.TenantID).First(&usage).Error; err != nil {
+		t.Fatal(err)
+	}
+	if rebuilt.StoredBytes != contentBytes || usage.StoredBytes != contentBytes {
+		t.Fatalf("migration must rebuild ledger and tenant together: ledger=%d tenant=%d want=%d", rebuilt.StoredBytes, usage.StoredBytes, contentBytes)
+	}
+
+	// A mutation after migration must release exactly the rebuilt reservation.
+	if err := s.DeleteMemory(ctx, a, r.ID, store.MemoryMutation{Generation: 1, StateVersion: 1, Version: r.Version}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DB().Where("tenant_id = ?", a.Subject.TenantID).First(&usage).Error; err != nil {
+		t.Fatal(err)
+	}
+	if usage.StoredBytes != 0 {
+		t.Fatalf("tenant stored_bytes after deleting the only Memory = %d, want 0", usage.StoredBytes)
 	}
 }
