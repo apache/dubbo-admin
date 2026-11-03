@@ -48,9 +48,10 @@ G2/G3、Issue 评论中的全部要求或生产发布门已通过。
 页面采集模块仍保留供后续页面 Source 接入，当前不宣称已完成页面上下文能力。
 SSE 协议保持不变。
 
-前端复用同源、携带 cookie 的 AI 请求方式；部署必须继续通过既有可信认证代理或
-网关为 AI 服务提供其配置的凭证。本 PR 不将普通浏览器 cookie、用户名或项目选择
-转换为可信身份，也不新增生产登录方案。
+AI 请求统一经 `aiTransport` 注入 Admin 签发的 Bearer token，并在 `WWW-Authenticate`
+Bearer challenge 时刷新一次；`accessTokenEnabled` 关闭时保持匿名兼容。聊天与 Memory
+共用该传输层，部署仍须通过既有可信认证代理或网关为 AI 服务提供其配置的凭证。
+本 PR 不将普通浏览器 cookie、用户名或项目选择转换为可信身份，也不新增生产登录方案。
 
 注入配置沿用 PR 3 的 `explicit_memory.enabled` 和 PR 2 的
 `conversation_summary.enabled`，均默认关闭。管理 API 在注入开关关闭时仍可用。

@@ -10,6 +10,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  */
 import axios from 'axios'
+import { aiClient, AIAPIError } from './aiTransport'
+export { AIAPIError } from './aiTransport'
 
 export type TaskType = 'diagnosis' | 'configuration' | 'inspection'
 export interface MatchContext {
@@ -59,18 +61,14 @@ export interface MemoryPage extends MemorySettings {
 }
 
 // AI endpoints use their own envelope, unlike the Console request interceptor.
-const client = axios.create({ baseURL: '/api/v1/ai', withCredentials: true, timeout: 30000 })
-export class AIAPIError extends Error {
-  constructor(
-    public code: string,
-    public status: number
-  ) {
-    super(code)
-  }
-}
 async function request<T>(method: string, url: string, data?: unknown): Promise<T> {
   try {
-    const response = await client.request<{ data: T }>({ method, url, data })
+    const response = await aiClient.request<{ data: T }>({
+      method,
+      url,
+      data,
+      timeout: 30000
+    })
     return response.data.data
   } catch (error) {
     if (axios.isAxiosError(error)) {
