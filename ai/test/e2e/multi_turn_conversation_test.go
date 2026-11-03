@@ -291,6 +291,7 @@ func sendMessage(t *testing.T, ctx context.Context, baseURL, sessionID, message 
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Idempotency-Key", fmt.Sprintf("e2e-%d", time.Now().UnixNano()))
 
 	// Use 10 minute timeout to match server timeout (15m) with buffer
 	client := &http.Client{Timeout: 600 * time.Second}

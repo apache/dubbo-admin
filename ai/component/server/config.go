@@ -17,28 +17,60 @@
 
 package server
 
+import (
+	"dubbo-admin-ai/component/server/engine"
+	"dubbo-admin-ai/config"
+	"dubbo-admin-ai/security"
+	"fmt"
+	"net/url"
+	"strings"
+)
+
 // ServerSpec defines server configuration
 type ServerSpec struct {
-	Port           int                `yaml:"port"`
-	Host           string             `yaml:"host"`
-	Debug          bool               `yaml:"debug"`
-	CORSOrigins    []string           `yaml:"cors_origins"`
-	ReadTimeout    int                `yaml:"read_timeout"`
-	WriteTimeout   int                `yaml:"write_timeout"`
-	Authentication AuthenticationSpec `yaml:"authentication"`
+	MemoryProjects []engine.MemoryProject `yaml:"memory_projects"`
+	Port           int                    `yaml:"port"`
+	Host           string                 `yaml:"host"`
+	Debug          bool                   `yaml:"debug"`
+	CORSOrigins    []string               `yaml:"cors_origins"`
+	ReadTimeout    int                    `yaml:"read_timeout"`
+	WriteTimeout   int                    `yaml:"write_timeout"`
+	Auth           AuthenticationSpec     `yaml:"auth"`
+	Features       config.FeatureFlags    `yaml:"features"`
 }
 
 // AuthenticationSpec configures the trusted identity used by the AI HTTP
-// service. Phase 1 supports a server-configured identity; the interface allows
-// JWT or signed-gateway adapters to be added without changing handlers.
+// service. Enabled selects Admin RS256/JWKS authentication; disabled uses a
+// fixed development identity restricted to loopback by default.
 type AuthenticationSpec struct {
-	Mode                    string   `yaml:"mode"`
+	Enabled                 bool     `yaml:"enabled"`
 	TenantID                string   `yaml:"tenant_id"`
 	UserID                  string   `yaml:"user_id"`
 	Roles                   []string `yaml:"roles"`
 	Scopes                  []string `yaml:"scopes"`
 	AllowInsecureStaticAuth bool     `yaml:"allow_insecure_static_auth"`
 	AdoptLegacySessions     bool     `yaml:"adopt_legacy_sessions"`
+	JWKSURL                 string   `yaml:"jwks_url"`
+	Issuer                  string   `yaml:"issuer"`
+	Audience                string   `yaml:"audience"`
+}
+
+func (a AuthenticationSpec) Validate() error {
+	if !a.Enabled {
+		return nil
+	}
+	parsed, err := url.Parse(a.JWKSURL)
+	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return fmt.Errorf("%w: auth.jwks_url must be an HTTP or HTTPS URL", security.ErrAuthMisconfigured)
+	}
+	for _, field := range []struct{ name, value string }{
+		{"issuer", a.Issuer}, {"audience", a.Audience}, {"tenant_id", a.TenantID},
+	} {
+		if strings.TrimSpace(field.value) == "" {
+			return fmt.Errorf("%w: auth.%s is required", security.ErrAuthMisconfigured, field.name)
+		}
+	}
+	return nil
 }
 
 // DefaultServerSpec returns default server configuration
@@ -50,8 +82,7 @@ func DefaultServerSpec() *ServerSpec {
 		CORSOrigins:  []string{},
 		ReadTimeout:  30,
 		WriteTimeout: 30,
-		Authentication: AuthenticationSpec{
-			Mode:     "static",
+		Auth: AuthenticationSpec{
 			TenantID: "default",
 			UserID:   "local-user",
 			Roles:    []string{"user"},
@@ -60,10 +91,7 @@ func DefaultServerSpec() *ServerSpec {
 }
 
 func (a *AuthenticationSpec) applyDefaults() {
-	defaults := DefaultServerSpec().Authentication
-	if a.Mode == "" {
-		a.Mode = defaults.Mode
-	}
+	defaults := DefaultServerSpec().Auth
 	if a.TenantID == "" {
 		a.TenantID = defaults.TenantID
 	}

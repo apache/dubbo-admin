@@ -6,12 +6,14 @@ import (
 	"reflect"
 
 	toolEngine "dubbo-admin-ai/component/tools/engine"
+	"dubbo-admin-ai/store"
 
 	"github.com/firebase/genkit/go/ai"
 )
 
 type UserInput struct {
-	Content string `json:"content,omitempty"`
+	Content      string             `json:"content,omitempty"`
+	MatchContext store.MatchContext `json:"matchContext,omitempty"`
 }
 
 type ToolOutputs struct {

@@ -78,6 +78,20 @@ console:
     # openssl rand -base64 32
     sessionSecret: ""
     expirationTime: 3600
+    # Optional RS256 tokens for the independent AI service. TTL is in seconds.
+    accessToken:
+      enabled: false
+      # issuer: dubbo-admin
+      # ttl: 1800
+      # audiences: [dubbo-admin-ai]
+      # Use keys + activeKeyId even when configuring a single key.
+      # activeKeyId: key-new
+      # keys:
+      #   - keyId: key-old
+      #     privateKeyFile: /etc/dubbo-admin/keys/old.pem
+      #   - keyId: key-new
+      #     privateKeyFile: /etc/dubbo-admin/keys/new.pem
+      # Restart Admin after changing keys.
 
 # [Optional] config for data storage, default is memory
 store:

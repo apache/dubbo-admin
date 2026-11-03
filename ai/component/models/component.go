@@ -18,6 +18,7 @@
 package models
 
 import (
+	"dubbo-admin-ai/providerusage"
 	"dubbo-admin-ai/runtime"
 	"fmt"
 	"os"
@@ -259,6 +260,7 @@ func createModelPlugin(providerName string, cfg ProviderConfig) api.Plugin {
 	return &compat_oai.OpenAICompatible{
 		Provider: providerName,
 		Opts: []option.RequestOption{
+			option.WithMiddleware(providerusage.Middleware),
 			option.WithAPIKey(cfg.APIKey),
 			option.WithBaseURL(cfg.BaseURL),
 		},

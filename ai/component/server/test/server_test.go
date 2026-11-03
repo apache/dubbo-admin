@@ -1,11 +1,39 @@
 package servertest
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
 	compServer "dubbo-admin-ai/component/server"
+	"dubbo-admin-ai/security"
 )
+
+func TestAuthenticationConfigurationErrors(t *testing.T) {
+	valid := compServer.AuthenticationSpec{Enabled: true, JWKSURL: "http://admin/api/v1/auth/jwks", Issuer: "admin", Audience: "ai", TenantID: "default"}
+	if err := valid.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{"jwks_url", "issuer", "audience", "tenant_id"} {
+		t.Run(field, func(t *testing.T) {
+			config := valid
+			switch field {
+			case "jwks_url":
+				config.JWKSURL = "file:///keys"
+			case "issuer":
+				config.Issuer = " "
+			case "audience":
+				config.Audience = ""
+			case "tenant_id":
+				config.TenantID = " "
+			}
+			err := config.Validate()
+			if !errors.Is(err, security.ErrAuthMisconfigured) || errors.Is(err, security.ErrAuthenticationRequired) || !strings.Contains(err.Error(), field) {
+				t.Fatalf("configuration error = %v", err)
+			}
+		})
+	}
+}
 
 func TestServerComponent_Validate(t *testing.T) {
 	tests := []struct {
@@ -34,7 +62,7 @@ func TestServerComponent_Validate(t *testing.T) {
 }
 
 func TestServerComponent_StaticAuthenticationRequiresLoopback(t *testing.T) {
-	base := compServer.DefaultServerSpec().Authentication
+	base := compServer.DefaultServerSpec().Auth
 	component, err := compServer.NewServerComponentWithAuthentication(8888, "0.0.0.0", false, nil, 30, 30, base)
 	if err != nil {
 		t.Fatal(err)

@@ -12,12 +12,21 @@ paths:
       summary: 流式聊天
       deprecated: false
       description: >-
-        使用Server-Sent
-        Events实现的流式聊天，实时接收AI响应。第一次调用时创建新session，完成后通过X-Session-ID响应头返回session_id。后续对话通过X-Session-ID请求头传递session_id
+        使用Server-Sent Events实现流式聊天。先创建Session，再通过请求体的sessionID传递会话ID。
+        必须提供Idempotency-Key；新的逻辑请求使用新key，同一请求重试时复用原key及请求体。
+        已完成请求会重放保存的结果，不重复执行模型。
+        matchContext 是可选的记忆适用条件，不构成资源或工具授权；缺省时不继承项目。
       operationId: streamChat
       tags:
         - 聊天
-      parameters: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
       requestBody:
         content:
           application/json:
@@ -33,6 +42,8 @@ paths:
                 sessionID:
                   type: string
                   description: 会话 ID
+                matchContext:
+                  $ref: '#/components/schemas/MatchContext'
             example:
               message: 你是谁
               sessionID: session_test
@@ -100,6 +111,14 @@ paths:
               schema:
                 type: string
                 example: sess_20240118143022_abcd1234
+            X-Interaction-ID:
+              description: Stable interaction ID reused by idempotent retries
+              schema:
+                type: string
+        "409":
+          description: Idempotency conflict or active Session interaction
+        "429":
+          description: Conversation storage quota exhausted
         "400":
           description: 请求参数错误
           content:
@@ -261,8 +280,109 @@ paths:
                 timestamp: 1642512185
           headers: {}
       security: []
+  /ai/memories:
+    get:
+      summary: 当前用户的记忆列表
+      parameters:
+        - {name: cursor, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 128, default: 32}}
+      responses:
+        '200': {description: 'data 包含 generation、state_version、enabled、records 和 next_cursor'}
+    post:
+      summary: 显式确认创建记忆；相同身份和值重复保存幂等
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/MemoryWrite'}
+      responses:
+        '200': {description: 'data 返回当前记录及 version'}
+        '400': {description: 'MEMORY_INVALID'}
+        '404': {description: 'RESOURCE_NOT_ACCESSIBLE'}
+        '409': {description: 'MEMORY_VERSION_CONFLICT 或 MEMORY_DISABLED'}
+        '429': {description: 'RESOURCE_EXHAUSTED'}
+  /ai/memories/{memoryId}:
+    parameters:
+      - {name: memoryId, in: path, required: true, schema: {type: string}}
+    put:
+      summary: 按版本更新记忆；不会隐式创建已删除的记录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/MemoryWrite'}
+      responses:
+        '200': {description: 'data 返回当前记录及 version'}
+        '409': {description: 'MEMORY_VERSION_CONFLICT 或 MEMORY_DISABLED'}
+    delete:
+      summary: 删除单条记忆
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/MemoryMutation'}
+      responses:
+        '200': {description: '删除成功；规范聊天历史保留'}
+        '409': {description: 'MEMORY_VERSION_CONFLICT'}
+  /ai/memories/clear:
+    post:
+      summary: 原子清空当前用户记忆并递增 generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/MemoryMutation'}
+      responses:
+        '200': {description: 'data 返回新的 generation、state_version 和 enabled'}
+        '409': {description: 'MEMORY_VERSION_CONFLICT'}
+  /ai/memory-settings:
+    get:
+      summary: 获取当前用户的记忆状态及并发控制版本
+      responses:
+        '200': {description: 'data 包含 generation、state_version 和 enabled'}
+    put:
+      summary: 启用或禁用记忆；禁用保留记录但阻止注入和保存
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/MemoryMutation'}
+      responses:
+        '200': {description: 'data 返回新的状态及版本'}
+        '409': {description: 'MEMORY_VERSION_CONFLICT'}
 components:
-  schemas: {}
+  schemas:
+    MatchContext:
+      type: object
+      additionalProperties: false
+      properties:
+        projectRef: {type: string, maxLength: 128, description: 服务端目录中的稳定项目 ID}
+        taskType: {type: string, enum: [diagnosis, configuration, inspection]}
+    MemoryWrite:
+      type: object
+      additionalProperties: false
+      required: [generation, state_version, scope_type, memory_type, fact_key, value]
+      properties:
+        generation: {type: integer, minimum: 1}
+        state_version: {type: integer, minimum: 1}
+        version: {type: integer, minimum: 1, description: 更新时必填}
+        scope_type: {type: string, enum: [user]}
+        memory_type: {type: string, enum: [preference, task_context, diagnostic_constraint]}
+        fact_key: {type: string, enum: [response.language, response.style, project.background, diagnostic.priority, diagnostic.read_only]}
+        value: {type: string, minLength: 1, description: 默认最多 4096 UTF-8 字节；diagnostic.read_only 仅接受字符串 true}
+        applicability: {$ref: '#/components/schemas/MatchContext'}
+        source_session_id: {type: string, maxLength: 64, description: 可选且创建后不可变；必须属于当前用户}
+        expires_at: {type: string, format: date-time}
+    MemoryMutation:
+      type: object
+      additionalProperties: false
+      required: [generation, state_version]
+      properties:
+        generation: {type: integer, minimum: 1}
+        state_version: {type: integer, minimum: 1}
+        version: {type: integer, minimum: 1, description: 单条删除时必填}
+        enabled: {type: boolean, description: 仅设置接口接受，且必须提供}
   securitySchemes: {}
-servers: []
+servers:
+  - url: /api/v1
 security: []
