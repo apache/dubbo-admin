@@ -52,6 +52,11 @@ func NewPineconeIndexer(g *genkit.Genkit, embedderModel string, targetIndex stri
 }
 
 func (idx *PineconeIndexer) Store(ctx context.Context, docs []*schema.Document, opts ...indexer.Option) ([]string, error) {
+	prepared, err := prepareDocuments(docs)
+	if err != nil {
+		return nil, err
+	}
+	docs = prepared
 	// Handle options
 	implOpts := indexer.GetImplSpecificOptions(&CommonIndexerOptions{}, opts...)
 	namespace := implOpts.Namespace

@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": { "composite": false, "incremental": false },
+  "include": [
+    "env.d.ts",
+    "src/api/service/ai.ts",
+    "src/api/service/aiMemory.ts",
+    "src/components/AgentDrawer.vue",
+    "src/components/ai-chat/**/*.vue",
+    "src/components/ai-chat/types.ts",
+    "src/components/ai-memory/**/*.vue",
+    "src/components/ai-memory/model.ts",
+    "src/base/i18n/en.ts",
+    "src/base/i18n/zh.ts"
+  ],
+  "exclude": ["src/**/__tests__/*"]
+}

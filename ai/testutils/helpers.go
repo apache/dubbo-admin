@@ -57,6 +57,21 @@ func AssertNoError(t *testing.T, err error, msg string) {
 	}
 }
 
+// WaitFor polls a condition with a bounded wait, reporting its purpose on timeout.
+func WaitFor(t *testing.T, timeout time.Duration, description string, condition func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for {
+		if condition() {
+			return
+		}
+		if !time.Now().Before(deadline) {
+			t.Fatalf("timed out waiting for %s", description)
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+}
+
 // AssertError 辅助函数：断言有错误
 func AssertError(t *testing.T, err error, msg string) {
 	t.Helper()

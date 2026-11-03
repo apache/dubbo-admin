@@ -17,14 +17,10 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { aiService } from '../ai'
-import type { AIContextSnapshot } from '@/ai-context'
+import type { AIChatRequestContext } from '../aiMemory'
 
-const context: AIContextSnapshot = {
-  version: 1,
-  capturedAt: '2026-07-19T13:00:00.000Z',
-  global: { locale: 'cn' },
-  page: { path: '/home' },
-  scope: { mesh: 'nacos2.5' }
+const context: AIChatRequestContext = {
+  matchContext: { projectRef: 'project-a', taskType: 'diagnosis' }
 }
 
 describe('aiService.sendChatMessage', () => {
@@ -32,26 +28,27 @@ describe('aiService.sendChatMessage', () => {
     vi.unstubAllGlobals()
   })
 
-  it('sends the selected page context with the existing chat payload', async () => {
+  it('sends explicit matching at the top level accepted by strict chat decoding', async () => {
     const stream = new ReadableStream()
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, body: stream })
     vi.stubGlobal('fetch', fetchMock)
 
-    await aiService.sendChatMessage('hello', 'session-1', context)
+    await aiService.sendChatMessage('hello', 'session-1', context, 'request-1')
 
     const request = fetchMock.mock.calls[0][1] as RequestInit
+    expect(new Headers(request.headers).get('Idempotency-Key')).toBe('request-1')
     expect(JSON.parse(String(request.body))).toEqual({
       message: 'hello',
       sessionID: 'session-1',
-      context
+      matchContext: context.matchContext
     })
   })
 
-  it('omits context when page context is disabled', async () => {
+  it('omits matching when nothing is selected', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, body: new ReadableStream() })
     vi.stubGlobal('fetch', fetchMock)
 
-    await aiService.sendChatMessage('hello', 'session-1')
+    await aiService.sendChatMessage('hello', 'session-1', undefined, 'request-2')
 
     const request = fetchMock.mock.calls[0][1] as RequestInit
     expect(JSON.parse(String(request.body))).toEqual({
@@ -63,8 +60,14 @@ describe('aiService.sendChatMessage', () => {
   it('rejects successful responses without a stream body', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, body: null }))
 
+    await expect(
+      aiService.sendChatMessage('hello', 'session-1', undefined, 'request-3')
+    ).rejects.toThrow('AI service returned an empty response body')
+  })
+
+  it('requires the caller to own the logical request key', async () => {
     await expect(aiService.sendChatMessage('hello', 'session-1')).rejects.toThrow(
-      'AI service returned an empty response body'
+      'An idempotency key is required'
     )
   })
 })

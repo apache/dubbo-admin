@@ -20,6 +20,10 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 
+// The MVP browser fixture also serves Admin's token endpoints on 8880. Only the
+// e2e runner enables this proxy so normal development still reaches the console.
+const mvpBrowser = process.env.AI_MVP_BROWSER === '1'
+
 // https://vitejs.dev/config/
 export default defineConfig({
   base: '/admin',
@@ -34,6 +38,15 @@ export default defineConfig({
         target: 'http://localhost:8880',
         changeOrigin: true
       },
+      // MVP fixture 的 Admin 鉴权/签发端点(仅 e2e 运行器启用)
+      ...(mvpBrowser
+        ? {
+            '/api/v1/auth': {
+              target: 'http://localhost:8880',
+              changeOrigin: true
+            }
+          }
+        : {}),
       // 其他 API 请求
       '/api': {
         target: 'http://127.0.0.1:8888',

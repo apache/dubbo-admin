@@ -24,10 +24,40 @@ import (
 	"log/slog"
 	"sync"
 	"testing"
+	"time"
 
 	"dubbo-admin-ai/component/agent"
 	"dubbo-admin-ai/component/hooks"
+	"dubbo-admin-ai/schema"
+	"dubbo-admin-ai/security"
+	conversationstore "dubbo-admin-ai/store"
+	memorystore "dubbo-admin-ai/store/memory"
+	"dubbo-admin-ai/testutils"
 )
+
+func TestStoppingAgentReleasesPreparedInteraction(t *testing.T) {
+	store := memorystore.NewMemoryStore()
+	access := testutils.TestAccess()
+	now := time.Now()
+	session := &conversationstore.Session{ID: "stopping-agent-session", TenantID: access.Subject.TenantID, OwnerID: access.Subject.UserID, Version: 1, CreatedAt: now, UpdatedAt: now, Status: conversationstore.SessionStatusActive}
+	if err := store.Create(context.Background(), access, session); err != nil {
+		t.Fatal(err)
+	}
+	prepared, err := store.PrepareInteraction(context.Background(), access, session.ID, "request", "hash", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parent := security.WithAccessContext(context.Background(), access)
+	parent = conversationstore.WithPreparedInteraction(parent, prepared)
+	ra := &ReActAgent{messageStore: store, stopping: true}
+	channels := ra.Interact(parent, &schema.UserInput{Content: "hello"}, session.ID)
+	if err := <-channels.ErrorChan; err != ErrAgentStopping {
+		t.Fatalf("Interact() error = %v, want ErrAgentStopping", err)
+	}
+	if _, err := store.PrepareInteraction(context.Background(), access, session.ID, "request", "hash", time.Minute); err != nil {
+		t.Fatalf("PrepareInteraction() after rejection error = %v", err)
+	}
+}
 
 func TestRepeatedConcurrentInteractionsReleaseActiveEntries(t *testing.T) {
 	ra := &ReActAgent{}
