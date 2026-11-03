@@ -85,14 +85,13 @@ try {
     { AI_MVP_BROWSER: '1' }
   )
   await ready('http://127.0.0.1:8880/api/v1/ai/__test/login?user=alice', 204, backend)
-  const vite = start(process.execPath, [
-    'node_modules/vite/bin/vite.js',
-    '--host',
-    '127.0.0.1',
-    '--port',
-    '8881',
-    '--strictPort'
-  ])
+  const vite = start(
+    process.execPath,
+    ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '8881', '--strictPort'],
+    ui,
+    // Route /api/v1/auth to the fixture, which serves Admin's token endpoints.
+    { AI_MVP_BROWSER: '1' }
+  )
   await ready('http://127.0.0.1:8881/admin/e2e/mvp.html', 200, vite)
   const cypress = start(process.execPath, [
     'node_modules/cypress/bin/cypress',

@@ -44,6 +44,7 @@ function send(text: string) {
     .type('{enter}')
   return cy.wait('@chat', { timeout: 20000 }).then(({ request, response }) => {
     expect(response?.statusCode).to.equal(200)
+    expect(request.headers.authorization).to.match(/^Bearer /)
     expect(request.body).not.to.have.property('context')
     return cy
       .get('.ant-drawer textarea')
@@ -93,7 +94,11 @@ describe('MVP real HTTP and Provider user flows', () => {
       })
     control()
     cy.intercept('POST', `${api}/chat/stream`).as('chat')
+    cy.intercept('GET', `${api}/memory-options`).as('memoryOptions')
     cy.visit('/admin/e2e/mvp.html')
+    cy.wait('@memoryOptions')
+      .its('request.headers.authorization')
+      .should('match', /^Bearer /)
     cy.get(testID('chat-project')).should('not.have.class', 'ant-select-disabled')
   })
 

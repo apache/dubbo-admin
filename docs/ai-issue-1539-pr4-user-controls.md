@@ -76,8 +76,10 @@ Linux 无显示服务时安装 Cypress 所需的 Xvfb；已有桌面显示服务
 浏览器使用独立的 `e2e/mvp.html` 开发入口，实际挂载 AgentDrawer、Ant Design 和 i18n，
 不经过无关 Console 页面或生产路由。Go fixture 仅在测试二进制中、显式设置
 AI_MVP_BROWSER=1 时监听 loopback；登录、诊断、控制及停止接口不会进入生产构建。
-认证使用实际 JWT 校验器，fixture 模拟可信代理把仅用于测试的签名 cookie 转成 bearer。
-这验证凭证隔离逻辑，不代替生产 OIDC/代理部署的 G1 验收。
+认证使用实际 JWT 校验器；MVP 入口与 `main.ts` 一样先读取 `/auth/providers` 启用
+`accessTokenManager`，fixture 再按 Admin 同形接口由 `/auth/token` 签发 Bearer token，
+浏览器内的聊天与 Memory 请求不再依赖测试 cookie。这验证 token 发现、签发与校验链路，
+不代替生产 OIDC/代理部署的 G1 验收。
 
 浏览器不替换 Memory、聊天或 Provider 响应；cy.intercept 仅观察请求。使用真实 HTTP
 路由、Store、ReAct、Compiler、SDK 转换及本地可控 Provider，检查其收到的最终输入。

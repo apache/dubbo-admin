@@ -90,9 +90,26 @@ func TestMVPBrowserServer(t *testing.T) {
 	// never race mutable agent configuration or mutate an in-flight interaction.
 	var mu sync.Mutex
 	shutdown := make(chan struct{}, 1)
+	// Mirror Admin's token issuance: the same issuer, audience, subject and
+	// tenant that the real JWT verifier checks.
+	signAccessToken := func(user, tenant string) (string, error) {
+		token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{"iss": "mvp-fixture", "aud": "mvp-browser", "sub": user, "tenant_id": tenant, "iat": time.Now().Unix(), "exp": time.Now().Add(time.Hour).Unix()})
+		token.Header["kid"] = fixtureKeyID
+		return token.SignedString(key)
+	}
 	mux := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
+		// Admin's public auth configuration. The MVP entry runs the same
+		// discovery step as main.ts, enabling accessTokenManager.
+		if r.URL.Path == "/api/v1/auth/providers" {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"code": "Success", "message": "success",
+				"data": map[string]any{"methods": []string{}, "accessTokenEnabled": true, "providers": []any{}},
+			})
+			return
+		}
 		if r.URL.Path == "/api/v1/ai/__test/login" {
 			user, tenant := r.URL.Query().Get("user"), "browser"
 			if user != "alice" && user != "bob" && user != "tenant-alice" {
@@ -102,9 +119,7 @@ func TestMVPBrowserServer(t *testing.T) {
 			if user == "tenant-alice" {
 				user, tenant = "alice", "other-browser"
 			}
-			token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{"iss": "mvp-fixture", "aud": "mvp-browser", "sub": user, "tenant_id": tenant, "iat": time.Now().Unix(), "exp": time.Now().Add(time.Hour).Unix()})
-			token.Header["kid"] = fixtureKeyID
-			signed, err := token.SignedString(key)
+			signed, err := signAccessToken(user, tenant)
 			if err != nil {
 				http.Error(w, "fixture signing failed", http.StatusInternalServerError)
 				return
@@ -117,6 +132,26 @@ func TestMVPBrowserServer(t *testing.T) {
 			r.Header.Set("Authorization", "Bearer "+cookie.Value)
 		}
 		access, authErr := auth.Authenticate(r)
+		// Admin's token issuance. The browser authenticates with the fixture
+		// session cookie here; the AI service only ever verifies the Bearer
+		// token, so this exercises the production issuance path.
+		if r.URL.Path == "/api/v1/auth/token" && r.Method == http.MethodPost {
+			if authErr != nil {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			signed, err := signAccessToken(access.Subject.UserID, access.Subject.TenantID)
+			if err != nil {
+				http.Error(w, "fixture signing failed", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"code": "Success", "message": "success",
+				"data": map[string]string{"accessToken": signed},
+			})
+			return
+		}
 		if strings.HasPrefix(r.URL.Path, "/api/v1/ai/__test/") {
 			if authErr != nil {
 				http.Error(w, "unauthorized", 401)
