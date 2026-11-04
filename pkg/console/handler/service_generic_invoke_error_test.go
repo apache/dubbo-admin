@@ -18,9 +18,11 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -244,5 +246,51 @@ func TestWriteGenericInvokeErrorFallback(t *testing.T) {
 			"unexpected structured fields: %s",
 			recorder.Body.String(),
 		)
+	}
+}
+
+func TestWriteGenericInvokeErrorTypeCause(t *testing.T) {
+	tests := []struct {
+		name, expected, actual, cause string
+	}{
+		{"byte overflow", "byte", "number", "value 300 out of range"},
+		{"primitive null", "int", "null", "null is not allowed for primitive type int"},
+		{"invalid array element", "int[]", "array", "invalid array element at index 1: value 2147483648 out of range"},
+		{"float32 overflow", "float", "number", "value 1e+40 out of float32 range"},
+		{"nil cause", "int", "string", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fieldErr := &service.GenericInvokeArgumentError{
+				Kind: service.ArgumentErrorType, Field: "args[0]", Expected: tt.expected, Actual: tt.actual,
+			}
+			if tt.cause != "" {
+				fieldErr.Cause = errors.New(tt.cause)
+			}
+			recorder := httptest.NewRecorder()
+			ctx, _ := gin.CreateTestContext(recorder)
+			// Service wrappers can contain internal context; expose only the decoding cause.
+			writeGenericInvokeError(ctx, fmt.Errorf("internal service context: %w", fieldErr))
+			if recorder.Code != http.StatusOK {
+				t.Fatalf("unexpected HTTP status: %d", recorder.Code)
+			}
+			var response struct{ Code, Message, Field, Expected, Actual string }
+			if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+				t.Fatal(err)
+			}
+			want := "invalid argument type"
+			if tt.cause != "" {
+				want += ": " + tt.cause
+			}
+			if response.Message != want {
+				t.Errorf("want message %q, got %q", want, response.Message)
+			}
+			if response.Code != "InvalidArgument" || response.Field != "args[0]" || response.Expected != tt.expected || response.Actual != tt.actual {
+				t.Errorf("unexpected structured response: %+v", response)
+			}
+			if strings.Contains(recorder.Body.String(), "internal service context") {
+				t.Fatal("internal context leaked")
+			}
+		})
 	}
 }

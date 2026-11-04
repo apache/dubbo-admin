@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -273,6 +274,9 @@ func parseJSONStringRaw(raw json.RawMessage) (string, bool, error) {
 	return value, true, nil
 }
 
+// Accept decimal text (including scientific notation), excluding Go literal syntax.
+var genericInvokeDecimalPattern = regexp.MustCompile(`^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$`)
+
 func parseInt64Text(text string) (int64, error) {
 	text = strings.TrimSpace(text)
 	if text == "" {
@@ -286,6 +290,9 @@ func parseInt64Text(text string) (int64, error) {
 	)
 	if len(text) > maxNumericTextLen {
 		return 0, fmt.Errorf("integer value is too long")
+	}
+	if !genericInvokeDecimalPattern.MatchString(text) {
+		return 0, fmt.Errorf("invalid integer value %q", text)
 	}
 	if !strings.ContainsAny(text, ".eE") {
 		return strconv.ParseInt(text, 10, 64)

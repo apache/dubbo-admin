@@ -52,6 +52,10 @@ func writeGenericInvokeError(c *gin.Context, err error) {
 	switch fieldErr.Kind {
 	case service.ArgumentErrorType:
 		message = "invalid argument type"
+		if fieldErr.Cause != nil {
+			// Type causes come from local argument decoding, not RPC or service errors.
+			message += ": " + fieldErr.Cause.Error()
+		}
 
 	case service.ArgumentErrorCount:
 		message = "invalid argument count"

@@ -290,3 +290,50 @@ func TestDecodeGenericInvokeArgsRejectsExcessiveExponent(t *testing.T) {
 		})
 	}
 }
+
+func TestParseInt64TextDecimalSyntax(t *testing.T) {
+	for _, input := range []string{"0x1.8p1", "1_0.0", "0x1.0p9999999", "0x0.0p9999999", "0X1.8P1", "1.0p2", "1/1", "1e", "1e+", "1e1e1", ".", "+"} {
+		t.Run(input, func(t *testing.T) {
+			if got, err := parseInt64Text(input); err == nil {
+				t.Fatalf("expected decimal syntax error for %q, got %d", input, got)
+			}
+		})
+	}
+	for _, tt := range []struct {
+		input string
+		want  int64
+	}{
+		{"1E3", 1000}, {"+1.5e+1", 15}, {"9223372036854775807.0", 9223372036854775807},
+		{"-9223372036854775808.0", -9223372036854775808}, {"10e-1", 1}, {"0e64", 0}, {"0e-64", 0},
+		{"1.", 1}, {".0", 0}, {" +001.0 ", 1},
+	} {
+		t.Run(tt.input, func(t *testing.T) {
+			got, err := parseInt64Text(tt.input)
+			if err != nil || got != tt.want {
+				t.Fatalf("want %d, got %d, err %v", tt.want, got, err)
+			}
+		})
+	}
+}
+
+func TestDecodeGenericInvokeArgsRejectsNonDecimalSyntax(t *testing.T) {
+	for _, input := range []string{"0x1.8p1", "1_0.0", "0x1.0p9999999", "0x0.0p9999999"} {
+		t.Run(input, func(t *testing.T) {
+			raw, err := json.Marshal(input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := decodeGenericInvokeArgs([]string{"long"}, []json.RawMessage{raw})
+			if err == nil {
+				t.Fatalf("expected decoding error, got %v", got)
+			}
+			var fieldErr *GenericInvokeArgumentError
+			if !errors.As(err, &fieldErr) {
+				t.Fatalf("expected structured error, got %v", err)
+			}
+			if got != nil || fieldErr.Kind != ArgumentErrorType || fieldErr.Field != "args[0]" || fieldErr.Expected != "long" || fieldErr.Actual != "string" || fieldErr.Cause == nil {
+				t.Fatalf("unexpected result %v or structured error: %+v", got, fieldErr)
+			}
+		})
+	}
+}
