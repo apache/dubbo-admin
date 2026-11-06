@@ -179,7 +179,7 @@ func randomBase64URL(size int) (string, error) {
 	return base64.RawURLEncoding.EncodeToString(raw), nil
 }
 
-// TODO: can move it to a seperated file?
+// TODO: can move it to a separated file?
 type storedOAuthTransaction struct {
 	transaction OAuthTransaction
 	expiresAt   time.Time
