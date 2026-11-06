@@ -34,13 +34,13 @@ type Hook func(context.Context, State) context.Context
 
 // Registration declares which events and tools a Hook observes.
 type Registration struct {
-	Events         []Event
-	Tools          []string
-	// CaptureContent opts into payload capture. When true, State.Input and
-	// State.Output are materialized eagerly before the hook is called.
+	Events []Event
+	Tools  []string
+	// CaptureContent opts into a sanitized payload snapshot. When true,
+	// State.Input and State.Output are materialized before the hook is called.
 	// Built-in hooks may use the unexported lazyContent field to defer
 	// serialization until a recording span or structured log is emitted;
-	// external hooks always receive eagerly-snapshotted content.
+	// external hooks always receive eagerly-snapshotted, sanitized content.
 	CaptureContent bool
 	// DerivesContext grants this hook sole ownership of context propagation.
 	// A Manager rejects a second registration with this capability and requires
@@ -225,7 +225,7 @@ func (m *Manager) invoke(ctx context.Context, state State, hook Hook) (next cont
 	next = ctx
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			m.logger.Error("Agent hook panicked", "event", state.Event, "error", recovered)
+			m.logger.Error("Agent hook panicked", "event", state.Event, "panic_recovered", true)
 		}
 	}()
 	if derived := hook(ctx, state); derived != nil {
