@@ -38,6 +38,21 @@ func TestConcreteIndexerRejectsSensitiveDocumentBeforeBackendAccess(t *testing.T
 	}
 }
 
+func TestConcreteIndexerRejectsCookieListsAndSingleQuotedYAMLCredentials(t *testing.T) {
+	for _, content := range []string{
+		"Cookie: theme=dark; JSESSIONID=index-cookie-secret",
+		`'password': 'index-yaml-secret'`,
+	} {
+		indexer := NewLocalIndexer(nil, "missing", "default", 1)
+		_, err := indexer.Store(context.Background(), []*schema.Document{{
+			ID: "doc", Content: content,
+		}})
+		if !errors.Is(err, security.ErrSensitiveDerivedData) {
+			t.Fatalf("Store() error = %v for %q, want ErrSensitiveDerivedData", err, content)
+		}
+	}
+}
+
 func TestConcreteIndexerRejectsSensitiveDocumentIDWithoutEchoingIt(t *testing.T) {
 	secretID := "token=do-not-echo"
 	indexer := NewLocalIndexer(nil, "missing", "default", 1)

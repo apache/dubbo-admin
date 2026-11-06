@@ -62,6 +62,28 @@ func TestModelInputViewSanitizesJSONText(t *testing.T) {
 	}
 }
 
+func TestModelInputViewRedactsCookieListsAndSingleQuotedYAML(t *testing.T) {
+	const secret = "review-boundary-secret"
+	inputs := []string{
+		"Cookie: theme=dark; JSESSIONID=" + secret,
+		`'password': '` + secret + `'`,
+	}
+	for _, input := range inputs {
+		canonical := ai.NewMessage(ai.RoleUser, nil, ai.NewTextPart(input))
+
+		view, err := modelInputView([]*ai.Message{canonical})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(view[0].Content[0].Text, secret) {
+			t.Fatalf("model view leaked credential: %q", view[0].Content[0].Text)
+		}
+		if canonical.Content[0].Text != input {
+			t.Fatalf("canonical message was changed: %q", canonical.Content[0].Text)
+		}
+	}
+}
+
 func TestModelInputViewRedactsEscapedCredentialValues(t *testing.T) {
 	const suffix = "review-suffix-secret"
 	tests := []struct {

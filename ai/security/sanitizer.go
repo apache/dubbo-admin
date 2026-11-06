@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	SanitizerRuleVersion = "2026-10-10.v1"
+	SanitizerRuleVersion = "2026-11-04.v1"
 	redactedValue        = "[REDACTED]"
 	maxStructuredBytes   = 1 << 20
 	maxStructuredDepth   = 32
@@ -50,8 +50,16 @@ var (
 	authorizationPattern        = regexp.MustCompile(`(?i)\b(?:bearer|basic)\s+[A-Za-z0-9._~+/=-]+`)
 	jwtPattern                  = regexp.MustCompile(`\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\b`)
 	apiKeyPattern               = regexp.MustCompile(`\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9]{16,}|AIza[A-Za-z0-9_-]{20,}|xox[baprs]-[A-Za-z0-9-]{16,})\b`)
-	credentialAssignmentPattern = regexp.MustCompile(`(?i)\b(authorization|proxy[-_]?authorization|cookie|set[-_]?cookie|token|access[-_]?token|refresh[-_]?token|api[-_]?key|apikey|password|passwd|secret|client[-_]?secret|client[-_]?key[-_]?data|client[-_]?certificate[-_]?data)\b(\s*"?\s*(?::|=|%3[dD])\s*)(?:"(?:[^"\\\r\n]|\\.)*"|'(?:[^'\\\r\n]|\\.)*'|[^\s,;&\r\n]+)`)
-	encodedCandidatePattern     = regexp.MustCompile(`\b[A-Za-z0-9+/_-]{20,1000}={0,2}\b`)
+	credentialAssignmentPattern = regexp.MustCompile(`(?i)\b(authorization|proxy[-_]?authorization|token|access[-_]?token|refresh[-_]?token|api[-_]?key|apikey|password|passwd|secret|client[-_]?secret|client[-_]?key[-_]?data|client[-_]?certificate[-_]?data)\b(\s*["']?\s*(?::|=|%3[dD])\s*)(?:"(?:[^"\\\r\n]|\\.)*"|'(?:[^'\\\r\n]|\\.)*'|[^\s,;&\r\n]+)`)
+	// Cookie headers carry a semicolon-delimited cookie list, so the value must
+	// run to the end of the line; stopping at ';' would leave later cookies
+	// (for example JSESSIONID) exposed.
+	cookieHeaderPattern = regexp.MustCompile(`(?i)\b(set[-_]?cookie|cookie)\b(\s*["']?\s*:\s*)(?:"(?:[^"\\\r\n]|\\.)*"|'(?:[^'\\\r\n]|\\.)*'|[^\r\n]*)`)
+	// cookie=... / cookie%3D... forms have no header line boundary, so redact
+	// through the rest of the cookie list while preserving other query
+	// parameters separated by '&'.
+	cookieAssignmentPattern = regexp.MustCompile(`(?i)\b(set[-_]?cookie|cookie)\b(\s*["']?\s*(?:=|%3[dD])\s*)(?:"(?:[^"\\\r\n]|\\.)*"|'(?:[^'\\\r\n]|\\.)*'|[^&\r\n]*)`)
+	encodedCandidatePattern = regexp.MustCompile(`\b[A-Za-z0-9+/_-]{20,1000}={0,2}\b`)
 )
 
 // Finding describes a match without retaining the matched secret.
@@ -228,13 +236,9 @@ func (s *Sanitizer) sanitizeText(value, path string, inspectEncoded bool) (strin
 		}
 		return kind[0] + " " + redactedValue
 	})
-	clean, findings = replaceMatches(clean, credentialAssignmentPattern, RuleCredentialAssignment, path, findings, func(match string) string {
-		parts := credentialAssignmentPattern.FindStringSubmatch(match)
-		if len(parts) < 3 {
-			return redactedValue
-		}
-		return parts[1] + parts[2] + quotedRedactedValue(parts[2])
-	})
+	clean, findings = replaceMatches(clean, cookieHeaderPattern, RuleCredentialAssignment, path, findings, redactCredentialValue(cookieHeaderPattern))
+	clean, findings = replaceMatches(clean, cookieAssignmentPattern, RuleCredentialAssignment, path, findings, redactCredentialValue(cookieAssignmentPattern))
+	clean, findings = replaceMatches(clean, credentialAssignmentPattern, RuleCredentialAssignment, path, findings, redactCredentialValue(credentialAssignmentPattern))
 	clean, findings = replaceMatches(clean, jwtPattern, RuleJWT, path, findings, func(string) string { return redactedValue })
 	clean, findings = replaceMatches(clean, apiKeyPattern, RuleAPIKey, path, findings, func(string) string { return redactedValue })
 	if inspectEncoded {
@@ -295,11 +299,23 @@ func redactOversizedEncodedCandidates(value, path string, findings []Finding) (s
 	return builder.String(), findings
 }
 
-func quotedRedactedValue(separator string) string {
+func redactCredentialValue(pattern *regexp.Regexp) func(string) string {
+	return func(match string) string {
+		parts := pattern.FindStringSubmatch(match)
+		if len(parts) < 3 {
+			return redactedValue
+		}
+		return parts[1] + parts[2] + quotedRedactedValue(match[len(parts[1])+len(parts[2]):])
+	}
+}
+
+// quotedRedactedValue preserves the quoting of the value itself, not the key,
+// so single-quoted YAML keys do not change the value's scalar style.
+func quotedRedactedValue(value string) string {
 	switch {
-	case strings.Contains(separator, `"`):
+	case strings.HasPrefix(value, `"`):
 		return `"` + redactedValue + `"`
-	case strings.Contains(separator, `'`):
+	case strings.HasPrefix(value, `'`):
 		return `'` + redactedValue + `'`
 	default:
 		return redactedValue
