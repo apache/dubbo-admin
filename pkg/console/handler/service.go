@@ -18,10 +18,12 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/service"
@@ -132,6 +134,12 @@ func ServiceGenericInvoke(ctx consolectx.Context) gin.HandlerFunc {
 		}
 
 		if err := req.Validate(); err != nil {
+			var modeErr *model.GenericModeError
+			if errors.As(err, &modeErr) {
+				c.JSON(http.StatusOK, model.NewBizErrorResp(bizerror.New(bizerror.InvalidArgument, err.Error())).
+					WithData(gin.H{"field": "generic"}))
+				return
+			}
 			util.HandleArgumentError(c, err)
 			return
 		}
