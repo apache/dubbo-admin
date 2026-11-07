@@ -46,6 +46,7 @@ import (
 const genericInvokeInstanceName = "dubbo-admin-generic-invoke"
 
 type genericInvocation struct {
+	Generic        string
 	URL            string
 	Protocol       string
 	Serialization  string
@@ -64,11 +65,12 @@ type genericInvokeTarget struct {
 	serialization string
 }
 
-var invokeGenericServiceRPC = func(callCtx context.Context, invocation genericInvocation) (any, error) {
+// The boolean reports whether the request reached SDK Invoke or CallUnary.
+var invokeGenericServiceRPC = func(callCtx context.Context, invocation genericInvocation) (any, bool, error) {
 	// TODO: Cache generic invoke clients to avoid recreating the Dubbo instance/client on every call.
 	ins, err := dubbo.NewInstance(dubbo.WithName(genericInvokeInstanceName))
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	clientOpts := []client.ClientOption{
@@ -80,27 +82,52 @@ var invokeGenericServiceRPC = func(callCtx context.Context, invocation genericIn
 	case dubboconstant.DubboProtocol:
 		clientOpts = append(clientOpts, client.WithClientProtocolDubbo())
 	default:
-		return nil, fmt.Errorf("unsupported invoke protocol %s", invocation.Protocol)
+		return nil, false, fmt.Errorf("unsupported invoke protocol %s", invocation.Protocol)
 	}
 
 	cli, err := ins.NewClient(clientOpts...)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	svc, err := cli.NewGenericService(
-		invocation.ServiceName,
+	attachments := make(map[string]any)
+	if values, ok := callCtx.Value(dubboconstant.AttachmentKey).(map[string]any); ok {
+		for key, value := range values {
+			attachments[key] = value
+		}
+	}
+	// The request mode is authoritative, including for non-generic and legacy calls.
+	attachments[dubboconstant.GenericKey] = invocation.Generic
+	callCtx = context.WithValue(callCtx, dubboconstant.AttachmentKey, attachments)
+	referenceOpts := []client.ReferenceOption{
 		client.WithURL(invocation.URL),
 		client.WithVersion(invocation.Version),
 		client.WithGroup(invocation.Group),
 		client.WithProtocol(invocation.Protocol),
 		client.WithSerialization(invocation.Serialization),
-	)
+		client.WithGenericType(invocation.Generic),
+		client.WithIDL(dubboconstant.NONIDL),
+	}
+	if invocation.Generic == "false" {
+		conn, err := cli.Dial(invocation.ServiceName, referenceOpts...)
+		if err != nil {
+			return nil, false, err
+		}
+		args := make([]any, len(invocation.Args))
+		for i, arg := range invocation.Args {
+			args[i] = arg
+		}
+		var reply any
+		err = conn.CallUnary(callCtx, args, &reply, invocation.MethodName)
+		return reply, true, err
+	}
+	svc, err := cli.NewGenericService(invocation.ServiceName, referenceOpts...)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	return svc.Invoke(callCtx, invocation.MethodName, invocation.ParameterTypes, invocation.Args)
+	result, err := svc.Invoke(callCtx, invocation.MethodName, invocation.ParameterTypes, invocation.Args)
+	return result, true, err
 }
 
 func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvokeReq) (*model.ServiceGenericInvokeResp, error) {
@@ -165,7 +192,8 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 	}
 
 	startedAt := time.Now()
-	result, err := invokeGenericServiceWithTargets(callCtx, req, targets, genericInvocation{
+	resp, err := invokeGenericServiceWithTargets(callCtx, req, targets, genericInvocation{
+		Generic:        req.Generic,
 		ServiceName:    req.ServiceName,
 		Group:          req.Group,
 		Version:        req.Version,
@@ -173,17 +201,14 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 		ParameterTypes: parameterTypes,
 		Args:           hessianArgs,
 	})
-	elapsedMs := time.Since(startedAt).Milliseconds()
+	resp.ElapsedMs = time.Since(startedAt).Milliseconds()
 	if err != nil {
-		logger.Errorf("generic invoke failed, service=%s, method=%s, instance=%s, cause: %v",
-			req.ServiceName, req.MethodName, req.InstanceName, err)
-		return nil, bizerror.New(bizerror.InternalError, "generic invoke failed, please check server logs")
+		logger.Errorf("service invoke failed, service=%s, method=%s, instance=%s, generic=%s, cause: %v",
+			req.ServiceName, req.MethodName, req.InstanceName, req.Generic, err)
+		return resp, bizerror.New(bizerror.InternalError, "invoke failed, please check server logs")
 	}
 
-	return &model.ServiceGenericInvokeResp{
-		ElapsedMs: elapsedMs,
-		RawResult: normalizeJSONValue(reflect.ValueOf(result)),
-	}, nil
+	return resp, nil
 }
 
 func normalizeJSONValue(value reflect.Value) any {
@@ -350,11 +375,12 @@ func invokeGenericServiceWithTargets(
 	req model.ServiceGenericInvokeReq,
 	targets []*genericInvokeTarget,
 	invocation genericInvocation,
-) (any, error) {
+) (*model.ServiceGenericInvokeResp, error) {
+	resp := &model.ServiceGenericInvokeResp{Generic: invocation.Generic}
 	var lastErr error
 	for index, target := range targets {
 		if callCtx.Err() != nil {
-			return nil, callCtx.Err()
+			return resp, callCtx.Err()
 		}
 
 		// Copy the base invocation so each attempt can override transport-specific fields safely.
@@ -363,17 +389,24 @@ func invokeGenericServiceWithTargets(
 		attemptInvocation.Serialization = target.serialization
 		attemptInvocation.URL = fmt.Sprintf("%s://%s:%d", target.protocol, target.instance.Spec.GetIp(), target.port)
 
-		result, err := invokeGenericServiceRPC(callCtx, attemptInvocation)
+		result, invoked, err := invokeGenericServiceRPC(callCtx, attemptInvocation)
+		// Client setup failures have no actual invocation transport to report.
+		if invoked {
+			resp.Protocol = target.protocol
+			resp.Serialization = target.serialization
+		}
 		if err == nil {
-			return result, nil
+			resp.RawResult = normalizeJSONValue(reflect.ValueOf(result))
+			return resp, nil
 		}
 
 		lastErr = err
 		logger.Warnf(
-			"generic invoke attempt failed, service=%s, method=%s, instance=%s, target=%s, protocol=%s, serialization=%s, attempt=%d/%d, cause: %v",
+			"service invoke attempt failed, service=%s, method=%s, instance=%s, generic=%s, target=%s, protocol=%s, serialization=%s, attempt=%d/%d, cause: %v",
 			req.ServiceName,
 			req.MethodName,
 			req.InstanceName,
+			attemptInvocation.Generic,
 			attemptInvocation.URL,
 			target.protocol,
 			target.serialization,
@@ -382,11 +415,11 @@ func invokeGenericServiceWithTargets(
 			err,
 		)
 		if !isRetryableGenericInvokeError(err) {
-			return nil, err
+			return resp, err
 		}
 	}
 
-	return nil, lastErr
+	return resp, lastErr
 }
 
 func isRetryableGenericInvokeError(err error) bool {

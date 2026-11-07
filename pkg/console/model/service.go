@@ -173,18 +173,37 @@ type ServiceMethodTypeResp struct {
 
 const DefaultServiceGenericInvokeTimeoutMs int64 = 3000
 
+type GenericModeError struct {
+	Value string
+}
+
+func (e *GenericModeError) Error() string {
+	return fmt.Sprintf("unsupported generic mode %q", e.Value)
+}
+
 type ServiceGenericInvokeReq struct {
 	BaseServiceReq
 
 	InstanceName string            `json:"instanceName"`
 	MethodName   string            `json:"methodName"`
 	Signature    string            `json:"signature"`
+	Generic      string            `json:"generic"`
 	Args         []json.RawMessage `json:"args"`
 	TimeoutMs    int64             `json:"timeoutMs"`
 	Attachments  map[string]string `json:"attachments"`
 }
 
 func (s *ServiceGenericInvokeReq) Validate() error {
+	s.Generic = strings.ToLower(strings.TrimSpace(s.Generic))
+	switch s.Generic {
+	case "":
+		s.Generic = "true"
+	case "true", "false", "gson", "bean", "protobuf-json", "protobuf":
+		// Keep legacy protobuf inputs compatible with the SDK.
+	default:
+		return &GenericModeError{Value: s.Generic}
+	}
+
 	s.Mesh = strings.TrimSpace(s.Mesh)
 	if strutil.IsBlank(s.Mesh) {
 		return fmt.Errorf("mesh is empty")
@@ -221,6 +240,10 @@ func (s *ServiceGenericInvokeReq) Validate() error {
 }
 
 type ServiceGenericInvokeResp struct {
+	Generic       string `json:"generic"`
+	Protocol      string `json:"protocol,omitempty"`
+	Serialization string `json:"serialization,omitempty"`
+
 	ElapsedMs int64 `json:"elapsedMs"`
 	RawResult any   `json:"rawResult"`
 }
