@@ -240,6 +240,10 @@ func (s *ServiceGenericInvokeReq) Validate() error {
 }
 
 type ServiceGenericInvokeResp struct {
+	Generic       string `json:"generic"`
+	Protocol      string `json:"protocol,omitempty"`
+	Serialization string `json:"serialization,omitempty"`
+
 	ElapsedMs int64 `json:"elapsedMs"`
 	RawResult any   `json:"rawResult"`
 }

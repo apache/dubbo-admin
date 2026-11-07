@@ -146,7 +146,14 @@ func ServiceGenericInvoke(ctx consolectx.Context) gin.HandlerFunc {
 
 		resp, err := service.InvokeServiceGeneric(ctx, req)
 		if err != nil {
-			util.HandleServiceError(c, err)
+			var bizErr bizerror.Error
+			if !errors.As(err, &bizErr) {
+				bizErr = bizerror.New(bizerror.UnknownError, err.Error())
+			}
+			if resp == nil {
+				resp = &model.ServiceGenericInvokeResp{Generic: req.Generic}
+			}
+			c.JSON(http.StatusOK, model.NewBizErrorResp(bizErr).WithData(resp))
 			return
 		}
 
