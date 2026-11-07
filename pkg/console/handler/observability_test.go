@@ -107,7 +107,7 @@ func TestObservabilityInstanceDashboardDispatch(t *testing.T) {
 		kind   DashboardType
 		wantIP string
 	}{
-		{MetricDashboard, "10.42.1.10:22222"},
+		{MetricDashboard, "10.42.1.10"},
 		{TraceDashboard, "10.42.1.10"},
 		{LogDashboard, "10.42.1.10"},
 	} {
