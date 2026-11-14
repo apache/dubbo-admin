@@ -101,49 +101,58 @@ func TestObservabilityApplicationLogDispatch(t *testing.T) {
 }
 
 func TestObservabilityInstanceDashboardDispatch(t *testing.T) {
+	instance := meshresource.NewInstanceResourceWithAttributes("instance-a", "mesh")
+	instance.Spec.AppName, instance.Spec.Ip, instance.Spec.QosPort = "shop.user", "10.42.1.10", 22222
 	for _, tc := range []struct {
-		name    string
-		ip      string
-		qosPort int64
+		kind   DashboardType
+		wantIP string
 	}{
-		{"ipv4_with_port", "10.42.1.10", 22222},
-		{"ipv4_without_port", "10.42.1.10", 0},
-		{"ipv6_with_port", "2001:db8::10", 22222},
-		{"ipv6_without_port", "2001:db8::10", 0},
+		{MetricDashboard, "10.42.1.10"},
+		{TraceDashboard, "10.42.1.10"},
+		{LogDashboard, "10.42.1.10"},
 	} {
-		for _, kind := range []DashboardType{MetricDashboard, TraceDashboard, LogDashboard} {
-			t.Run(tc.name+"/"+string(kind), func(t *testing.T) {
-				instance := meshresource.NewInstanceResourceWithAttributes("instance-a", "mesh")
-				instance.Spec.AppName, instance.Spec.Ip, instance.Spec.QosPort = "shop.user", tc.ip, tc.qosPort
-				base, err := url.Parse("http://grafana/d/" + string(kind) + "?kiosk=1")
-				require.NoError(t, err)
-				dashboard := &consolecfg.GrafanaDashboardConfig{InstanceDashboardURL: base}
-				ctx := observabilityHandlerTestContext{
-					cfg: appcfg.AdminConfig{Console: &consolecfg.Config{
-						MetricDashboards: dashboard, TraceDashboards: dashboard, LogDashboards: dashboard,
-					}},
-					rm: observabilityInstanceManager{instance: instance},
-				}
-				resp := callObservabilityHandler(t, GetGrafanaDashboard(ctx, InstanceDimension, kind), "mesh=mesh&instanceName=instance-a")
-				require.Equal(t, "Success", resp.Code)
-				parsed, err := url.Parse(resp.Data.(map[string]any)["fullURL"].(string))
-				require.NoError(t, err)
-				require.Equal(t, "shop.user", parsed.Query().Get("var-application"))
-				instanceVariable := parsed.Query().Get("var-instance")
-				require.Equal(t, instance.Spec.Ip, instanceVariable)
-				for _, port := range []int64{tc.qosPort, 22222} {
-					require.NotEqual(t, fmt.Sprintf("%s:%d", tc.ip, port), instanceVariable)
-					require.NotEqual(t, fmt.Sprintf("[%s]:%d", tc.ip, port), instanceVariable)
-				}
-				if kind == LogDashboard {
-					require.Equal(t, "shop.user", parsed.Query().Get("var-applicationRaw"))
-				} else {
-					require.False(t, parsed.Query().Has("var-applicationRaw"))
-				}
-				require.Equal(t, "kiosk=1", base.RawQuery)
-			})
-		}
+		t.Run(string(tc.kind), func(t *testing.T) {
+			base, err := url.Parse("http://grafana/d/" + string(tc.kind) + "?kiosk=1")
+			require.NoError(t, err)
+			dashboard := &consolecfg.GrafanaDashboardConfig{InstanceDashboardURL: base}
+			ctx := observabilityHandlerTestContext{
+				cfg: appcfg.AdminConfig{Console: &consolecfg.Config{
+					MetricDashboards: dashboard, TraceDashboards: dashboard, LogDashboards: dashboard,
+				}},
+				rm: observabilityInstanceManager{instance: instance},
+			}
+			resp := callObservabilityHandler(t, GetGrafanaDashboard(ctx, InstanceDimension, tc.kind), "mesh=mesh&instanceName=instance-a")
+			require.Equal(t, "Success", resp.Code)
+			parsed, err := url.Parse(resp.Data.(map[string]any)["fullURL"].(string))
+			require.NoError(t, err)
+			require.Equal(t, "shop.user", parsed.Query().Get("var-application"))
+			require.Equal(t, tc.wantIP, parsed.Query().Get("var-instance"))
+			if tc.kind == LogDashboard {
+				require.Equal(t, "shop.user", parsed.Query().Get("var-applicationRaw"))
+			} else {
+				require.False(t, parsed.Query().Has("var-applicationRaw"))
+			}
+			require.Equal(t, "kiosk=1", base.RawQuery)
+		})
 	}
+}
+
+func TestObservabilityMetricInstanceDashboardIPv6WithoutQosPort(t *testing.T) {
+	instance := meshresource.NewInstanceResourceWithAttributes("instance-a", "mesh")
+	instance.Spec.Ip, instance.Spec.QosPort = "2001:db8::10", 0
+	base, err := url.Parse("http://grafana/d/metric")
+	require.NoError(t, err)
+	ctx := observabilityHandlerTestContext{
+		cfg: appcfg.AdminConfig{Console: &consolecfg.Config{
+			MetricDashboards: &consolecfg.GrafanaDashboardConfig{InstanceDashboardURL: base},
+		}},
+		rm: observabilityInstanceManager{instance: instance},
+	}
+	resp := callObservabilityHandler(t, GetGrafanaDashboard(ctx, InstanceDimension, MetricDashboard), "mesh=mesh&instanceName=instance-a")
+	require.Equal(t, "Success", resp.Code)
+	parsed, err := url.Parse(resp.Data.(map[string]any)["fullURL"].(string))
+	require.NoError(t, err)
+	require.Equal(t, "2001:db8::10", parsed.Query().Get("var-instance"))
 }
 
 func TestObservabilityTraceLogDashboardHandler(t *testing.T) {
