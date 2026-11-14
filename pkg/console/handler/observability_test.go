@@ -107,7 +107,7 @@ func TestObservabilityInstanceDashboardDispatch(t *testing.T) {
 		kind   DashboardType
 		wantIP string
 	}{
-		{MetricDashboard, "10.42.1.10:22222"},
+		{MetricDashboard, "10.42.1.10"},
 		{TraceDashboard, "10.42.1.10"},
 		{LogDashboard, "10.42.1.10"},
 	} {
@@ -135,6 +135,24 @@ func TestObservabilityInstanceDashboardDispatch(t *testing.T) {
 			require.Equal(t, "kiosk=1", base.RawQuery)
 		})
 	}
+}
+
+func TestObservabilityMetricInstanceDashboardIPv6WithoutQosPort(t *testing.T) {
+	instance := meshresource.NewInstanceResourceWithAttributes("instance-a", "mesh")
+	instance.Spec.Ip, instance.Spec.QosPort = "2001:db8::10", 0
+	base, err := url.Parse("http://grafana/d/metric")
+	require.NoError(t, err)
+	ctx := observabilityHandlerTestContext{
+		cfg: appcfg.AdminConfig{Console: &consolecfg.Config{
+			MetricDashboards: &consolecfg.GrafanaDashboardConfig{InstanceDashboardURL: base},
+		}},
+		rm: observabilityInstanceManager{instance: instance},
+	}
+	resp := callObservabilityHandler(t, GetGrafanaDashboard(ctx, InstanceDimension, MetricDashboard), "mesh=mesh&instanceName=instance-a")
+	require.Equal(t, "Success", resp.Code)
+	parsed, err := url.Parse(resp.Data.(map[string]any)["fullURL"].(string))
+	require.NoError(t, err)
+	require.Equal(t, "2001:db8::10", parsed.Query().Get("var-instance"))
 }
 
 func TestObservabilityTraceLogDashboardHandler(t *testing.T) {
