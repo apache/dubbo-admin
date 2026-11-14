@@ -74,7 +74,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func idlTestCatalog(t *testing.T, port int64) (*testContext, model.ServiceGenericInvokeReq) {
+func idlCatalog(t *testing.T, port int64, provider *meshresource.ServiceProviderMetadataResource) *testContext {
 	t.Helper()
 	stores := map[coremodel.ResourceKind]store.ResourceStore{}
 	for _, kind := range []coremodel.ResourceKind{meshresource.InstanceKind, meshresource.RPCInstanceKind, meshresource.ServiceProviderMetadataKind} {
@@ -92,14 +92,19 @@ func idlTestCatalog(t *testing.T, port int64) (*testContext, model.ServiceGeneri
 	rpc.Spec.Ip = "127.0.0.1"
 	rpc.Spec.Endpoints = []*meshproto.Endpoint{{Protocol: "tri", Port: port}}
 	require.NoError(t, stores[meshresource.RPCInstanceKind].Add(rpc))
+	require.NoError(t, stores[meshresource.ServiceProviderMetadataKind].Add(provider))
+	return &testContext{rm: manager.NewResourceManager(&testRouter{stores: stores}, nil), stores: stores}
+}
+
+func idlTestCatalog(t *testing.T, port int64) (*testContext, model.ServiceGenericInvokeReq) {
+	t.Helper()
 	provider := meshresource.NewServiceProviderMetadataResourceWithAttributes("provider", "mesh")
 	provider.Spec.ServiceName = "grpc.health.v1.Health"
 	provider.Spec.ProviderAppName = "app"
 	provider.Spec.Parameters = map[string]string{"IDL-mode": "IDL"}
 	provider.Spec.Methods = []*meshproto.Method{{Name: "Check", ParameterTypes: []string{"grpc.health.v1.HealthCheckRequest"}, ReturnType: "grpc.health.v1.HealthCheckResponse"}}
-	require.NoError(t, stores[meshresource.ServiceProviderMetadataKind].Add(provider))
 	req := model.ServiceGenericInvokeReq{BaseServiceReq: model.BaseServiceReq{Mesh: "mesh", ServiceName: "grpc.health.v1.Health"}, InstanceName: "instance", MethodName: "Check", Signature: "grpc.health.v1.HealthCheckRequest->grpc.health.v1.HealthCheckResponse", Args: []json.RawMessage{json.RawMessage(`{}`)}, TimeoutMs: 3000}
-	return &testContext{rm: manager.NewResourceManager(&testRouter{stores: stores}, nil), stores: stores}, req
+	return idlCatalog(t, port, provider), req
 }
 
 func TestIDLUnaryCatalogInvoke(t *testing.T) {
@@ -171,10 +176,6 @@ func idlFixtureServer(t *testing.T, version string) int64 {
 
 func idlFixtureCatalog(t *testing.T, port int64) (*testContext, model.ServiceGenericInvokeReq) {
 	t.Helper()
-	ctx, req := idlTestCatalog(t, port)
-	old, err := listProviderMeta(ctx, req.BaseServiceReq)
-	require.NoError(t, err)
-	require.NoError(t, ctx.stores[meshresource.ServiceProviderMetadataKind].Delete(old[0]))
 	provider := meshresource.NewServiceProviderMetadataResourceWithAttributes("fixture", "mesh")
 	provider.Spec.ServiceName = "fixture.Echo"
 	provider.Spec.ProviderAppName = "app"
@@ -182,12 +183,12 @@ func idlFixtureCatalog(t *testing.T, port int64) (*testContext, model.ServiceGen
 	for _, name := range []string{"Call", "Watch", "Absent"} {
 		provider.Spec.Methods = append(provider.Spec.Methods, &meshproto.Method{Name: name, ParameterTypes: []string{"fixture.Request"}, ReturnType: "fixture.Request"})
 	}
-	require.NoError(t, ctx.stores[meshresource.ServiceProviderMetadataKind].Add(provider))
-	req.ServiceName = "fixture.Echo"
-	req.MethodName = "Call"
-	req.Signature = "fixture.Request->fixture.Request"
-	req.Args = []json.RawMessage{json.RawMessage(`{"detail":{"name":"Ada","kind":"READY","count":"9223372036854775807","payload":"AQI="}}`)}
-	return ctx, req
+	req := model.ServiceGenericInvokeReq{
+		BaseServiceReq: model.BaseServiceReq{Mesh: "mesh", ServiceName: "fixture.Echo"},
+		InstanceName:   "instance", MethodName: "Call", Signature: "fixture.Request->fixture.Request",
+		Args: []json.RawMessage{json.RawMessage(`{"detail":{"name":"Ada","kind":"READY","count":"9223372036854775807","payload":"AQI="}}`)}, TimeoutMs: 3000,
+	}
+	return idlCatalog(t, port, provider), req
 }
 
 type idlCountingListener struct {
@@ -292,24 +293,19 @@ func TestIDLCatalogReflectionAgreement(t *testing.T) {
 	}
 }
 
-func TestIDLConnectionsAndMetadata(t *testing.T) {
-	entered := make(chan metadata.MD, 10)
-	block := make(chan struct{}, 1)
+func assertIDLConnectionsClosed(t *testing.T, listener *idlCountingListener, want int32) {
+	t.Helper()
+	require.Eventually(t, func() bool { return listener.accepted.Load() == want && listener.closed.Load() == want }, 3*time.Second, 10*time.Millisecond, "accepted=%d closed=%d", listener.accepted.Load(), listener.closed.Load())
+}
+
+func TestIDLRepeatedSuccessClosesConnections(t *testing.T) {
+	entered := make(chan metadata.MD, 3)
 	port, listener, calls := idlTrackedServer(t, func(ctx context.Context) {
 		md, _ := metadata.FromIncomingContext(ctx)
 		entered <- md.Copy()
-		select {
-		case <-block:
-			<-ctx.Done()
-		default:
-		}
 	})
 	ctx, req := idlFixtureCatalog(t, port)
 	req.Attachments = map[string]string{" X-E2E-Echo ": "ok"}
-	assertClosed := func(want int32) {
-		t.Helper()
-		require.Eventually(t, func() bool { return listener.accepted.Load() == want && listener.closed.Load() == want }, 3*time.Second, 10*time.Millisecond, "accepted=%d closed=%d", listener.accepted.Load(), listener.closed.Load())
-	}
 	for i := int32(1); i <= 3; i++ {
 		_, err := InvokeServiceGeneric(ctx, req)
 		require.NoError(t, err)
@@ -317,8 +313,18 @@ func TestIDLConnectionsAndMetadata(t *testing.T) {
 		require.Equal(t, []string{"ok"}, md.Get("x-e2e-echo"))
 		require.Empty(t, md.Get(triple_protocol.TripleServiceGroup))
 		require.Empty(t, md.Get(triple_protocol.TripleServiceVersion))
-		assertClosed(i)
+		assertIDLConnectionsClosed(t, listener, i)
 	}
+	require.Equal(t, int32(3), calls.Load())
+}
+
+func TestIDLGroupVersionAndAttachments(t *testing.T) {
+	entered := make(chan metadata.MD, 1)
+	port, listener, calls := idlTrackedServer(t, func(ctx context.Context) {
+		md, _ := metadata.FromIncomingContext(ctx)
+		entered <- md.Copy()
+	})
+	ctx, req := idlFixtureCatalog(t, port)
 	providers, err := listProviderMeta(ctx, req.BaseServiceReq)
 	require.NoError(t, err)
 	provider := providers[0]
@@ -326,20 +332,34 @@ func TestIDLConnectionsAndMetadata(t *testing.T) {
 	provider.Spec.Group, provider.Spec.Version = "group-a", "version-b"
 	require.NoError(t, ctx.stores[meshresource.ServiceProviderMetadataKind].Add(provider))
 	req.Group, req.Version = provider.Spec.Group, provider.Spec.Version
+	req.Attachments = map[string]string{" X-E2E-Echo ": "ok"}
 	_, err = InvokeServiceGeneric(ctx, req)
 	require.NoError(t, err)
 	md := <-entered
 	require.Equal(t, []string{"ok"}, md.Get("x-e2e-echo"))
 	require.Equal(t, []string{"group-a"}, md.Get(triple_protocol.TripleServiceGroup))
 	require.Equal(t, []string{"version-b"}, md.Get(triple_protocol.TripleServiceVersion))
-	assertClosed(4)
-	invalid := req
-	invalid.Args = []json.RawMessage{json.RawMessage(`{`)}
-	_, err = InvokeServiceGeneric(ctx, invalid)
+	require.Equal(t, int32(1), calls.Load())
+	assertIDLConnectionsClosed(t, listener, 1)
+}
+
+func TestIDLInvalidJSONDoesNotInvokeBusinessMethod(t *testing.T) {
+	port, listener, calls := idlTrackedServer(t, nil)
+	ctx, req := idlFixtureCatalog(t, port)
+	req.Args = []json.RawMessage{json.RawMessage(`{`)}
+	_, err := InvokeServiceGeneric(ctx, req)
 	assertIDLBusinessError(t, err, bizerror.InvalidArgument, "invalid protobuf request JSON")
-	assertClosed(5)
-	require.Equal(t, int32(4), calls.Load())
-	block <- struct{}{}
+	require.Zero(t, calls.Load())
+	assertIDLConnectionsClosed(t, listener, 1)
+}
+
+func TestIDLInFlightCancellationClosesConnection(t *testing.T) {
+	entered := make(chan struct{}, 1)
+	port, listener, calls := idlTrackedServer(t, func(ctx context.Context) {
+		entered <- struct{}{}
+		<-ctx.Done()
+	})
+	ctx, req := idlFixtureCatalog(t, port)
 	parent, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	done := make(chan error, 1)
@@ -360,8 +380,8 @@ func TestIDLConnectionsAndMetadata(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("canceled call did not return")
 	}
-	require.Equal(t, int32(5), calls.Load())
-	assertClosed(6)
+	require.Equal(t, int32(1), calls.Load())
+	assertIDLConnectionsClosed(t, listener, 1)
 }
 
 func TestIDLRejectsInvalidAttachmentKeys(t *testing.T) {
@@ -512,45 +532,75 @@ func TestIDLContextErrors(t *testing.T) {
 	assertIDLBusinessError(t, err, bizerror.InternalError, "context deadline exceeded")
 }
 
-func TestIDLProviderBindingAndSecurity(t *testing.T) {
-	port, listener, calls := idlTrackedServer(t, nil)
-	ctx, req := idlFixtureCatalog(t, port)
-	missing := req
-	missing.InstanceName = "unregistered"
-	_, err := InvokeServiceGeneric(ctx, missing)
+func TestIDLRejectsMissingInstance(t *testing.T) {
+	ctx, req := idlFixtureCatalog(t, 1)
+	req.InstanceName = "unregistered"
+	_, err := InvokeServiceGeneric(ctx, req)
 	assertIDLBusinessError(t, err, bizerror.NotFoundError, "instance unregistered not found")
-	p, err := listProviderMeta(ctx, req.BaseServiceReq)
-	require.NoError(t, err)
+}
+
+func TestIDLIgnoresOtherAppProviderMode(t *testing.T) {
+	port, _, calls := idlTrackedServer(t, nil)
+	ctx, req := idlFixtureCatalog(t, port)
 	other := meshresource.NewServiceProviderMetadataResourceWithAttributes("other", "mesh")
 	other.Spec.ServiceName = req.ServiceName
 	other.Spec.ProviderAppName = "other-app"
 	other.Spec.Parameters = map[string]string{"IDL-mode": "non-IDL"}
 	require.NoError(t, ctx.stores[meshresource.ServiceProviderMetadataKind].Add(other))
-	_, err = InvokeServiceGeneric(ctx, req)
+	_, err := InvokeServiceGeneric(ctx, req)
 	require.NoError(t, err)
 	require.Equal(t, int32(1), calls.Load())
-	calls.Store(0)
+}
+
+func TestIDLRejectsConflictingProviderModes(t *testing.T) {
+	ctx, req := idlFixtureCatalog(t, 1)
+	other := meshresource.NewServiceProviderMetadataResourceWithAttributes("other", "mesh")
+	other.Spec.ServiceName = req.ServiceName
 	other.Spec.ProviderAppName = "app"
-	require.NoError(t, ctx.stores[meshresource.ServiceProviderMetadataKind].Update(other))
-	_, err = InvokeServiceGeneric(ctx, req)
+	other.Spec.Parameters = map[string]string{"IDL-mode": "non-IDL"}
+	require.NoError(t, ctx.stores[meshresource.ServiceProviderMetadataKind].Add(other))
+	_, err := InvokeServiceGeneric(ctx, req)
 	assertIDLBusinessError(t, err, bizerror.InvalidArgument, "conflicting IDL-mode")
-	other.Spec.Parameters["IDL-mode"] = "unknown"
-	require.NoError(t, ctx.stores[meshresource.ServiceProviderMetadataKind].Update(other))
-	_, err = InvokeServiceGeneric(ctx, req)
+}
+
+func TestIDLRejectsUnknownProviderMode(t *testing.T) {
+	ctx, req := idlFixtureCatalog(t, 1)
+	other := meshresource.NewServiceProviderMetadataResourceWithAttributes("other", "mesh")
+	other.Spec.ServiceName = req.ServiceName
+	other.Spec.ProviderAppName = "app"
+	other.Spec.Parameters = map[string]string{"IDL-mode": "unknown"}
+	require.NoError(t, ctx.stores[meshresource.ServiceProviderMetadataKind].Add(other))
+	_, err := InvokeServiceGeneric(ctx, req)
 	assertIDLBusinessError(t, err, bizerror.InvalidArgument, "unknown IDL-mode")
-	require.NoError(t, ctx.stores[meshresource.ServiceProviderMetadataKind].Delete(other))
-	p[0].Spec.Parameters["ssl-enabled"] = "true"
-	require.NoError(t, ctx.stores[meshresource.ServiceProviderMetadataKind].Update(p[0]))
+}
+
+func TestIDLRejectsSecureProvider(t *testing.T) {
+	ctx, req := idlFixtureCatalog(t, 1)
+	providers, err := listProviderMeta(ctx, req.BaseServiceReq)
+	require.NoError(t, err)
+	providers[0].Spec.Parameters["ssl-enabled"] = "true"
+	require.NoError(t, ctx.stores[meshresource.ServiceProviderMetadataKind].Update(providers[0]))
 	_, err = InvokeServiceGeneric(ctx, req)
 	assertIDLBusinessError(t, err, bizerror.InvalidArgument, "secure or authenticated")
-	accepted := listener.accepted.Load()
-	for _, app := range []string{"other-app", ""} {
-		p[0].Spec.ProviderAppName = app
-		require.NoError(t, ctx.stores[meshresource.ServiceProviderMetadataKind].Update(p[0]))
-		_, err = InvokeServiceGeneric(ctx, req)
-		assertIDLBusinessError(t, err, bizerror.InvalidArgument, "IDL provider metadata is not bound to the selected instance")
-		require.Equal(t, int32(0), calls.Load())
-		require.Equal(t, accepted, listener.accepted.Load())
+}
+
+func TestIDLRejectsUnboundProviderMetadata(t *testing.T) {
+	port, listener, calls := idlTrackedServer(t, nil)
+	for _, tc := range []struct{ name, app string }{
+		{name: "other app", app: "other-app"},
+		{name: "missing app"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, req := idlFixtureCatalog(t, port)
+			providers, err := listProviderMeta(ctx, req.BaseServiceReq)
+			require.NoError(t, err)
+			providers[0].Spec.ProviderAppName = tc.app
+			require.NoError(t, ctx.stores[meshresource.ServiceProviderMetadataKind].Update(providers[0]))
+			_, err = InvokeServiceGeneric(ctx, req)
+			assertIDLBusinessError(t, err, bizerror.InvalidArgument, "IDL provider metadata is not bound to the selected instance")
+			require.Zero(t, calls.Load())
+			require.Zero(t, listener.accepted.Load())
+		})
 	}
 }
 
