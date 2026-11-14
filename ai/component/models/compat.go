@@ -249,10 +249,19 @@ type Compat struct {
 	BackfillThinkingField *bool `yaml:"backfill_thinking_field,omitempty"`
 }
 
-// reasoningEffortValues are the abstract effort levels a caller may request.
-// Endpoints name them differently and support different subsets; ApplyRequest
-// maps from this set onto whatever the endpoint actually accepts.
-var reasoningEffortValues = []string{"minimal", "low", "medium", "high", "xhigh"}
+// ReasoningEffortLevels are the abstract effort levels a config may request.
+//
+// The level is an abstract name, not an endpoint's own vocabulary. The formats
+// that carry a level forward it as-is — the OpenAI format sends
+// reasoning_effort, the OpenRouter format sends reasoning.effort — and the
+// formats whose switch is a plain boolean drop it, so the endpoint picks its
+// own budget.
+//
+// Which of these levels a given endpoint accepts is a property of that
+// endpoint, and nothing here checks it: a level the endpoint does not know is
+// rejected by the endpoint, in the same way an unsupported value of any other
+// kind is. See docs/ai-provider-compat.md#the-effort-level-is-not-always-carried.
+var ReasoningEffortLevels = []string{"minimal", "low", "medium", "high", "xhigh"}
 
 // ValidThinkingFormats lists the accepted thinking_format values, used to
 // produce a usable error message instead of a silent no-op.
@@ -471,23 +480,23 @@ func (c *Compat) validateReserved(providerName string) error {
 // rather than of changing how it is merged.
 func (c *Compat) Resolved() ResolvedCompat {
 	return ResolvedCompat{
-		ThinkingFormat:                      c.effectiveThinkingFormat(),
-		MaxTokensField:                      c.effectiveMaxTokensField(),
-		ThinkingBudgetField:                 c.ThinkingBudgetField,
-		ThinkingBudget:                      c.ThinkingBudget,
-		ChatTemplateKey:                     c.effectiveChatTemplateKey(),
-		ThinkingField:                       c.ThinkingField,
-		SendBackThinking:                    c.effectiveSendBackThinking(),
-		ThinkingTags:                        c.effectiveThinkingTags(),
-		IgnoreLeadingWhitespace:             boolValue(c.IgnoreLeadingWhitespace),
-		SupportsDeveloperRole:               boolValue(c.SupportsDeveloperRole),
-		SupportsStrictMode:                  boolValue(c.SupportsStrictMode),
-		SupportsStore:                       boolValue(c.SupportsStore),
-		SupportsForcedToolChoice:            boolValueOr(c.SupportsForcedToolChoice, true),
+		ThinkingFormat:                       c.effectiveThinkingFormat(),
+		MaxTokensField:                       c.effectiveMaxTokensField(),
+		ThinkingBudgetField:                  c.ThinkingBudgetField,
+		ThinkingBudget:                       c.ThinkingBudget,
+		ChatTemplateKey:                      c.effectiveChatTemplateKey(),
+		ThinkingField:                        c.ThinkingField,
+		SendBackThinking:                     c.effectiveSendBackThinking(),
+		ThinkingTags:                         c.effectiveThinkingTags(),
+		IgnoreLeadingWhitespace:              boolValue(c.IgnoreLeadingWhitespace),
+		SupportsDeveloperRole:                boolValue(c.SupportsDeveloperRole),
+		SupportsStrictMode:                   boolValue(c.SupportsStrictMode),
+		SupportsStore:                        boolValue(c.SupportsStore),
+		SupportsForcedToolChoice:             boolValueOr(c.SupportsForcedToolChoice, true),
 		SupportsForcedToolChoiceWithThinking: boolValueOr(c.SupportsForcedToolChoiceWithThinking, true),
-		RequiresToolResultName:              boolValue(c.RequiresToolResultName),
-		RequiresAssistantAfterToolResult:    boolValue(c.RequiresAssistantAfterToolResult),
-		BackfillThinkingField:               boolValue(c.BackfillThinkingField),
+		RequiresToolResultName:               boolValue(c.RequiresToolResultName),
+		RequiresAssistantAfterToolResult:     boolValue(c.RequiresAssistantAfterToolResult),
+		BackfillThinkingField:                boolValue(c.BackfillThinkingField),
 	}
 }
 
@@ -498,23 +507,23 @@ func (c *Compat) Resolved() ResolvedCompat {
 // one-to-one with the config. Only the applied fields change the request;
 // the reserved ones are resolved but not yet read by anything.
 type ResolvedCompat struct {
-	ThinkingFormat                      ThinkingFormat
-	MaxTokensField                      string
-	ThinkingBudgetField                 string
-	ThinkingBudget                      int
-	ChatTemplateKey                     string
-	ThinkingField                       string
-	SendBackThinking                    SendBackThinkingMode
-	ThinkingTags                        [2]string
-	IgnoreLeadingWhitespace             bool
-	SupportsDeveloperRole               bool
-	SupportsStrictMode                  bool
-	SupportsStore                       bool
-	SupportsForcedToolChoice            bool
+	ThinkingFormat                       ThinkingFormat
+	MaxTokensField                       string
+	ThinkingBudgetField                  string
+	ThinkingBudget                       int
+	ChatTemplateKey                      string
+	ThinkingField                        string
+	SendBackThinking                     SendBackThinkingMode
+	ThinkingTags                         [2]string
+	IgnoreLeadingWhitespace              bool
+	SupportsDeveloperRole                bool
+	SupportsStrictMode                   bool
+	SupportsStore                        bool
+	SupportsForcedToolChoice             bool
 	SupportsForcedToolChoiceWithThinking bool
-	RequiresToolResultName              bool
-	RequiresAssistantAfterToolResult    bool
-	BackfillThinkingField               bool
+	RequiresToolResultName               bool
+	RequiresAssistantAfterToolResult     bool
+	BackfillThinkingField                bool
 }
 
 // ResolveCompat merges a provider-level Compat with a model-level one. The
@@ -701,7 +710,7 @@ func (r ResolvedCompat) ApplyRequest(cfg *openai.ChatCompletionNewParams, maxTok
 			extra["enable_thinking"] = true
 		case ThinkingFormatQwenChatTemplate:
 			extra["chat_template_kwargs"] = map[string]any{
-				r.ChatTemplateKey:    true,
+				r.ChatTemplateKey:   true,
 				"preserve_thinking": true,
 			}
 		case ThinkingFormatChatTemplate:
@@ -728,7 +737,7 @@ func (r ResolvedCompat) ApplyRequest(cfg *openai.ChatCompletionNewParams, maxTok
 			extra["enable_thinking"] = false
 		case ThinkingFormatQwenChatTemplate:
 			extra["chat_template_kwargs"] = map[string]any{
-				r.ChatTemplateKey:    false,
+				r.ChatTemplateKey:   false,
 				"preserve_thinking": true,
 			}
 		case ThinkingFormatChatTemplate:

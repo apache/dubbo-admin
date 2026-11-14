@@ -17,7 +17,11 @@
 
 package react
 
-import "fmt"
+import (
+	"fmt"
+
+	"dubbo-admin-ai/component/models"
+)
 
 // AgentTypeReAct is the agent_type discriminator for the ReAct strategy.
 const AgentTypeReAct = "react"
@@ -84,7 +88,10 @@ func (c *AgentSpec) ApplyDefaults() {
 // endpoint accepts is a property of that endpoint, not of this package: an
 // unsupported level is rejected by the endpoint, in the same way an
 // unsupported value of any other kind is.
-var reasoningEffortLevels = []string{"minimal", "low", "medium", "high", "xhigh"}
+//
+// The list itself belongs to the models layer, because that is where the
+// formats that carry a level live.
+var reasoningEffortLevels = models.ReasoningEffortLevels
 
 // Validate validates the configuration.
 func (c *AgentSpec) Validate() error {

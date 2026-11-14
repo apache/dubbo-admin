@@ -627,18 +627,18 @@ func TestValidate(t *testing.T) {
 // without a sample fails here, and a sample without a table entry is caught by
 // the completeness check below.
 var reservedFieldSamples = map[string]Compat{
-	"thinking_field":                         {ThinkingField: "reasoning_content"},
-	"send_back_thinking":                     {SendBackThinking: SendBackField},
-	"thinking_tags":                          {ThinkingTags: DefaultThinkingTags},
-	"ignore_leading_whitespace":              {IgnoreLeadingWhitespace: bp(true)},
-	"supports_developer_role":                {SupportsDeveloperRole: bp(true)},
-	"supports_strict_mode":                   {SupportsStrictMode: bp(true)},
-	"supports_store":                         {SupportsStore: bp(true)},
-	"supports_forced_tool_choice":            {SupportsForcedToolChoice: bp(false)},
+	"thinking_field":                            {ThinkingField: "reasoning_content"},
+	"send_back_thinking":                        {SendBackThinking: SendBackField},
+	"thinking_tags":                             {ThinkingTags: DefaultThinkingTags},
+	"ignore_leading_whitespace":                 {IgnoreLeadingWhitespace: bp(true)},
+	"supports_developer_role":                   {SupportsDeveloperRole: bp(true)},
+	"supports_strict_mode":                      {SupportsStrictMode: bp(true)},
+	"supports_store":                            {SupportsStore: bp(true)},
+	"supports_forced_tool_choice":               {SupportsForcedToolChoice: bp(false)},
 	"supports_forced_tool_choice_with_thinking": {SupportsForcedToolChoiceWithThinking: bp(false)},
-	"requires_tool_result_name":              {RequiresToolResultName: bp(true)},
-	"requires_assistant_after_tool_result":   {RequiresAssistantAfterToolResult: bp(true)},
-	"backfill_thinking_field":                {BackfillThinkingField: bp(true)},
+	"requires_tool_result_name":                 {RequiresToolResultName: bp(true)},
+	"requires_assistant_after_tool_result":      {RequiresAssistantAfterToolResult: bp(true)},
+	"backfill_thinking_field":                   {BackfillThinkingField: bp(true)},
 }
 
 // Every reserved field must be refused when it is configured, and must not
