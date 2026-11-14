@@ -20,6 +20,7 @@ package discovery
 import (
 	"fmt"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -123,56 +124,83 @@ func nextCatalogEvent(t *testing.T, ch <-chan events.Event) events.Event {
 	}
 }
 
+func awaitCatalogSignal(t *testing.T, ch <-chan struct{}, description string) {
+	t.Helper()
+	select {
+	case <-ch:
+	case <-time.After(10 * time.Second):
+		t.Fatalf("timed out waiting for %s", description)
+	}
+}
+
+func startCatalogInformer(t *testing.T, mesh string) (store.ResourceStore, catalogTestRouter, *catalogTestBus, *catalogTestLW, func()) {
+	t.Helper()
+	providerStore := memory.NewMemoryResourceStore(meshresource.ServiceProviderMetadataKind)
+	lifecycleStore := memory.NewMemoryResourceStore(meshresource.LifecycleEventKind)
+	require.NoError(t, providerStore.Init(nil))
+	require.NoError(t, lifecycleStore.Init(nil))
+	router := catalogTestRouter{meshresource.ServiceProviderMetadataKind: providerStore, meshresource.LifecycleEventKind: lifecycleStore}
+	bus := &catalogTestBus{ch: make(chan events.Event, 20)}
+	lw := &catalogTestLW{listStarted: make(chan struct{}), allowList: make(chan struct{}), watchStarted: make(chan struct{}), watcher: watch.NewRaceFreeFake()}
+	oldRegistry := registry
+	registry = newDiscoveryFactoryRegistry()
+	t.Cleanup(func() { registry = oldRegistry })
+	RegisterListWatcherFactory(&catalogTestFactory{lw: lw})
+	informers, err := (&discoveryComponent{}).initInformers(&discoverycfg.Config{ID: mesh, Type: "catalog-test"}, router, bus)
+	require.NoError(t, err)
+
+	var releaseOnce sync.Once
+	releaseList := func() { releaseOnce.Do(func() { close(lw.allowList) }) }
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	go func() { defer close(done); informers[0].Run(stop) }()
+	t.Cleanup(func() {
+		close(stop)
+		releaseList()
+		select {
+		case <-done:
+		case <-time.After(10 * time.Second):
+			t.Error("timed out waiting for informer to stop")
+		}
+	})
+	return providerStore, router, bus, lw, releaseList
+}
+
+func ingestCatalogZKMetadata(t *testing.T, bus *catalogTestBus, router catalogTestRouter) coremodel.Resource {
+	t.Helper()
+	raw := meshresource.NewZKMetadataResourceWithAttributes("/dubbo/metadata/greet.GreetService/provider/app", "zk-local")
+	raw.Spec = &meshproto.ZKMetadata{NodePath: raw.Name, NodeData: `{"canonicalName":"greet.GreetService","parameters":{"application":"app"}}`}
+	err := subscriber.NewZKMetadataEventSubscriber(bus, router).ProcessEvent(events.NewResourceChangedEvent(cache.Added, nil, raw))
+	require.NoError(t, err)
+	e := nextCatalogEvent(t, bus.ch)
+	require.Equal(t, cache.Added, e.Type())
+	return e.NewObj()
+}
+
+func TestDiscoveryInformerCleanupReleasesBlockedList(t *testing.T) {
+	logger.Init(&logcfg.Config{Level: logcfg.LevelError, OutputPath: filepath.Join(t.TempDir(), "test.log")})
+	_, _, _, lw, _ := startCatalogInformer(t, "mesh")
+	awaitCatalogSignal(t, lw.listStarted, "list to start")
+	// Return with List still blocked; cleanup must release it and stop the informer.
+}
+
 func TestDiscoveryInformerKeepsOtherMeshMetadata(t *testing.T) {
 	logger.Init(&logcfg.Config{Level: logcfg.LevelError, OutputPath: filepath.Join(t.TempDir(), "test.log")})
-	for _, tc := range []struct {
-		mesh, otherMesh string
-		zkFirst         bool
-	}{
-		{"nacos-local", "nacos-local/child", true},
-		{"nacos-local", "nacos-local/child", false},
-		{"nacos-local/child", "nacos-local", true},
-		{"nacos-local/child", "nacos-local", false},
+	for _, tc := range []struct{ mesh, otherMesh string }{
+		{"nacos-local", "nacos-local/child"},
+		{"nacos-local/child", "nacos-local"},
 	} {
-		t.Run(fmt.Sprintf("mesh_%s_zookeeper_before_list_%t", tc.mesh, tc.zkFirst), func(t *testing.T) {
-			providerStore := memory.NewMemoryResourceStore(meshresource.ServiceProviderMetadataKind)
-			lifecycleStore := memory.NewMemoryResourceStore(meshresource.LifecycleEventKind)
-			require.NoError(t, providerStore.Init(nil))
-			require.NoError(t, lifecycleStore.Init(nil))
-			router := catalogTestRouter{meshresource.ServiceProviderMetadataKind: providerStore, meshresource.LifecycleEventKind: lifecycleStore}
-			bus := &catalogTestBus{ch: make(chan events.Event, 20)}
-			lw := &catalogTestLW{listStarted: make(chan struct{}), allowList: make(chan struct{}), watchStarted: make(chan struct{}), watcher: watch.NewRaceFreeFake()}
-			oldRegistry := registry
-			registry = newDiscoveryFactoryRegistry()
-			t.Cleanup(func() { registry = oldRegistry })
-			RegisterListWatcherFactory(&catalogTestFactory{lw: lw})
-			informers, err := (&discoveryComponent{}).initInformers(&discoverycfg.Config{ID: tc.mesh, Type: "catalog-test"}, router, bus)
-			require.NoError(t, err)
+		t.Run(tc.mesh, func(t *testing.T) {
+			providerStore, router, bus, lw, releaseList := startCatalogInformer(t, tc.mesh)
+			awaitCatalogSignal(t, lw.listStarted, "list to start")
 			stale := meshresource.NewServiceProviderMetadataResourceWithAttributes("stale", tc.mesh)
 			require.NoError(t, providerStore.Add(stale))
 			otherMesh := meshresource.NewServiceProviderMetadataResourceWithAttributes("other", tc.otherMesh)
 			require.NoError(t, providerStore.Add(otherMesh))
-			stop := make(chan struct{})
-			done := make(chan struct{})
-			go func() { defer close(done); informers[0].Run(stop) }()
-			t.Cleanup(func() { close(stop); <-done })
-			<-lw.listStarted
+			zk := ingestCatalogZKMetadata(t, bus, router)
 
-			ingestZK := func() coremodel.Resource {
-				raw := meshresource.NewZKMetadataResourceWithAttributes("/dubbo/metadata/greet.GreetService/provider/app", "zk-local")
-				raw.Spec = &meshproto.ZKMetadata{NodePath: raw.Name, NodeData: `{"canonicalName":"greet.GreetService","parameters":{"application":"app"}}`}
-				err := subscriber.NewZKMetadataEventSubscriber(bus, router).ProcessEvent(events.NewResourceChangedEvent(cache.Added, nil, raw))
-				require.NoError(t, err)
-				e := nextCatalogEvent(t, bus.ch)
-				require.Equal(t, cache.Added, e.Type())
-				return e.NewObj()
-			}
-			var zk coremodel.Resource
-			if tc.zkFirst {
-				zk = ingestZK()
-			}
-			close(lw.allowList)
-			<-lw.watchStarted
+			releaseList()
+			awaitCatalogSignal(t, lw.watchStarted, "watch to start")
 			// FIFO queues the sentinel after all initial-list reconciliation deltas.
 			sentinel := meshresource.NewServiceProviderMetadataResourceWithAttributes("sentinel", tc.mesh)
 			lw.watcher.Add(sentinel)
@@ -185,9 +213,6 @@ func TestDiscoveryInformerKeepsOtherMeshMetadata(t *testing.T) {
 				initial = append(initial, e)
 			}
 			require.Contains(t, eventKeys(initial, cache.Deleted), stale.ResourceKey(), "relist must remove missing same-mesh metadata")
-			if !tc.zkFirst {
-				zk = ingestZK()
-			}
 			require.NotContains(t, eventKeys(initial, cache.Deleted), zk.ResourceKey(), "another mesh must not be deleted by this list")
 			require.NotContains(t, eventKeys(initial, cache.Deleted), otherMesh.ResourceKey(), "a mesh with a shared key prefix must remain")
 			_, exists, err := providerStore.GetByKey(zk.ResourceKey())
@@ -196,31 +221,99 @@ func TestDiscoveryInformerKeepsOtherMeshMetadata(t *testing.T) {
 			_, exists, err = providerStore.GetByKey(otherMesh.ResourceKey())
 			require.NoError(t, err)
 			require.True(t, exists)
-
-			updated := sentinel.DeepCopyObject().(*meshresource.ServiceProviderMetadataResource)
-			updated.Spec.ServiceName = "updated"
-			lw.watcher.Modify(updated)
-			e := nextCatalogEvent(t, bus.ch)
-			require.Equal(t, cache.Updated, e.Type())
-			require.Equal(t, "updated", e.NewObj().(*meshresource.ServiceProviderMetadataResource).Spec.ServiceName)
-			stored, exists, err := providerStore.GetByKey(sentinel.ResourceKey())
-			require.NoError(t, err)
-			require.True(t, exists)
-			require.Equal(t, "updated", stored.(*meshresource.ServiceProviderMetadataResource).Spec.ServiceName)
-			deleteTarget := meshresource.NewServiceProviderMetadataResourceWithAttributes("delete-target", tc.mesh)
-			lw.watcher.Add(deleteTarget)
-			e = nextCatalogEvent(t, bus.ch)
-			require.Equal(t, cache.Added, e.Type())
-			require.Equal(t, deleteTarget.ResourceKey(), e.NewObj().ResourceKey())
-			lw.watcher.Delete(deleteTarget)
-			e = nextCatalogEvent(t, bus.ch)
-			require.Equal(t, cache.Deleted, e.Type())
-			require.Equal(t, deleteTarget.ResourceKey(), e.OldObj().ResourceKey())
-			_, exists, err = providerStore.GetByKey(deleteTarget.ResourceKey())
-			require.NoError(t, err)
-			require.False(t, exists)
 		})
 	}
+}
+
+func TestDiscoveryInformerKeepsLateZKMetadata(t *testing.T) {
+	logger.Init(&logcfg.Config{Level: logcfg.LevelError, OutputPath: filepath.Join(t.TempDir(), "test.log")})
+	providerStore := memory.NewMemoryResourceStore(meshresource.ServiceProviderMetadataKind)
+	lifecycleStore := memory.NewMemoryResourceStore(meshresource.LifecycleEventKind)
+	require.NoError(t, providerStore.Init(nil))
+	require.NoError(t, lifecycleStore.Init(nil))
+	router := catalogTestRouter{meshresource.ServiceProviderMetadataKind: providerStore, meshresource.LifecycleEventKind: lifecycleStore}
+	bus := &catalogTestBus{ch: make(chan events.Event, 20)}
+	lw := &relistTestLW{
+		watchStarted: make(chan int, 2),
+		watchers:     [2]*watch.RaceFreeFakeWatcher{watch.NewRaceFreeFake(), watch.NewRaceFreeFake()},
+	}
+	oldRegistry := registry
+	registry = newDiscoveryFactoryRegistry()
+	t.Cleanup(func() { registry = oldRegistry })
+	RegisterListWatcherFactory(&catalogTestFactory{lw: lw})
+	informers, err := (&discoveryComponent{}).initInformers(&discoverycfg.Config{ID: "nacos-local", Type: "catalog-test"}, router, bus)
+	require.NoError(t, err)
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	go func() { defer close(done); informers[0].Run(stop) }()
+	t.Cleanup(func() {
+		close(stop)
+		select {
+		case <-done:
+		case <-time.After(10 * time.Second):
+			t.Error("timed out waiting for informer to stop")
+		}
+	})
+	awaitWatch := func(expected int) {
+		t.Helper()
+		select {
+		case n := <-lw.watchStarted:
+			require.Equal(t, expected, n)
+		case <-time.After(10 * time.Second):
+			t.Fatal("timed out waiting for watch")
+		}
+	}
+	awaitWatch(0)
+	zk := ingestCatalogZKMetadata(t, bus, router)
+	// A later relist with an empty catalog list would delete this object if
+	// known-objects were not scoped to the informer's mesh.
+	lw.watchers[0].Error(&metav1.Status{Status: metav1.StatusFailure, Reason: metav1.StatusReasonExpired, Code: 410})
+	awaitWatch(1)
+	sentinel := meshresource.NewServiceProviderMetadataResourceWithAttributes("sentinel", "nacos-local")
+	lw.watchers[1].Add(sentinel)
+	var afterRelist []events.Event
+	for {
+		e := nextCatalogEvent(t, bus.ch)
+		if e.NewObj() != nil && e.NewObj().ResourceKey() == sentinel.ResourceKey() {
+			break
+		}
+		afterRelist = append(afterRelist, e)
+	}
+	require.NotContains(t, eventKeys(afterRelist, cache.Deleted), zk.ResourceKey(), "late ZooKeeper metadata must not be deleted")
+	_, exists, err := providerStore.GetByKey(zk.ResourceKey())
+	require.NoError(t, err)
+	require.True(t, exists, "late ZooKeeper metadata must remain in the shared store")
+}
+
+func TestDiscoveryInformerWatchAddUpdateDelete(t *testing.T) {
+	logger.Init(&logcfg.Config{Level: logcfg.LevelError, OutputPath: filepath.Join(t.TempDir(), "test.log")})
+	providerStore, _, bus, lw, releaseList := startCatalogInformer(t, "mesh")
+	awaitCatalogSignal(t, lw.listStarted, "list to start")
+	releaseList()
+	awaitCatalogSignal(t, lw.watchStarted, "watch to start")
+
+	obj := meshresource.NewServiceProviderMetadataResourceWithAttributes("provider", "mesh")
+	lw.watcher.Add(obj)
+	e := nextCatalogEvent(t, bus.ch)
+	require.Equal(t, cache.Added, e.Type())
+	require.Equal(t, obj.ResourceKey(), e.NewObj().ResourceKey())
+	updated := obj.DeepCopyObject().(*meshresource.ServiceProviderMetadataResource)
+	updated.Spec.ServiceName = "updated"
+	lw.watcher.Modify(updated)
+	e = nextCatalogEvent(t, bus.ch)
+	require.Equal(t, cache.Updated, e.Type())
+	require.Equal(t, "updated", e.NewObj().(*meshresource.ServiceProviderMetadataResource).Spec.ServiceName)
+	stored, exists, err := providerStore.GetByKey(obj.ResourceKey())
+	require.NoError(t, err)
+	require.True(t, exists)
+	require.Equal(t, "updated", stored.(*meshresource.ServiceProviderMetadataResource).Spec.ServiceName)
+	lw.watcher.Delete(updated)
+	e = nextCatalogEvent(t, bus.ch)
+	require.Equal(t, cache.Deleted, e.Type())
+	require.Equal(t, obj.ResourceKey(), e.OldObj().ResourceKey())
+	_, exists, err = providerStore.GetByKey(obj.ResourceKey())
+	require.NoError(t, err)
+	require.False(t, exists)
 }
 
 func TestDiscoveryInformerRelistDeletesStaleSameMesh(t *testing.T) {
@@ -241,7 +334,14 @@ func TestDiscoveryInformerRelistDeletesStaleSameMesh(t *testing.T) {
 	stop := make(chan struct{})
 	done := make(chan struct{})
 	go func() { defer close(done); informers[0].Run(stop) }()
-	t.Cleanup(func() { close(stop); <-done })
+	t.Cleanup(func() {
+		close(stop)
+		select {
+		case <-done:
+		case <-time.After(10 * time.Second):
+			t.Error("timed out waiting for informer to stop")
+		}
+	})
 	awaitWatch := func(expected int) {
 		t.Helper()
 		select {
