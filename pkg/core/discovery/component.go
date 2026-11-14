@@ -222,11 +222,45 @@ func (d *discoveryComponent) initInformers(cfg *discovery.Config, storeRouter st
 		if err != nil {
 			return nil, fmt.Errorf("cannot find store for resource kind %s", lw.ResourceKind())
 		}
-		informer := controller.NewInformerWithOptions(lw, eventBus, resourceStore, keyFunc, controller.Options{ResyncPeriod: 0})
+		informerStore := &meshScopedStore{ResourceStore: resourceStore, mesh: cfg.ID}
+		informer := controller.NewInformerWithOptions(lw, eventBus, informerStore, keyFunc, controller.Options{ResyncPeriod: 0})
 		informers[i] = informer
 	}
 	return informers, nil
 }
+
+// Each discovery list covers one mesh, although resource stores contain all meshes.
+type meshScopedStore struct {
+	store.ResourceStore
+	mesh string
+}
+
+func (s *meshScopedStore) ListKeys() []string {
+	objects := s.List()
+	keys := make([]string, 0, len(objects))
+	for _, obj := range objects {
+		if resource, ok := obj.(coremodel.Resource); ok && resource.ResourceMesh() == s.mesh {
+			keys = append(keys, resource.ResourceKey())
+		}
+	}
+	return keys
+}
+
+func (s *meshScopedStore) GetByKey(key string) (interface{}, bool, error) {
+	obj, exists, err := s.ResourceStore.GetByKey(key)
+	if err != nil || !exists {
+		return obj, exists, err
+	}
+	resource, ok := obj.(coremodel.Resource)
+	if !ok {
+		return nil, false, fmt.Errorf("expected Resource, got %T", obj)
+	}
+	if resource.ResourceMesh() != s.mesh {
+		return nil, false, nil
+	}
+	return obj, true, nil
+}
+
 func keyFunc(obj interface{}) (string, error) {
 	if r, ok := obj.(coremodel.Resource); ok {
 		return r.ResourceKey(), nil
