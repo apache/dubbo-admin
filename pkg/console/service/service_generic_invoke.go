@@ -113,8 +113,38 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 	if err != nil {
 		return nil, err
 	}
-	resolvedMethod := findMethod(metadataList, req.MethodName, req.Signature)
+	selectedMetadata := make([]*meshresource.ServiceProviderMetadataResource, 0, len(metadataList))
+	hessianMetadata := make([]*meshresource.ServiceProviderMetadataResource, 0, len(metadataList))
+	unboundIDLMetadata := make([]*meshresource.ServiceProviderMetadataResource, 0)
+	for _, metadata := range metadataList {
+		if metadata == nil || metadata.Spec == nil {
+			continue
+		}
+		bound := instanceRes.Spec.AppName != "" && metadata.Spec.ProviderAppName != "" && metadata.Spec.ProviderAppName == instanceRes.Spec.AppName
+		if bound {
+			selectedMetadata = append(selectedMetadata, metadata)
+		}
+		mode := strings.TrimSpace(metadata.Spec.Parameters[dubboconstant.IDLMode])
+		switch {
+		case mode == "" || strings.EqualFold(mode, dubboconstant.NONIDL):
+			hessianMetadata = append(hessianMetadata, metadata)
+		case !bound && strings.EqualFold(mode, dubboconstant.IDL):
+			unboundIDLMetadata = append(unboundIDLMetadata, metadata)
+		}
+	}
+	idl, err := genericInvokeIDLMode(selectedMetadata)
+	if err != nil {
+		return nil, err
+	}
+	methodMetadata := hessianMetadata
+	if idl {
+		methodMetadata = selectedMetadata
+	}
+	resolvedMethod := findMethod(methodMetadata, req.MethodName, req.Signature)
 	if resolvedMethod == nil {
+		if !idl && findMethod(unboundIDLMetadata, req.MethodName, req.Signature) != nil {
+			return nil, bizerror.New(bizerror.InvalidArgument, "IDL provider metadata is not bound to the selected instance")
+		}
 		err := bizerror.New(
 			bizerror.NotFoundError,
 			fmt.Sprintf("method %s not found for service %s", req.MethodName, req.ServiceName),
@@ -128,15 +158,20 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 	if len(parameterTypes) != len(req.Args) {
 		return nil, bizerror.New(bizerror.InvalidArgument, "resolved method parameter count does not match args length")
 	}
-
-	decodedArgs, err := decodeGenericInvokeArgs(parameterTypes, req.Args)
-	if err != nil {
-		return nil, bizerror.New(bizerror.InvalidArgument, err.Error())
+	var decodedArgs []any
+	if !idl {
+		decodedArgs, err = decodeGenericInvokeArgs(parameterTypes, req.Args)
+		if err != nil {
+			return nil, bizerror.New(bizerror.InvalidArgument, err.Error())
+		}
 	}
 
 	rpcInstanceRes, err := findRPCInstanceByInstance(ctx, instanceRes)
 	if err != nil {
 		return nil, err
+	}
+	if idl && (rpcInstanceRes.Spec.GetIp() != instanceRes.Spec.GetIp() || rpcInstanceRes.Spec.GetAppName() != instanceRes.Spec.GetAppName()) {
+		return nil, bizerror.New(bizerror.InvalidArgument, "rpc instance does not match selected catalog instance")
 	}
 
 	targets, err := buildGenericInvokeTargets(rpcInstanceRes)
@@ -157,6 +192,15 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 			attachmentValues[key] = value
 		}
 		callCtx = context.WithValue(callCtx, dubboconstant.AttachmentKey, attachmentValues)
+	}
+
+	if idl {
+		startedAt := time.Now()
+		result, err := invokeIDLService(callCtx, req, targets, selectedMetadata, resolvedMethod)
+		if err != nil {
+			return nil, err
+		}
+		return &model.ServiceGenericInvokeResp{ElapsedMs: time.Since(startedAt).Milliseconds(), RawResult: result}, nil
 	}
 
 	hessianArgs := make([]hessian.Object, len(decodedArgs))
