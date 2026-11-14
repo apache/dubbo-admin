@@ -232,6 +232,30 @@ func TestRouterRuleAPIContractNormalizesAffinityEnabled(t *testing.T) {
 	callRouterRuleAPI(t, router, sessionCookie, http.MethodDelete, path, nil)
 }
 
+func TestRouterRuleAPIContractUsesServiceAffinityDataID(t *testing.T) {
+	router, sessionCookie := newRouterRuleAPI(t)
+	const (
+		mesh = "service-affinity-mesh"
+		key  = "org.apache.dubbo.samples.CommentService::"
+	)
+	payload := mustRouterRuleJSON(t, map[string]any{
+		"configVersion": "v3.1",
+		"scope":         "service",
+		"key":           key,
+		"affinityAware": map[string]any{"key": "region", "ratio": 1},
+	})
+	legacyPath := "/api/v1/affinity-rule/org.apache.dubbo.samples.CommentService.affinity-router?mesh=" + mesh
+	legacy := callRouterRuleAPIExpect(t, router, sessionCookie, http.MethodPost, legacyPath, payload, http.StatusOK)
+	require.Equal(t, string(bizerror.InvalidArgument), legacy.Code)
+
+	path := "/api/v1/affinity-rule/" + key + ".affinity-router?mesh=" + mesh
+	created := callRouterRuleAPI(t, router, sessionCookie, http.MethodPost, path, payload)
+	require.Contains(t, string(created.Data), `"key":"`+key+`"`)
+	detail := callRouterRuleAPI(t, router, sessionCookie, http.MethodGet, path, nil)
+	require.JSONEq(t, string(created.Data), string(detail.Data))
+	callRouterRuleAPI(t, router, sessionCookie, http.MethodDelete, path, nil)
+}
+
 func TestRouterRuleAPIContractRejectsInvalidRuleRequests(t *testing.T) {
 	router, sessionCookie := newRouterRuleAPI(t)
 

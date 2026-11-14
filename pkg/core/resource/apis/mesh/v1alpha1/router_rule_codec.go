@@ -291,6 +291,12 @@ func ValidateRule(r coremodel.Resource) error {
 		if typed.Spec.Scope != constants.ScopeApplication && typed.Spec.Scope != constants.ScopeService {
 			return invalidRule("affinity scope must be application or service")
 		}
+		if typed.Spec.Scope == constants.ScopeService {
+			parts := strings.Split(typed.Spec.Key, ":")
+			if len(parts) != 3 || strings.TrimSpace(parts[0]) == "" {
+				return invalidRule("service affinity key must be interface:version:group")
+			}
+		}
 		if strings.TrimSpace(typed.Spec.Key) == "" || typed.Name != typed.Spec.Key+constants.AffinityRuleDotSuffix {
 			return invalidRule("affinity rule name must be key.affinity-router")
 		}

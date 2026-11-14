@@ -74,6 +74,7 @@ header:
     - 'Jenkinsfile'
     - '**/vendor/**'
     - '**/go.sum'
+    - 'go.router-e2e.sum'
     - '**/addons/manifests/**'
     - '**/dubbo-ui/dist/**'
     - '**/ui/**'
