@@ -217,16 +217,17 @@ func invokeIDLService(ctx context.Context, req model.ServiceGenericInvokeReq, ta
 	if len(params) != 1 || !idlFullName(params[0]).IsValid() || !idlFullName(catalogMethod.GetReturnType()).IsValid() || idlFullName(params[0]) != method.Input().FullName() || idlFullName(catalogMethod.GetReturnType()) != method.Output().FullName() {
 		return nil, bizerror.New(bizerror.InvalidArgument, fmt.Sprintf("catalog signature %q conflicts with reflected signature %s->%s", methodSig(catalogMethod), method.Input().FullName(), method.Output().FullName()))
 	}
+	types := dynamicpb.NewTypes(files)
 	input := dynamicpb.NewMessage(method.Input())
 	// Each args element is the protobuf JSON document, not a Hessian class wrapper.
-	if err = (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(req.Args[0], input); err != nil {
+	if err = (protojson.UnmarshalOptions{DiscardUnknown: false, Resolver: types}).Unmarshal(req.Args[0], input); err != nil {
 		return nil, bizerror.New(bizerror.InvalidArgument, "invalid protobuf request JSON: "+err.Error())
 	}
 	output := dynamicpb.NewMessage(method.Output())
 	if err = cc.Invoke(invokeCtx, "/"+string(svc.FullName())+"/"+string(method.Name()), input, output); err != nil {
 		return nil, idlCallError(ctx, "IDL unary invocation failed", err)
 	}
-	encoded, err := (protojson.MarshalOptions{EmitUnpopulated: true}).Marshal(output)
+	encoded, err := (protojson.MarshalOptions{EmitUnpopulated: true, Resolver: types}).Marshal(output)
 	if err != nil {
 		return nil, idlCallError(ctx, "IDL response encoding failed", err)
 	}

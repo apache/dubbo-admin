@@ -58,6 +58,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/dynamicpb"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 func TestMain(m *testing.M) {
@@ -119,6 +120,91 @@ func TestIDLUnaryCatalogInvoke(t *testing.T) {
 	result, err := InvokeServiceGeneric(ctx, req)
 	require.NoError(t, err)
 	require.Equal(t, "SERVING", result.RawResult.(map[string]any)["status"])
+}
+
+// idlAnyFixture gives each test its own server and descriptor registry. Payload is
+// available through reflection only, never through the global message registry.
+func idlAnyFixture(t *testing.T, populateResponse bool) (*testContext, model.ServiceGenericInvokeReq, *atomic.Int32) {
+	t.Helper()
+	_, err := protoregistry.GlobalTypes.FindMessageByName("fixture.Payload")
+	require.ErrorIs(t, err, protoregistry.NotFound)
+	anyFile, err := protoregistry.GlobalFiles.FindFileByPath("google/protobuf/any.proto")
+	require.NoError(t, err)
+	optional := descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL
+	messageType := descriptorpb.FieldDescriptorProto_TYPE_MESSAGE
+	stringType := descriptorpb.FieldDescriptorProto_TYPE_STRING
+	root := &descriptorpb.FileDescriptorProto{
+		Name: proto.String("any_service.proto"), Package: proto.String("fixture"), Syntax: proto.String("proto3"),
+		Dependency: []string{"google/protobuf/any.proto"},
+		MessageType: []*descriptorpb.DescriptorProto{
+			{Name: proto.String("Envelope"), Field: []*descriptorpb.FieldDescriptorProto{{Name: proto.String("content"), Number: proto.Int32(1), Label: &optional, Type: &messageType, TypeName: proto.String(".google.protobuf.Any")}}},
+			{Name: proto.String("Payload"), Field: []*descriptorpb.FieldDescriptorProto{{Name: proto.String("value"), Number: proto.Int32(1), Label: &optional, Type: &stringType}}},
+		},
+		Service: []*descriptorpb.ServiceDescriptorProto{{Name: proto.String("AnyEcho"), Method: []*descriptorpb.MethodDescriptorProto{{Name: proto.String("Echo"), InputType: proto.String(".fixture.Envelope"), OutputType: proto.String(".fixture.Envelope")}}}},
+	}
+	files, err := protodesc.NewFiles(&descriptorpb.FileDescriptorSet{File: []*descriptorpb.FileDescriptorProto{root, protodesc.ToFileDescriptorProto(anyFile)}})
+	require.NoError(t, err)
+	envelopeDesc, err := files.FindDescriptorByName("fixture.Envelope")
+	require.NoError(t, err)
+	payloadDesc, err := files.FindDescriptorByName("fixture.Payload")
+	require.NoError(t, err)
+	envelope := envelopeDesc.(protoreflect.MessageDescriptor)
+	payload := dynamicpb.NewMessage(payloadDesc.(protoreflect.MessageDescriptor))
+	payload.Set(payload.Descriptor().Fields().ByName("value"), protoreflect.ValueOfString("reflected value"))
+	packed, err := anypb.New(payload)
+	require.NoError(t, err)
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	server := grpc.NewServer()
+	calls := new(atomic.Int32)
+	server.RegisterService(&grpc.ServiceDesc{ServiceName: "fixture.AnyEcho", HandlerType: (*idlFixtureService)(nil), Methods: []grpc.MethodDesc{{MethodName: "Echo", Handler: func(_ any, _ context.Context, decode func(any) error, _ grpc.UnaryServerInterceptor) (any, error) {
+		request := dynamicpb.NewMessage(envelope)
+		if err := decode(request); err != nil {
+			return nil, err
+		}
+		calls.Add(1)
+		if populateResponse {
+			request.Set(envelope.Fields().ByName("content"), protoreflect.ValueOfMessage(packed.ProtoReflect()))
+		}
+		return request, nil
+	}}}}, struct{}{})
+	reflectionv1.RegisterServerReflectionServer(server, reflection.NewServerV1(reflection.ServerOptions{Services: server, DescriptorResolver: files}))
+	go func() { _ = server.Serve(listener) }()
+	t.Cleanup(func() { server.Stop(); _ = listener.Close() })
+
+	provider := meshresource.NewServiceProviderMetadataResourceWithAttributes("any-fixture", "mesh")
+	provider.Spec.ServiceName = "fixture.AnyEcho"
+	provider.Spec.ProviderAppName = "app"
+	provider.Spec.Parameters = map[string]string{"IDL-mode": "IDL"}
+	provider.Spec.Methods = []*meshproto.Method{{Name: "Echo", ParameterTypes: []string{"fixture.Envelope"}, ReturnType: "fixture.Envelope"}}
+	req := model.ServiceGenericInvokeReq{
+		BaseServiceReq: model.BaseServiceReq{Mesh: "mesh", ServiceName: "fixture.AnyEcho"},
+		InstanceName:   "instance", MethodName: "Echo", Signature: "fixture.Envelope->fixture.Envelope",
+		Args: []json.RawMessage{json.RawMessage(`{}`)}, TimeoutMs: 3000,
+	}
+	return idlCatalog(t, int64(listener.Addr().(*net.TCPAddr).Port), provider), req, calls
+}
+
+func TestIDLRequestAnyResolver(t *testing.T) {
+	ctx, req, calls := idlAnyFixture(t, false)
+	req.Args[0] = json.RawMessage(`{"content":{"@type":"type.googleapis.com/fixture.Payload","value":"reflected value"}}`)
+	result, err := InvokeServiceGeneric(ctx, req)
+	require.Equal(t, int32(1), calls.Load(), "request must reach the echo handler; invocation error: %v", err)
+	require.NoError(t, err)
+	content := result.RawResult.(map[string]any)["content"].(map[string]any)
+	require.Equal(t, "type.googleapis.com/fixture.Payload", content["@type"])
+	require.Equal(t, "reflected value", content["value"])
+}
+
+func TestIDLResponseAnyResolver(t *testing.T) {
+	ctx, req, calls := idlAnyFixture(t, true)
+	result, err := InvokeServiceGeneric(ctx, req)
+	require.Equal(t, int32(1), calls.Load(), "request must reach the echo handler; invocation error: %v", err)
+	require.NoError(t, err)
+	content := result.RawResult.(map[string]any)["content"].(map[string]any)
+	require.Equal(t, "type.googleapis.com/fixture.Payload", content["@type"])
+	require.Equal(t, "reflected value", content["value"])
 }
 
 // The imported message exercises enum, oneof, int64 and bytes using real protojson rules.
