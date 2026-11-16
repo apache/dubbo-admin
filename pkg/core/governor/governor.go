@@ -24,7 +24,13 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
-var RuleResourceKinds = set.New(meshresource.DynamicConfigKind, meshresource.ConditionRouteKind, meshresource.TagRouteKind)
+var RuleResourceKinds = set.New(
+	meshresource.DynamicConfigKind,
+	meshresource.ConditionRouteKind,
+	meshresource.TagRouteKind,
+	meshresource.AffinityRouteKind,
+	meshresource.ScriptRouteKind,
+)
 
 // RuleGovernor makes the rule operations effective
 type RuleGovernor interface {

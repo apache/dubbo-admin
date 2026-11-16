@@ -67,12 +67,15 @@ func (f *Factory) NewListWatchers(config *discoverycfg.Config) ([]controller.Res
 	if err != nil {
 		return nil, err
 	}
-	configLW, err := listerwatcher.NewListerWatcher(
+	// Keep the config watcher connected to the configured config-center
+	// endpoint. Registry and config-center addresses are allowed to differ.
+	configLW, err := listerwatcher.NewListerWatcherWithAddress(
 		meshresource.ZKConfigKind,
 		toUpsertZKConfigResource,
 		toDeleteZKConfigResource,
 		"/dubbo/config",
 		config,
+		config.Address.ConfigCenter,
 	)
 	if err != nil {
 		return nil, err
@@ -116,11 +119,10 @@ func toDeleteMappingResource(mesh, nodePath string) coremodel.Resource {
 }
 
 func toUpsertZKConfigResource(mesh, nodePath, nodeData string) coremodel.Resource {
-	paths := strings.Split(nodePath, constants.PathSeparator)
-	if len(paths) != 4 {
+	configName, ok := zkConfigName(nodePath)
+	if !ok {
 		return nil
 	}
-	configName := paths[3]
 	res := meshresource.NewZKConfigResourceWithAttributes(configName, mesh)
 	res.Spec = &meshproto.ZKConfig{
 		NodeName: configName,
@@ -130,16 +132,28 @@ func toUpsertZKConfigResource(mesh, nodePath, nodeData string) coremodel.Resourc
 }
 
 func toDeleteZKConfigResource(mesh, nodePath string) coremodel.Resource {
-	paths := strings.Split(nodePath, constants.PathSeparator)
-	if len(paths) != 4 {
+	configName, ok := zkConfigName(nodePath)
+	if !ok {
 		return nil
 	}
-	configName := paths[3]
 	res := meshresource.NewZKConfigResourceWithAttributes(configName, mesh)
 	res.Spec = &meshproto.ZKConfig{
 		NodeName: configName,
 	}
 	return res
+}
+
+// zkConfigName accepts only the Dubbo 3 grouped config path
+// /dubbo/config/dubbo/<ruleName>. Group/root nodes and legacy flat paths are
+// not rules.
+func zkConfigName(nodePath string) (string, bool) {
+	paths := strings.Split(strings.Trim(nodePath, constants.PathSeparator), constants.PathSeparator)
+	// Trim above removes the leading slash, therefore the grouped form is
+	// [dubbo config dubbo rule].
+	if len(paths) == 4 && paths[2] == constants.RuleConfigGroup && paths[3] != "" {
+		return paths[3], true
+	}
+	return "", false
 }
 
 func toUpsertZKMetadataResource(mesh, nodePath, nodeData string) coremodel.Resource {

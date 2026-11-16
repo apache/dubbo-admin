@@ -38,6 +38,21 @@ type DashboardResp struct {
 	FullURL string `json:"fullURL"`
 }
 
+type TraceStartTimeReq struct {
+	TraceID string `form:"traceId"`
+}
+
+type TraceStartTimeResp struct {
+	TraceID   string `json:"traceId"`
+	StartTime int64  `json:"startTime"`
+}
+
+type TraceLogDashboardReq struct {
+	TraceID string `form:"traceId"`
+	From    string `form:"from"`
+	To      string `form:"to"`
+}
+
 // Metric represents a single metric with its name, labels, and value.
 type Metric struct {
 	Name   string            `json:"name"`

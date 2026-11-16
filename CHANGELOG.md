@@ -1,3 +1,38 @@
+# Unreleased
+
+## Breaking Changes & Upgrade Notes
+
+### Instance Metric dashboard URL contract ([#1591](https://github.com/apache/dubbo-admin/pull/1591))
+
+The Instance Metric dashboard's user-visible `var-instance` URL parameter changes
+from `IP:QoSPort` to the instance's bare IP address. For example,
+`var-instance=10.42.1.10:22222` becomes `var-instance=10.42.1.10`. This does not
+change Prometheus's `instance` scrape-target label, which remains an internal
+association key for metrics without a native `ip` label.
+
+Upgrade the Admin backend and Grafana Instance Metric dashboard as a coordinated
+change:
+
+1. Deploy the updated Admin backend.
+2. Update Grafana's provisioned dashboard definitions from the same version and
+   reload or redeploy them; updating Admin alone does not update Grafana.
+3. Reopen Instance Metric from Admin and verify that the URL contains a bare IP
+   and that the dashboard selects the intended application's instance data.
+
+Avoid using Instance Metric during the mixed-version upgrade window. An old
+backend with the new dashboard, or a new backend with a dashboard expecting
+`IP:port`, can produce empty or incorrect results. There is no runtime version
+guard or automatic fallback for this mismatch.
+
+Update saved links, bookmarks, and custom dashboards that interpret
+`var-instance` as an `IP:port` scrape address. Existing links are not automatically
+migrated. For rollback, restore the matching backend and dashboard together.
+
+Selection is scoped to an application and IP, not an individual process: multiple
+instances of the same application sharing an IP may be returned together. See
+[Java and Go metric compatibility](docs/observability-metric-compatibility.md)
+for query paths, scraping requirements, and verification scope.
+
 # 0.7.0 [Milestone]
 ## Summary
 This release is a milestone version. The entire backend system is completely rewritten using Go, meanwhile, 
