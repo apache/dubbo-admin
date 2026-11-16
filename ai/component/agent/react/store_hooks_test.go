@@ -178,3 +178,80 @@ func TestAgentSpanCarriesConversationAndAnswer(t *testing.T) {
 		t.Fatalf("agent span output does not carry the answer: %s", output)
 	}
 }
+
+// The agent span is the trace root, so it has to carry the answer the user
+// actually received — and nothing else. When the persistence of the final
+// answer fails the interaction ends in an error and the user never receives
+// the answer, so the root span must not claim one: a trace that shows a
+// complete answer for an interaction that failed to deliver it misleads
+// exactly the investigation it is supposed to support.
+func TestAgentSpanOmitsAnAnswerThatWasNeverDelivered(t *testing.T) {
+	ctx := testutils.ContextWithTestAccess(context.Background())
+	baseStore := memorystore.NewMemoryStore(2)
+	now := time.Now()
+	const sessionID = "answer-not-delivered"
+	if err := baseStore.Create(ctx, testutils.TestAccess(), testutils.TestSession(sessionID, now)); err != nil {
+		t.Fatal(err)
+	}
+	// The first write records the user message, the second one the final
+	// answer.
+	store := &failingMessageStore{Store: baseStore, failOn: 2}
+	recorder := tracetest.NewSpanRecorder()
+	provider := trace.NewTracerProvider(trace.WithSpanProcessor(recorder))
+	t.Cleanup(func() { _ = provider.Shutdown(ctx) })
+	manager := hooks.NewManager(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err := manager.Register(hooks.NewTracingRegistration(provider.Tracer("answer-span"), hooks.CaptureFull)); err != nil {
+		t.Fatal(err)
+	}
+	prompt := &stubPrompt{resp: textResp("服务正常")}
+	ra := &ReActAgent{
+		messageStore:  store,
+		hookManager:   manager,
+		model:         "test/model",
+		actPrompt:     prompt,
+		answerPrompt:  prompt,
+		maxIterations: 1,
+		bufferSize:    16,
+	}
+	channels := ra.Interact(ctx, &schema.UserInput{Content: "查一下 order-service"}, sessionID)
+	select {
+	case <-channels.Done():
+	case <-time.After(5 * time.Second):
+		t.Fatal("interaction did not finish")
+	}
+	ra.Stop()
+
+	// The user received nothing, because the answer was never persisted.
+	select {
+	case feedback := <-channels.UserRespChan:
+		t.Fatalf("user channel carries %v, want no answer", feedback)
+	default:
+	}
+	var gotErr error
+	select {
+	case gotErr = <-channels.ErrorChan:
+	default:
+		t.Fatal("no error on the error channel")
+	}
+	if !strings.Contains(gotErr.Error(), "failed to persist final answer") {
+		t.Fatalf("error = %v, want the persistence failure", gotErr)
+	}
+
+	var agentSpan trace.ReadOnlySpan
+	for _, span := range recorder.Ended() {
+		if span.Name() == "invoke_agent "+hooks.AgentName {
+			agentSpan = span
+		}
+	}
+	if agentSpan == nil {
+		t.Fatalf("no agent span among %d ended spans", len(recorder.Ended()))
+	}
+	for _, attr := range agentSpan.Attributes() {
+		if string(attr.Key) != "gen_ai.output.messages" {
+			continue
+		}
+		if strings.Contains(attr.Value.AsString(), "服务正常") {
+			t.Fatalf("agent span claims an answer the user never received: %s", attr.Value.AsString())
+		}
+	}
+}

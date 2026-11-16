@@ -183,10 +183,13 @@ func (m *Manager) HasHooks() bool {
 	return m != nil && m.hasHooks.Load()
 }
 
-// ReasoningPolicy reports the reasoning capture policy declared by the
-// registered hooks. The most permissive policy wins because every hook that
-// captures payloads shares the same content, and CaptureNone is reported when
-// no hook declares another policy.
+// ReasoningPolicy reports the widest reasoning capture policy any registered
+// hook declares, and CaptureNone when no hook declares another policy.
+//
+// It is the policy this manager promises to the outside, not the view any
+// single hook gets: Emit applies the policy per registration, so two hooks
+// that declare different policies see different content. Use it to decide
+// what may be captured at all; never use it to describe one hook's content.
 func (m *Manager) ReasoningPolicy() string {
 	if m == nil {
 		return CaptureNone

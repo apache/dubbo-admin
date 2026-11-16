@@ -31,10 +31,16 @@ const reasoningPartType = "reasoning"
 // message in the generative AI semantic conventions.
 const reasoningPartsKey = "parts"
 
-// truncatedReasoningLimit is the number of characters kept from a single
-// reasoning string when the truncated policy applies. It matches the limit
-// used for the other captured JSON strings.
-const truncatedReasoningLimit = 512
+// reasoningOmittedText is the placeholder that stands in for a reasoning part
+// that the policy removed. It keeps the message from ending up with an empty
+// parts array, which a backend renders as a blank bubble — or, when the trace
+// holds nothing else, as a trace with no content at all.
+const reasoningOmittedText = "[reasoning omitted]"
+
+// reasoningOmittedPartType is the part discriminator of the placeholder. It
+// is a text part because the placeholder stands for content, not for another
+// piece of reasoning.
+const reasoningOmittedPartType = "text"
 
 // ApplyReasoningPolicy filters or truncates the reasoning parts of a
 // generative AI messages document according to the configured policy.
@@ -153,6 +159,12 @@ func filterReasoningParts(value any, rewrite func(element map[string]any) bool) 
 // filterReasoningElements rewrites the reasoning elements of a parts array
 // and preserves every other element. A rewrite that reports false drops the
 // element from the array.
+//
+// A message whose only part was the removed reasoning is not left with an
+// empty parts array: the placeholder stands in for it. An empty array reads
+// as "the assistant said nothing", which a backend renders as a blank bubble
+// and — when the trace holds nothing else — as a trace with no content at
+// all, which is the very thing the capture policy is there to avoid.
 func filterReasoningElements(parts []any, rewrite func(element map[string]any) bool) ([]any, bool) {
 	filtered := make([]any, 0, len(parts))
 	changed := false
@@ -166,6 +178,12 @@ func filterReasoningElements(parts []any, rewrite func(element map[string]any) b
 		if rewrite != nil && rewrite(element) {
 			filtered = append(filtered, element)
 		}
+	}
+	if changed && len(filtered) == 0 {
+		filtered = append(filtered, map[string]any{
+			"type":    reasoningOmittedPartType,
+			"content": reasoningOmittedText,
+		})
 	}
 	return filtered, changed
 }
@@ -185,12 +203,13 @@ func truncateReasoningElement(element map[string]any) bool {
 }
 
 // truncateReasoningString shortens a reasoning string to the per-string limit
-// and reports whether the string was shortened. The limit counts characters
-// so a multi-byte reasoning text keeps the documented number of them.
+// and reports whether the string was shortened. The limit counts bytes, like
+// the rest of the captured content: the document budget is a byte budget, so
+// counting characters here would let a multi-byte reasoning text take up to
+// three times the room it is meant to hold.
 func truncateReasoningString(content string) (string, bool) {
-	characters := []rune(content)
-	if len(characters) <= truncatedReasoningLimit {
+	if len(content) <= truncatedStringLimit {
 		return content, false
 	}
-	return string(characters[:truncatedReasoningLimit-1]) + "…", true
+	return strings.ToValidUTF8(content[:truncatedStringLimit], "") + "…", true
 }

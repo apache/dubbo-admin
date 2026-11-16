@@ -126,6 +126,10 @@ export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic <base64(publicKey:secretK
 | `error.type` | 低基数错误分类 | 错误标签 | 异常聚合 |
 | `gen_ai.client.operation.exception`（事件） | GenAI 异常事件 | 异常记录 | Exceptions 视图 |
 
+> **异常事件名跟着规范版本走。** 本实现钉在 semconv-genai 的 `6fd0d76`（2026-10-09），该版本里 GenAI 异常只有 `gen_ai.client.operation.exception` 一个事件名，**推理异常用的也是它**。规范主干在 2026-11-05 之后把异常事件拆成了 `gen_ai.client.inference.exception` / `gen_ai.execute_tool.exception` 等，并把 `gen_ai.client.operation.exception` 收窄为「推理、嵌入、agent 调用、拉取响应之外」的场景。那次拆分**尚未发布**，推理侧还被标为 breaking，本实现暂不跟进（见第 8 节）；升级规范版本时需重跑对齐检查。
+>
+> 异常事件**不记 `exception.stacktrace`**：hook 只看得到错误消息，在 hook 边界采到的栈对每一次失败都一样，说不出失败发生在哪里。规范里该属性是 Recommended，缺失不违规；分类信息由 `exception.type` 与 span 状态承担。
+
 **span 命名**也遵循规范，所以后端能直接把它读成 Agent 结构：
 
 | span 名 | 规范依据 |
@@ -140,6 +144,17 @@ export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic <base64(publicKey:secretK
 
 `gen_ai.provider.name` 会映射到规范的 well-known 值：`gemini` → `gcp.gemini`（依据是该 provider 的 base_url 为 `generativelanguage.googleapis.com`，而规范对 `gcp.gemini` 的描述正是 "Also known as the AI Studio API"）。规范允许自定义值，所以 `dashscope`、`siliconflow` 这类值**原样保留**，不做过滤。
 
+### 4.1 对接已有看板的迁移说明
+
+这一版改了两处对外可见的契约，方向都是向规范靠拢，但**按旧属性或旧 span 名建的看板会失效**：
+
+| 变化 | 影响 | 该怎么改 |
+| --- | --- | --- |
+| span 名从 `invoke_agent` 改成 `invoke_agent dubbo-admin-sre-agent` | 任何按 operation name 过滤的查询失效：Jaeger UI 的 operation 下拉、Grafana 的 `operation_name=` 过滤 | 把过滤条件改成 `invoke_agent dubbo-admin-sre-agent`，或改成前缀匹配 |
+| 删除 `agent.usage.total_tokens` | 按这个属性算成本的看板会归零 | 改用 `gen_ai.usage.input_tokens` + `gen_ai.usage.output_tokens` 相加（规范只定义这两个，总量是两者之和） |
+
+`gen_ai.agent.name` 目前是硬编码常量，多 agent 部署时所有 span 会报同一个名字。规范要求该属性低基数，所以硬编码在单 agent 下是对的；**将来加第二个 agent 时这里要跟着改**。
+
 ---
 
 ## 5. 调试速查
@@ -153,7 +168,7 @@ export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic <base64(publicKey:secretK
 | 工具的**入参与返回值** | `gen_ai.tool.call.arguments` / `gen_ai.tool.call.result`（需开 `capture_content`） |
 | **思考过程** | `gen_ai.output.messages` 里的 `type: "reasoning"` part（需开 `capture_reasoning`） |
 | **输入输出** | `gen_ai.input.messages` / `gen_ai.output.messages`（需开 `capture_content`） |
-| **哪里失败了、为什么** | span 状态 + `error.type` + `gen_ai.client.operation.exception` 事件的 `exception.type` / `exception.message` / `exception.stacktrace` |
+| **哪里失败了、为什么** | span 状态 + `error.type` + `gen_ai.client.operation.exception` 事件的 `exception.type` / `exception.message` |
 | **模型与 token / 成本** | `gen_ai.request.model` + `gen_ai.usage.*`（成本由后端按价格表算） |
 | 有没有**走降级 / 兜底** | `agent.degraded` / `agent.fallback.used` / `agent.fallback.reason` |
 
@@ -188,6 +203,8 @@ export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic <base64(publicKey:secretK
 | **总量口径只有一种** | 规范只定义输入与输出两个 token 属性，总量是两者之和。provider 自报的非规范 `gen_ai.usage.total_tokens` 只保留在单次调用明细里，不参与汇总。 |
 | **成本不在 Admin 侧计算** | Admin 只给出「模型名 + token 数」，成本由企业自己的 API 网关或后端平台核算。 |
 | **内容默认不采集** | 默认两个开关都是 `none`。**看不到**提示词与思考过程是默认行为，不是故障。 |
+| **思考内容目前采不到** | `capture_reasoning` 的策略与转换都在，但**实际模型适配器不产出 reasoning part**：genkit v1.2.0 的 `compat_oai` 插件没有把 OpenAI 兼容响应里的 `reasoning_content` 映射成 `ai.NewReasoningPart`（整个 genkit 只有 `googlegenai` 插件会，而 Admin 这边对 gemini 尚未接通）。所以 `capture_reasoning: full` 目前在生产上没有可采的内容，要等接上这层适配（见第 8 节）。 |
+| **Genkit 自身的 span 不受采集开关约束** | `otel.SetTracerProvider` 让 genkit 与本实现共用同一个导出 provider，而 genkit v1.2.0 的 `core/tracing` 会直接在 span 上写 `genkit:input` / `genkit:output`，不经过 Manager 的采集策略。因此 `capture_content: none` 时，**完整 trace**（含 genkit 的 prompt/model span）里仍可能带用户输入与提示词；本实现自己导出的 span 是干净的。这是 base 分支既有的接线，不是本改动引入的。 |
 
 ---
 
@@ -196,6 +213,9 @@ export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic <base64(publicKey:secretK
 - **把 Admin 自身的调用接回 Agent 链路**：MCP Server 侧接收 trace context 并创建 `mcp.server.tools/call` span，让 Agent 的链路覆盖到注册中心访问、配置中心读取等下游操作。
 - **工具返回的敏感内容过滤**：当前工具返回按设计保留上游原文（用户可以直接追问「上一次调用的模型与返回结果」），其中可能携带的业务敏感数据尚无过滤机制，需要按部署场景确定口径。
 - **采样信息透出**：让检索侧能感知当前采样率，避免把「没采到」误判成「没有」。
+- **接上 reasoning part 的来源**：把 provider 响应里的思考字段（如 OpenAI 兼容响应的 `reasoning_content`）适配成 `ai.NewReasoningPart`，`capture_reasoning` 才有内容可采（第 7 节「思考内容目前采不到」）。
+- **统一导出边界**：让 Genkit 自己导出的 span 也受采集开关约束，或隔离它的 telemetry（第 7 节「Genkit 自身的 span 不受采集开关约束」）。
+- **异常事件名的版本跟进**：规范主干已把异常事件拆分，本实现仍用 `6fd0d76` 的那一个；等拆分发布后再升版并重跑对齐检查。
 - **规范版本跟进**：GenAI 规范全部文档处于 Development 状态，本实现钉在 `6fd0d76`；升级规范时需重跑对齐检查。
 
 ---

@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"dubbo-admin-ai/config"
 	"dubbo-admin-ai/runtime"
@@ -80,11 +81,14 @@ func TestApplyReasoningPolicyTruncatesReasoningContent(t *testing.T) {
 	if !ok {
 		t.Fatalf("reasoning content = %v, want a string", reasoning["content"])
 	}
-	if len([]rune(content)) > truncatedReasoningLimit {
-		t.Fatalf("reasoning content length = %d, want at most %d", len([]rune(content)), truncatedReasoningLimit)
+	// The limit counts bytes, like the rest of the captured content: the
+	// document budget is a byte budget, so a multi-byte reasoning text must
+	// not take up three times the room it is meant to hold.
+	if len(content) > truncatedStringLimit+len("…") {
+		t.Fatalf("reasoning content = %d bytes, want at most %d", len(content), truncatedStringLimit+len("…"))
 	}
-	if len([]rune(content)) != truncatedReasoningLimit {
-		t.Fatalf("reasoning content length = %d, want %d", len([]rune(content)), truncatedReasoningLimit)
+	if !utf8.ValidString(content) {
+		t.Fatalf("truncated reasoning content = %q, want valid UTF-8", content)
 	}
 	if !strings.HasSuffix(content, "…") {
 		t.Fatalf("truncated reasoning content = %q, want an ellipsis marker", content)
@@ -143,8 +147,29 @@ func TestApplyReasoningPolicyIgnoresDocumentShape(t *testing.T) {
 	if len(messages) != 2 {
 		t.Fatalf("filtered document = %s, want both messages", filtered)
 	}
-	if len(messages[1].Parts) != 0 {
-		t.Fatalf("second message = %v, want no parts", messages[1])
+	if len(messages[1].Parts) != 1 {
+		t.Fatalf("second message = %v, want the placeholder part", messages[1])
+	}
+	placeholder := messages[1].Parts[0]
+	if placeholder["type"] != reasoningOmittedPartType || placeholder["content"] != reasoningOmittedText {
+		t.Fatalf("placeholder = %v, want the omitted-reasoning placeholder", placeholder)
+	}
+}
+
+// A message that keeps another part does not get the placeholder: the
+// placeholder stands for a message whose only content was the reasoning.
+func TestApplyReasoningPolicyKeepsMessagesThatStillHaveContent(t *testing.T) {
+	document := `[{"role":"assistant","parts":[{"type":"reasoning","content":"thinking"},{"type":"text","content":"the answer"}]}]`
+	filtered := ApplyReasoningPolicy(document, CaptureNone)
+	messages := decodeReasoningDocument(t, filtered)
+	if len(messages) != 1 || len(messages[0].Parts) != 1 {
+		t.Fatalf("filtered document = %s, want a single text part", filtered)
+	}
+	if messages[0].Parts[0]["content"] != "the answer" {
+		t.Fatalf("remaining part = %v, want the text part", messages[0].Parts[0])
+	}
+	if strings.Contains(filtered, reasoningOmittedText) {
+		t.Fatalf("filtered document holds the placeholder: %s", filtered)
 	}
 }
 

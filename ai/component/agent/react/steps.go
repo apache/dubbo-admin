@@ -187,10 +187,15 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 		runtime.GetLogger().Warn("react: empty forced answer, using fallback")
 		answer = fallbackAnswer
 	}
-	s.Answer = answer
 	if err := ra.finish(ctx, chans, history, s.Session, turnID, answer); err != nil {
 		return false, err
 	}
+	// The answer is recorded only once it has been delivered. finish persists
+	// it and streams it to the user; when the persistence fails the
+	// interaction ends in an error and the user never receives the answer, so
+	// recording it as the interaction output would put a delivered answer in
+	// the trace that the user never saw.
+	s.Answer = answer
 	return true, nil
 }
 

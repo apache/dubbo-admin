@@ -401,7 +401,7 @@ func TestTracingHookTruncatedConversationKeepsItsFirstTurns(t *testing.T) {
 	for i := 0; i < 32; i++ {
 		messages = append(messages, map[string]any{
 			"role":  "user",
-			"parts": []map[string]any{{"type": "text", "content": strings.Repeat("x", truncatedJSONStringLimit+100)}},
+			"parts": []map[string]any{{"type": "text", "content": strings.Repeat("x", truncatedStringLimit+100)}},
 		})
 	}
 	state := State{Event: EventModelCallStart, Input: SnapshotContent(messages)}

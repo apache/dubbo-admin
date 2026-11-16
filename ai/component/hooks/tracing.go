@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -36,9 +35,15 @@ const (
 	// truncatedContentLimit is the size a captured content attribute may
 	// reach. A longer document is shortened before it is attached to a span.
 	truncatedContentLimit = 4096
-	// truncatedJSONStringLimit is the size of a single string inside a
-	// captured content document.
-	truncatedJSONStringLimit = 512
+	// truncatedStringLimit is the size of a single string inside a captured
+	// content document, in bytes.
+	//
+	// The unit is bytes because the document budget (truncatedContentLimit) is
+	// measured in bytes too. A limit counted in characters would let a
+	// multi-byte string occupy up to three times the budget it is meant to
+	// hold, so the reasoning content and the rest of the document would be
+	// truncated by different amounts for the same nominal limit.
+	truncatedStringLimit = 512
 )
 
 // AgentName is the human-readable name of the Dubbo Admin SRE agent. The GenAI
@@ -184,12 +189,12 @@ func recordGenAIException(span trace.Span, state State, exceptions *exceptionRec
 		attribute.String("exception.type", exceptionType(state)),
 		attribute.String("exception.message", state.Error),
 	}
-	// The hook only observes the error message, so the stack is captured at
-	// the hook boundary, the same convention the OpenTelemetry Go SDK uses
-	// when it records an exception.
-	if stack := captureStackTrace(); stack != "" {
-		attrs = append(attrs, attribute.String("exception.stacktrace", stack))
-	}
+	// exception.stacktrace is deliberately not recorded. The hook only sees
+	// the error message, so a stack captured here would be the hook dispatch
+	// stack — the same frames for every failure — and it says nothing about
+	// where the failure happened. The semantic conventions list the attribute
+	// as Recommended, so leaving it out stays within the specification; the
+	// span status and exception.type carry the classification.
 	span.AddEvent(genAIExceptionEvent, trace.WithAttributes(attrs...))
 }
 
@@ -213,11 +218,6 @@ func exceptionType(state State) string {
 		return state.ErrorType
 	}
 	return errorTypeOther
-}
-
-func captureStackTrace() string {
-	buffer := make([]byte, 2048)
-	return string(buffer[:runtime.Stack(buffer, false)])
 }
 
 func eventStartsSpan(event Event) bool {
@@ -351,7 +351,7 @@ func truncateSemanticJSON(text, key string) string {
 	if err := json.Unmarshal([]byte(text), &value); err != nil {
 		return strconv.Quote(strings.ToValidUTF8(text[:truncatedContentLimit], "") + "…")
 	}
-	value = truncateJSONStrings(value, truncatedJSONStringLimit)
+	value = truncateJSONStrings(value, truncatedStringLimit)
 	// The strings are shortened first, because a long prompt is usually one
 	// long string. When the document still does not fit, the trailing elements
 	// of the outermost array are dropped until it does. A long conversation
