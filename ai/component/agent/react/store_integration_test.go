@@ -387,3 +387,136 @@ func assertNoStoredMessages(t *testing.T, store conversationstore.Store, session
 		t.Fatalf("failed interaction left messages behind: %#v", messages)
 	}
 }
+
+// setPersistenceTimeout shrinks the per-write budget for one test and restores
+// it afterwards. Tests in this package run sequentially (none calls
+// t.Parallel), so mutating the package-level budget is safe here.
+func setPersistenceTimeout(t *testing.T, timeout time.Duration) {
+	t.Helper()
+	previous := persistenceTimeout
+	persistenceTimeout = timeout
+	t.Cleanup(func() { persistenceTimeout = previous })
+}
+
+// collectInteraction drains an interaction until it finishes, returning the
+// streamed text and the first non-nil error. Channels are buffered and closed
+// only after every send, so the post-done drain cannot miss an event.
+func collectInteraction(t *testing.T, channels *agent.Channels) (string, error) {
+	t.Helper()
+	var text strings.Builder
+	var interactionErr error
+	timeout := time.After(10 * time.Second)
+	for {
+		select {
+		case feedback := <-channels.UserRespChan:
+			text.WriteString(feedback.Text())
+		case err := <-channels.ErrorChan:
+			if err != nil && interactionErr == nil {
+				interactionErr = err
+			}
+		case <-channels.Done():
+			for {
+				select {
+				case feedback := <-channels.UserRespChan:
+					text.WriteString(feedback.Text())
+				default:
+					return text.String(), interactionErr
+				}
+			}
+		case <-timeout:
+			t.Fatal("interaction did not finish")
+			return text.String(), interactionErr
+		}
+	}
+}
+
+func TestInteractKeepsAnswerVisibleWhenFinalAnswerWriteFails(t *testing.T) {
+	ctx := testutils.ContextWithTestAccess(context.Background())
+	baseStore := memorystore.NewMemoryStore(10)
+	createAgentSession(t, baseStore, "final-answer-failure-session")
+	// Call 1 persists the user message; call 2 is the final answer.
+	store := &failingMessageStore{Store: baseStore, failOn: 2}
+	script := &scriptPrompt{resps: []*ai.ModelResponse{textResp("answer survives storage failure")}}
+	ra := &ReActAgent{
+		registry:           genkit.Init(ctx),
+		messageStore:       store,
+		actPrompt:          script,
+		answerPrompt:       script,
+		maxIterations:      1,
+		contextWindowTurns: 5,
+	}
+
+	channels := ra.Interact(ctx, &schema.UserInput{Content: "hello"}, "final-answer-failure-session")
+	text, err := collectInteraction(t, channels)
+	if err != nil {
+		t.Fatalf("interaction surfaced the degraded persistence failure: %v", err)
+	}
+	if !strings.Contains(text, "answer survives storage failure") {
+		t.Fatalf("streamed text = %q, want the generated answer", text)
+	}
+
+	messages, err := baseStore.AllMemory(context.Background(), testutils.TestAccess(), "final-answer-failure-session")
+	if err != nil {
+		t.Fatalf("AllMemory() error = %v", err)
+	}
+	if len(messages) != 1 {
+		t.Fatalf("persisted message count = %d, want only the user message: the final answer write was injected to fail", len(messages))
+	}
+}
+
+func TestInteractionLongerThanPersistenceBudgetStillPersists(t *testing.T) {
+	// The interaction outlives its write budget; each write must still receive
+	// a fresh budget instead of inheriting the expired interaction lease.
+	setPersistenceTimeout(t, 50*time.Millisecond)
+
+	ctx := testutils.ContextWithTestAccess(context.Background())
+	store := memorystore.NewMemoryStore(10)
+	createAgentSession(t, store, "long-interaction-session")
+
+	g := genkit.Init(ctx)
+	genkit.DefineTool(g, "slow_persistence_tool", "tool slower than the persistence budget",
+		func(toolCtx *ai.ToolContext, input map[string]any) (map[string]any, error) {
+			select {
+			case <-time.After(150 * time.Millisecond):
+				return map[string]any{"summary": "slow tool result"}, nil
+			case <-toolCtx.Done():
+				return nil, toolCtx.Err()
+			}
+		})
+	script := &scriptPrompt{resps: []*ai.ModelResponse{
+		toolReqResp("slow_persistence_tool", map[string]any{}),
+		textResp("final answer after slow tool"),
+	}}
+	ra := &ReActAgent{
+		registry:           g,
+		messageStore:       store,
+		actPrompt:          script,
+		answerPrompt:       script,
+		maxIterations:      2,
+		contextWindowTurns: 5,
+		toolTimeouts:       newToolTimeoutResolver(defaultToolTimeoutSeconds, nil),
+	}
+
+	channels := ra.Interact(ctx, &schema.UserInput{Content: "hello"}, "long-interaction-session")
+	text, err := collectInteraction(t, channels)
+	if err != nil {
+		t.Fatalf("interaction failed after outliving the write budget: %v", err)
+	}
+	if !strings.Contains(text, "final answer after slow tool") {
+		t.Fatalf("streamed text = %q, want the final answer", text)
+	}
+
+	messages, err := store.AllMemory(context.Background(), testutils.TestAccess(), "long-interaction-session")
+	if err != nil {
+		t.Fatalf("AllMemory() error = %v", err)
+	}
+	if len(messages) != 3 {
+		t.Fatalf("persisted message count = %d, want user, tool result, and final answer", len(messages))
+	}
+	joined := strings.Join(messageTextList(messages), "\n")
+	for _, want := range []string{"slow tool result", "final answer after slow tool"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("persisted history = %q, want to contain %q", joined, want)
+		}
+	}
+}
