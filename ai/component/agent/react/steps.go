@@ -311,7 +311,11 @@ func (ra *ReActAgent) finish(ctx context.Context, chans *agent.Channels, history
 			persistCtx, cancel := persistenceContext(ctx)
 			defer cancel()
 			if err := ra.messageStore.AddHistoryToTurn(persistCtx, access, sessionID, turnID, message); err != nil {
-				return fmt.Errorf("failed to persist final answer: %w", err)
+				// The answer already exists: a storage fault must not hide it from
+				// the user. Completion still records it in the interaction result,
+				// so only the message history degrades here.
+				runtime.GetLogger().Error("Failed to persist final answer",
+					"session_id", sessionID, "turn_id", turnID, "error_type", hooks.ErrorType(err))
 			}
 		} else {
 			history.AddHistory(sessionID, message)
