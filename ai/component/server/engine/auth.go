@@ -35,8 +35,13 @@ import (
 
 const jwtClaimsContextKey = "dubbo-admin-ai.jwt-claims"
 
-// Cache lifetime after success and retry cooldown after failure.
-const jwksRefreshInterval = 30 * time.Second
+const (
+	jwksRefreshInterval = 30 * time.Second
+	jwksRetryInterval   = 5 * time.Second
+	// Only failed refreshes may reuse the last successful keys, for a bounded time.
+	jwksStaleGracePeriod = 2 * time.Minute
+	jwksFetchTimeout     = 10 * time.Second
+)
 
 type jwksRefresh struct {
 	done chan struct{}
@@ -60,13 +65,14 @@ type Claims struct {
 }
 
 type JWTVerifier struct {
-	config      JWTAuthConfig
-	client      *JWKSClient
-	mu          sync.RWMutex
-	keys        map[string]*rsa.PublicKey
-	nextRefresh time.Time
-	now         func() time.Time
-	refreshing  *jwksRefresh
+	config        JWTAuthConfig
+	client        *JWKSClient
+	mu            sync.RWMutex
+	keys          map[string]*rsa.PublicKey
+	nextRefreshAt time.Time
+	staleUntil    time.Time
+	now           func() time.Time
+	refreshing    *jwksRefresh
 }
 
 func NewJWTVerifier(config JWTAuthConfig, client *http.Client) (*JWTVerifier, error) {
@@ -122,28 +128,23 @@ func (v *JWTVerifier) keyForToken(ctx context.Context, token *jwt.Token) (any, e
 	if !ok || kid == "" {
 		return nil, errors.New("JWT kid is missing")
 	}
-	v.mu.RLock()
-	key := v.keys[kid]
-	fresh := v.clock().Before(v.nextRefresh)
-	v.mu.RUnlock()
-	if fresh {
-		if key == nil {
-			return nil, errors.New("JWT kid is unknown")
-		}
-		return key, nil
-	}
-	if err := v.refresh(ctx); err != nil {
+	// Refresh errors may fall back to the last successful keys, but cancellation
+	// belongs to this caller and must never allow it to continue authentication.
+	refreshErr := v.refresh(ctx)
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	v.mu.RLock()
-	key = v.keys[kid]
-	fresh = v.clock().Before(v.nextRefresh)
-	v.mu.RUnlock()
-	if !fresh {
+	defer v.mu.RUnlock()
+	if !v.clock().Before(v.staleUntil) {
+		if refreshErr != nil {
+			return nil, refreshErr
+		}
 		return nil, errors.New("JWKS cache expired")
 	}
+	key := v.keys[kid]
 	if key == nil {
-		return nil, fmt.Errorf("JWT kid %q is unknown", kid)
+		return nil, errors.New("JWT kid is unknown")
 	}
 	return key, nil
 }
@@ -160,41 +161,52 @@ func (v *JWTVerifier) refresh(ctx context.Context) error {
 		return err
 	}
 	v.mu.Lock()
-	if flight := v.refreshing; flight != nil {
-		v.mu.Unlock()
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-flight.done:
-			return flight.err
+	flight := v.refreshing
+	if flight == nil {
+		if v.clock().Before(v.nextRefreshAt) {
+			v.mu.Unlock()
+			return nil
 		}
+		flight = &jwksRefresh{done: make(chan struct{})}
+		v.refreshing = flight
+		// A shared fetch outlives individual callers, but always has its own deadline,
+		// including when an injected HTTP client has no timeout.
+		go func() {
+			fetchCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), jwksFetchTimeout)
+			defer cancel()
+			keys, err := v.fetchKeys(fetchCtx)
+			v.mu.Lock()
+			defer v.mu.Unlock()
+			now := v.clock()
+			if err == nil {
+				// Publish a complete snapshot. Keys removed by a successful refresh must
+				// never be restored by the stale fallback.
+				v.keys = keys
+				v.nextRefreshAt = now.Add(jwksRefreshInterval)
+				v.staleUntil = v.nextRefreshAt.Add(jwksStaleGracePeriod)
+			} else {
+				v.nextRefreshAt = now.Add(jwksRetryInterval)
+				// Failure must not extend the last successful snapshot's hard expiry.
+			}
+			flight.err = err
+			v.refreshing = nil
+			close(flight.done)
+		}()
 	}
-	if v.clock().Before(v.nextRefresh) {
-		v.mu.Unlock()
-		return nil // Use the cache, or reject if a failed refresh left it empty.
+	v.mu.Unlock()
+	// The initiator and every subsequent caller cancel only their own wait.
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-flight.done:
+		return flight.err
 	}
-	flight := &jwksRefresh{done: make(chan struct{})}
-	v.refreshing = flight
-	// Expired keys must not remain usable when refreshing fails.
-	v.keys = nil
-	v.mu.Unlock()
-
-	// All concurrent misses share this attempt. The initiating request owns its
-	// context; cancellation also ends the fetch for the waiting requests.
-	err := v.fetchKeys(ctx)
-	v.mu.Lock()
-	flight.err = err
-	v.nextRefresh = v.clock().Add(jwksRefreshInterval)
-	v.refreshing = nil
-	close(flight.done)
-	v.mu.Unlock()
-	return err
 }
 
-func (v *JWTVerifier) fetchKeys(ctx context.Context) error {
+func (v *JWTVerifier) fetchKeys(ctx context.Context) (map[string]*rsa.PublicKey, error) {
 	document, err := v.client.Fetch(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	keys := make(map[string]*rsa.PublicKey)
 	for _, item := range document.Keys {
@@ -202,33 +214,30 @@ func (v *JWTVerifier) fetchKeys(ctx context.Context) error {
 			continue
 		}
 		if _, exists := keys[item.KeyID]; exists {
-			return errors.New("JWKS contains duplicate kid")
+			return nil, errors.New("JWKS contains duplicate kid")
 		}
 		modulus, err := base64.RawURLEncoding.DecodeString(item.Modulus)
 		if err != nil || len(modulus) == 0 {
-			return fmt.Errorf("invalid JWKS modulus for %q", item.KeyID)
+			return nil, fmt.Errorf("invalid JWKS modulus for %q", item.KeyID)
 		}
 		exponent, err := base64.RawURLEncoding.DecodeString(item.Exponent)
 		if err != nil || len(exponent) == 0 {
-			return fmt.Errorf("invalid JWKS exponent for %q", item.KeyID)
+			return nil, fmt.Errorf("invalid JWKS exponent for %q", item.KeyID)
 		}
 		e := new(big.Int).SetBytes(exponent)
 		if !e.IsInt64() || e.Int64() < 3 || e.Bit(0) == 0 || e.Int64() > int64(^uint(0)>>1) {
-			return fmt.Errorf("invalid JWKS exponent for %q", item.KeyID)
+			return nil, fmt.Errorf("invalid JWKS exponent for %q", item.KeyID)
 		}
 		n := new(big.Int).SetBytes(modulus)
 		if n.BitLen() < 2048 || n.Bit(0) == 0 {
-			return errors.New("invalid JWKS RSA modulus")
+			return nil, errors.New("invalid JWKS RSA modulus")
 		}
 		keys[item.KeyID] = &rsa.PublicKey{N: n, E: int(e.Int64())}
 	}
 	if len(keys) == 0 {
-		return errors.New("JWKS contains no usable RS256 signing keys")
+		return nil, errors.New("JWKS contains no usable RS256 signing keys")
 	}
-	v.mu.Lock()
-	v.keys = keys
-	v.mu.Unlock()
-	return nil
+	return keys, nil
 }
 
 func abortUnauthorized(c *gin.Context) {
