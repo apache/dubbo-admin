@@ -187,6 +187,7 @@ export const getServiceMethodDetailAPI = (params: {
   methodName: string
   group?: string
   version?: string
+  providerAppName?: string
   signature?: string
 }): Promise<any> => {
   return request({
@@ -214,16 +215,21 @@ export const serviceGenericInvokeAPI = (data: {
   instanceName: string
   serviceName: string
   methodName: string
-  args: any[]
+  args: unknown[] | string
   group?: string
   version?: string
   signature?: string
   timeoutMs?: number
   attachments?: Record<string, string>
 }): Promise<any> => {
+  const { args, ...envelope } = data
+  // Validate editor text while retaining its original numeric tokens in the request body.
+  const source = typeof args === 'string' ? args : JSON.stringify(args)
+  const argsJSON = Array.isArray(JSON.parse(source)) ? source : `[${source}]`
   return request({
     url: '/service/generic/invoke',
     method: 'post',
-    data
+    headers: { 'Content-Type': 'application/json' },
+    data: `${JSON.stringify(envelope).slice(0, -1)},"args":${argsJSON}}`
   })
 }

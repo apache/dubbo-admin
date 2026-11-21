@@ -192,16 +192,14 @@ func GetServiceMethodDetail(ctx consolectx.Context, req model.ServiceMethodDetai
 	if err != nil {
 		return nil, err
 	}
-	method := findMethod(metadataList, req.MethodName, req.Signature)
-	if method == nil {
+	detail, _ := findMethodDetail(metadataList, req.ProviderAppName, req.MethodName, req.Signature)
+	if detail == nil {
 		return nil, bizerror.New(
 			bizerror.NotFoundError,
 			fmt.Sprintf("method %s not found for service %s", req.MethodName, req.ServiceName),
 		)
 	}
 
-	detail := toMethodDetail(method)
-	detail.Types = buildRelatedTypes(metadataList, method)
 	return detail, nil
 }
 
@@ -268,22 +266,21 @@ func collectMethods(metadataList []*meshresource.ServiceProviderMetadataResource
 	return methods
 }
 
-// findMethod scans the current metadata snapshot for one exact method signature.
-func findMethod(metadataList []*meshresource.ServiceProviderMetadataResource, methodName string, signature string) *meshproto.Method {
+// Resolve the signature and its related types from the same provider declaration.
+func findMethodDetail(metadataList []*meshresource.ServiceProviderMetadataResource, app, methodName, signature string) (*model.ServiceMethodDetailResp, *meshproto.ServiceProviderMetadata) {
 	for _, metadata := range metadataList {
-		if metadata == nil || metadata.Spec == nil {
+		if metadata == nil || metadata.Spec == nil || (app != "" && metadata.Spec.ProviderAppName != app) {
 			continue
 		}
 		for _, method := range metadata.Spec.Methods {
-			if method == nil {
-				continue
-			}
-			if method.GetName() == methodName && methodSig(method) == signature {
-				return method
+			if method != nil && method.GetName() == methodName && methodSig(method) == signature {
+				detail := toMethodDetail(method)
+				detail.Types = buildRelatedTypes(metadata.Spec.Types, method)
+				return detail, metadata.Spec
 			}
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func methodKey(methodName, signature string) string {
@@ -301,9 +298,6 @@ func toMethodDetail(method *meshproto.Method) *model.ServiceMethodDetailResp {
 		Types:          []model.ServiceMethodTypeResp{},
 	}
 	for _, parameter := range method.GetParameters() {
-		if parameter == nil {
-			continue
-		}
 		resp.Parameters = append(resp.Parameters, model.ServiceMethodParameter{
 			Name: parameter.GetName(),
 			Type: parameter.GetType(),
@@ -313,13 +307,13 @@ func toMethodDetail(method *meshproto.Method) *model.ServiceMethodDetailResp {
 }
 
 // buildRelatedTypes walks parameter and return types against the current metadata snapshot.
-func buildRelatedTypes(metadataList []*meshresource.ServiceProviderMetadataResource, method *meshproto.Method) []model.ServiceMethodTypeResp {
-	if method == nil {
-		return []model.ServiceMethodTypeResp{}
+func buildRelatedTypes(types []*meshproto.Type, method *meshproto.Method) []model.ServiceMethodTypeResp {
+	typesByName := make(map[string]*meshproto.Type, len(types))
+	for _, typ := range types {
+		if typ.GetType() != "" {
+			typesByName[typ.Type] = typ
+		}
 	}
-
-	// Index all declared types once, then resolve only the subset reachable from this method.
-	typesByName := buildTypeMap(metadataList)
 	visited := make(map[string]struct{})
 	for _, parameterType := range method.GetParameterTypes() {
 		collectRelatedTypes(typesByName, parameterType, visited)
@@ -344,43 +338,22 @@ func buildRelatedTypes(metadataList []*meshresource.ServiceProviderMetadataResou
 	return resp
 }
 
-// buildTypeMap keeps the first declaration for each type name in the current metadata snapshot.
-func buildTypeMap(metadataList []*meshresource.ServiceProviderMetadataResource) map[string]*meshproto.Type {
-	typesByName := make(map[string]*meshproto.Type)
-	for _, metadata := range metadataList {
-		if metadata == nil || metadata.Spec == nil {
-			continue
-		}
-		for _, typeSpec := range metadata.Spec.Types {
-			if typeSpec == nil {
-				continue
-			}
-			typeName := typeSpec.GetType()
-			if typeName == "" {
-				continue
-			}
-			if _, exists := typesByName[typeName]; !exists {
-				typesByName[typeName] = typeSpec
-			}
-		}
-	}
-	return typesByName
-}
-
 // collectRelatedTypes follows nested item/property references and uses visited to stop cycles.
 func collectRelatedTypes(typesByName map[string]*meshproto.Type, typeName string, visited map[string]struct{}) {
 	if strutil.IsBlank(typeName) {
-		return
-	}
-	typeSpec, ok := typesByName[typeName]
-	if !ok {
 		return
 	}
 	if _, exists := visited[typeName]; exists {
 		return
 	}
 	visited[typeName] = struct{}{}
-
+	typeSpec := typesByName[typeName]
+	key, elem := containerTypes(typeName, nil)
+	collectRelatedTypes(typesByName, key, visited)
+	collectRelatedTypes(typesByName, elem, visited)
+	if inner, ok := strings.CutPrefix(typeName, "*"); ok {
+		collectRelatedTypes(typesByName, inner, visited)
+	}
 	for _, itemType := range typeSpec.GetItems() {
 		collectRelatedTypes(typesByName, itemType, visited)
 	}
