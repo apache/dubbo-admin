@@ -88,6 +88,7 @@ import yaml from 'js-yaml'
 import { isNil } from 'lodash'
 import { message } from 'ant-design-vue'
 import { HTTP_STATUS } from '@/base/http/constants'
+import { conditionRuleName } from '../conditionRuleName'
 
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 
@@ -144,8 +145,8 @@ const addRoutingRule = async () => {
   const { configVersion, scope, key, runtime, force, conditions } = data
   let ruleName = ''
 
-  if (key == 'application') {
-    ruleName = `${key}.condition-router`
+  if (scope === 'application') {
+    ruleName = conditionRuleName(scope, key)
   } else {
     if (!isNil(TAB_STATE.addConditionRuleSate)) {
       const { version, group } = TAB_STATE.addConditionRuleSate
@@ -153,7 +154,7 @@ const addRoutingRule = async () => {
         message.error('请先填写版本和分组字段')
         return
       }
-      ruleName = `${key}:${version}:${group}.condition-router`
+      ruleName = conditionRuleName(scope, key, version, group)
     } else {
       message.error('请先填写版本和分组字段')
       return
