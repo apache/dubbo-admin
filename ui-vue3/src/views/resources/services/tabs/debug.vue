@@ -25,17 +25,11 @@
           v-if="!loadingMethods && methodList.length === 0"
           :description="emptyDescription"
         />
-        <a-tabs
-          v-else
-          v-model:activeKey="activeKey"
-          tab-position="left"
-          class="debug-tabs"
-          @change="onTabChange"
-        >
+        <a-tabs v-else v-model:activeKey="activeKey" tab-position="left" class="debug-tabs">
           <a-tab-pane
             v-for="(method, index) in methodList"
             :key="String(index)"
-            :tab="method.methodName"
+            :tab="`${method.methodName}(${(method.parameterTypes || []).join(', ')})`"
           >
             <a-spin :spinning="loadingDetail">
               <div class="tab-content">
@@ -74,6 +68,9 @@
                   <a-col :span="12">
                     <div class="section-title">
                       <a-typography-text strong>请求:</a-typography-text>
+                      <a-typography-text type="secondary">{{
+                        $t('serviceDomain.integerInputHint')
+                      }}</a-typography-text>
                     </div>
                     <div class="editor-wrapper">
                       <monaco-editor
@@ -163,7 +160,7 @@
                       type="primary"
                       size="large"
                       class="invoke-btn"
-                      :disabled="!instanceName"
+                      :disabled="!instanceName || !currentMethodDetail || loadingDetail"
                       :loading="loadingInvoke"
                       @click="handleInvoke"
                     >
@@ -309,25 +306,14 @@ function shortType(type: string): string {
 }
 
 function buildTypeMap(types: TypeDef[]): Record<string, TypeDef> {
-  const map: Record<string, TypeDef> = {}
+  const map: Record<string, TypeDef> = Object.create(null)
   types?.forEach((t) => (map[t.type] = t))
   return map
 }
 
 function normalizeParameters(detail: MethodDetail): ParameterDef[] {
-  const explicitParameters = (detail.parameters || [])
-    .map((param, index) => ({
-      name: param.name || `arg${index}`,
-      type: param.type || detail.parameterTypes?.[index] || ''
-    }))
-    .filter((param) => Boolean(param.type))
-
-  if (explicitParameters.length > 0) {
-    return explicitParameters
-  }
-
   return (detail.parameterTypes || []).map((type, index) => ({
-    name: `arg${index}`,
+    name: detail.parameters?.[index]?.name || `arg${index}`,
     type
   }))
 }
@@ -401,39 +387,48 @@ const outputParamType = computed(() => {
   return buildReturnTypeNodes(currentMethodDetail.value.returnType, typeMap)
 })
 
-function generateDefaultValue(type: string, typeMap: Record<string, TypeDef>, depth = 0): any {
-  if (depth > 5) return null
-  const primitives: Record<string, any> = {
-    'java.lang.String': '',
-    String: '',
-    int: 0,
-    'java.lang.Integer': 0,
-    long: 0,
-    'java.lang.Long': 0,
-    double: 0.0,
-    'java.lang.Double': 0.0,
-    float: 0.0,
-    'java.lang.Float': 0.0,
-    boolean: false,
-    'java.lang.Boolean': false,
-    short: 0,
-    'java.lang.Short': 0,
-    byte: 0,
-    'java.lang.Byte': 0,
-    char: '',
-    'java.lang.Character': ''
-  }
-  if (type in primitives) return primitives[type]
-
-  const typeDef = typeMap[type]
-  if (!typeDef) return null
-  if (typeDef.items?.length > 0) return []
-  if (typeDef.enums?.length > 0) return typeDef.enums[0]
-  const obj: Record<string, any> = {}
-  Object.entries(typeDef.properties || {}).forEach(([k, v]) => {
-    obj[k] = generateDefaultValue(v, typeMap, depth + 1)
-  })
-  return obj
+function generateDefaultValue(
+  type: string,
+  typeMap: Record<string, TypeDef>,
+  parents: string[] = []
+): unknown {
+  if (parents.includes(type)) return null
+  if (type.startsWith('*') && !typeMap[type])
+    return generateDefaultValue(type.slice(1), typeMap, parents)
+  const name = type.replace(/^java\.lang\./, '')
+  if (['long', 'Long', 'int64', 'uint64', 'uint', 'java.math.BigInteger'].includes(name)) return '0'
+  if (['boolean', 'Boolean', 'bool'].includes(name)) return false
+  if (['char', 'Character'].includes(name)) return 'a'
+  if (['String', 'string'].includes(name)) return ''
+  if (
+    /^(u?int(8|16|32)?|rune|Integer|[Bb]yte|[Ss]hort|[Dd]ouble|[Ff]loat|float32|float64)$/.test(
+      name
+    )
+  )
+    return 0
+  const def = typeMap[type]
+  if (def?.enums?.length) return def.enums[0]
+  if (
+    type.startsWith('map[') ||
+    type === 'java.util.Map' ||
+    type === 'java.util.HashMap' ||
+    def?.items?.length === 2
+  )
+    return {}
+  if (
+    type.startsWith('[') ||
+    type.endsWith('[]') ||
+    def?.items?.length === 1 ||
+    ['java.util.List', 'java.util.Collection'].includes(type)
+  )
+    return []
+  if (!def) return null
+  return Object.fromEntries(
+    Object.entries(def.properties || {}).map(([field, fieldType]) => [
+      field,
+      generateDefaultValue(fieldType, typeMap, [...parents, type])
+    ])
+  )
 }
 
 function generateRequestTemplate(detail: MethodDetail): string {
@@ -453,7 +448,7 @@ function syncSelectedInstance() {
   instanceName.value = providerInstances.value[0].name
 }
 
-async function loadProviderInstances() {
+async function loadProviderInstances(page: number) {
   if (!serviceName.value || !isMeshSelected.value) {
     providerInstances.value = []
     instanceName.value = ''
@@ -466,14 +461,15 @@ async function loadProviderInstances() {
       group: group.value || undefined,
       version: version.value || undefined
     })
+    if (page !== pageVersion) return
     providerInstances.value = Array.isArray(res.data) ? res.data : []
     syncSelectedInstance()
   } finally {
-    loadingProviders.value = false
+    if (page === pageVersion) loadingProviders.value = false
   }
 }
 
-async function loadMethods() {
+async function loadMethods(page: number) {
   if (!serviceName.value || !isMeshSelected.value) {
     methodList.value = []
     currentMethodDetail.value = null
@@ -487,48 +483,58 @@ async function loadMethods() {
       group: group.value || undefined,
       version: version.value || undefined
     })
+    if (page !== pageVersion) return
     methodList.value = res.data || []
     if (methodList.value.length > 0) {
       activeKey.value = '0'
-      await loadMethodDetail(methodList.value[0])
     } else {
       currentMethodDetail.value = null
       requestValue.value = '[]'
     }
   } finally {
-    loadingMethods.value = false
+    if (page === pageVersion) loadingMethods.value = false
   }
 }
 
-async function loadMethodDetail(method: MethodSummary) {
-  loadingDetail.value = true
+const selectedMethod = computed(() => methodList.value[Number(activeKey.value)])
+const providerApp = computed(
+  () => providerInstances.value.find((p) => p.name === instanceName.value)?.appName
+)
+
+watch([selectedMethod, providerApp], async ([method, app], _, onCleanup) => {
+  let current = true
+  onCleanup(() => {
+    current = false
+  })
+  currentMethodDetail.value = null
+  requestValue.value = '[]'
   responseValue.value = ''
   elapsedMs.value = 0
+  loadingDetail.value = Boolean(method)
+  if (!method) return
   try {
     const res = await getServiceMethodDetailAPI({
       serviceName: serviceName.value,
       methodName: method.methodName,
       group: group.value || undefined,
       version: version.value || undefined,
-      signature: method.signature || undefined
+      providerAppName: app,
+      signature: method.signature
     })
-    currentMethodDetail.value = res.data
-    requestValue.value = generateRequestTemplate(res.data)
+    if (current && res.data.signature === method.signature) {
+      currentMethodDetail.value = res.data
+      requestValue.value = generateRequestTemplate(res.data)
+    }
+  } catch (error) {
+    if (current) responseValue.value = JSON.stringify(error, null, 2)
   } finally {
-    loadingDetail.value = false
+    if (current) loadingDetail.value = false
   }
-}
-
-async function onTabChange(key: string) {
-  const index = Number(key)
-  const method = methodList.value[index]
-  if (method) {
-    await loadMethodDetail(method)
-  }
-}
+})
 
 async function handleInvoke() {
-  if (!currentMethodDetail.value) return
+  const detail = currentMethodDetail.value
+  if (!detail) return
   if (!meshStore.mesh) {
     message.warning('请先选择 mesh')
     responseValue.value = JSON.stringify(
@@ -553,25 +559,6 @@ async function handleInvoke() {
     )
     return
   }
-  let args: any[]
-  try {
-    args = JSON.parse(requestValue.value)
-    if (!Array.isArray(args)) {
-      args = [args]
-    }
-  } catch (error: any) {
-    message.error('请求参数不是有效 JSON')
-    responseValue.value = JSON.stringify(
-      {
-        error: 'invalid_request_json',
-        message: error?.message || '请求参数不是有效 JSON'
-      },
-      null,
-      2
-    )
-    return
-  }
-
   const attachments: Record<string, string> = {}
   attachmentsList.value.forEach((a) => {
     if (a.key) attachments[a.key] = a.value
@@ -585,15 +572,15 @@ async function handleInvoke() {
       mesh: meshStore.mesh,
       instanceName: instanceName.value,
       serviceName: serviceName.value,
-      methodName: currentMethodDetail.value.methodName,
-      signature: currentMethodDetail.value.signature,
-      args,
+      methodName: detail.methodName,
+      signature: detail.signature,
+      args: requestValue.value,
       group: group.value || undefined,
       version: version.value || undefined,
       timeoutMs: timeout.value > 0 ? timeout.value : undefined,
       attachments: Object.keys(attachments).length > 0 ? attachments : undefined
     })
-    // 提取 elapsedMs 和 rawResult
+    if (currentMethodDetail.value !== detail) return
     if (res.data && typeof res.data === 'object') {
       elapsedMs.value = res.data.elapsedMs || 0
       const rawResult = res.data.rawResult
@@ -602,7 +589,14 @@ async function handleInvoke() {
       responseValue.value = JSON.stringify(res.data, null, 2)
     }
   } catch (e: any) {
-    responseValue.value = JSON.stringify(e || { error: '请求失败' }, null, 2)
+    if (currentMethodDetail.value !== detail) return
+    responseValue.value = JSON.stringify(
+      e instanceof SyntaxError
+        ? { error: 'invalid_request_json', message: e.message }
+        : e || { error: '请求失败' },
+      null,
+      2
+    )
   } finally {
     loadingInvoke.value = false
   }
@@ -616,13 +610,17 @@ function removeAttachment(idx: number) {
   attachmentsList.value.splice(idx, 1)
 }
 
+let pageVersion = 0
 async function loadPageData() {
+  const page = ++pageVersion
   responseValue.value = ''
   if (!isMeshSelected.value) {
+    loadingMethods.value = false
+    loadingProviders.value = false
     return
   }
   try {
-    await Promise.all([loadProviderInstances(), loadMethods()])
+    await Promise.all([loadProviderInstances(page), loadMethods(page)])
   } catch (error) {
     console.error('load debug page data failed', error)
   }
@@ -671,6 +669,12 @@ watch(
         &:hover {
           color: v-bind('PRIMARY_COLOR');
         }
+      }
+
+      .ant-tabs-tab-btn {
+        white-space: normal;
+        overflow-wrap: anywhere;
+        text-align: left;
       }
 
       .ant-tabs-tab-active {

@@ -197,6 +197,7 @@ const words: I18nType = {
     instanceCount: 'Instance Count'
   },
   serviceDomain: {
+    integerInputHint: 'Enter long and large integer values as quoted decimal strings.',
     name: 'Name',
     timeout: 'Timeout',
     retryNum: 'Retry Num',

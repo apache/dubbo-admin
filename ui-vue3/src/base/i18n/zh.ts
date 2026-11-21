@@ -231,6 +231,7 @@ const words: I18nType = {
     dashboardUnavailable: '日志面板暂不可用，请稍后重试'
   },
   serviceDomain: {
+    integerInputHint: 'long 和大整数请用带引号的十进制字符串输入。',
     name: '服务名',
     notSpecified: '不指定',
     timeout: '超时时间',
