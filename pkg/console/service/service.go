@@ -298,9 +298,6 @@ func toMethodDetail(method *meshproto.Method) *model.ServiceMethodDetailResp {
 		Types:          []model.ServiceMethodTypeResp{},
 	}
 	for _, parameter := range method.GetParameters() {
-		if parameter == nil {
-			continue
-		}
 		resp.Parameters = append(resp.Parameters, model.ServiceMethodParameter{
 			Name: parameter.GetName(),
 			Type: parameter.GetType(),
@@ -346,15 +343,17 @@ func collectRelatedTypes(typesByName map[string]*meshproto.Type, typeName string
 	if strutil.IsBlank(typeName) {
 		return
 	}
-	typeSpec, ok := typesByName[typeName]
-	if !ok {
-		return
-	}
 	if _, exists := visited[typeName]; exists {
 		return
 	}
 	visited[typeName] = struct{}{}
-
+	typeSpec := typesByName[typeName]
+	key, elem := containerTypes(typeName, nil)
+	collectRelatedTypes(typesByName, key, visited)
+	collectRelatedTypes(typesByName, elem, visited)
+	if inner, ok := strings.CutPrefix(typeName, "*"); ok {
+		collectRelatedTypes(typesByName, inner, visited)
+	}
 	for _, itemType := range typeSpec.GetItems() {
 		collectRelatedTypes(typesByName, itemType, visited)
 	}
