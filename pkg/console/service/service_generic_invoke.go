@@ -113,7 +113,7 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 	if err != nil {
 		return nil, err
 	}
-	resolvedMethod := findMethod(metadataList, req.MethodName, req.Signature)
+	resolvedMethod, _ := findMethodDetail(metadataList, instanceRes.Spec.AppName, req.MethodName, req.Signature)
 	if resolvedMethod == nil {
 		err := bizerror.New(
 			bizerror.NotFoundError,
@@ -124,7 +124,7 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 		return nil, err
 	}
 
-	parameterTypes := resolvedMethod.GetParameterTypes()
+	parameterTypes := resolvedMethod.ParameterTypes
 	if len(parameterTypes) != len(req.Args) {
 		return nil, bizerror.New(bizerror.InvalidArgument, "resolved method parameter count does not match args length")
 	}

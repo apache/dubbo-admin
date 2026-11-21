@@ -125,14 +125,16 @@ func (s *BaseServiceReq) ServiceKey() string {
 type ServiceMethodDetailReq struct {
 	BaseServiceReq
 
-	MethodName string `form:"methodName" json:"methodName"`
-	Signature  string `form:"signature" json:"signature"`
+	ProviderAppName string `form:"providerAppName" json:"providerAppName,omitempty"`
+	MethodName      string `form:"methodName" json:"methodName"`
+	Signature       string `form:"signature" json:"signature"`
 }
 
 func (s *ServiceMethodDetailReq) Query(c *gin.Context) error {
 	if err := s.BaseServiceReq.Query(c); err != nil {
 		return err
 	}
+	s.ProviderAppName = strings.TrimSpace(c.Query("providerAppName"))
 	s.MethodName = strings.TrimSpace(c.Query("methodName"))
 	if strutil.IsBlank(s.MethodName) {
 		return fmt.Errorf("method name is empty")
