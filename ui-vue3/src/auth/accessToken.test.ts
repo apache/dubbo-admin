@@ -34,7 +34,7 @@ describe('AccessTokenManager', () => {
     expect(issue).not.toHaveBeenCalled()
   })
 
-  it('shares refresh and renews tokens expiring within 60 seconds', async () => {
+  it('shares one issuance across concurrent requests', async () => {
     let resolveIssue: (token: string) => void = () => undefined
     const issue = vi.fn(
       () =>
@@ -50,12 +50,31 @@ describe('AccessTokenManager', () => {
     const token = tokenWithExpiry(Math.floor(Date.now() / 1000) + 120)
     resolveIssue(token)
     await expect(Promise.all([first, second])).resolves.toEqual([token, token])
+  })
 
-    manager.setTokenForTest(tokenWithExpiry(Math.floor(Date.now() / 1000) + 30))
-    const refresh = manager.getToken()
+  it.each([30, 0, -30])(
+    'reuses a cached token with %i seconds remaining until rejected',
+    async (remaining) => {
+      const token = tokenWithExpiry(Math.floor(Date.now() / 1000) + remaining)
+      const issue = vi.fn(async () => token)
+      const manager = new AccessTokenManager(issue)
+      manager.setEnabled(true)
+
+      await expect(manager.getToken()).resolves.toBe(token)
+      await expect(manager.getToken()).resolves.toBe(token)
+      expect(issue).toHaveBeenCalledTimes(1)
+    }
+  )
+
+  it('reuses a replacement token when a late request rejects the previous token', async () => {
+    const issue = vi.fn().mockResolvedValue('new-token').mockResolvedValueOnce('old-token')
+    const manager = new AccessTokenManager(issue)
+    manager.setEnabled(true)
+    await manager.getToken()
+
+    await expect(manager.refreshAfterUnauthorized('old-token')).resolves.toBe('new-token')
+    await expect(manager.refreshAfterUnauthorized('old-token')).resolves.toBe('new-token')
     expect(issue).toHaveBeenCalledTimes(2)
-    resolveIssue(token)
-    await refresh
   })
 
   it('keeps the token only in runtime memory', () => {

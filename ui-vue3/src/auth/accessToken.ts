@@ -17,8 +17,6 @@
 
 type TokenIssuer = () => Promise<string>
 
-const REFRESH_SKEW_SECONDS = 60
-
 export class AccessTokenManager {
   private enabled = false
   private token: string | undefined
@@ -36,9 +34,9 @@ export class AccessTokenManager {
     return this.enabled
   }
 
-  async getToken(forceRefresh = false): Promise<string | undefined> {
+  async getToken(): Promise<string | undefined> {
     if (!this.enabled) return undefined
-    if (!forceRefresh && this.token && tokenExpiresAfter(this.token, REFRESH_SKEW_SECONDS)) {
+    if (this.token) {
       return this.token
     }
     if (!this.refreshPromise) {
@@ -84,32 +82,9 @@ export class AccessTokenManager {
   }
 }
 
-function tokenExpiresAfter(token: string, seconds: number): boolean {
-  try {
-    const payload = token.split('.')[1]
-    if (!payload) return false
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
-    const padding = '='.repeat((4 - (normalized.length % 4)) % 4)
-    const claims = JSON.parse(atob(normalized + padding)) as { exp?: number }
-    return typeof claims.exp === 'number' && claims.exp > Date.now() / 1000 + seconds
-  } catch {
-    return false
-  }
-}
-
-async function issueFromAdmin(): Promise<string> {
-  const response = await fetch('/api/v1/auth/token', {
-    method: 'POST',
-    credentials: 'include'
-  })
-  if (!response.ok) {
-    throw new Error(`Unable to issue AI access token: HTTP ${response.status}`)
-  }
-  const payload = (await response.json()) as { data?: { accessToken?: string } }
-  if (!payload.data?.accessToken) {
-    throw new Error('Admin returned an empty AI access token')
-  }
-  return payload.data.accessToken
-}
-
-export const accessTokenManager = new AccessTokenManager(issueFromAdmin)
+export const accessTokenManager = new AccessTokenManager(async () => {
+  // Load the API lazily: the shared HTTP client imports this manager to clear it on 401.
+  const { issueAccessToken } = await import('@/api/service/login')
+  const { data } = await issueAccessToken()
+  return data?.accessToken ?? ''
+})
