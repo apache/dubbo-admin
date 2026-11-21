@@ -234,6 +234,7 @@ import { getTagRuleDetailAPI, updateTagRuleAPI } from '@/api/service/traffic'
 import { isNil } from 'lodash'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { HTTP_STATUS } from '@/base/http/constants'
+import { formItemToTag, tagToFormItem } from '../tagFormItem'
 
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 
@@ -256,35 +257,7 @@ onMounted(async () => {
     baseInfo.objectOfAction = key
     baseInfo.ruleGranularity = scope
     baseInfo.runtime = runtime
-    console.log('tags', tags)
-    tags &&
-      tags.length &&
-      tags.forEach((tagItem: any, tagIndex: number) => {
-        tagList.value.push({
-          tagName: tagItem.name,
-          scope: {
-            type: 'labels',
-            labels: [],
-            addresses: {
-              condition: '=',
-              addressesStr: ''
-            }
-          }
-        })
-
-        const { match } = tagItem
-        let formatLabels: any[] = []
-        match.forEach((matchItem: any) => {
-          formatLabels.push({
-            myKey: matchItem.key,
-            condition: Object.keys(matchItem.value)[0],
-            value: matchItem.value[Object.keys(matchItem.value)[0]]
-          })
-        })
-        if (tagList.value[tagIndex] && tagList.value[tagIndex].scope) {
-          tagList.value[tagIndex].scope.labels = formatLabels
-        }
-      })
+    tagList.value = (tags ?? []).map(tagToFormItem)
   } else {
     await getTagRuleDetail()
   }
@@ -350,8 +323,7 @@ const generateDescription = (tagItem: any, serviceName: string): string => {
       }
     })
   } else if (tagItem.scope?.type === 'addresses' && tagItem.scope.addresses?.addressesStr) {
-    const addrCondition = tagItem.scope.addresses.condition === '=' ? '等于' : '不等于'
-    conditions.push(`地址 ${addrCondition} [${tagItem.scope.addresses.addressesStr}]`)
+    conditions.push(`地址 等于 [${tagItem.scope.addresses.addressesStr}]`)
   }
 
   if (conditions.length === 0) {
@@ -424,14 +396,11 @@ const labelConditionOptions = ref([
   }
 ])
 
+// Tag rule addresses select instances; they have no exclusion operator.
 const conditionOptions = ref([
   {
     label: '=',
     value: '='
-  },
-  {
-    label: '!=',
-    value: '!='
   }
 ])
 
@@ -464,36 +433,10 @@ const tagList = ref<any[]>([])
 watch(
   tagList,
   (newVal) => {
-    console.log(newVal)
-    const tags: any[] = []
-    newVal.forEach((tagItem) => {
-      const { tagName, scope } = tagItem
-      const labels = scope.labels
-
-      const newTagItem = {
-        name: tagName,
-        match: [] as any[]
-      }
-
-      if (labels && labels.length > 0) {
-        labels.forEach((labelItem: any) => {
-          newTagItem.match.push({
-            key: labelItem.myKey,
-            value: {
-              [labelItem.condition]: labelItem.value
-            }
-          })
-        })
-      }
-      tags.push(newTagItem)
-    })
-
-    // console.log("tags",tags)
     TAB_STATE.tagRule = {
       ...TAB_STATE.tagRule,
-      tags
+      tags: newVal.map(formItemToTag)
     }
-    console.log('watch tagList', TAB_STATE.tagRule)
   },
   {
     deep: true
@@ -528,7 +471,7 @@ const addTag = () => {
         }
       ],
       addresses: {
-        condition: '',
+        condition: '=',
         addressesStr: ''
       }
     }
@@ -551,33 +494,7 @@ const getTagRuleDetail = async () => {
     baseInfo.runtime = runtime
     baseInfo.ruleGranularity = scope
     baseInfo.objectOfAction = key
-    tagList.value = []
-    tags.forEach((tagItem: any, tagIndex: number) => {
-      tagList.value.push({
-        tagName: tagItem.name,
-        scope: {
-          type: 'labels',
-          labels: [],
-          addresses: {
-            condition: '=',
-            addressesStr: ''
-          }
-        }
-      })
-
-      const { match } = tagItem
-      let formatLabels: any[] = []
-      match.forEach((matchItem: any) => {
-        formatLabels.push({
-          myKey: matchItem.key,
-          condition: Object.keys(matchItem.value)[0],
-          value: matchItem.value[Object.keys(matchItem.value)[0]]
-        })
-      })
-      if (tagList.value[tagIndex] && tagList.value[tagIndex].scope) {
-        tagList.value[tagIndex].scope.labels = formatLabels
-      }
-    })
+    tagList.value = (tags ?? []).map(tagToFormItem)
   }
 }
 
@@ -601,23 +518,8 @@ const updateTagRule = async () => {
       enabled: enable,
       force: faultTolerantProtection,
       runtime,
-      tags: [] as any[]
+      tags: tagList.value.map(formItemToTag)
     }
-    tagList.value.forEach((tagItem: any) => {
-      const tag = {
-        name: tagItem.tagName,
-        match: [] as any[]
-      }
-      tagItem.scope.labels.forEach((labelItem: any) => {
-        const matchItem = {
-          key: labelItem.myKey,
-          value: {} as Record<string, any>
-        }
-        matchItem.value[labelItem.condition] = labelItem.value
-        tag.match.push(matchItem)
-      })
-      data.tags.push(tag)
-    })
     const res = await updateTagRuleAPI(route.params?.ruleName as string, data)
     if (res.code === HTTP_STATUS.SUCCESS) {
       message.success('update success')
