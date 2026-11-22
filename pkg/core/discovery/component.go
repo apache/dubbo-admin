@@ -39,6 +39,7 @@ import (
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	"github.com/apache/dubbo-admin/pkg/core/store"
+	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
 func init() {
@@ -235,15 +236,36 @@ type meshScopedStore struct {
 	mesh string
 }
 
+// meshKeyLister lists the keys of one mesh from the stored resources, for
+// stores whose index can lag behind them.
+type meshKeyLister interface {
+	ListMeshKeys(mesh string) ([]string, error)
+}
+
+// ListKeys returns the keys of this mesh without scanning other meshes. It
+// cannot report errors, and an empty result would skip deleting this mesh's
+// stale objects on relist, so a failed lookup falls back to scanning all objects.
 func (s *meshScopedStore) ListKeys() []string {
+	keys, err := s.meshKeys()
+	if err == nil {
+		return keys
+	}
+	logger.Warnf("discovery: failed to list keys of mesh %s, scanning all objects: %v", s.mesh, err)
 	objects := s.List()
-	keys := make([]string, 0, len(objects))
+	keys = make([]string, 0, len(objects))
 	for _, obj := range objects {
 		if resource, ok := obj.(coremodel.Resource); ok && resource.ResourceMesh() == s.mesh {
 			keys = append(keys, resource.ResourceKey())
 		}
 	}
 	return keys
+}
+
+func (s *meshScopedStore) meshKeys() ([]string, error) {
+	if lister, ok := s.ResourceStore.(meshKeyLister); ok {
+		return lister.ListMeshKeys(s.mesh)
+	}
+	return s.IndexKeys(index.ByMeshIndex, s.mesh)
 }
 
 func (s *meshScopedStore) GetByKey(key string) (interface{}, bool, error) {

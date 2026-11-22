@@ -369,6 +369,79 @@ func TestDiscoveryInformerRelistDeletesStaleSameMesh(t *testing.T) {
 	require.False(t, exists)
 }
 
+// listCountingStore counts full scans and can fail index queries.
+type listCountingStore struct {
+	store.ResourceStore
+	lists    int
+	indexErr error
+}
+
+func (s *listCountingStore) List() []interface{} {
+	s.lists++
+	return s.ResourceStore.List()
+}
+
+func (s *listCountingStore) IndexKeys(indexName, indexedValue string) ([]string, error) {
+	if s.indexErr != nil {
+		return nil, s.indexErr
+	}
+	return s.ResourceStore.IndexKeys(indexName, indexedValue)
+}
+
+func TestMeshScopedStoreListKeys(t *testing.T) {
+	logger.Init(&logcfg.Config{Level: logcfg.LevelError, OutputPath: filepath.Join(t.TempDir(), "test.log")})
+	newStore := func(t *testing.T, indexErr error) (*listCountingStore, []string) {
+		t.Helper()
+		rs := memory.NewMemoryResourceStore(meshresource.ServiceProviderMetadataKind)
+		require.NoError(t, rs.Init(nil))
+		var meshKeys []string
+		for _, r := range []struct{ name, mesh string }{{"a", "mesh"}, {"b", "mesh"}, {"c", "mesh/child"}} {
+			res := meshresource.NewServiceProviderMetadataResourceWithAttributes(r.name, r.mesh)
+			require.NoError(t, rs.Add(res))
+			if r.mesh == "mesh" {
+				meshKeys = append(meshKeys, res.ResourceKey())
+			}
+		}
+		return &listCountingStore{ResourceStore: rs, indexErr: indexErr}, meshKeys
+	}
+
+	t.Run("index", func(t *testing.T) {
+		counting, want := newStore(t, nil)
+		require.ElementsMatch(t, want, (&meshScopedStore{ResourceStore: counting, mesh: "mesh"}).ListKeys())
+		require.Zero(t, counting.lists, "listing one mesh must not scan the others")
+	})
+	t.Run("no match", func(t *testing.T) {
+		counting, _ := newStore(t, nil)
+		require.Empty(t, (&meshScopedStore{ResourceStore: counting, mesh: "other"}).ListKeys())
+		require.Zero(t, counting.lists)
+	})
+	t.Run("index error", func(t *testing.T) {
+		counting, want := newStore(t, fmt.Errorf("index unavailable"))
+		require.ElementsMatch(t, want, (&meshScopedStore{ResourceStore: counting, mesh: "mesh"}).ListKeys(),
+			"an index error must not hide this mesh's keys from relist")
+		require.Equal(t, 1, counting.lists)
+	})
+	t.Run("store lists mesh keys", func(t *testing.T) {
+		counting, want := newStore(t, fmt.Errorf("the index must not be used"))
+		lister := &meshKeysStore{listCountingStore: counting, keys: want}
+		require.ElementsMatch(t, want, (&meshScopedStore{ResourceStore: lister, mesh: "mesh"}).ListKeys())
+		require.Equal(t, []string{"mesh"}, lister.meshes)
+		require.Zero(t, counting.lists)
+	})
+}
+
+// meshKeysStore lists mesh keys itself, as the GORM store does.
+type meshKeysStore struct {
+	*listCountingStore
+	keys   []string
+	meshes []string
+}
+
+func (s *meshKeysStore) ListMeshKeys(mesh string) ([]string, error) {
+	s.meshes = append(s.meshes, mesh)
+	return s.keys, nil
+}
+
 func eventKeys(es []events.Event, typ cache.DeltaType) []string {
 	var keys []string
 	for _, e := range es {
