@@ -20,9 +20,11 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -185,11 +187,11 @@ func invokeIDLService(ctx context.Context, req model.ServiceGenericInvokeReq, ta
 	defer func() { _ = cc.Close() }()
 	// Reflection is process-global and cannot distinguish divergent descriptors
 	// for versions of the same service. Routing headers apply only to Invoke.
-	files, err := idlDescriptors(ctx, cc, req.ServiceName)
+	reflector, err := newIDLReflector(ctx, cc, req.ServiceName)
 	if err != nil {
 		return nil, idlCallError(ctx, "IDL reflection failed", err)
 	}
-	desc, err := files.FindDescriptorByName(protoreflect.FullName(req.ServiceName))
+	desc, err := reflector.registry.FindDescriptorByName(protoreflect.FullName(req.ServiceName))
 	if err != nil {
 		return nil, bizerror.New(bizerror.NotFoundError, "service not found in reflection descriptor")
 	}
@@ -217,23 +219,28 @@ func invokeIDLService(ctx context.Context, req model.ServiceGenericInvokeReq, ta
 	if len(params) != 1 || !idlFullName(params[0]).IsValid() || !idlFullName(catalogMethod.GetReturnType()).IsValid() || idlFullName(params[0]) != method.Input().FullName() || idlFullName(catalogMethod.GetReturnType()) != method.Output().FullName() {
 		return nil, bizerror.New(bizerror.InvalidArgument, fmt.Sprintf("catalog signature %q conflicts with reflected signature %s->%s", methodSig(catalogMethod), method.Input().FullName(), method.Output().FullName()))
 	}
-	types := dynamicpb.NewTypes(files)
+	types := &idlTypes{Types: dynamicpb.NewTypes(reflector.registry), reflector: reflector}
 	input := dynamicpb.NewMessage(method.Input())
 	// Each args element is the protobuf JSON document, not a Hessian class wrapper.
 	if err = (protojson.UnmarshalOptions{DiscardUnknown: false, Resolver: types}).Unmarshal(req.Args[0], input); err != nil {
+		if types.lookupErr != nil {
+			return nil, idlCallError(ctx, "IDL reflection failed", types.lookupErr)
+		}
 		return nil, bizerror.New(bizerror.InvalidArgument, "invalid protobuf request JSON: "+err.Error())
 	}
 	output := dynamicpb.NewMessage(method.Output())
 	if err = cc.Invoke(invokeCtx, "/"+string(svc.FullName())+"/"+string(method.Name()), input, output); err != nil {
 		return nil, idlCallError(ctx, "IDL unary invocation failed", err)
 	}
+	// The method has already run, so the error says so to discourage a retry.
+	const encodingFailed = "IDL invocation succeeded but its response cannot be encoded"
 	encoded, err := (protojson.MarshalOptions{EmitUnpopulated: true, Resolver: types}).Marshal(output)
 	if err != nil {
-		return nil, idlCallError(ctx, "IDL response encoding failed", err)
+		return nil, idlCallError(ctx, encodingFailed, err)
 	}
 	var result any
 	if err = json.Unmarshal(encoded, &result); err != nil {
-		return nil, idlCallError(ctx, "IDL response encoding failed", err)
+		return nil, idlCallError(ctx, encodingFailed, err)
 	}
 	return result, nil
 }
@@ -297,14 +304,33 @@ func idlReflectionQuery(ctx context.Context, cc *grpc.ClientConn, alpha bool, sy
 	return response, nil
 }
 
-func idlDescriptors(ctx context.Context, cc *grpc.ClientConn, service string) (*protoregistry.Files, error) {
-	const maxFiles = 256
-	const maxBytes = 8 << 20
-	const maxRounds = 256
+// idlReflector fetches descriptors over one reflection connection into one
+// registry. All fetches of an invocation share the descriptor limits.
+type idlReflector struct {
+	// ctx bounds every fetch of the invocation; protojson's resolver, which
+	// fetches Any payload types, takes no context.
+	ctx      context.Context
+	cc       *grpc.ClientConn
+	alpha    bool
+	protos   map[string]*descriptorpb.FileDescriptorProto
+	registry *protoregistry.Files
+	files    int
+	bytes    int
+	rounds   int
+}
+
+const (
+	idlMaxDescriptorFiles  = 256
+	idlMaxDescriptorBytes  = 8 << 20
+	idlMaxReflectionRounds = 256
+)
+
+// newIDLReflector fetches the file defining service and its dependencies.
+func newIDLReflector(ctx context.Context, cc *grpc.ClientConn, service string) (*idlReflector, error) {
+	r := &idlReflector{ctx: ctx, cc: cc, protos: map[string]*descriptorpb.FileDescriptorProto{}, registry: new(protoregistry.Files)}
 	response, err := idlReflectionQuery(ctx, cc, false, true, service)
-	alpha := false
 	if status.Code(err) == codes.Unimplemented {
-		alpha = true
+		r.alpha = true
 		response, err = idlReflectionQuery(ctx, cc, true, true, service)
 	}
 	if err != nil {
@@ -313,73 +339,146 @@ func idlDescriptors(ctx context.Context, cc *grpc.ClientConn, service string) (*
 		}
 		return nil, err
 	}
-	files := make(map[string]*descriptorpb.FileDescriptorProto)
-	fileCount, byteCount := 0, 0
-	add := func(response *reflectionv1.ServerReflectionResponse) error {
-		data := response.GetFileDescriptorResponse()
-		if data == nil || len(data.FileDescriptorProto) == 0 {
-			return fmt.Errorf("reflection returned no descriptors")
-		}
-		for _, raw := range data.FileDescriptorProto {
-			fileCount++
-			byteCount += len(raw)
-			if fileCount > maxFiles || byteCount > maxBytes {
-				return fmt.Errorf("reflection descriptor limit exceeded")
-			}
-			file := new(descriptorpb.FileDescriptorProto)
-			if err := proto.Unmarshal(raw, file); err != nil {
-				return fmt.Errorf("invalid descriptor: %w", err)
-			}
-			if file.GetName() == "" {
-				return fmt.Errorf("descriptor has no filename")
-			}
-			if old, ok := files[file.GetName()]; ok && !proto.Equal(old, file) {
-				return fmt.Errorf("conflicting descriptor %s", file.GetName())
-			}
-			files[file.GetName()] = file
-		}
-		return nil
-	}
-	if err = add(response); err != nil {
+	if err = r.load(response); err != nil {
 		return nil, err
 	}
-	for rounds := 1; ; rounds++ {
-		missing := ""
-		for _, file := range files {
-			for _, dep := range file.Dependency {
-				if _, ok := files[dep]; !ok {
-					missing = dep
-					break
-				}
-			}
-			if missing != "" {
-				break
-			}
-		}
-		if missing == "" {
+	return r, nil
+}
+
+// query sends a reflection request after the initial one. Each request counts
+// toward the round limit.
+func (r *idlReflector) query(symbol bool, value string) (*reflectionv1.ServerReflectionResponse, error) {
+	r.rounds++
+	if r.rounds >= idlMaxReflectionRounds {
+		return nil, fmt.Errorf("reflection fetch round limit exceeded")
+	}
+	return idlReflectionQuery(r.ctx, r.cc, r.alpha, symbol, value)
+}
+
+// load adds the files of response, fetches their missing dependencies and
+// registers them all.
+func (r *idlReflector) load(response *reflectionv1.ServerReflectionResponse) error {
+	if err := r.add(response); err != nil {
+		return err
+	}
+	for {
+		missing, found := r.missingDependency()
+		if !found {
 			break
 		}
-		if rounds >= maxRounds {
-			return nil, fmt.Errorf("reflection fetch round limit exceeded")
-		}
-		response, err = idlReflectionQuery(ctx, cc, alpha, false, missing)
+		response, err := r.query(false, missing)
 		if err != nil {
-			return nil, fmt.Errorf("missing dependency %s: %w", missing, err)
+			return fmt.Errorf("missing dependency %s: %w", missing, err)
 		}
-		if err = add(response); err != nil {
-			return nil, fmt.Errorf("dependency %s: %w", missing, err)
+		if err = r.add(response); err != nil {
+			return fmt.Errorf("dependency %s: %w", missing, err)
 		}
-		if _, ok := files[missing]; !ok {
-			return nil, fmt.Errorf("reflection did not return dependency %s", missing)
+		if _, ok := r.protos[missing]; !ok {
+			return fmt.Errorf("reflection did not return dependency %s", missing)
 		}
 	}
-	set := &descriptorpb.FileDescriptorSet{}
-	for _, file := range files {
-		set.File = append(set.File, file)
+	visiting := map[string]bool{}
+	for name := range r.protos {
+		if err := r.register(name, visiting); err != nil {
+			return fmt.Errorf("incomplete or invalid descriptors: %w", err)
+		}
 	}
-	registry, err := protodesc.NewFiles(set)
+	return nil
+}
+
+func (r *idlReflector) missingDependency() (string, bool) {
+	for _, file := range r.protos {
+		for _, dep := range file.Dependency {
+			if _, ok := r.protos[dep]; !ok {
+				return dep, true
+			}
+		}
+	}
+	return "", false
+}
+
+func (r *idlReflector) add(response *reflectionv1.ServerReflectionResponse) error {
+	data := response.GetFileDescriptorResponse()
+	if data == nil || len(data.FileDescriptorProto) == 0 {
+		return fmt.Errorf("reflection returned no descriptors")
+	}
+	for _, raw := range data.FileDescriptorProto {
+		r.files++
+		r.bytes += len(raw)
+		if r.files > idlMaxDescriptorFiles || r.bytes > idlMaxDescriptorBytes {
+			return fmt.Errorf("reflection descriptor limit exceeded")
+		}
+		file := new(descriptorpb.FileDescriptorProto)
+		if err := proto.Unmarshal(raw, file); err != nil {
+			return fmt.Errorf("invalid descriptor: %w", err)
+		}
+		if file.GetName() == "" {
+			return fmt.Errorf("descriptor has no filename")
+		}
+		if slices.Contains(file.Dependency, "") {
+			return fmt.Errorf("descriptor %s has an empty import", file.GetName())
+		}
+		if old, ok := r.protos[file.GetName()]; ok && !proto.Equal(old, file) {
+			return fmt.Errorf("conflicting descriptor %s", file.GetName())
+		}
+		r.protos[file.GetName()] = file
+	}
+	return nil
+}
+
+// register registers a fetched file after its dependencies and rejects import
+// cycles.
+func (r *idlReflector) register(name string, visiting map[string]bool) error {
+	if _, err := r.registry.FindFileByPath(name); err == nil {
+		return nil
+	}
+	if visiting[name] {
+		return fmt.Errorf("import cycle through %s", name)
+	}
+	visiting[name] = true
+	file, ok := r.protos[name]
+	if !ok {
+		return fmt.Errorf("could not resolve import %s", name)
+	}
+	for _, dep := range file.Dependency {
+		if err := r.register(dep, visiting); err != nil {
+			return err
+		}
+	}
+	desc, err := protodesc.NewFile(file, r.registry)
 	if err != nil {
-		return nil, fmt.Errorf("incomplete or invalid descriptors: %w", err)
+		return err
 	}
-	return registry, nil
+	return r.registry.RegisterFile(desc)
+}
+
+// idlTypes resolves Any payloads from the reflected descriptors. A payload type
+// need not be imported by the service's files, so a missing one is fetched by
+// name over reflection.
+type idlTypes struct {
+	*dynamicpb.Types
+	reflector *idlReflector
+	// lookupErr is a reflection failure other than an unknown payload type.
+	// protojson reports it as invalid input, which it is not.
+	lookupErr error
+}
+
+func (t *idlTypes) FindMessageByURL(url string) (protoreflect.MessageType, error) {
+	mt, err := t.Types.FindMessageByURL(url)
+	if !errors.Is(err, protoregistry.NotFound) {
+		return mt, err
+	}
+	name := url[strings.LastIndexByte(url, '/')+1:]
+	response, err := t.reflector.query(true, name)
+	if status.Code(err) == codes.NotFound {
+		return nil, fmt.Errorf("resolve %s over reflection: %w", name, err)
+	}
+	if err == nil {
+		err = t.reflector.load(response)
+	}
+	if err != nil {
+		t.lookupErr = err
+		return nil, fmt.Errorf("resolve %s over reflection: %w", name, err)
+	}
+	return t.Types.FindMessageByURL(url)
 }
