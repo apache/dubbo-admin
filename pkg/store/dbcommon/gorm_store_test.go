@@ -693,6 +693,40 @@ func TestGormStore_IndexKeys(t *testing.T) {
 	assert.Contains(t, keys, "mesh2/test-key-3")
 }
 
+func TestGormStore_ListMeshKeys(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+	require.NoError(t, store.Init(nil))
+	for _, r := range []struct{ key, mesh string }{{"mesh1/a", "mesh1"}, {"mesh1/b", "mesh1"}, {"mesh1/child/c", "mesh1/child"}} {
+		require.NoError(t, store.Add(&mockResource{Kind: "TestResource", Key: r.key, Mesh: r.mesh, Meta: metav1.ObjectMeta{Name: r.key}}))
+	}
+	// Index rows can be missing while a replica rebuilds them; keys come from the resource rows.
+	require.NoError(t, store.pool.GetDB().Where("resource_kind = ?", "TestResource").Delete(&ResourceIndexModel{}).Error)
+
+	keys, err := store.ListMeshKeys("mesh1")
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"mesh1/a", "mesh1/b"}, keys)
+	keys, err = store.ListMeshKeys("other")
+	require.NoError(t, err)
+	assert.Empty(t, keys)
+}
+
+func TestGormStore_ListMeshKeysIgnoresCollation(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+	// A case-insensitive mesh column, as with MySQL's default collation.
+	require.NoError(t, store.pool.GetDB().Exec(`CREATE TABLE `+TableNameForKind("TestResource")+` (
+		id integer PRIMARY KEY AUTOINCREMENT, resource_key varchar(255) NOT NULL UNIQUE, resource_kind text NOT NULL,
+		name text NOT NULL, mesh text NOT NULL COLLATE NOCASE, data text NOT NULL, created_at datetime, updated_at datetime)`).Error)
+	require.NoError(t, store.Init(nil))
+	require.NoError(t, store.Add(&mockResource{Kind: "TestResource", Key: "Prod/a", Mesh: "Prod", Meta: metav1.ObjectMeta{Name: "a"}}))
+	require.NoError(t, store.Add(&mockResource{Kind: "TestResource", Key: "prod/b", Mesh: "prod", Meta: metav1.ObjectMeta{Name: "b"}}))
+
+	keys, err := store.ListMeshKeys("prod")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"prod/b"}, keys)
+}
+
 func TestGormStore_ByIndex(t *testing.T) {
 	store, cleanup := setupTestStore(t)
 	defer cleanup()

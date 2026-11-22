@@ -39,6 +39,7 @@ import (
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	"github.com/apache/dubbo-admin/pkg/core/store"
+	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
 func init() {
@@ -222,11 +223,66 @@ func (d *discoveryComponent) initInformers(cfg *discovery.Config, storeRouter st
 		if err != nil {
 			return nil, fmt.Errorf("cannot find store for resource kind %s", lw.ResourceKind())
 		}
-		informer := controller.NewInformerWithOptions(lw, eventBus, resourceStore, keyFunc, controller.Options{ResyncPeriod: 0})
+		informerStore := &meshScopedStore{ResourceStore: resourceStore, mesh: cfg.ID}
+		informer := controller.NewInformerWithOptions(lw, eventBus, informerStore, keyFunc, controller.Options{ResyncPeriod: 0})
 		informers[i] = informer
 	}
 	return informers, nil
 }
+
+// Each discovery list covers one mesh, although resource stores contain all meshes.
+type meshScopedStore struct {
+	store.ResourceStore
+	mesh string
+}
+
+// meshKeyLister lists the keys of one mesh from the stored resources, for
+// stores whose index can lag behind them.
+type meshKeyLister interface {
+	ListMeshKeys(mesh string) ([]string, error)
+}
+
+// ListKeys returns the keys of this mesh without scanning other meshes. It
+// cannot report errors, and an empty result would skip deleting this mesh's
+// stale objects on relist, so a failed lookup falls back to scanning all objects.
+func (s *meshScopedStore) ListKeys() []string {
+	keys, err := s.meshKeys()
+	if err == nil {
+		return keys
+	}
+	logger.Warnf("discovery: failed to list keys of mesh %s, scanning all objects: %v", s.mesh, err)
+	objects := s.List()
+	keys = make([]string, 0, len(objects))
+	for _, obj := range objects {
+		if resource, ok := obj.(coremodel.Resource); ok && resource.ResourceMesh() == s.mesh {
+			keys = append(keys, resource.ResourceKey())
+		}
+	}
+	return keys
+}
+
+func (s *meshScopedStore) meshKeys() ([]string, error) {
+	if lister, ok := s.ResourceStore.(meshKeyLister); ok {
+		return lister.ListMeshKeys(s.mesh)
+	}
+	return s.IndexKeys(index.ByMeshIndex, s.mesh)
+}
+
+func (s *meshScopedStore) GetByKey(key string) (interface{}, bool, error) {
+	obj, exists, err := s.ResourceStore.GetByKey(key)
+	if err != nil || !exists {
+		return obj, exists, err
+	}
+	resource, ok := obj.(coremodel.Resource)
+	if !ok {
+		return nil, false, fmt.Errorf("expected Resource, got %T", obj)
+	}
+	if resource.ResourceMesh() != s.mesh {
+		return nil, false, nil
+	}
+	return obj, true, nil
+}
+
 func keyFunc(obj interface{}) (string, error) {
 	if r, ok := obj.(coremodel.Resource); ok {
 		return r.ResourceKey(), nil

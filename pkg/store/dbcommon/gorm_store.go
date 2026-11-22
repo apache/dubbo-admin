@@ -407,6 +407,26 @@ func (gs *GormStore) Index(indexName string, obj interface{}) ([]interface{}, er
 	return gs.findByIndex(indexName, indexValues[0])
 }
 
+// ListMeshKeys returns the keys of the resources in mesh from their rows, not
+// the index table, which a replica's index rebuild can briefly leave
+// incomplete. Keys are read without decoding the resources, and mesh is
+// compared byte for byte whatever the column collation.
+func (gs *GormStore) ListMeshKeys(mesh string) ([]string, error) {
+	var rows []ResourceModel
+	err := gs.pool.GetDB().Scopes(TableScope(gs.kind.ToString())).
+		Select("resource_key", "mesh").Where("mesh = ?", mesh).Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	keys := make([]string, 0, len(rows))
+	for _, row := range rows {
+		if row.Mesh == mesh {
+			keys = append(keys, row.ResourceKey)
+		}
+	}
+	return keys, nil
+}
+
 func (gs *GormStore) IndexKeys(indexName, indexedValue string) ([]string, error) {
 	if !gs.IndexExists(indexName) {
 		return nil, fmt.Errorf("index %s does not exist", indexName)
