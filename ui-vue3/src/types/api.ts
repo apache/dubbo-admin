@@ -264,6 +264,9 @@ export interface OverviewData {
 }
 
 export interface ProviderInstance {
+  generic?: string
+  serialization?: string
+  preferSerialization?: string
   name: string
   appName: string
   ip: string

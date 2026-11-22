@@ -69,7 +69,16 @@ func GetServiceProviderInstances(ctx consolectx.Context, req model.BaseServiceRe
 				continue
 			}
 			seen[key] = struct{}{}
-			responses = append(responses, model.NewSearchInstanceResp().FromInstanceResource(instance, ctx.Config()))
+			resp := model.NewSearchInstanceResp().FromInstanceResource(instance, ctx.Config())
+			for _, metadata := range metadataList {
+				if metadata != nil && metadata.Spec != nil && metadata.Spec.ProviderAppName == providerAppName {
+					resp.Generic = metadata.Spec.GetParameters()["generic"]
+					if resp.Generic != "" {
+						break
+					}
+				}
+			}
+			responses = append(responses, resp)
 		}
 	}
 	if len(responses) == 0 {

@@ -208,6 +208,8 @@ export const getServiceProviderInstancesAPI = (params: {
   })
 }
 
+export type ServiceGenericMode = 'true' | 'false' | 'gson' | 'bean' | 'protobuf-json' | 'protobuf'
+
 // generic invoke service method
 export const serviceGenericInvokeAPI = (data: {
   mesh: string
@@ -218,6 +220,7 @@ export const serviceGenericInvokeAPI = (data: {
   group?: string
   version?: string
   signature?: string
+  generic?: ServiceGenericMode
   timeoutMs?: number
   attachments?: Record<string, string>
 }): Promise<any> => {

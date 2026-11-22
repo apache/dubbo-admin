@@ -95,6 +95,13 @@
                         耗时: {{ elapsedMs }}ms
                       </a-tag>
                     </div>
+                    <a-typography-text v-if="invocationInfo" class="invocation-info">
+                      {{ invocationInfo.generic === 'false' ? '普通调用' : '泛化调用' }}: generic={{
+                        invocationInfo.generic
+                      }}; protocol={{ invocationInfo.protocol || '未记录' }}; serialization={{
+                        invocationInfo.serialization || '未记录'
+                      }}
+                    </a-typography-text>
                     <div class="editor-wrapper">
                       <monaco-editor
                         v-model="responseValue"
@@ -155,6 +162,34 @@
                         编辑 ({{ attachmentCount }})
                       </a-button>
                     </div>
+                  </a-col>
+
+                  <a-col :span="8">
+                    <div class="section-title">
+                      <a-typography-text strong>调用模式:</a-typography-text>
+                    </div>
+                    <a-select
+                      v-model:value="generic"
+                      :options="genericOptions"
+                      aria-label="调用模式"
+                      style="width: 100%"
+                    />
+                    <a-typography-text type="secondary">
+                      泛化选项来自 SDK；provider 支持情况未确认
+                    </a-typography-text>
+                  </a-col>
+                  <a-col :span="16" v-if="selectedProvider">
+                    <div class="section-title">
+                      <a-typography-text strong>实例调用配置:</a-typography-text>
+                    </div>
+                    <div>generic: {{ selectedProvider.generic || '未声明' }}</div>
+                    <div>serialization: {{ selectedProvider.serialization || '未声明' }}</div>
+                    <div>
+                      preferSerialization: {{ selectedProvider.preferSerialization || '未声明' }}
+                    </div>
+                    <a-typography-text type="secondary">
+                      序列化由实例配置自动选择；均未声明时默认使用 hessian2
+                    </a-typography-text>
                   </a-col>
 
                   <!-- Row 4: Invoke Button -->
@@ -218,9 +253,11 @@ import {
   getServiceProviderInstancesAPI,
   getServiceMethodsAPI,
   getServiceMethodDetailAPI,
-  serviceGenericInvokeAPI
+  serviceGenericInvokeAPI,
+  type ServiceGenericMode
 } from '@/api/service/service'
 import { useMeshStore } from '@/stores/mesh'
+import type { ProviderInstance } from '@/types/api'
 
 defineOptions({
   name: 'ServiceDebugTab'
@@ -253,12 +290,6 @@ interface MethodDetail {
   types: TypeDef[]
 }
 
-interface ProviderInstance {
-  name: string
-  appName: string
-  ip: string
-}
-
 const route = useRoute()
 const meshStore = useMeshStore()
 const serviceName = computed(() => route.params.pathId as string)
@@ -281,6 +312,22 @@ const responseValue = ref('')
 const elapsedMs = ref(0)
 
 const timeout = ref(3000)
+const generic = ref<ServiceGenericMode>('true')
+const genericOptions = [
+  { value: 'true', label: 'Map (true)' },
+  { value: 'gson', label: 'Gson' },
+  { value: 'bean', label: 'Bean' },
+  { value: 'protobuf-json', label: 'Protobuf JSON' },
+  { value: 'false', label: '普通调用 (false)' }
+]
+const selectedProvider = computed(() =>
+  providerInstances.value.find((instance) => instance.name === instanceName.value)
+)
+const invocationInfo = ref<{
+  generic: ServiceGenericMode
+  protocol?: string
+  serialization?: string
+} | null>(null)
 
 const attachmentsModalOpen = ref(false)
 const attachmentsList = ref<{ key: string; value: string }[]>([])
@@ -503,6 +550,7 @@ async function loadMethods() {
 async function loadMethodDetail(method: MethodSummary) {
   loadingDetail.value = true
   responseValue.value = ''
+  invocationInfo.value = null
   elapsedMs.value = 0
   try {
     const res = await getServiceMethodDetailAPI({
@@ -572,6 +620,11 @@ async function handleInvoke() {
     return
   }
 
+  if (!genericOptions.some((option) => option.value === generic.value)) {
+    message.error('不支持的调用模式')
+    return
+  }
+  const requestedGeneric = generic.value
   const attachments: Record<string, string> = {}
   attachmentsList.value.forEach((a) => {
     if (a.key) attachments[a.key] = a.value
@@ -579,7 +632,9 @@ async function handleInvoke() {
 
   loadingInvoke.value = true
   responseValue.value = ''
+  invocationInfo.value = null
   elapsedMs.value = 0
+  invocationInfo.value = { generic: requestedGeneric }
   try {
     const res = await serviceGenericInvokeAPI({
       mesh: meshStore.mesh,
@@ -590,11 +645,17 @@ async function handleInvoke() {
       args,
       group: group.value || undefined,
       version: version.value || undefined,
+      generic: requestedGeneric,
       timeoutMs: timeout.value > 0 ? timeout.value : undefined,
       attachments: Object.keys(attachments).length > 0 ? attachments : undefined
     })
     // 提取 elapsedMs 和 rawResult
     if (res.data && typeof res.data === 'object') {
+      invocationInfo.value = {
+        generic: requestedGeneric,
+        protocol: res.data.protocol,
+        serialization: res.data.serialization
+      }
       elapsedMs.value = res.data.elapsedMs || 0
       const rawResult = res.data.rawResult
       responseValue.value = JSON.stringify(rawResult, null, 2)
@@ -602,6 +663,12 @@ async function handleInvoke() {
       responseValue.value = JSON.stringify(res.data, null, 2)
     }
   } catch (e: any) {
+    invocationInfo.value = {
+      generic: requestedGeneric,
+      protocol: e?.data?.protocol,
+      serialization: e?.data?.serialization
+    }
+    elapsedMs.value = e?.data?.elapsedMs || 0
     responseValue.value = JSON.stringify(e || { error: '请求失败' }, null, 2)
   } finally {
     loadingInvoke.value = false
@@ -618,6 +685,7 @@ function removeAttachment(idx: number) {
 
 async function loadPageData() {
   responseValue.value = ''
+  invocationInfo.value = null
   if (!isMeshSelected.value) {
     return
   }
@@ -637,6 +705,7 @@ watch(
     instanceName.value = ''
     requestValue.value = '[]'
     responseValue.value = ''
+    invocationInfo.value = null
     elapsedMs.value = 0
     void loadPageData()
   },

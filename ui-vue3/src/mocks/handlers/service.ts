@@ -189,7 +189,13 @@ const methodDetails: Record<string, ServiceMethodDetail> = {
 }
 
 const providerInstances: ProviderInstance[] = [
-  { name: 'dubbo-provider-0', appName: 'dubbo-sample-provider', ip: '10.20.30.11' },
+  {
+    name: 'dubbo-provider-0',
+    appName: 'dubbo-sample-provider',
+    ip: '10.20.30.11',
+    serialization: 'hessian2',
+    preferSerialization: 'hessian2,fastjson2'
+  },
   { name: 'dubbo-provider-1', appName: 'dubbo-sample-provider', ip: '10.20.30.12' }
 ]
 
@@ -251,9 +257,16 @@ export const serviceHandlers: HttpHandler[] = [
     return success(methodDetails[methodName] || methodDetails.query)
   }),
 
-  http.post(`${base}/service/generic/invoke`, () =>
-    success({ elapsedMs: 12, rawResult: { id: '1001', name: 'Alice', age: 18 } })
-  ),
+  http.post(`${base}/service/generic/invoke`, async ({ request }) => {
+    const body = (await request.json()) as { generic?: string }
+    return success({
+      generic: body.generic || 'true',
+      protocol: 'dubbo',
+      serialization: 'hessian2',
+      elapsedMs: 12,
+      rawResult: { id: '1001', name: 'Alice', age: 18 }
+    })
+  }),
 
   http.get(`${base}/service/event`, () => {
     const sources = ['deployment-controller', 'nacos', 'zookeeper', 'kubelet']

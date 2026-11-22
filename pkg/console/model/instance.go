@@ -55,6 +55,10 @@ func NewSearchPaginationResult() *SearchPaginationResult {
 }
 
 type SearchInstanceResp struct {
+	Generic             string `json:"generic,omitempty"`
+	Serialization       string `json:"serialization,omitempty"`
+	PreferSerialization string `json:"preferSerialization,omitempty"`
+
 	Ip               string                 `json:"ip"`
 	Name             string                 `json:"name"`
 	WorkloadName     string                 `json:"workloadName"`
@@ -77,6 +81,8 @@ func NewSearchInstanceResp() *SearchInstanceResp {
 
 func (r *SearchInstanceResp) FromInstanceResource(instanceResource *meshresource.InstanceResource, cfg app.AdminConfig) *SearchInstanceResp {
 	instance := instanceResource.Spec
+	r.Serialization = instance.Serialization
+	r.PreferSerialization = instance.PreferSerialization
 	r.Ip = instance.Ip
 	r.Name = instance.Name
 	r.CreateTime = instance.CreateTime
