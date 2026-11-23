@@ -96,7 +96,7 @@ const words: I18nType = {
     saveChanges: 'Save changes',
     deleteConfirm: 'Delete {ruleName}? This removes the rule from the configuration center.',
     affinityHint:
-      'Affinity rules support application or service scope. For service scope, enter an interface name (completed as interface::) or the full interface:version:group key.',
+      'Affinity rules support application or service scope. For service scope, enter an interface name (completed as interface::) or the full interface:version:group key. For Dubbo-Go v3.3.2 services with version 0.0.0, leave the version segment empty, for example OrderService::blue.',
     scriptHint: 'Script rules support application scope and the registered javascript type only.',
     yamlMustBeObject: 'The YAML document must be an object.',
     keyRequired: 'A rule key is required.',

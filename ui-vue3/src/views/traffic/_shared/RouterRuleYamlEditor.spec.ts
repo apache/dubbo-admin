@@ -213,7 +213,11 @@ describe('RouterRuleYamlEditor', () => {
     )
   })
 
-  it('preserves a service affinity key with version and group', async () => {
+  it.each([
+    'org.apache.dubbo.samples.CommentService:1.0:group-a',
+    'org.apache.dubbo.samples.CommentService:0.0.0:blue',
+    'org.apache.dubbo.samples.CommentService::blue'
+  ])('preserves the complete service affinity key %s', async (key) => {
     mocks.addRouterRuleAPI.mockResolvedValue({ code: HTTP_STATUS.SUCCESS })
     const wrapper = mountEditor('affinity-rule')
     await flushPromises()
@@ -221,7 +225,7 @@ describe('RouterRuleYamlEditor', () => {
       yaml.dump({
         configVersion: 'v3.1',
         scope: 'service',
-        key: 'org.apache.dubbo.samples.CommentService:1.0:group-a',
+        key,
         affinityAware: { key: 'region', ratio: 1 }
       })
     )
@@ -231,8 +235,8 @@ describe('RouterRuleYamlEditor', () => {
 
     expect(mocks.addRouterRuleAPI).toHaveBeenCalledWith(
       'affinity-rule',
-      'org.apache.dubbo.samples.CommentService:1.0:group-a.affinity-router',
-      expect.objectContaining({ key: 'org.apache.dubbo.samples.CommentService:1.0:group-a' })
+      `${key}.affinity-router`,
+      expect.objectContaining({ key })
     )
   })
 

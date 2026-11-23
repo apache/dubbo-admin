@@ -340,6 +340,42 @@ func (e *routerRuleChainE2E) testAffinityLifecycle(t *testing.T) {
 	waitForRoute(t, e.chain, e.consumer, e.invoke, twoPorts)
 }
 
+// Dubbo-Go v3.3.2 omits an explicit 0.0.0 version from its service rule key.
+// Both rule names are valid Admin inputs, but only the subscribed key routes.
+func (e *routerRuleChainE2E) testAffinityServiceDefaultVersionKey(t *testing.T) {
+	service := fmt.Sprintf("com.example.RouterRuleE2E%d", time.Now().UnixNano())
+	consumer := mustURL(t, fmt.Sprintf("consumer://127.0.0.1:20000/%s?application=consumer-%s&group=blue&version=0.0.0&region=beijing", service, e.provider))
+	require.Equal(t, service+"::blue", consumer.ColonSeparatedKey())
+	serviceChain, err := chain.NewRouterChain(consumer)
+	require.NoError(t, err)
+	serviceChain.SetInvokers([]base.Invoker{
+		base.NewBaseInvoker(mustURL(t, fmt.Sprintf("dubbo://127.0.0.1:20880/%s?application=%s&group=blue&version=0.0.0&region=beijing", service, e.provider))),
+		base.NewBaseInvoker(mustURL(t, fmt.Sprintf("dubbo://127.0.0.1:20881/%s?application=%s&group=blue&version=0.0.0&region=shanghai", service, e.provider))),
+	})
+	waitForRoute(t, serviceChain, consumer, e.invoke, twoPorts)
+
+	ruleEvents := e.subscribe(t, meshresource.AffinityRouteKind, "service-affinity")
+	for _, tc := range []struct {
+		name  string
+		key   string
+		match func([]base.Invoker) bool
+	}{
+		{"explicit-default-version", service + ":0.0.0:blue", twoPorts},
+		{"empty-version", service + "::blue", onePort("20880")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rule := e.newServiceAffinityRule(tc.key)
+			e.dynamic.AddListener(rule.Name, e.listener)
+			e.createAffinityRule(t, rule)
+			e.requireUpsert(t, rule, ruleEvents, cache.Added, "ratio: 1", remoting.EventTypeAdd, affinityRatio(1))
+			waitForRoute(t, serviceChain, consumer, e.invoke, tc.match)
+			e.deleteRule(t, "affinity-rule", rule.Name)
+			e.requireDelete(t, rule, ruleEvents, remoting.EventTypeDel)
+			waitForRoute(t, serviceChain, consumer, e.invoke, twoPorts)
+		})
+	}
+}
+
 func (e *routerRuleChainE2E) testScriptLifecycle(t *testing.T) {
 	rule := e.newScriptRule()
 	ruleEvents := e.subscribe(t, meshresource.ScriptRouteKind, "script")
@@ -440,6 +476,14 @@ func (e *routerRuleChainE2E) newAffinityRule() *meshresource.AffinityRouteResour
 	rule.Spec.ConfigVersion, rule.Spec.Scope, rule.Spec.Key = "v3.1", "application", e.provider
 	rule.Spec.Runtime, rule.Spec.Enabled = true, true
 	rule.Spec.Affinity = &meshproto.AffinityAware{Key: "region", Ratio: 50}
+	return rule
+}
+
+func (e *routerRuleChainE2E) newServiceAffinityRule(key string) *meshresource.AffinityRouteResource {
+	rule := meshresource.NewAffinityRouteResourceWithAttributes(key+".affinity-router", e.mesh)
+	rule.Spec.ConfigVersion, rule.Spec.Scope, rule.Spec.Key = "v3.1", "service", key
+	rule.Spec.Runtime, rule.Spec.Enabled = true, true
+	rule.Spec.Affinity = &meshproto.AffinityAware{Key: "region", Ratio: 1}
 	return rule
 }
 

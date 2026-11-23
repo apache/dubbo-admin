@@ -68,6 +68,7 @@ func TestNacosRouterRuleChainLifecycle(t *testing.T) {
 	}
 	e2e := newNacosRouterRuleChainE2E(t, requireAdminRuntimeFixture(t), address)
 	t.Run("Affinity", e2e.testAffinityLifecycle)
+	t.Run("AffinityServiceDefaultVersionKey", e2e.testAffinityServiceDefaultVersionKey)
 	t.Run("Script", e2e.testScriptLifecycle)
 }
 
