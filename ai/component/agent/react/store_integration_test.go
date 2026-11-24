@@ -232,7 +232,6 @@ func TestRunRechecksSessionAccessBeforeNextModelCall(t *testing.T) {
 	if err != nil {
 		t.Fatalf("newInteraction() error = %v", err)
 	}
-	defer state.cancelPersistence()
 	defer func() { _ = baseStore.AbortTurnForTurn(context.Background(), access, sessionID, state.turnID) }()
 
 	_, err = ra.run(interactionCtx, nil, state, &interactionTrace{})
