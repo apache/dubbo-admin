@@ -127,6 +127,7 @@ const mountDrawerWithMessages = (service: ChatService<unknown>) => {
 describe('AiChatDrawer', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('sends messages through the injected service with collected context', async () => {
@@ -152,6 +153,51 @@ describe('AiChatDrawer', () => {
       context,
       expect.stringMatching(/^[0-9a-f-]{36}$/)
     )
+  })
+
+  it('sends when crypto.randomUUID is unavailable', async () => {
+    // Non-secure contexts (plain HTTP on a non-localhost address) expose
+    // neither randomUUID nor getRandomValues.
+    vi.stubGlobal('crypto', {})
+    const service: ChatService<unknown> = {
+      createSession: vi.fn().mockResolvedValue('session-1'),
+      sendChatMessage: vi.fn().mockResolvedValue(createEmptyStream())
+    }
+    const wrapper = mountDrawer(service, { collectContext: () => ({ page: 'instances' }) })
+    const input = wrapper.findComponent(ChatInputStub)
+    const exposed = input.vm.$.exposed as { inputMessage: { value: string } }
+
+    exposed.inputMessage.value = 'inspect this resource'
+    await input.find('.send-message').trigger('click')
+    await flushPromises()
+
+    expect(service.sendChatMessage).toHaveBeenCalledOnce()
+    const key = vi.mocked(service.sendChatMessage).mock.calls[0][3]
+    expect(typeof key).toBe('string')
+    expect(key.length).toBeGreaterThan(0)
+  })
+
+  it('builds a UUID from getRandomValues when randomUUID is absent', async () => {
+    const getRandomValues = vi.fn((bytes: Uint8Array) => {
+      bytes.fill(7)
+      return bytes
+    })
+    vi.stubGlobal('crypto', { getRandomValues })
+    const service: ChatService<unknown> = {
+      createSession: vi.fn().mockResolvedValue('session-1'),
+      sendChatMessage: vi.fn().mockResolvedValue(createEmptyStream())
+    }
+    const wrapper = mountDrawer(service, { collectContext: () => ({ page: 'instances' }) })
+    const input = wrapper.findComponent(ChatInputStub)
+    const exposed = input.vm.$.exposed as { inputMessage: { value: string } }
+
+    exposed.inputMessage.value = 'inspect this resource'
+    await input.find('.send-message').trigger('click')
+    await flushPromises()
+
+    expect(getRandomValues).toHaveBeenCalledOnce()
+    const key = vi.mocked(service.sendChatMessage).mock.calls[0][3]
+    expect(key).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
   })
 
   it('reuses the logical request key and context snapshot when retrying', async () => {
