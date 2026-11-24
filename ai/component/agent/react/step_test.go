@@ -179,9 +179,10 @@ func TestRun_CallsToolThenAnswers(t *testing.T) {
 }
 
 func TestRun_ToolErrorDegradesNotAborts(t *testing.T) {
+	const secret = "review-tool-error-secret"
 	g := genkit.Init(context.Background())
 	genkit.DefineTool(g, "broken_tool", "broken", func(ctx *ai.ToolContext, input map[string]any) (map[string]any, error) {
-		return nil, errors.New("boom")
+		return nil, errors.New("boom password=" + secret)
 	})
 	script := &scriptPrompt{resps: []*ai.ModelResponse{
 		toolReqResp("broken_tool", map[string]any{"x": 1}),
@@ -196,6 +197,9 @@ func TestRun_ToolErrorDegradesNotAborts(t *testing.T) {
 	text := historyText(history, "s3")
 	if !strings.Contains(text, "broken_tool") || !strings.Contains(text, "failed") {
 		t.Fatalf("expected degraded failure output recorded, got: %q", text)
+	}
+	if strings.Contains(text, secret) {
+		t.Fatalf("degraded tool output leaked the raw error: %q", text)
 	}
 }
 

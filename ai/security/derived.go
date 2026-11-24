@@ -17,7 +17,10 @@
 
 package security
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 var ErrSensitiveDerivedData = errors.New("sensitive content is not allowed in derived data")
 
@@ -58,6 +61,12 @@ func (p *DerivedDataPolicy) Prepare(content string, metadata map[string]any) (ma
 		if _, ok := p.allowed[key]; !ok {
 			continue
 		}
+		// Only scalar values and scalar lists (for example header_path) may be
+		// persisted. Maps and nested containers can hide sensitive structure
+		// from the field-level inspection below.
+		if !allowedMetadataValue(value) {
+			return nil, nil, fmt.Errorf("%w: metadata field %q must be a scalar or scalar list", ErrSensitiveDerivedData, key)
+		}
 		result := p.sanitizer.SanitizeStructured(value)
 		if len(result.Findings) > 0 {
 			return nil, result.Findings, ErrSensitiveDerivedData
@@ -67,6 +76,30 @@ func (p *DerivedDataPolicy) Prepare(content string, metadata map[string]any) (ma
 		clean[key] = value
 	}
 	return clean, nil, nil
+}
+
+// allowedMetadataValue limits persisted metadata to scalars and lists of
+// scalars. Index backends use header_path as []string, so flat lists remain
+// valid; maps and nested lists do not.
+func allowedMetadataValue(value any) bool {
+	switch typed := value.(type) {
+	case nil, string, bool,
+		int, int8, int16, int32, int64,
+		uint, uint8, uint16, uint32, uint64,
+		float32, float64:
+		return true
+	case []string:
+		return true
+	case []any:
+		for _, item := range typed {
+			if !allowedMetadataValue(item) {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
 }
 
 // ValidateIdentifier applies the same secret boundary to external document

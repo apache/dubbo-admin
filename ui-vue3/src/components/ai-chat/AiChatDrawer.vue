@@ -122,6 +122,7 @@ import 'highlight.js/styles/github.css' // 使用 GitHub 风格的代码高亮�
 import MessageList from './MessageList.vue'
 import ChatInput from './ChatInput.vue'
 import SessionHistoryModal from './SessionHistoryModal.vue'
+import { generateIdempotencyKey } from '@/utils/IdempotencyUtil'
 import {
   DEFAULT_AI_CHAT_LABELS,
   type AIChatLabels,
@@ -360,7 +361,7 @@ async function sendMessage(isRetry = false) {
     addErrorMessage(resolvedLabels.value.requestFailed)
     return
   }
-  const idempotencyKey = isRetry ? lastIdempotencyKey.value : crypto.randomUUID()
+  const idempotencyKey = isRetry ? lastIdempotencyKey.value : generateIdempotencyKey()
 
   if (!idempotencyKey) {
     addErrorMessage(resolvedLabels.value.requestFailed)

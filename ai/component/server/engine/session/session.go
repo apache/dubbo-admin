@@ -184,7 +184,7 @@ func (m *Manager) cleanupExpiredSessions() {
 		case <-ticker.C:
 			deleted, next, err := m.maintenance.DeleteExpiredPage(m.cleanupCtx, security.SystemAccessContext(), time.Now(), m.cleanupCursor, m.lifecycle.CleanupBatchSize)
 			if err != nil {
-				rt.GetLogger().Error("Failed to clean expired sessions", "error", err)
+				rt.GetLogger().Error("Failed to clean expired sessions", "error_type", fmt.Sprintf("%T", err))
 				continue
 			}
 			previousCursor := m.cleanupCursor

@@ -122,6 +122,42 @@ func TestTracingHookNeverMaterializesContent(t *testing.T) {
 	assertNoSpanAttribute(t, spans[0].Attributes(), "gen_ai.input.messages")
 }
 
+func TestTracingHookSanitizesAndBoundsModelSuppliedStrings(t *testing.T) {
+	const secret = "span-secret-value"
+	recorder := tracetest.NewSpanRecorder()
+	provider := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
+	t.Cleanup(func() { _ = provider.Shutdown(context.Background()) })
+	manager := testManager()
+	if err := manager.Register(NewTracingRegistration(provider.Tracer("test"), CaptureNone)); err != nil {
+		t.Fatalf("register tracing hook: %v", err)
+	}
+
+	toolName := "evil password=" + secret + " " + strings.Repeat("z", 300)
+	ctx := manager.Emit(context.Background(), State{Event: EventToolCallStart, ToolName: toolName})
+	manager.Emit(ctx, State{Event: EventToolCallEnd, ToolName: toolName})
+
+	spans := recorder.Ended()
+	if len(spans) != 1 {
+		t.Fatalf("ended spans = %d, want 1", len(spans))
+	}
+	if strings.Contains(spans[0].Name(), secret) {
+		t.Fatalf("span name leaked a model-supplied secret: %q", spans[0].Name())
+	}
+	if runes := []rune(spans[0].Name()); len(runes) > len("execute_tool ")+maxSpanStringLen+3 {
+		t.Fatalf("span name is not bounded: %d runes", len(runes))
+	}
+	for _, attr := range spans[0].Attributes() {
+		if attr.Key == "gen_ai.tool.name" {
+			if strings.Contains(attr.Value.AsString(), secret) {
+				t.Fatalf("tool name attribute leaked a secret: %q", attr.Value.AsString())
+			}
+			if runes := []rune(attr.Value.AsString()); len(runes) > maxSpanStringLen+3 {
+				t.Fatalf("tool name attribute is not bounded: %d runes", len(runes))
+			}
+		}
+	}
+}
+
 func TestStateAttributesClassifyToolAndStageEvents(t *testing.T) {
 	toolAttrs := stateAttributes(State{
 		Event: EventToolCallStart, SessionID: "session", InteractionID: "interaction",

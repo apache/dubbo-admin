@@ -22,7 +22,7 @@ import (
 	"dubbo-admin-ai/security"
 	"dubbo-admin-ai/utils"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -228,7 +228,7 @@ func NewMilvusRetriever(g *genkit.Genkit, config *MilvusConfig) (*MilvusRetrieve
 	// Load collection
 	loadOption := milvusclient.NewLoadCollectionOption(cfg.Collection)
 	if _, err := cli.LoadCollection(ctx, loadOption); err != nil {
-		log.Printf("Warning: failed to load collection (%T)", err)
+		slog.Warn("failed to load collection", "error_type", fmt.Sprintf("%T", err))
 	}
 
 	return &MilvusRetriever{

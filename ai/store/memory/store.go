@@ -910,6 +910,12 @@ func (m *MemoryStore) FailInteraction(ctx context.Context, access security.Acces
 	if !ok || interaction.SessionID != sessionID || interaction.TurnID != turnID {
 		return conversationstore.ErrTurnNotFound
 	}
+	// Only a running Interaction may fail. Once CompleteInteraction has recorded
+	// a result the Interaction must stay replayable; a late failure must not
+	// rewrite the status or discard the completed Turn.
+	if interaction.Status != conversationstore.InteractionStatusRunning {
+		return conversationstore.ErrTurnNotFound
+	}
 	if history := m.history[sessionID]; history != nil {
 		delete(history.active, turnID)
 	}

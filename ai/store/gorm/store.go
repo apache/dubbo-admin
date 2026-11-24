@@ -1046,15 +1046,21 @@ func (s *GormStore) FailInteraction(ctx context.Context, access security.AccessC
 		if _, err := s.findActiveSession(tx, access, sessionID, true); err != nil {
 			return err
 		}
-		if err := s.deleteTurnAndReleaseUsage(tx, access.Subject.TenantID, sessionID, turnID); err != nil {
-			return err
-		}
-		updated := tx.Model(&InteractionModel{}).Where("id = ? AND session_id = ? AND turn_id = ?", interactionID, sessionID, turnID).Updates(map[string]any{"status": conversationstore.InteractionStatusFailed, "updated_at": time.Now()})
+		// Claim the running -> failed transition before touching the Turn. A late
+		// failure for an already completed Interaction must not delete its Turn or
+		// messages, because that result is what replay returns.
+		now := time.Now()
+		updated := tx.Model(&InteractionModel{}).
+			Where("id = ? AND session_id = ? AND turn_id = ? AND status = ?", interactionID, sessionID, turnID, conversationstore.InteractionStatusRunning).
+			Updates(map[string]any{"status": conversationstore.InteractionStatusFailed, "updated_at": now})
 		if updated.Error != nil {
 			return updated.Error
 		}
 		if updated.RowsAffected != 1 {
 			return conversationstore.ErrTurnNotFound
+		}
+		if err := s.deleteTurnAndReleaseUsage(tx, access.Subject.TenantID, sessionID, turnID); err != nil {
+			return err
 		}
 		return tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id = ?", sessionID, interactionID).Update("active_interaction_id", nil).Error
 	})
