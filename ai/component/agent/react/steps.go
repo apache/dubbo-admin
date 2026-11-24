@@ -236,7 +236,9 @@ func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemo
 		if err != nil {
 			return nil, err
 		}
-		if err := ra.messageStore.AddHistoryToTurn(persistenceContext(ctx), access, s.Session, turnID, message); err != nil {
+		persistCtx, cancel := persistenceContext(ctx)
+		defer cancel()
+		if err := ra.messageStore.AddHistoryToTurn(persistCtx, access, s.Session, turnID, message); err != nil {
 			return nil, fmt.Errorf("failed to record tool output: %w", err)
 		}
 	} else {
@@ -256,7 +258,9 @@ func (ra *ReActAgent) finish(ctx context.Context, chans *agent.Channels, history
 			if err != nil {
 				return err
 			}
-			if err := ra.messageStore.AddHistoryToTurn(persistenceContext(ctx), access, sessionID, turnID, message); err != nil {
+			persistCtx, cancel := persistenceContext(ctx)
+			defer cancel()
+			if err := ra.messageStore.AddHistoryToTurn(persistCtx, access, sessionID, turnID, message); err != nil {
 				return fmt.Errorf("failed to persist final answer: %w", err)
 			}
 		} else {
@@ -296,11 +300,12 @@ func sessionIDFromCtx(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("session id not found in context")
 }
 
-func persistenceContext(ctx context.Context) context.Context {
-	if state, ok := ctx.Value(persistenceContextKey).(context.Context); ok && state != nil {
-		return state
-	}
-	return ctx
+// persistenceContext returns a fresh bounded context for a single Store write.
+// Each write gets its own budget: an interaction may legally outlive the
+// 30-second write timeout in a long model/tool loop, and reusing one deadline
+// created at interaction start would drop later writes (including the answer).
+func persistenceContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), persistenceTimeout)
 }
 
 // withTimeout wraps ctx with a deadline when timeout > 0; otherwise it returns

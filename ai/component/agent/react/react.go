@@ -68,7 +68,10 @@ var interactionSequence atomic.Uint64
 
 var ErrAgentStopping = errors.New("agent is stopping")
 
-const persistenceTimeout = 30 * time.Second
+// persistenceTimeout bounds each individual persistence write. It is a var
+// rather than a const so tests can shrink the budget and exercise interactions
+// that outlive it without sleeping 30s; production never mutates it.
+var persistenceTimeout = 30 * time.Second
 
 type interactionState struct {
 	access        security.AccessContext
@@ -76,14 +79,6 @@ type interactionState struct {
 	interactionID string
 	prepared      bool
 	messages      []*ai.Message
-	persistCtx    context.Context
-	persistCancel context.CancelFunc
-}
-
-func (s *interactionState) cancelPersistence() {
-	if s != nil && s.persistCancel != nil {
-		s.persistCancel()
-	}
 }
 
 // NewReActAgent builds a ReActAgent, assembling its prompts up front so the
@@ -250,7 +245,6 @@ func (ra *ReActAgent) Interact(parent context.Context, input *schema.UserInput, 
 				}
 				cancel()
 			}
-			state.cancelPersistence()
 		}()
 		preparedNeedsCleanup = false
 
@@ -265,12 +259,16 @@ func (ra *ReActAgent) Interact(parent context.Context, input *schema.UserInput, 
 			return
 		}
 		if ra.messageStore != nil {
+			// The interaction lease spans the whole model/tool loop, so the final
+			// commit must not inherit a budget created when the interaction began.
+			persistCtx, persistCancel := persistenceContext(ctx)
 			var completeErr error
 			if state.prepared {
-				completeErr = ra.messageStore.CompleteInteraction(state.persistCtx, state.access, sessionID, state.interactionID, state.turnID, interactionState.FinalAnswer)
+				completeErr = ra.messageStore.CompleteInteraction(persistCtx, state.access, sessionID, state.interactionID, state.turnID, interactionState.FinalAnswer)
 			} else {
-				completeErr = ra.messageStore.NextTurnForTurn(state.persistCtx, state.access, sessionID, state.turnID)
+				completeErr = ra.messageStore.NextTurnForTurn(persistCtx, state.access, sessionID, state.turnID)
 			}
+			persistCancel()
 			if completeErr != nil {
 				interactionErr = fmt.Errorf("failed to complete turn: %w", completeErr)
 				chans.ErrorChan <- interactionErr
@@ -382,7 +380,6 @@ func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserI
 				return nil, nil, fmt.Errorf("failed to begin turn: %w", err)
 			}
 		}
-		persistCtx, persistCancel := context.WithTimeout(context.WithoutCancel(parent), persistenceTimeout)
 		if err := ra.messageStore.AddHistoryToTurn(parent, access, sessionID, turnID, ai.NewUserMessage(ai.NewTextPart(input.Content))); err != nil {
 			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(parent), persistenceTimeout)
 			var abortErr error
@@ -392,7 +389,6 @@ func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserI
 				abortErr = ra.messageStore.AbortTurnForTurn(cleanupCtx, access, sessionID, turnID)
 			}
 			cancel()
-			persistCancel()
 			if abortErr != nil && !errors.Is(abortErr, conversationstore.ErrTurnNotFound) {
 				return nil, nil, fmt.Errorf("failed to record user message: %w (also failed to abort turn: %v)", err, abortErr)
 			}
@@ -408,16 +404,14 @@ func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserI
 				abortErr = ra.messageStore.AbortTurnForTurn(cleanupCtx, access, sessionID, turnID)
 			}
 			cancel()
-			persistCancel()
 			if abortErr != nil && !errors.Is(abortErr, conversationstore.ErrTurnNotFound) {
 				return nil, nil, fmt.Errorf("failed to load conversation context: %w (also failed to abort turn: %v)", err, abortErr)
 			}
 			return nil, nil, fmt.Errorf("failed to load conversation context: %w", err)
 		}
-		state := &interactionState{access: access, turnID: turnID, interactionID: interactionID, prepared: isPrepared, messages: messages, persistCtx: persistCtx, persistCancel: persistCancel}
+		state := &interactionState{access: access, turnID: turnID, interactionID: interactionID, prepared: isPrepared, messages: messages}
 		ctx := context.WithValue(parent, sessionIDContextKey, sessionID)
 		ctx = context.WithValue(ctx, turnIDContextKey, turnID)
-		ctx = context.WithValue(ctx, persistenceContextKey, persistCtx)
 		return ctx, state, nil
 	}
 
@@ -443,9 +437,8 @@ func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserI
 type contextKey string
 
 const (
-	sessionIDContextKey   contextKey = "session"
-	turnIDContextKey      contextKey = "turn"
-	persistenceContextKey contextKey = "persistence"
+	sessionIDContextKey contextKey = "session"
+	turnIDContextKey    contextKey = "turn"
 )
 
 // GetMemory returns the agent's chat history store, or nil if it cannot be
