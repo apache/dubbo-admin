@@ -4,7 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -19,6 +19,7 @@ import (
 	"dubbo-admin-ai/component/server"
 	"dubbo-admin-ai/component/tools"
 	"dubbo-admin-ai/runtime"
+	"dubbo-admin-ai/security"
 )
 
 // registerFactorys explicitly registers all component factories
@@ -52,9 +53,14 @@ func main() {
 	configPath := flag.String("config", "config.yaml", "Path to the AI configuration file")
 	flag.Parse()
 
+	// Install baseline redaction before any component (or startup failure) can
+	// write an unprotected log line.
+	slog.SetDefault(slog.New(security.NewRedactingHandler(slog.Default().Handler())))
+
 	rt, err := runtime.Bootstrap(*configPath, registerFactorys)
 	if err != nil {
-		log.Fatalf("Failed to initialize runtime: %v", err)
+		slog.Error("Failed to initialize runtime", "error", security.SafeError(err))
+		os.Exit(1)
 	}
 	rt.GetLogger().Info("🤖 Dubbo Admin AI Agent Server initialized successfully")
 
@@ -67,7 +73,7 @@ func main() {
 
 	// Stop all components
 	if err := stopComponents(rt); err != nil {
-		log.Printf("Warning: Error stopping components: %v", err)
+		slog.Warn("Error stopping components", "error", security.SafeError(err))
 	}
 
 	fmt.Println("✅ Server exited")

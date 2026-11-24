@@ -64,7 +64,7 @@ func NewLocalIndexer(g *genkit.Genkit, embedderModel string, targetIndex string,
 }
 
 func (idx *LocalIndexer) Store(ctx context.Context, docs []*schema.Document, opts ...indexer.Option) ([]string, error) {
-	prepared, err := prepareDocuments(docs)
+	prepared, err := PrepareDocuments(docs)
 	if err != nil {
 		return nil, err
 	}

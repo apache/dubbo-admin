@@ -27,7 +27,10 @@ import (
 
 var derivedDataPolicy = security.NewKnowledgeIndexPolicy()
 
-func prepareDocuments(docs []*schema.Document) ([]*schema.Document, error) {
+// PrepareDocuments validates canonical documents before they reach an index
+// backend. RAG.Index calls it at the public boundary; concrete indexers call it
+// again only when they are used directly, so the same helper serves both.
+func PrepareDocuments(docs []*schema.Document) ([]*schema.Document, error) {
 	prepared := make([]*schema.Document, 0, len(docs))
 	for index, doc := range docs {
 		if doc == nil {

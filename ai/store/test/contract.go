@@ -351,6 +351,41 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Backe
 		}
 	})
 
+	t.Run("completed interaction rejects late failure", func(t *testing.T) {
+		ctx := context.Background()
+		s := withAccess(newStore())
+		now := time.Now()
+		session := &conversationstore.Session{ID: "fail-after-complete-session", CreatedAt: now, UpdatedAt: now, Status: conversationstore.SessionStatusActive}
+		if err := s.Create(ctx, session); err != nil {
+			t.Fatalf("Create() error = %v", err)
+		}
+		prepared, err := s.BackendStore.PrepareInteraction(ctx, s.access, session.ID, "late-failure-key", "late-failure-hash", time.Minute)
+		if err != nil {
+			t.Fatalf("PrepareInteraction() error = %v", err)
+		}
+		if err := s.BackendStore.AddHistoryToTurn(ctx, s.access, session.ID, prepared.TurnID, ai.NewUserTextMessage("hello")); err != nil {
+			t.Fatalf("AddHistoryToTurn() error = %v", err)
+		}
+		if err := s.BackendStore.CompleteInteraction(ctx, s.access, session.ID, prepared.InteractionID, prepared.TurnID, "answer"); err != nil {
+			t.Fatalf("CompleteInteraction() error = %v", err)
+		}
+
+		if err := s.BackendStore.FailInteraction(ctx, s.access, session.ID, prepared.InteractionID, prepared.TurnID); !errors.Is(err, conversationstore.ErrTurnNotFound) {
+			t.Fatalf("FailInteraction(completed) error = %v, want ErrTurnNotFound", err)
+		}
+		replayed, err := s.BackendStore.PrepareInteraction(ctx, s.access, session.ID, "late-failure-key", "late-failure-hash", time.Minute)
+		if err != nil || !replayed.Replayed || replayed.InteractionID != prepared.InteractionID || replayed.Result != "answer" {
+			t.Fatalf("PrepareInteraction(replay) = %#v, %v, want the retained result", replayed, err)
+		}
+		messages, err := s.AllMemory(ctx, session.ID)
+		if err != nil {
+			t.Fatalf("AllMemory() error = %v", err)
+		}
+		if len(messages) != 1 {
+			t.Fatalf("AllMemory() returned %d messages, want the completed turn to be preserved", len(messages))
+		}
+	})
+
 	for _, expired := range []bool{false, true} {
 		t.Run(fmt.Sprintf("interaction retry respects session lease expired=%t", expired), func(t *testing.T) {
 			ctx := context.Background()

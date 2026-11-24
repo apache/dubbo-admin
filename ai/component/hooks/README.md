@@ -102,7 +102,9 @@ The default ports are conventionally 4317 for gRPC and 4318 for HTTP/protobuf.
 `capture_content` is fixed to `none`: normal telemetry must not contain model
 messages, model output, tool arguments, or tool results. A content-level
 diagnostic facility requires separate authorization, redaction, retention, and
-auditing and is not provided by this component.
+auditing and is not provided by this component. Configuring the previous
+`truncated` or `full` values now fails validation at startup; `hooks.schema.json`
+also constrains the field to `none`.
 
 ## Available events
 

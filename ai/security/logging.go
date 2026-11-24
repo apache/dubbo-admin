@@ -69,7 +69,8 @@ func (h *RedactingHandler) sanitizeAttr(attr slog.Attr) slog.Attr {
 		return slog.String(attr.Key, redactedValue)
 	}
 	if attr.Value.Kind() == slog.KindGroup {
-		members := attr.Value.Group()
+		// Group() returns the caller's backing slice; copy before rewriting.
+		members := append([]slog.Attr(nil), attr.Value.Group()...)
 		for i := range members {
 			members[i] = h.sanitizeAttr(members[i])
 		}
