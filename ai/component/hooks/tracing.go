@@ -23,10 +23,27 @@ import (
 	"fmt"
 	"strings"
 
+	"dubbo-admin-ai/security"
+
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
+
+// Span names and attributes must stay metadata-only and bounded even when a
+// model supplies the value (for example a tool name).
+const maxSpanStringLen = 128
+
+func safeSpanString(value string) string {
+	if value == "" {
+		return ""
+	}
+	value = security.DefaultSanitizer().SanitizeText(value).Value
+	if runes := []rune(value); len(runes) > maxSpanStringLen {
+		return string(runes[:maxSpanStringLen]) + "..."
+	}
+	return value
+}
 
 func TraceIDFromContext(ctx context.Context) string {
 	spanContext := trace.SpanContextFromContext(ctx)
@@ -93,11 +110,11 @@ func spanName(state State) string {
 	case EventIterationStart:
 		return fmt.Sprintf("agent.iteration %d", state.Iteration)
 	case EventStageStart:
-		return "agent.stage " + state.Stage
+		return "agent.stage " + safeSpanString(state.Stage)
 	case EventModelCallStart:
 		return "chat " + modelName(state.Model)
 	case EventToolCallStart:
-		return "execute_tool " + state.ToolName
+		return "execute_tool " + safeSpanString(state.ToolName)
 	default:
 		return string(state.Event)
 	}
@@ -125,7 +142,7 @@ func stateAttributes(state State) []attribute.KeyValue {
 		attrs = append(attrs, attribute.Int("agent.iteration", state.Iteration))
 	}
 	if state.Stage != "" {
-		attrs = append(attrs, attribute.String("agent.stage", state.Stage))
+		attrs = append(attrs, attribute.String("agent.stage", safeSpanString(state.Stage)))
 	}
 	switch state.Event {
 	case EventInteractionStart, EventInteractionEnd:
@@ -143,7 +160,7 @@ func stateAttributes(state State) []attribute.KeyValue {
 	}
 	if state.Event.toolCall() {
 		if state.ToolName != "" {
-			attrs = append(attrs, attribute.String("gen_ai.tool.name", state.ToolName))
+			attrs = append(attrs, attribute.String("gen_ai.tool.name", safeSpanString(state.ToolName)))
 		}
 		if state.ToolCallID != "" {
 			attrs = append(attrs, attribute.String("gen_ai.tool.call.id", state.ToolCallID))
@@ -156,7 +173,7 @@ func stateAttributes(state State) []attribute.KeyValue {
 		attrs = append(attrs, attribute.Bool("agent.fallback.used", true))
 	}
 	if state.FallbackReason != "" {
-		attrs = append(attrs, attribute.String("agent.fallback.reason", state.FallbackReason))
+		attrs = append(attrs, attribute.String("agent.fallback.reason", safeSpanString(state.FallbackReason)))
 	}
 	if state.ErrorType != "" {
 		attrs = append(attrs, attribute.String("error.type", state.ErrorType))

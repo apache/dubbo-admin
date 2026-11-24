@@ -237,7 +237,7 @@ func (idx *MilvusIndexer) Store(ctx context.Context, docs []*schema.Document, op
 	if idx.client == nil {
 		return nil, fmt.Errorf("milvus client is not initialized")
 	}
-	prepared, err := prepareDocuments(docs)
+	prepared, err := PrepareDocuments(docs)
 	if err != nil {
 		return nil, err
 	}

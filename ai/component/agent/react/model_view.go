@@ -48,7 +48,11 @@ func modelInputView(messages []*ai.Message) ([]*ai.Message, error) {
 			if part == nil {
 				continue
 			}
-			part.Text = sanitizer.SanitizeText(part.Text).Value
+			// Media parts hold opaque binary content (for example a base64
+			// payload); text redaction would corrupt them.
+			if part.Kind != ai.PartMedia {
+				part.Text = sanitizer.SanitizeText(part.Text).Value
+			}
 			part.Metadata = sanitizeMap(sanitizer, part.Metadata)
 			part.Custom = sanitizeMap(sanitizer, part.Custom)
 			if part.ToolRequest != nil {

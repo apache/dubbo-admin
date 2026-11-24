@@ -22,11 +22,11 @@ import (
 	"fmt"
 	"log/slog"
 
+	"dubbo-admin-ai/component/rag/indexers"
 	"dubbo-admin-ai/component/rag/loaders"
 	"dubbo-admin-ai/component/rag/mergers"
 	"dubbo-admin-ai/component/rag/query"
 	"dubbo-admin-ai/component/rag/rerankers"
-	"dubbo-admin-ai/security"
 
 	"github.com/cloudwego/eino/components/document"
 	"github.com/cloudwego/eino/components/indexer"
@@ -107,8 +107,6 @@ type Components struct {
 	QueryProcessor QueryProcessor
 }
 
-var indexDataPolicy = security.NewKnowledgeIndexPolicy()
-
 // Split splits documents into chunks.
 func (r *RAG) Split(ctx context.Context, docs []*schema.Document) ([]*schema.Document, error) {
 	if r.logger != nil {
@@ -159,7 +157,7 @@ func (r *RAG) Index(ctx context.Context, namespace string, docs []*schema.Docume
 		}
 		return nil, err
 	}
-	prepared, err := prepareIndexDocuments(docs)
+	prepared, err := indexers.PrepareDocuments(docs)
 	if err != nil {
 		if r.logger != nil {
 			r.logger.WarnContext(ctx, "RAG.Index: rejected sensitive document", "error_type", fmt.Sprintf("%T", err))
@@ -189,32 +187,6 @@ func (r *RAG) Index(ctx context.Context, namespace string, docs []*schema.Docume
 		)
 	}
 	return ids, nil
-}
-
-func prepareIndexDocuments(docs []*schema.Document) ([]*schema.Document, error) {
-	prepared := make([]*schema.Document, 0, len(docs))
-	for index, doc := range docs {
-		if doc == nil {
-			return nil, fmt.Errorf("index document is nil")
-		}
-		idFindings, idErr := indexDataPolicy.ValidateIdentifier(doc.ID)
-		if idErr != nil {
-			return nil, fmt.Errorf("index document at position %d rejected by rule %s: %w", index, firstRuleID(idFindings), idErr)
-		}
-		metadata, findings, err := indexDataPolicy.Prepare(doc.Content, doc.MetaData)
-		if err != nil {
-			return nil, fmt.Errorf("index document at position %d rejected by rule %s: %w", index, firstRuleID(findings), err)
-		}
-		prepared = append(prepared, &schema.Document{ID: doc.ID, Content: doc.Content, MetaData: metadata})
-	}
-	return prepared, nil
-}
-
-func firstRuleID(findings []security.Finding) string {
-	if len(findings) == 0 {
-		return "unknown"
-	}
-	return findings[0].RuleID
 }
 
 // RetrieveV2 performs retrieval with query understanding, multi-path retrieval, and reranking.
