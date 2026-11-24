@@ -145,24 +145,71 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 		if !idl && findMethod(unboundIDLMetadata, req.MethodName, req.Signature) != nil {
 			return nil, bizerror.New(bizerror.InvalidArgument, "IDL provider metadata is not bound to the selected instance")
 		}
-		err := bizerror.New(
+		bizErr := bizerror.New(
 			bizerror.NotFoundError,
-			fmt.Sprintf("method %s not found for service %s", req.MethodName, req.ServiceName),
+			fmt.Sprintf(
+				"method %s not found for service %s",
+				req.MethodName,
+				req.ServiceName,
+			),
 		)
-		logger.Errorf("resolve service method failed, service=%s, mesh=%s, instance=%s, method=%s, cause: %v",
-			req.ServiceName, req.Mesh, req.InstanceName, req.MethodName, err)
-		return nil, err
+
+		logger.Errorf(
+			"resolve service method failed, service=%s, mesh=%s, instance=%s, method=%s, cause: %v",
+			req.ServiceName,
+			req.Mesh,
+			req.InstanceName,
+			req.MethodName,
+			bizErr,
+		)
+
+		var expectedSignatures []string
+
+		for _, method := range collectMethods(methodMetadata) {
+			if method.GetName() == req.MethodName {
+				expectedSignatures = append(
+					expectedSignatures,
+					methodSig(method),
+				)
+			}
+		}
+		if len(expectedSignatures) == 0 {
+			return nil, bizErr
+		}
+		fieldErr := &GenericInvokeArgumentError{
+			Kind:     ArgumentErrorSignature,
+			Field:    "signature",
+			Expected: strings.Join(expectedSignatures, " | "),
+			Actual:   req.Signature,
+		}
+		return nil, fmt.Errorf("%w: %w", bizErr, fieldErr)
 	}
 
 	parameterTypes := resolvedMethod.GetParameterTypes()
 	if len(parameterTypes) != len(req.Args) {
-		return nil, bizerror.New(bizerror.InvalidArgument, "resolved method parameter count does not match args length")
+		fieldErr := &GenericInvokeArgumentError{
+			Field:    "args",
+			Expected: fmt.Sprintf("%d", len(parameterTypes)),
+			Actual:   fmt.Sprintf("%d", len(req.Args)),
+			Kind:     ArgumentErrorCount,
+		}
+
+		return nil, fmt.Errorf(
+			"%w: %w",
+			bizerror.New(
+				bizerror.InvalidArgument,
+				"resolved method parameter count does not match args length",
+			),
+			fieldErr,
+		)
 	}
 	var decodedArgs []any
 	if !idl {
 		decodedArgs, err = decodeGenericInvokeArgs(parameterTypes, req.Args)
 		if err != nil {
-			return nil, bizerror.New(bizerror.InvalidArgument, err.Error())
+			return nil, fmt.Errorf(
+				"%w: %w", bizerror.New(bizerror.InvalidArgument, "invalid generic invoke arguments"), err,
+			)
 		}
 	}
 
