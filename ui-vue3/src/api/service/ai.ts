@@ -52,10 +52,15 @@ export const aiService: ChatService<AIContextSnapshot> = {
   async sendChatMessage(
     message: string,
     sessionId?: string,
-    context?: AIContextSnapshot
+    context?: AIContextSnapshot,
+    idempotencyKey?: string
   ): Promise<ReadableStream<Uint8Array>> {
+    if (!idempotencyKey) {
+      throw new Error('An idempotency key is required for chat requests')
+    }
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Idempotency-Key': idempotencyKey
     }
 
     if (sessionId) {

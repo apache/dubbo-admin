@@ -56,7 +56,10 @@ func ValidateSession(session *Session) error {
 // ValidateSessionActive applies the common lifecycle gate used before reading
 // or mutating conversation history.
 func ValidateSessionActive(sessionID, status string, expired bool) error {
-	if status != "active" {
+	if status == SessionStatusDeletionPending || status == SessionStatusDerivedCleanup || status == SessionStatusDeleted {
+		return ErrSessionNotFound
+	}
+	if status != SessionStatusActive {
 		return fmt.Errorf("session %q is not active", sessionID)
 	}
 	if expired {
@@ -72,4 +75,12 @@ func IsSessionExpired(expiresAt *time.Time, updatedAt, now time.Time, legacyWind
 		return !expiresAt.After(now)
 	}
 	return now.Sub(updatedAt) > legacyWindow
+}
+
+func SessionIDFromCanonicalSource(canonicalSourceID string) (string, error) {
+	const prefix = "session:"
+	if !strings.HasPrefix(canonicalSourceID, prefix) || strings.TrimSpace(strings.TrimPrefix(canonicalSourceID, prefix)) == "" {
+		return "", ErrCanonicalSourceNotWritable
+	}
+	return strings.TrimPrefix(canonicalSourceID, prefix), nil
 }

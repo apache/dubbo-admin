@@ -5,9 +5,10 @@ import (
 	compRag "dubbo-admin-ai/component/rag"
 	appconfig "dubbo-admin-ai/config"
 	"dubbo-admin-ai/runtime"
+	"dubbo-admin-ai/security"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,12 +31,18 @@ type IndexCommand struct {
 func main() {
 	cmd := parseFlags()
 
+	// Install baseline redaction before configuration or indexing errors can
+	// reach stderr.
+	slog.SetDefault(slog.New(security.NewRedactingHandler(slog.Default().Handler())))
+
 	if err := validateCommand(cmd); err != nil {
-		log.Fatalf("Validation error: %v", err)
+		slog.Error("Validation error", "error", security.SafeError(err))
+		os.Exit(1)
 	}
 
 	if err := executeIndexing(cmd); err != nil {
-		log.Fatalf("Indexing failed: %v", err)
+		slog.Error("Indexing failed", "error", security.SafeError(err))
+		os.Exit(1)
 	}
 
 	fmt.Println("Indexing completed successfully")

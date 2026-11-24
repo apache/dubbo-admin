@@ -24,7 +24,6 @@ import (
 	"dubbo-admin-ai/component/server/engine"
 	"dubbo-admin-ai/runtime"
 	"dubbo-admin-ai/security"
-	conversationstore "dubbo-admin-ai/store"
 	"fmt"
 	"net"
 	"net/http"
@@ -220,7 +219,7 @@ func (s *ServerComponent) Start() error {
 	if err := adoptLegacySessions(context.Background(), maintenanceStore, s.authentication.AdoptLegacySessions, subject); err != nil {
 		return fmt.Errorf("failed to adopt legacy sessions: %w", err)
 	}
-	router, err := engine.NewRouterWithCORS(agentComponent.Agent, conversationStore, maintenanceStore, authenticator, s.corsOrigins)
+	router, err := engine.NewRouterWithLifecycle(agentComponent.Agent, conversationStore, maintenanceStore, authenticator, s.corsOrigins, memoryComponent.GetLifecyclePolicy())
 	if err != nil {
 		return fmt.Errorf("failed to create AI router: %w", err)
 	}
@@ -253,7 +252,11 @@ func (s *ServerComponent) Start() error {
 	return nil
 }
 
-func adoptLegacySessions(ctx context.Context, maintenance conversationstore.MaintenanceStore, enabled bool, subject security.Subject) error {
+type legacySessionAdopter interface {
+	AdoptLegacySessions(context.Context, security.AccessContext, string, string) (int, error)
+}
+
+func adoptLegacySessions(ctx context.Context, maintenance legacySessionAdopter, enabled bool, subject security.Subject) error {
 	if !enabled {
 		return nil
 	}

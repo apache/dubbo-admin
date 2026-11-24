@@ -151,6 +151,7 @@ func TestConfiguredHooksValidateBeforeInitialization(t *testing.T) {
 		{"logging options", "hooks: [{name: log, type: logging, config: {capture_content: full}}]", "capture_content"},
 		{"logging level", "hooks: [{name: log, type: logging, config: {level: invalid}}]", "level"},
 		{"tracing options", "hooks: [{name: trace, type: tracing, config: {level: info}}]", "level"},
+		{"tracing content", "hooks: [{name: trace, type: tracing, config: {capture_content: truncated}}]", "capture_content"},
 		{"partial tracing", "hooks: [{name: trace, type: tracing, events: [interaction.start, interaction.end]}]", "all lifecycle events"},
 		{"tracing tool filter", "hooks: [{name: trace, type: tracing, tools: [lookup]}]", "all tools"},
 		{"multiple tracing", "hooks: [{name: trace1, type: tracing}, {name: trace2, type: tracing}]", "one tracing"},

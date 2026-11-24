@@ -25,6 +25,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"dubbo-admin-ai/security"
 )
 
 // Event identifies a stable boundary in an agent interaction.
@@ -180,7 +182,7 @@ func ErrorMessage(err error) string {
 	if err == nil {
 		return ""
 	}
-	return err.Error()
+	return security.SafeError(err)
 }
 
 // ErrorType snapshots the concrete error type for OpenTelemetry error.type.
@@ -205,9 +207,10 @@ func SnapshotContent(value any) string {
 	if value == nil {
 		return ""
 	}
-	content, err := json.Marshal(value)
+	sanitized := security.DefaultSanitizer().SanitizeStructured(value)
+	content, err := json.Marshal(sanitized.Value)
 	if err == nil {
 		return string(content)
 	}
-	return strconv.Quote(fmt.Sprint(value))
+	return strconv.Quote(security.DefaultSanitizer().SanitizeText(fmt.Sprint(value)).Value)
 }
