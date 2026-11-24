@@ -23,14 +23,16 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
 )
 
 const (
-	SanitizerRuleVersion = "2026-11-04.v1"
+	SanitizerRuleVersion = "2026-11-24.v1"
 	redactedValue        = "[REDACTED]"
+	redactedPrefix       = "[REDACTED"
 	maxStructuredBytes   = 1 << 20
 	maxStructuredDepth   = 32
 )
@@ -45,12 +47,27 @@ const (
 	RuleEncodedSecret        = "secret.encoded"
 )
 
+// credentialKeyExpr matches a sensitive key with an optional environment or
+// vendor prefix (DB_PASSWORD, OPENAI_API_KEY, github_token). The left \b keeps
+// the unprefixed alternatives from matching inside unrelated words such as
+// "compass" or "bypass".
+const credentialKeyExpr = `\b(?:[A-Za-z0-9_.\-]*(?:authorization|token|api[-_]?key|apikey|password|passwd|secret|private[-_]?key|key[-_]?data|certificate[-_]?data|access[-_]?key|kubeconfig)|pass|pwd)`
+
 var (
-	privateKeyPattern           = regexp.MustCompile(`(?is)-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----.*?-----END [A-Z0-9 ]*PRIVATE KEY-----`)
-	authorizationPattern        = regexp.MustCompile(`(?i)\b(?:bearer|basic)\s+[A-Za-z0-9._~+/=-]+`)
-	jwtPattern                  = regexp.MustCompile(`\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\b`)
-	apiKeyPattern               = regexp.MustCompile(`\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9]{16,}|AIza[A-Za-z0-9_-]{20,}|xox[baprs]-[A-Za-z0-9-]{16,})\b`)
-	credentialAssignmentPattern = regexp.MustCompile(`(?i)\b(authorization|proxy[-_]?authorization|token|access[-_]?token|refresh[-_]?token|api[-_]?key|apikey|password|passwd|secret|client[-_]?secret|client[-_]?key[-_]?data|client[-_]?certificate[-_]?data)\b(\s*["']?\s*(?::|=|%3[dD])\s*)(?:"(?:[^"\\\r\n]|\\.)*"|'(?:[^'\\\r\n]|\\.)*'|[^\s,;&\r\n]+)`)
+	privateKeyPattern = regexp.MustCompile(`(?is)-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----.*?-----END [A-Z0-9 ]*PRIVATE KEY-----`)
+	// Authorization headers are redacted as a whole value. Matching only the
+	// leading scheme word would leave the credential itself exposed.
+	authorizationHeaderPattern = regexp.MustCompile(`(?i)\b((?:proxy[-_]?)?authorization)\b(\s*["']?\s*:\s*)(?:"(?:[^"\\\r\n]|\\.)*"|'(?:[^'\\\r\n]|\\.)*'|[^\r\n,;&]+)`)
+	// A bare scheme only counts as a credential when the token has credential
+	// shape, so ordinary prose such as "basic usage" or "Bearer tokens" is not
+	// rejected by the derived-index policy.
+	bearerTokenPattern = regexp.MustCompile(`(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{20,}\b`)
+	jwtPattern         = regexp.MustCompile(`\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\b`)
+	apiKeyPattern      = regexp.MustCompile(`\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9]{16,}|AIza[A-Za-z0-9_-]{20,}|xox[baprs]-[A-Za-z0-9-]{16,}|A[KS]IA[0-9A-Z]{16})\b`)
+	// The unquoted value stops before quotes, closing JSON punctuation, and
+	// record separators. It deliberately allows spaces so a YAML plain scalar
+	// such as "password: my secret value" is redacted as a whole.
+	credentialAssignmentPattern = regexp.MustCompile(`(?i)(` + credentialKeyExpr + `)(\s*["']?\s*(?::|=|%3[dD])\s*)(?:"(?:[^"\\\r\n]|\\.)*"|'(?:[^'\\\r\n]|\\.)*'|[^\r\n,;&"'\]\}]+)`)
 	// Cookie headers carry a semicolon-delimited cookie list, so the value must
 	// run to the end of the line; stopping at ';' would leave later cookies
 	// (for example JSESSIONID) exposed.
@@ -59,6 +76,8 @@ var (
 	// through the rest of the cookie list while preserving other query
 	// parameters separated by '&'.
 	cookieAssignmentPattern = regexp.MustCompile(`(?i)\b(set[-_]?cookie|cookie)\b(\s*["']?\s*(?:=|%3[dD])\s*)(?:"(?:[^"\\\r\n]|\\.)*"|'(?:[^'\\\r\n]|\\.)*'|[^&\r\n]*)`)
+	// URL userinfo carries credentials in plain text, outside *url.URL values.
+	urlUserInfoPattern      = regexp.MustCompile(`(?i)\b([a-z][a-z0-9+.\-]*://[^/\s:@]*:)([^/\s@]+)(@)`)
 	encodedCandidatePattern = regexp.MustCompile(`\b[A-Za-z0-9+/_-]{20,1000}={0,2}\b`)
 )
 
@@ -103,7 +122,7 @@ func DefaultSanitizer() *Sanitizer { return defaultSanitizer }
 func NewSanitizer() *Sanitizer { return &Sanitizer{} }
 
 func (s *Sanitizer) SanitizeText(value string) SanitizedText {
-	clean, findings := s.sanitizeText(value, "$", true)
+	clean, findings := s.sanitizeText(value, "$", true, true)
 	return SanitizedText{Value: clean, RuleVersion: SanitizerRuleVersion, Findings: findings}
 }
 
@@ -130,7 +149,7 @@ func (s *Sanitizer) SanitizeHeaders(headers http.Header) SanitizedHeaders {
 			continue
 		}
 		for _, value := range values {
-			sanitized, matches := s.sanitizeText(value, path, true)
+			sanitized, matches := s.sanitizeText(value, path, true, true)
 			clean[cleanKey] = append(clean[cleanKey], sanitized)
 			findings = mergeFindings(findings, matches)
 		}
@@ -159,7 +178,7 @@ func (s *Sanitizer) SanitizeURL(input *url.URL) SanitizedURL {
 			continue
 		}
 		for i, value := range values {
-			sanitized, valuesFindings := s.sanitizeText(value, path, true)
+			sanitized, valuesFindings := s.sanitizeText(value, path, true, true)
 			query[key][i] = sanitized
 			findings = mergeFindings(findings, valuesFindings)
 		}
@@ -172,13 +191,21 @@ func (s *Sanitizer) SanitizeURL(input *url.URL) SanitizedURL {
 func (s *Sanitizer) SanitizeStructured(value any) SanitizedValue {
 	encoded, err := json.Marshal(value)
 	if err != nil || len(encoded) > maxStructuredBytes {
-		result := s.SanitizeText(fmt.Sprint(value))
-		return SanitizedValue{Value: result.Value, RuleVersion: result.RuleVersion, Findings: result.Findings}
+		// An uninspectable value must not be forwarded. fmt.Sprint would change
+		// the value's type and can expose unexported fields, so redact it whole.
+		return SanitizedValue{
+			Value:       redactedValue,
+			RuleVersion: SanitizerRuleVersion,
+			Findings:    []Finding{{RuleID: RuleSensitiveField, Path: "$", Count: 1}},
+		}
 	}
 	var decoded any
 	if err := json.Unmarshal(encoded, &decoded); err != nil {
-		result := s.SanitizeText(string(encoded))
-		return SanitizedValue{Value: result.Value, RuleVersion: result.RuleVersion, Findings: result.Findings}
+		return SanitizedValue{
+			Value:       redactedValue,
+			RuleVersion: SanitizerRuleVersion,
+			Findings:    []Finding{{RuleID: RuleSensitiveField, Path: "$", Count: 1}},
+		}
 	}
 	clean, findings := s.sanitizeValue(decoded, "$", 0)
 	return SanitizedValue{Value: clean, RuleVersion: SanitizerRuleVersion, Findings: findings}
@@ -219,32 +246,44 @@ func (s *Sanitizer) sanitizeValue(value any, path string, depth int) (any, []Fin
 		}
 		return clean, findings
 	case string:
-		return s.sanitizeText(typed, path, true)
+		return s.sanitizeText(typed, path, true, false)
 	default:
 		return value, nil
 	}
 }
 
-func (s *Sanitizer) sanitizeText(value, path string, inspectEncoded bool) (string, []Finding) {
+func (s *Sanitizer) sanitizeText(value, path string, inspectEncoded, parseJSON bool) (string, []Finding) {
+	clean, findings := s.sanitizeTextRules(value, path, inspectEncoded)
+	if parseJSON {
+		if jsonClean, jsonFindings, ok := s.sanitizeJSONText(clean, path, findings); ok {
+			return jsonClean, jsonFindings
+		}
+	}
+	return clean, findings
+}
+
+func (s *Sanitizer) sanitizeTextRules(value, path string, inspectEncoded bool) (string, []Finding) {
 	clean := value
 	var findings []Finding
 	clean, findings = replaceMatches(clean, privateKeyPattern, RulePrivateKey, path, findings, func(string) string { return redactedValue })
-	clean, findings = replaceMatches(clean, authorizationPattern, RuleAuthorization, path, findings, func(match string) string {
+	clean, findings = replaceMatches(clean, authorizationHeaderPattern, RuleAuthorization, path, findings, redactCredentialValue(authorizationHeaderPattern))
+	clean, findings = replaceMatches(clean, cookieHeaderPattern, RuleCredentialAssignment, path, findings, redactCredentialValue(cookieHeaderPattern))
+	clean, findings = replaceMatches(clean, cookieAssignmentPattern, RuleCredentialAssignment, path, findings, redactCredentialValue(cookieAssignmentPattern))
+	clean, findings = replaceMatches(clean, credentialAssignmentPattern, RuleCredentialAssignment, path, findings, redactCredentialValue(credentialAssignmentPattern))
+	clean, findings = replaceMatches(clean, bearerTokenPattern, RuleAuthorization, path, findings, func(match string) string {
 		kind := strings.Fields(match)
 		if len(kind) == 0 {
 			return redactedValue
 		}
 		return kind[0] + " " + redactedValue
 	})
-	clean, findings = replaceMatches(clean, cookieHeaderPattern, RuleCredentialAssignment, path, findings, redactCredentialValue(cookieHeaderPattern))
-	clean, findings = replaceMatches(clean, cookieAssignmentPattern, RuleCredentialAssignment, path, findings, redactCredentialValue(cookieAssignmentPattern))
-	clean, findings = replaceMatches(clean, credentialAssignmentPattern, RuleCredentialAssignment, path, findings, redactCredentialValue(credentialAssignmentPattern))
 	clean, findings = replaceMatches(clean, jwtPattern, RuleJWT, path, findings, func(string) string { return redactedValue })
 	clean, findings = replaceMatches(clean, apiKeyPattern, RuleAPIKey, path, findings, func(string) string { return redactedValue })
+	clean, findings = replaceMatches(clean, urlUserInfoPattern, RuleCredentialAssignment, path, findings, redactURLUserInfo)
 	if inspectEncoded {
 		clean, findings = redactOversizedEncodedCandidates(clean, path, findings)
 		if decoded, err := url.QueryUnescape(clean); err == nil && decoded != clean {
-			_, decodedFindings := s.sanitizeText(decoded, path, false)
+			_, decodedFindings := s.sanitizeText(decoded, path, false, false)
 			if len(decodedFindings) > 0 {
 				return redactedValue, appendFinding(findings, RuleEncodedSecret, path, 1)
 			}
@@ -256,7 +295,7 @@ func (s *Sanitizer) sanitizeText(value, path string, inspectEncoded bool) (strin
 			if !ok {
 				return candidate
 			}
-			_, matches := s.sanitizeText(decoded, path, false)
+			_, matches := s.sanitizeText(decoded, path, false, false)
 			if len(matches) == 0 {
 				return candidate
 			}
@@ -267,8 +306,83 @@ func (s *Sanitizer) sanitizeText(value, path string, inspectEncoded bool) (strin
 	return clean, findings
 }
 
+// sanitizeJSONText adds structured redaction for JSON text that the regex
+// rules could not see (for example escaped key names). It re-encodes only when
+// structured inspection changed a value, so ordinary JSON keeps its original
+// bytes and key order.
+func (s *Sanitizer) sanitizeJSONText(value, path string, findings []Finding) (string, []Finding, bool) {
+	trimmed := strings.TrimSpace(value)
+	if len(trimmed) == 0 || len(trimmed) > maxStructuredBytes {
+		return "", nil, false
+	}
+	if trimmed[0] != '{' && trimmed[0] != '[' {
+		return "", nil, false
+	}
+	var decoded any
+	if err := json.Unmarshal([]byte(trimmed), &decoded); err != nil {
+		return "", nil, false
+	}
+	cleanValue, jsonFindings := s.sanitizeJSONKeys(decoded, path, 0)
+	if reflect.DeepEqual(decoded, cleanValue) {
+		return value, findings, true
+	}
+	var builder strings.Builder
+	encoder := json.NewEncoder(&builder)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(cleanValue); err != nil {
+		return "", nil, false
+	}
+	return strings.TrimSuffix(builder.String(), "\n"), mergeFindings(findings, jsonFindings), true
+}
+
+// sanitizeJSONKeys applies the sensitive-key rule to an already text-sanitized
+// JSON value. String contents are intentionally left alone: the regex pass
+// already handled them, and re-running it would double-redact values that
+// already contain the redaction marker.
+func (s *Sanitizer) sanitizeJSONKeys(value any, path string, depth int) (any, []Finding) {
+	if depth >= maxStructuredDepth {
+		return redactedValue, []Finding{{RuleID: RuleSensitiveField, Path: path, Count: 1}}
+	}
+	switch typed := value.(type) {
+	case map[string]any:
+		clean := make(map[string]any, len(typed))
+		keys := make([]string, 0, len(typed))
+		for key := range typed {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		var findings []Finding
+		for _, key := range keys {
+			childPath := path + ".field"
+			if isSensitiveKey(key) {
+				clean[key] = redactedValue
+				findings = appendFinding(findings, RuleSensitiveField, childPath, 1)
+				continue
+			}
+			child, childFindings := s.sanitizeJSONKeys(typed[key], childPath, depth+1)
+			clean[key] = child
+			findings = mergeFindings(findings, childFindings)
+		}
+		return clean, findings
+	case []any:
+		clean := make([]any, len(typed))
+		var findings []Finding
+		for i := range typed {
+			child, childFindings := s.sanitizeJSONKeys(typed[i], fmt.Sprintf("%s[%d]", path, i), depth+1)
+			clean[i] = child
+			findings = mergeFindings(findings, childFindings)
+		}
+		return clean, findings
+	default:
+		return value, nil
+	}
+}
+
 func redactOversizedEncodedCandidates(value, path string, findings []Finding) (string, []Finding) {
-	const maxCandidate = 1000
+	const (
+		maxCandidate           = 1000
+		maxOversizedInputBytes = 4 << 20
+	)
 	isCandidate := func(b byte) bool {
 		return b >= 'A' && b <= 'Z' || b >= 'a' && b <= 'z' || b >= '0' && b <= '9' || b == '+' || b == '/' || b == '_' || b == '-'
 	}
@@ -281,14 +395,26 @@ func redactOversizedEncodedCandidates(value, path string, findings []Finding) (s
 			continue
 		}
 		end := start
+		var seen [256]bool
+		distinct := 0
 		for end < len(value) && isCandidate(value[end]) {
+			if !seen[value[end]] {
+				seen[value[end]] = true
+				distinct++
+			}
 			end++
 		}
-		if end-start > maxCandidate {
-			builder.WriteString(value[last:start])
-			builder.WriteString(redactedValue)
-			findings = appendFinding(findings, RuleEncodedSecret, path, 1)
-			last = end
+		if end-start > maxCandidate && distinct > 1 {
+			redact := true
+			if end-start <= maxOversizedInputBytes {
+				redact = oversizedCandidateContainsSecret(value[start:end])
+			}
+			if redact {
+				builder.WriteString(value[last:start])
+				builder.WriteString(redactedValue)
+				findings = appendFinding(findings, RuleEncodedSecret, path, 1)
+				last = end
+			}
 		}
 		start = end
 	}
@@ -299,13 +425,43 @@ func redactOversizedEncodedCandidates(value, path string, findings []Finding) (s
 	return builder.String(), findings
 }
 
+// oversizedCandidateContainsSecret decodes an oversized candidate and checks
+// the decoded text. Candidates that cannot be decoded are treated as secrets
+// (fail closed); decoded binary payloads such as embedded images usually
+// produce no findings and are preserved.
+func oversizedCandidateContainsSecret(candidate string) bool {
+	decoded, ok := decodeOversizedCandidate(candidate)
+	if !ok {
+		return true
+	}
+	_, findings := defaultSanitizer.sanitizeText(decoded, "$", false, false)
+	return len(findings) > 0
+}
+
+func decodeOversizedCandidate(value string) (string, bool) {
+	encodings := []*base64.Encoding{base64.StdEncoding, base64.RawStdEncoding, base64.URLEncoding, base64.RawURLEncoding}
+	for _, encoding := range encodings {
+		decoded, err := encoding.DecodeString(value)
+		if err == nil && len(decoded) > 0 {
+			return string(decoded), true
+		}
+	}
+	return "", false
+}
+
 func redactCredentialValue(pattern *regexp.Regexp) func(string) string {
 	return func(match string) string {
 		parts := pattern.FindStringSubmatch(match)
 		if len(parts) < 3 {
 			return redactedValue
 		}
-		return parts[1] + parts[2] + quotedRedactedValue(match[len(parts[1])+len(parts[2]):])
+		value := match[len(parts[1])+len(parts[2]):]
+		// Re-sanitizing an already redacted value must be a no-op. The
+		// unquoted branch can leave the trailing ']' outside the match.
+		if strings.HasPrefix(value, redactedPrefix) {
+			return match
+		}
+		return parts[1] + parts[2] + quotedRedactedValue(value)
 	}
 }
 
@@ -320,6 +476,14 @@ func quotedRedactedValue(value string) string {
 	default:
 		return redactedValue
 	}
+}
+
+func redactURLUserInfo(match string) string {
+	parts := urlUserInfoPattern.FindStringSubmatch(match)
+	if len(parts) < 4 {
+		return redactedValue
+	}
+	return parts[1] + redactedValue + parts[3]
 }
 
 func replaceMatches(value string, pattern *regexp.Regexp, ruleID, path string, findings []Finding, replace func(string) string) (string, []Finding) {
@@ -348,10 +512,10 @@ func decodeCandidate(value string) (string, bool) {
 func isSensitiveKey(key string) bool {
 	normalized := strings.NewReplacer("-", "", "_", "", ".", "", " ", "").Replace(strings.ToLower(strings.TrimSpace(key)))
 	switch normalized {
-	case "authorization", "proxyauthorization", "cookie", "setcookie", "token", "accesstoken", "refreshtoken", "apikey", "password", "passwd", "secret", "clientsecret", "clientkeydata", "clientcertificatedata", "privatekey", "kubeconfig":
+	case "authorization", "proxyauthorization", "cookie", "setcookie", "token", "accesstoken", "refreshtoken", "apikey", "password", "passwd", "pass", "pwd", "secret", "clientsecret", "clientkeydata", "clientcertificatedata", "privatekey", "kubeconfig":
 		return true
 	default:
-		for _, suffix := range []string{"authorization", "cookie", "token", "apikey", "password", "passwd", "secret", "privatekey", "keydata", "certificatedata"} {
+		for _, suffix := range []string{"authorization", "cookie", "token", "apikey", "password", "passwd", "secret", "privatekey", "keydata", "certificatedata", "accesskey"} {
 			if strings.HasSuffix(normalized, suffix) {
 				return true
 			}

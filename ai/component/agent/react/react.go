@@ -152,7 +152,8 @@ func (ra *ReActAgent) Interact(parent context.Context, input *schema.UserInput, 
 		defer func() {
 			endedAt := time.Now()
 			if recovered := recover(); recovered != nil {
-				interactionErr = fmt.Errorf("agent interaction panicked: %v", recovered)
+				rt.GetLogger().Error("agent interaction panicked", "panic_type", fmt.Sprintf("%T", recovered))
+				interactionErr = errors.New("agent interaction panicked")
 				chans.ErrorChan <- interactionErr
 			}
 

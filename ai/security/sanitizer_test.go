@@ -22,6 +22,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -107,6 +108,59 @@ func TestSanitizeTextRedactsEscapedQuotesInJSONCredentials(t *testing.T) {
 				t.Fatalf("SanitizeText() = %q, want %q", result.Value, tt.want)
 			}
 		})
+	}
+}
+
+func TestSanitizeTextCoversCompoundKeysURLUserInfoAndJSONText(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"environment password", `DB_PASSWORD=` + testSecret, `DB_PASSWORD=[REDACTED]`},
+		{"environment api key", `OPENAI_API_KEY=` + testSecret, `OPENAI_API_KEY=[REDACTED]`},
+		{"vendor token", `github_token=` + testSecret, `github_token=[REDACTED]`},
+		{"aws secret", `AWS_SECRET_ACCESS_KEY=` + testSecret, `AWS_SECRET_ACCESS_KEY=[REDACTED]`},
+		{"camel-case token", `{"idToken":"` + testSecret + `"}`, `{"idToken":"[REDACTED]"}`},
+		{"short pass key", `pass=` + testSecret, `pass=[REDACTED]`},
+		{"short pwd key", `pwd=` + testSecret, `pwd=[REDACTED]`},
+		{"url userinfo", `https://user:` + testSecret + `@example.test/path`, `https://user:[REDACTED]@example.test/path`},
+		{"json private key", `{"privateKey":"` + testSecret + `"}`, `{"privateKey":"[REDACTED]"}`},
+		{"json kubeconfig", `{"kubeconfig":"` + testSecret + `"}`, `{"kubeconfig":"[REDACTED]"}`},
+		{"aws access key id", `AKIAABCDEFGHIJKLMNOP`, `[REDACTED]`},
+		{"unquoted value keeps json punctuation", `["password=` + testSecret + `"]`, `["password=[REDACTED]"]`},
+		{"plain value with spaces", `password=my ` + testSecret + ` value`, `password=[REDACTED]`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := DefaultSanitizer().SanitizeText(tt.input)
+			if len(result.Findings) == 0 || strings.Contains(result.Value, testSecret) {
+				t.Fatalf("credential leaked: value=%q findings=%#v", result.Value, result.Findings)
+			}
+			if result.Value != tt.want {
+				t.Fatalf("SanitizeText() = %q, want %q", result.Value, tt.want)
+			}
+		})
+	}
+
+	// Ordinary prose must not be treated as a credential.
+	for _, input := range []string{"basic usage of the API", "Bearer tokens are supported", "compass=south", "bypass=yes"} {
+		result := DefaultSanitizer().SanitizeText(input)
+		if len(result.Findings) != 0 || result.Value != input {
+			t.Fatalf("prose was redacted: input=%q value=%q findings=%#v", input, result.Value, result.Findings)
+		}
+	}
+
+	// Structured boundaries use the same key classification as the text rules.
+	for _, key := range []string{"DB_PASSWORD", "OPENAI_API_KEY", "github_token", "AWS_SECRET_ACCESS_KEY", "idToken", "pass", "pwd", "privateKey", "kubeconfig"} {
+		if !isSensitiveKey(key) {
+			t.Fatalf("isSensitiveKey(%q) = false", key)
+		}
+	}
+	for _, key := range []string{"compass", "bypass"} {
+		if isSensitiveKey(key) {
+			t.Fatalf("isSensitiveKey(%q) = true", key)
+		}
 	}
 }
 
@@ -219,6 +273,72 @@ func TestDerivedDataPolicyRejectsSecretsAndFiltersMetadata(t *testing.T) {
 	if _, findings, err = policy.Prepare(`'password': '`+testSecret+`'`, nil); !errors.Is(err, ErrSensitiveDerivedData) || len(findings) == 0 {
 		t.Fatalf("YAML secret Prepare() error = %v, findings = %#v", err, findings)
 	}
+	for _, input := range []string{
+		`DB_PASSWORD=` + testSecret,
+		`AWS_SECRET_ACCESS_KEY=` + testSecret,
+		`{"idToken":"` + testSecret + `"}`,
+		`{"privateKey":"` + testSecret + `"}`,
+		`{"kubeconfig":"` + testSecret + `"}`,
+		`https://user:` + testSecret + `@example.test`,
+	} {
+		if _, findings, err = policy.Prepare(input, nil); !errors.Is(err, ErrSensitiveDerivedData) || len(findings) == 0 {
+			t.Fatalf("Prepare(%q) error = %v, findings = %#v", input, err, findings)
+		}
+	}
+}
+
+func TestDerivedDataPolicyAllowsScalarListsOnly(t *testing.T) {
+	policy := NewDerivedDataPolicy("header_path", "source")
+	metadata, findings, err := policy.Prepare("safe document", map[string]any{
+		"header_path": []string{"Guide", "Install"},
+		"source":      "docs/guide.md",
+	})
+	if err != nil || len(findings) != 0 {
+		t.Fatalf("Prepare() error = %v, findings = %#v", err, findings)
+	}
+	if len(metadata) != 2 {
+		t.Fatalf("metadata = %#v", metadata)
+	}
+
+	if _, _, err := policy.Prepare("safe document", map[string]any{"source": map[string]any{"nested": "value"}}); !errors.Is(err, ErrSensitiveDerivedData) {
+		t.Fatalf("nested map metadata accepted: %v", err)
+	}
+	if _, _, err := policy.Prepare("safe document", map[string]any{"header_path": []any{"ok", map[string]any{"nested": "value"}}}); !errors.Is(err, ErrSensitiveDerivedData) {
+		t.Fatalf("nested list metadata accepted: %v", err)
+	}
+}
+
+func TestSanitizeStructuredRedactsUninspectableValue(t *testing.T) {
+	result := DefaultSanitizer().SanitizeStructured(make(chan int))
+	if result.Value != redactedValue || len(result.Findings) == 0 {
+		t.Fatalf("uninspectable value was not redacted: %#v", result)
+	}
+}
+
+func TestSanitizeTextIsIdempotentForRedactedValues(t *testing.T) {
+	inputs := []string{
+		`["password=` + testSecret + `"]`,
+		"token=" + testSecret,
+		`Cookie: theme=dark; JSESSIONID=` + testSecret,
+	}
+	for _, input := range inputs {
+		first := DefaultSanitizer().SanitizeText(input).Value
+		second := DefaultSanitizer().SanitizeText(first).Value
+		if second != first {
+			t.Fatalf("sanitization is not idempotent: first=%q second=%q", first, second)
+		}
+	}
+}
+
+func TestRedactingHandlerDoesNotMutateGroupAttrs(t *testing.T) {
+	original := slog.Group("group", slog.String("password", testSecret))
+	handler := NewRedactingHandler(slog.NewTextHandler(io.Discard, nil))
+	_ = handler.WithAttrs([]slog.Attr{original})
+
+	members := original.Value.Group()
+	if len(members) != 1 || members[0].Value.String() != testSecret {
+		t.Fatalf("caller's group attribute was mutated: %#v", members)
+	}
 }
 
 func TestSanitizerBoundsEncodedCandidatesAndFindingPaths(t *testing.T) {
@@ -229,10 +349,31 @@ func TestSanitizerBoundsEncodedCandidatesAndFindingPaths(t *testing.T) {
 			t.Fatalf("finding path contains untrusted key: %#v", finding)
 		}
 	}
-	longCandidate := strings.Repeat("A", 1001)
-	bounded := DefaultSanitizer().SanitizeText(longCandidate)
-	if len(bounded.Findings) == 0 || bounded.Value == longCandidate || strings.Contains(bounded.Value, longCandidate) {
-		t.Fatalf("long candidate was not conservatively redacted: %#v", bounded)
+
+	// Single-character runs are separators or padding, not encoded secrets.
+	for _, filler := range []string{"A", "-"} {
+		candidate := strings.Repeat(filler, 1200)
+		kept := DefaultSanitizer().SanitizeText(candidate)
+		if len(kept.Findings) != 0 || kept.Value != candidate {
+			t.Fatalf("%q run was conservatively redacted: %#v", filler, kept)
+		}
+	}
+
+	// An oversized candidate that decodes to a credential is still redacted.
+	payload := base64.StdEncoding.EncodeToString([]byte("password=" + testSecret + strings.Repeat("x", 900)))
+	if len(payload) <= 1000 {
+		t.Fatalf("fixture is not oversized: %d", len(payload))
+	}
+	oversized := DefaultSanitizer().SanitizeText(payload)
+	if len(oversized.Findings) == 0 || oversized.Value == payload || strings.Contains(oversized.Value, payload) {
+		t.Fatalf("oversized credential was not redacted: %#v", oversized)
+	}
+
+	// An oversized binary payload such as an embedded image is preserved.
+	image := base64.StdEncoding.EncodeToString(append([]byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a}, make([]byte, 900)...))
+	kept := DefaultSanitizer().SanitizeText(image)
+	if len(kept.Findings) != 0 || kept.Value != image {
+		t.Fatalf("binary payload was rejected: findings=%#v", kept.Findings)
 	}
 }
 

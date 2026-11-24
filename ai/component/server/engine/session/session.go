@@ -177,7 +177,7 @@ func (m *Manager) cleanupExpiredSessions() {
 		case <-ticker.C:
 			deleted, err := m.maintenance.DeleteExpired(m.cleanupCtx, security.SystemAccessContext(), time.Now())
 			if err != nil {
-				rt.GetLogger().Error("Failed to clean expired sessions", "error", err)
+				rt.GetLogger().Error("Failed to clean expired sessions", "error_type", fmt.Sprintf("%T", err))
 				continue
 			}
 			if deleted > 0 {
