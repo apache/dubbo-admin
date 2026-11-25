@@ -65,6 +65,7 @@ type Component struct {
 	usageStore   conversationstore.UsageAuditStore
 	usageOptions UsageAuditOptions
 	usageMu      sync.RWMutex
+	usageWriter  *usageAuditWriter
 	initialized  bool
 }
 
@@ -132,7 +133,8 @@ func (c *Component) Init(rt *runtime.Runtime) error {
 		}
 	}
 	if c.usageStore != nil {
-		if err := c.manager.Register(newUsageAuditRegistration(c.usageStore, rt.GetLogger(), c.usageAuditSnapshot)); err != nil {
+		c.usageWriter = newUsageAuditWriter(c.usageStore, rt.GetLogger(), usageAuditQueueSize)
+		if err := c.manager.Register(newAsyncUsageAuditRegistration(c.usageWriter, rt.GetLogger(), c.usageAuditSnapshot)); err != nil {
 			return fmt.Errorf("register usage and audit hook: %w", err)
 		}
 	}
@@ -157,6 +159,9 @@ func (c *Component) Init(rt *runtime.Runtime) error {
 				return fmt.Errorf("register tracing hook %q: %w", entry.name, err)
 			}
 		}
+	}
+	if c.usageWriter != nil {
+		c.usageWriter.Start()
 	}
 	return nil
 }
@@ -203,10 +208,24 @@ func newTraceExporter(ctx context.Context, protocol string) (sdktrace.SpanExport
 func (c *Component) Start() error { return nil }
 
 func (c *Component) Stop() error {
-	if c.provider == nil {
+	var errs []error
+	if c.usageWriter != nil {
+		c.usageWriter.Close()
+	}
+	if c.provider != nil {
+		errs = append(errs, stopTracerProvider(c.provider, 5*time.Second))
+	}
+	return errors.Join(errs...)
+}
+
+// FlushUsageAudit waits for queued metadata writes to reach the Store. The
+// recorder is asynchronous by design; callers that need a quiescent view (tests
+// or an orderly shutdown) can use this instead of polling.
+func (c *Component) FlushUsageAudit(ctx context.Context) error {
+	if c == nil || c.usageWriter == nil {
 		return nil
 	}
-	return stopTracerProvider(c.provider, 5*time.Second)
+	return c.usageWriter.Flush(ctx)
 }
 
 func stopTracerProvider(provider tracerProviderLifecycle, timeout time.Duration) error {

@@ -42,11 +42,18 @@ Accepted for Phase 1 PR4.
    bounded batches (Memory bounds scanned records with a continuing cursor;
    GORM selects expired rows using the timestamp index). GORM reserves capacity
    and inserts records in one transaction; cleanup releases slots transactionally.
-   Session deletion does not silently erase the audit trail.
-7. Recorder writes preserve trusted identity but use an independent five-second
-   persistence deadline, so model cancellation does not cancel final accounting.
-   Writes remain best effort on storage failure or capacity exhaustion. Schema
-   revision is `v1`, metadata/ownership policy revision is
+   Session deletion does not silently erase the audit trail. Conversation and
+   derived-artifact retention cleanup runs independently of usage/audit
+   maintenance, so a failing accounting table cannot suspend the privacy
+   retention guarantee.
+7. Recorder writes preserve trusted identity but are handed to a bounded
+   per-process queue drained by one worker, so model and tool completion never
+   wait for Store I/O. Each write uses an independent five-second persistence
+   deadline, so model cancellation does not cancel final accounting. The queue
+   holds at most 1024 records; when it is full, records are dropped and counted
+   instead of blocking the interaction, and shutdown drains the queue within a
+   five-second budget. Writes remain best effort on storage failure or capacity
+   exhaustion. Schema revision is `v1`, metadata/ownership policy revision is
    `subject-owned-metadata-v1`, and recorder implementation revision is
    `usage-audit-recorder-v1`. These identify contracts, not the model version.
 

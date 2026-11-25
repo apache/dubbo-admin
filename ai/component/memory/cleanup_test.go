@@ -19,6 +19,78 @@ import (
 	memorystore "dubbo-admin-ai/store/memory"
 )
 
+var errUsageCleanupUnavailable = errors.New("usage cleanup unavailable")
+
+// failingUsageCleanupStore keeps the conversation Store healthy while making
+// usage maintenance fail, so retention cleanup must still complete.
+type failingUsageCleanupStore struct {
+	*memorystore.MemoryStore
+}
+
+func (failingUsageCleanupStore) CleanupUsage(context.Context, security.AccessContext, time.Time, int) (int, error) {
+	return 0, errUsageCleanupUnavailable
+}
+
+func (failingUsageCleanupStore) CleanupAudit(context.Context, security.AccessContext, time.Time, int) (int, error) {
+	return 0, nil
+}
+
+// conversationStoreOnly hides the optional usage/audit maintenance methods.
+type conversationStoreOnly struct {
+	conversationstore.BackendStore
+}
+
+func prepareDeletedSession(t *testing.T, backend *memorystore.MemoryStore) time.Time {
+	t.Helper()
+	ctx := context.Background()
+	access := security.MustAccessContext(security.Subject{TenantID: "tenant", UserID: "owner", AuthMethod: security.AuthMethodStatic})
+	now := time.Now()
+	session := &conversationstore.Session{ID: "cleanup-retention", TenantID: "tenant", OwnerID: "owner", Version: 1, CreatedAt: now, UpdatedAt: now, Status: conversationstore.SessionStatusActive}
+	if err := backend.Create(ctx, access, session); err != nil {
+		t.Fatal(err)
+	}
+	if err := backend.Delete(ctx, access, session.ID); err != nil {
+		t.Fatal(err)
+	}
+	return now
+}
+
+func TestCleanupRemovesConversationsWhenUsageAuditCleanupFails(t *testing.T) {
+	backend := memorystore.NewMemoryStore()
+	now := prepareDeletedSession(t, backend)
+	component := &MemoryComponent{
+		store:           failingUsageCleanupStore{MemoryStore: backend},
+		rt:              runtime.NewRuntime(),
+		cleanupHandlers: make(map[string]conversationstore.DerivedArtifactCleanupHandler),
+	}
+
+	deleted, err := component.runCleanupOnce(context.Background(), now.Add(2*time.Minute), 10)
+	if !errors.Is(err, errUsageCleanupUnavailable) {
+		t.Fatalf("cleanup error = %v, want %v", err, errUsageCleanupUnavailable)
+	}
+	if deleted != 1 {
+		t.Fatalf("deleted = %d, want 1 conversation removed despite usage cleanup failure", deleted)
+	}
+}
+
+func TestCleanupRemovesConversationsWhenUsageAuditUnsupported(t *testing.T) {
+	backend := memorystore.NewMemoryStore()
+	now := prepareDeletedSession(t, backend)
+	component := &MemoryComponent{
+		store:           conversationStoreOnly{BackendStore: backend},
+		rt:              runtime.NewRuntime(),
+		cleanupHandlers: make(map[string]conversationstore.DerivedArtifactCleanupHandler),
+	}
+
+	deleted, err := component.runCleanupOnce(context.Background(), now.Add(2*time.Minute), 10)
+	if err != nil {
+		t.Fatalf("cleanup error = %v, want conversation cleanup to succeed", err)
+	}
+	if deleted != 1 {
+		t.Fatalf("deleted = %d, want 1 conversation removed without usage maintenance support", deleted)
+	}
+}
+
 func TestCleanupWorkerDispatchesAndReconcilesDerivedArtifact(t *testing.T) {
 	backend := memorystore.NewMemoryStore()
 	component := &MemoryComponent{

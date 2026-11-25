@@ -58,6 +58,25 @@ func newUsageAuditRegistration(store conversationstore.UsageAuditStore, logger *
 	if logger == nil {
 		logger = slog.Default()
 	}
+	return newUsageAuditRegistrationWithSink(store, logger, snapshot, func(ctx context.Context, record usageAuditRecord) {
+		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), usageAuditPersistenceTimeout)
+		defer cancel()
+		record.persist(persistCtx, store, logger)
+	})
+}
+
+// newAsyncUsageAuditRegistration hands records to the bounded writer so the
+// model/tool hot path never waits for a Store write or its deadline.
+func newAsyncUsageAuditRegistration(writer *usageAuditWriter, logger *slog.Logger, snapshot func() UsageAuditOptions) Registration {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	return newUsageAuditRegistrationWithSink(writer.store, logger, snapshot, func(_ context.Context, record usageAuditRecord) {
+		writer.Enqueue(record)
+	})
+}
+
+func newUsageAuditRegistrationWithSink(store conversationstore.UsageAuditStore, logger *slog.Logger, snapshot func() UsageAuditOptions, sink func(context.Context, usageAuditRecord)) Registration {
 	// Detailed iteration/stage and call-start events belong to tracing. Call-end
 	// events already carry failures, including panic and cancellation outcomes.
 	return Registration{Events: []Event{
@@ -77,35 +96,42 @@ func newUsageAuditRegistration(store conversationstore.UsageAuditStore, logger *
 			logger.Warn("usage audit skipped: no access context", "event", state.Event)
 			return ctx
 		}
-		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), usageAuditPersistenceTimeout)
-		defer cancel()
-		now := state.EndedAt
-		if now.IsZero() {
-			now = time.Now()
+		record := newUsageAuditRecord(state, options, access)
+		if record.audit == nil && record.usage == nil {
+			return ctx
 		}
-		audit := conversationstore.AuditEvent{ID: uuid.NewString(), SchemaVersion: options.SchemaVersion, TenantID: access.Subject.TenantID, UserID: access.Subject.UserID, SessionID: state.SessionID, InteractionID: state.InteractionID, CallID: state.CallID, ToolCallID: state.ToolCallID, EventType: string(state.Event), Status: "ok", ReasonCode: state.ReasonCode(), PolicyVersion: options.PolicyVersion, ComponentVersion: options.ComponentVersion, CreatedAt: now}
-		if state.Error != "" {
-			audit.Status = "error"
-		}
-		if options.AuditEvents {
-			if err := store.RecordAudit(persistCtx, audit); err != nil {
-				logger.Warn("failed to record AI audit event", "event", state.Event, "error_type", ErrorType(err))
-			}
-		}
-		if options.UsagePersistence && state.Event == EventModelCallEnd {
-			usage := conversationstore.UsageEvent{ID: uuid.NewString(), SchemaVersion: options.SchemaVersion, TenantID: access.Subject.TenantID, UserID: access.Subject.UserID, SessionID: state.SessionID, InteractionID: state.InteractionID, CallID: state.CallID, CallType: conversationstore.UsageCallModel, Model: state.Model, PolicyVersion: options.PolicyVersion, AmountSource: conversationstore.UsageAmountUnknown, CostStatus: conversationstore.UsageCostUnknown, Status: audit.Status, ReasonCode: state.ReasonCode(), CreatedAt: now}
-			if state.UsagePresent {
-				usage.AmountSource = conversationstore.UsageAmountProvider
-				usage.InputTokens = intPtr(state.InputTokens)
-				usage.OutputTokens = intPtr(state.OutputTokens)
-				usage.TotalTokens = intPtr(state.TotalTokens)
-			}
-			if err := store.RecordUsage(persistCtx, usage); err != nil {
-				logger.Warn("failed to record AI usage event", "event", state.Event, "error_type", ErrorType(err))
-			}
-		}
+		sink(ctx, record)
 		return ctx
 	}}
+}
+
+// newUsageAuditRecord builds only metadata: identifiers, status, reason code,
+// versions and token counts. Prompt, response, and tool payloads are never
+// copied into the record.
+func newUsageAuditRecord(state State, options UsageAuditOptions, access security.AccessContext) usageAuditRecord {
+	now := state.EndedAt
+	if now.IsZero() {
+		now = time.Now()
+	}
+	status := "ok"
+	if state.Error != "" {
+		status = "error"
+	}
+	record := usageAuditRecord{access: access, event: state.Event}
+	if options.AuditEvents {
+		record.audit = &conversationstore.AuditEvent{ID: uuid.NewString(), SchemaVersion: options.SchemaVersion, TenantID: access.Subject.TenantID, UserID: access.Subject.UserID, SessionID: state.SessionID, InteractionID: state.InteractionID, CallID: state.CallID, ToolCallID: state.ToolCallID, EventType: string(state.Event), Status: status, ReasonCode: state.ReasonCode(), PolicyVersion: options.PolicyVersion, ComponentVersion: options.ComponentVersion, CreatedAt: now}
+	}
+	if options.UsagePersistence && state.Event == EventModelCallEnd {
+		usage := conversationstore.UsageEvent{ID: uuid.NewString(), SchemaVersion: options.SchemaVersion, TenantID: access.Subject.TenantID, UserID: access.Subject.UserID, SessionID: state.SessionID, InteractionID: state.InteractionID, CallID: state.CallID, CallType: conversationstore.UsageCallModel, Model: state.Model, PolicyVersion: options.PolicyVersion, AmountSource: conversationstore.UsageAmountUnknown, CostStatus: conversationstore.UsageCostUnknown, Status: status, ReasonCode: state.ReasonCode(), CreatedAt: now}
+		if state.UsagePresent {
+			usage.AmountSource = conversationstore.UsageAmountProvider
+			usage.InputTokens = intPtr(state.InputTokens)
+			usage.OutputTokens = intPtr(state.OutputTokens)
+			usage.TotalTokens = intPtr(state.TotalTokens)
+		}
+		record.usage = &usage
+	}
+	return record
 }
 
 func intPtr(value int) *int { return &value }

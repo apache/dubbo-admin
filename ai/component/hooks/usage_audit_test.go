@@ -5,6 +5,8 @@ import (
 	"context"
 	"log/slog"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -138,11 +140,17 @@ func TestUsageAuditFeatureUpdatesPreserveExplicitVersions(t *testing.T) {
 	t.Cleanup(func() { _ = component.Stop() })
 	ctx := security.WithAccessContext(context.Background(), security.MustAccessContext(security.Subject{TenantID: "tenant", UserID: "user", AuthMethod: security.AuthMethodJWT}))
 	component.GetManager().Emit(ctx, State{Event: EventModelCallEnd})
+	if err := component.FlushUsageAudit(ctx); err != nil {
+		t.Fatal(err)
+	}
 	if len(recorder.audit) != 0 || len(recorder.usage) != 0 {
 		t.Fatal("explicit all-false switches were ignored")
 	}
 	component.SetUsageAuditFeatures(true, true)
 	component.GetManager().Emit(ctx, State{Event: EventModelCallEnd, Error: "error", ErrorType: "provider_error", FallbackReason: "fallback"})
+	if err := component.FlushUsageAudit(ctx); err != nil {
+		t.Fatal(err)
+	}
 	if len(recorder.audit) != 1 || len(recorder.usage) != 1 {
 		t.Fatal("feature update did not reach registered recorder")
 	}
@@ -291,4 +299,121 @@ func TestUsageAuditSingleModelInteractionWriteCounts(t *testing.T) {
 			}
 		})
 	}
+}
+
+// blockingUsageAuditRecorder holds the writer inside RecordAudit/RecordUsage
+// until the test releases it, emulating a slow or unavailable Store.
+type blockingUsageAuditRecorder struct {
+	started     chan struct{}
+	release     chan struct{}
+	startOnce   sync.Once
+	releaseOnce sync.Once
+	writes      atomic.Int64
+}
+
+func newBlockingUsageAuditRecorder() *blockingUsageAuditRecorder {
+	return &blockingUsageAuditRecorder{started: make(chan struct{}), release: make(chan struct{})}
+}
+
+func (r *blockingUsageAuditRecorder) block() {
+	r.startOnce.Do(func() { close(r.started) })
+	<-r.release
+}
+
+func (r *blockingUsageAuditRecorder) Release() {
+	r.releaseOnce.Do(func() { close(r.release) })
+}
+
+func (r *blockingUsageAuditRecorder) RecordUsage(context.Context, conversationstore.UsageEvent) error {
+	r.block()
+	r.writes.Add(1)
+	return nil
+}
+
+func (r *blockingUsageAuditRecorder) RecordAudit(context.Context, conversationstore.AuditEvent) error {
+	r.block()
+	r.writes.Add(1)
+	return nil
+}
+
+func usageAuditTestAccess() security.AccessContext {
+	return security.MustAccessContext(security.Subject{TenantID: "tenant", UserID: "user", AuthMethod: security.AuthMethodJWT})
+}
+
+func TestUsageAuditWriterKeepsPersistenceOffHotPath(t *testing.T) {
+	recorder := newBlockingUsageAuditRecorder()
+	writer := newUsageAuditWriter(recorder, nil, 8)
+	// Cleanups run last-in-first-out: release the Store before waiting for the
+	// writer, or Close would block on the recorder.
+	t.Cleanup(writer.Close)
+	t.Cleanup(recorder.Release)
+	registration := newAsyncUsageAuditRegistration(writer, nil, func() UsageAuditOptions { return DefaultUsageAuditOptions() })
+	ctx := security.WithAccessContext(context.Background(), usageAuditTestAccess())
+
+	start := time.Now()
+	registration.Hook(ctx, State{Event: EventModelCallEnd, SessionID: "session", InteractionID: "interaction", CallID: "call", EndedAt: time.Now()})
+	if elapsed := time.Since(start); elapsed > 500*time.Millisecond {
+		t.Fatalf("hook blocked for %v while the Store was unavailable", elapsed)
+	}
+
+	select {
+	case <-recorder.started:
+	case <-time.After(time.Second):
+		t.Fatal("writer never reached the Store")
+	}
+	if writes := recorder.writes.Load(); writes != 0 {
+		t.Fatalf("writes = %d before releasing the Store", writes)
+	}
+
+	recorder.Release()
+	writer.Close()
+	if writes := recorder.writes.Load(); writes != 2 {
+		t.Fatalf("writes = %d, want audit and usage writes", writes)
+	}
+}
+
+func TestUsageAuditWriterDropsRecordsWhenQueueIsFull(t *testing.T) {
+	recorder := newBlockingUsageAuditRecorder()
+	writer := newUsageAuditWriter(recorder, nil, 1)
+	// Cleanups run last-in-first-out: release the Store before waiting for the
+	// writer, or Close would block on the recorder.
+	t.Cleanup(writer.Close)
+	t.Cleanup(recorder.Release)
+	record := newUsageAuditRecord(State{Event: EventInteractionEnd}, UsageAuditOptions{AuditEvents: true}, usageAuditTestAccess())
+
+	writer.Enqueue(record)
+	select {
+	case <-recorder.started:
+	case <-time.After(time.Second):
+		t.Fatal("writer never reached the Store")
+	}
+	writer.Enqueue(record) // fills the single queue slot
+	writer.Enqueue(record) // must be dropped, not block
+
+	if dropped := writer.Dropped(); dropped != 1 {
+		t.Fatalf("dropped = %d, want 1", dropped)
+	}
+
+	recorder.Release()
+	writer.Close()
+	if writes := recorder.writes.Load(); writes != 2 {
+		t.Fatalf("writes = %d, want the queued records to be drained", writes)
+	}
+}
+
+func TestUsageAuditWriterFlushWaitsForQueuedRecords(t *testing.T) {
+	recorder := &usageAuditRecorder{}
+	writer := newUsageAuditWriter(recorder, nil, 8)
+	record := newUsageAuditRecord(State{Event: EventInteractionEnd}, UsageAuditOptions{AuditEvents: true}, usageAuditTestAccess())
+	writer.Enqueue(record)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if err := writer.Flush(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if len(recorder.audit) != 1 {
+		t.Fatalf("audit records = %d after Flush, want 1", len(recorder.audit))
+	}
+	writer.Close()
 }

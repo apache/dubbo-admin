@@ -82,6 +82,9 @@ func TestUsageAuditComponentPersistsCanceledEndEventsWithVersions(t *testing.T) 
 					t.Fatalf("hook changed caller cancellation: %v", returned.Err())
 				}
 			}
+			if err := component.FlushUsageAudit(context.Background()); err != nil {
+				t.Fatalf("flush usage audit: %v", err)
+			}
 			var audits []gormstore.AuditEventModel
 			if err := s.DB().Find(&audits).Error; err != nil {
 				t.Fatal(err)

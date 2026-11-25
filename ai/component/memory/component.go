@@ -19,6 +19,7 @@ package memory
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -238,19 +239,29 @@ func (m *MemoryComponent) runCleanup() {
 
 func (m *MemoryComponent) runCleanupOnce(ctx context.Context, now time.Time, batchSize int) (int, error) {
 	access := security.SystemAccessContext()
+
+	// Conversation and derived-artifact cleanup enforces the privacy retention
+	// contract. It must run even when usage/audit maintenance is unsupported or
+	// failing, so the two paths report their errors independently.
+	deleted, sessionErr := m.cleanupConversations(ctx, access, now, batchSize)
+	usageAuditDeleted, usageAuditErr := m.cleanupUsageAudit(ctx, access, now)
+	return deleted + usageAuditDeleted, errors.Join(sessionErr, usageAuditErr)
+}
+
+// cleanupUsageAudit prunes usage and audit metadata. These tables are
+// best-effort accounting data and must never block conversation retention.
+func (m *MemoryComponent) cleanupUsageAudit(ctx context.Context, access security.AccessContext, now time.Time) (int, error) {
 	usageAuditStore, ok := m.store.(conversationstore.UsageAuditMaintenanceStore)
 	if !ok {
-		return 0, fmt.Errorf("store does not support usage and audit cleanup")
+		return 0, nil
 	}
 	usageCutoff := now.Add(-m.usageAuditPolicy.Retention)
-	usageDeleted, err := usageAuditStore.CleanupUsage(ctx, access, usageCutoff, m.usageAuditPolicy.CleanupBatchSize)
-	if err != nil {
-		return usageDeleted, err
-	}
-	auditDeleted, err := usageAuditStore.CleanupAudit(ctx, access, usageCutoff, m.usageAuditPolicy.CleanupBatchSize)
-	if err != nil {
-		return usageDeleted, err
-	}
+	usageDeleted, usageErr := usageAuditStore.CleanupUsage(ctx, access, usageCutoff, m.usageAuditPolicy.CleanupBatchSize)
+	auditDeleted, auditErr := usageAuditStore.CleanupAudit(ctx, access, usageCutoff, m.usageAuditPolicy.CleanupBatchSize)
+	return usageDeleted + auditDeleted, errors.Join(usageErr, auditErr)
+}
+
+func (m *MemoryComponent) cleanupConversations(ctx context.Context, access security.AccessContext, now time.Time, batchSize int) (int, error) {
 	deleted, nextSession, err := m.store.DeleteExpiredPage(ctx, access, now, m.cleanupSessionCursor, batchSize)
 	if err != nil {
 		return deleted, err
@@ -291,14 +302,14 @@ func (m *MemoryComponent) runCleanupOnce(ctx context.Context, now time.Time, bat
 		cleanedArtifact = true
 	}
 	if !cleanedArtifact {
-		return deleted + usageDeleted + auditDeleted, nil
+		return deleted, nil
 	}
 	finalized, nextSession, err := m.store.DeleteExpiredPage(ctx, access, now, m.cleanupSessionCursor, batchSize)
 	m.cleanupSessionCursor = nextSession
 	if !nextSession.Valid {
 		m.cleanupSessionCursor = conversationstore.CleanupCursor{}
 	}
-	return deleted + finalized + usageDeleted + auditDeleted, err
+	return deleted + finalized, err
 }
 
 // initLegacyMemory initializes the deprecated context-backed memory only when
