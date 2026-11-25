@@ -25,6 +25,9 @@ import (
 )
 
 type Agent interface {
+	// Interact accepts ownership of an interaction by returning initialized
+	// Channels. Implementations must create them with NewChannels and eventually
+	// call Close. A nil or otherwise invalid return means ownership was not accepted.
 	Interact(context.Context, *schema.UserInput, string) *Channels
 }
 
@@ -47,6 +50,12 @@ func NewChannels(bufferSize int) *Channels {
 		UserRespChan: make(chan *schema.StreamFeedback, bufferSize),
 		ErrorChan:    make(chan error, bufferSize),
 	}
+}
+
+// Valid reports whether the Channels can be used as the ownership handoff
+// between the HTTP handler and an Agent.
+func (chans *Channels) Valid() bool {
+	return chans != nil && chans.done != nil && chans.UserRespChan != nil && chans.ErrorChan != nil
 }
 
 // Close marks the Channels as finished without tearing down the underlying

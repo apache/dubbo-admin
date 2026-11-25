@@ -21,6 +21,7 @@ import {
   type AuthConfiguration,
   type Principal
 } from '@/api/service/login'
+import { accessTokenManager } from './accessToken'
 import { updateAuthState } from '@/utils/AuthUtil'
 
 let configurationPromise: Promise<AuthConfiguration> | undefined
@@ -32,7 +33,10 @@ export function providerLoginURL(providerID: string): string {
 export async function loadAuthConfiguration(force = false): Promise<AuthConfiguration> {
   if (!configurationPromise || force) {
     configurationPromise = getAuthProviders()
-      .then(({ data }) => data)
+      .then(({ data }) => {
+        accessTokenManager.setEnabled(Boolean(data.accessTokenEnabled))
+        return data
+      })
       .catch((error) => {
         configurationPromise = undefined
         throw error
