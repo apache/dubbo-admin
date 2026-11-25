@@ -157,6 +157,12 @@ func TestAuthHandlerAccessTokenAndJWKS(t *testing.T) {
 	if token.Code != http.StatusOK || !strings.Contains(token.Body.String(), `"accessToken":`) || !strings.Contains(token.Body.String(), `"tokenType":"Bearer"`) {
 		t.Fatalf("token status = %d, body = %s", token.Code, token.Body.String())
 	}
+	if got := token.Header().Get("Cache-Control"); got != "no-store" {
+		t.Errorf("token Cache-Control = %q, want no-store", got)
+	}
+	if got := token.Header().Get("Pragma"); got != "no-cache" {
+		t.Errorf("token Pragma = %q, want no-cache", got)
+	}
 }
 
 func TestAuthHandlerDisabledAccessToken(t *testing.T) {

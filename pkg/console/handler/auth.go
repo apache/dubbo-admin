@@ -109,6 +109,8 @@ func (h *AuthHandler) Providers(c *gin.Context) {
 }
 
 func (h *AuthHandler) Token(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	c.Header("Pragma", "no-cache")
 	principal, ok := consoleauth.PrincipalFromContext(c)
 	if !ok {
 		writeUnauthorized(c)

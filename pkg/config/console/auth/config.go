@@ -136,7 +136,7 @@ func (c *AccessTokenConfig) validate() error {
 	if len(c.Keys) == 0 {
 		return errors.New("auth accessToken: keys are required when enabled")
 	}
-	if c.Issuer == "" {
+	if strings.TrimSpace(c.Issuer) == "" {
 		return errors.New("auth accessToken: issuer is required when enabled")
 	}
 	if strings.TrimSpace(c.ActiveKeyID) == "" {

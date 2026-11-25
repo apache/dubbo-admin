@@ -85,7 +85,7 @@ func NewJWTVerifier(config JWTAuthConfig, client *http.Client) (*JWTVerifier, er
 
 func (v *JWTVerifier) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Request.Method == http.MethodOptions || c.Request.URL.Path == "/health" || !strings.HasPrefix(c.Request.URL.Path, "/api/v1/ai/") {
+		if c.Request.Method == http.MethodOptions || c.Request.URL.Path == "/health" {
 			c.Next()
 			return
 		}

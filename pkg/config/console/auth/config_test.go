@@ -259,6 +259,7 @@ func TestAccessTokenMultipleKeys(t *testing.T) {
 		{"missing active", func(c *AccessTokenConfig) { c.ActiveKeyID = "missing" }, true},
 		{"empty keys", func(c *AccessTokenConfig) { c.Keys = []AccessTokenKey{} }, true},
 		{"empty active ID", func(c *AccessTokenConfig) { c.ActiveKeyID = "" }, true},
+		{"whitespace issuer", func(c *AccessTokenConfig) { c.Issuer = " \t\n" }, true},
 		{"missing file", func(c *AccessTokenConfig) { c.Keys[0].PrivateKeyFile = "/missing" }, true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

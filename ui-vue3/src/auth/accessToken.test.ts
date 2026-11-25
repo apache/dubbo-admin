@@ -52,6 +52,26 @@ describe('AccessTokenManager', () => {
     await expect(Promise.all([first, second])).resolves.toEqual([token, token])
   })
 
+  it('preserves an in-flight issuance when a request without a token is rejected', async () => {
+    let resolveIssue: (token: string) => void = () => undefined
+    const issue = vi.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveIssue = resolve
+        })
+    )
+    const manager = new AccessTokenManager(issue)
+    manager.setEnabled(true)
+
+    const pending = manager.getToken()
+    const retry = manager.refreshAfterUnauthorized(undefined)
+    resolveIssue('new-token')
+
+    await expect(Promise.all([pending, retry])).resolves.toEqual(['new-token', 'new-token'])
+    await expect(manager.getToken()).resolves.toBe('new-token')
+    expect(issue).toHaveBeenCalledTimes(1)
+  })
+
   it.each([30, 0, -30])(
     'reuses a cached token with %i seconds remaining until rejected',
     async (remaining) => {

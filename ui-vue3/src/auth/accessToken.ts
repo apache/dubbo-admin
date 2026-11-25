@@ -60,7 +60,7 @@ export class AccessTokenManager {
 
   async refreshAfterUnauthorized(rejectedToken: string | undefined): Promise<string | undefined> {
     if (!this.enabled) return undefined
-    if (this.token === rejectedToken) {
+    if (rejectedToken !== undefined && this.token === rejectedToken) {
       this.generation++
       this.token = undefined
     }

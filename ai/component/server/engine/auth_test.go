@@ -40,6 +40,32 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+func TestJWTVerifierMiddlewareProtectsOtherRouteGroups(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwksServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(jwksForTest(map[string]*rsa.PublicKey{"key": &key.PublicKey}))
+	}))
+	defer jwksServer.Close()
+	verifier, err := NewJWTVerifier(JWTAuthConfig{JWKSURL: jwksServer.URL, Issuer: "admin", Audience: "ai"}, jwksServer.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	router := gin.New()
+	protected := router.Group("/api/v2/ai", verifier.Middleware())
+	protected.GET("/sessions", func(c *gin.Context) { c.Status(http.StatusNoContent) })
+
+	resp := assertAIStatus(t, router, http.MethodGet, "/api/v2/ai/sessions", "", http.StatusUnauthorized)
+	if got := resp.Header().Get("WWW-Authenticate"); got != "Bearer" {
+		t.Fatalf("WWW-Authenticate = %q, want Bearer", got)
+	}
+	assertAIStatus(t, router, http.MethodGet, "/api/v2/ai/sessions", "Bearer invalid", http.StatusUnauthorized)
+	token := signAITestToken(t, key, "key", "admin", "ai", "user", time.Now().Add(time.Minute), time.Now())
+	assertAIStatus(t, router, http.MethodGet, "/api/v2/ai/sessions", "Bearer "+token, http.StatusNoContent)
+}
+
 func TestJWTVerifierMiddlewareAndKeyRotation(t *testing.T) {
 	key1, _ := rsa.GenerateKey(rand.Reader, 2048)
 	key2, _ := rsa.GenerateKey(rand.Reader, 2048)
