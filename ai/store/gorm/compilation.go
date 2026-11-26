@@ -21,6 +21,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 
 	"dubbo-admin-ai/security"
 	store "dubbo-admin-ai/store"
@@ -183,8 +184,26 @@ func (s *GormStore) CreateToolBatch(ctx context.Context, a security.AccessContex
 			return security.ErrResourceNotAccessible
 		}
 		var turn TurnModel
-		if err := tx.Where("id = ? AND session_id = ? AND interaction_id = ? AND completed_at IS NULL", b.TurnID, b.SessionID, b.InteractionID).First(&turn).Error; err != nil {
+		if err := tx.Where("id = ? AND session_id = ? AND completed_at IS NULL", b.TurnID, b.SessionID).First(&turn).Error; errors.Is(err, gorm.ErrRecordNotFound) {
 			return store.ErrTurnNotFound
+		} else if err != nil {
+			return err
+		}
+		if turn.InteractionID != b.InteractionID {
+			return store.ErrContextConflict
+		}
+		var duplicate int64
+		if err := tx.Model(&ToolBatchModel{}).Where("id = ?", b.ID).Count(&duplicate).Error; err != nil {
+			return err
+		}
+		if duplicate > 0 {
+			return store.ErrContextConflict
+		}
+		if err := tx.Model(&ToolBatchModel{}).Where("turn_id = ? AND sequence = ?", b.TurnID, b.Sequence).Count(&duplicate).Error; err != nil {
+			return err
+		}
+		if duplicate > 0 {
+			return store.ErrContextConflict
 		}
 		var count int64
 		if err := tx.Model(&ToolBatchModel{}).Where("turn_id = ?", b.TurnID).Count(&count).Error; err != nil {
@@ -196,8 +215,78 @@ func (s *GormStore) CreateToolBatch(ctx context.Context, a security.AccessContex
 		if err := s.reserveToolBytes(tx, b.TenantID, b.SessionID, int64(len(data))); err != nil {
 			return err
 		}
-		return tx.Create(&ToolBatchModel{ID: b.ID, SessionID: b.SessionID, TurnID: b.TurnID, Sequence: b.Sequence, Version: b.Version, Payload: data}).Error
+		createErr := tx.Create(&ToolBatchModel{ID: b.ID, SessionID: b.SessionID, TurnID: b.TurnID, Sequence: b.Sequence, Version: b.Version, Payload: data}).Error
+		if createErr != nil && duplicateKeyError(tx, createErr) {
+			return store.ErrContextConflict
+		}
+		return createErr
 	})
+}
+
+// duplicateKeyError recognizes a unique-constraint violation even when the
+// driver-level TranslateError config option is disabled.
+func duplicateKeyError(tx *gorm.DB, err error) bool {
+	translated := err
+	if translator, ok := tx.Dialector.(gorm.ErrorTranslator); ok {
+		translated = translator.Translate(err)
+	}
+	return errors.Is(translated, gorm.ErrDuplicatedKey)
+}
+
+// pruneReleasedToolBatches keeps only the newest recovery window for released
+// attempts (Turns whose row was removed) and releases their encoded bytes from
+// Session and tenant accounting.
+func (s *GormStore) pruneReleasedToolBatches(tx *gorm.DB, tenantID, sessionID string) error {
+	var rows []struct {
+		ID    string
+		Bytes int64
+	}
+	if err := tx.Table("ai_tool_batches AS b").
+		Select("b.id, LENGTH(b.payload) AS bytes").
+		Where("b.session_id = ?", sessionID).
+		Where("NOT EXISTS (SELECT 1 FROM ai_turns t WHERE t.id = b.turn_id AND t.session_id = b.session_id)").
+		Order("b.turn_id DESC").Order("b.sequence DESC").Scan(&rows).Error; err != nil {
+		return err
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+	keep := 0
+	var keptBytes int64
+	for _, row := range rows {
+		if keep >= store.MaxRecoveryToolBatches {
+			break
+		}
+		// Always retain the newest batch so reclamation never hides the only
+		// uncertainty evidence; stop at the same byte window the reader uses.
+		if keep > 0 && keptBytes+row.Bytes > store.MaxRecoveryToolBytes {
+			break
+		}
+		keptBytes += row.Bytes
+		keep++
+	}
+	if keep == len(rows) {
+		return nil
+	}
+	expired := rows[keep:]
+	ids := make([]string, len(expired))
+	var freed int64
+	for i, row := range expired {
+		ids[i] = row.ID
+		freed += row.Bytes
+	}
+	if err := tx.Where("session_id = ? AND id IN ?", sessionID, ids).Delete(&ToolBatchModel{}).Error; err != nil {
+		return err
+	}
+	if freed == 0 {
+		return nil
+	}
+	if err := tx.Model(&SessionModel{}).Where("id = ?", sessionID).
+		Update("stored_bytes", gorm.Expr("CASE WHEN stored_bytes >= ? THEN stored_bytes - ? ELSE 0 END", freed, freed)).Error; err != nil {
+		return err
+	}
+	return tx.Model(&TenantUsageModel{}).Where("tenant_id = ?", tenantID).
+		Update("stored_bytes", gorm.Expr("CASE WHEN stored_bytes >= ? THEN stored_bytes - ? ELSE 0 END", freed, freed)).Error
 }
 
 func (s *GormStore) CompleteToolCall(ctx context.Context, a security.AccessContext, id, batch string, version uint64, index int, call store.ToolCall) error {

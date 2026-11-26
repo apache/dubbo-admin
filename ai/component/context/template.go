@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
-	"sort"
 	"strings"
 	"text/template"
 	"text/template/parse"
@@ -37,11 +36,14 @@ type Template struct {
 	Variables                        map[string]Variable
 }
 
-// Ref includes the immutable content identity as well as the named version.
+// Ref is the immutable content identity used to pin a Session. The runtime tool
+// allowlist is resolved from the current registry at compile time and is
+// deliberately excluded: tool discovery or registry changes must not invalidate
+// Sessions pinned to an unchanged prompt version.
 func (t Template) Ref() string {
-	t.AllowedTools = append([]string(nil), t.AllowedTools...)
-	sort.Strings(t.AllowedTools)
-	return fmt.Sprintf("%s@%s:%x", t.ID, t.Version, sha256.Sum256(JSON(t)))
+	identity := t
+	identity.AllowedTools = nil
+	return fmt.Sprintf("%s@%s:%x", t.ID, t.Version, sha256.Sum256(JSON(identity)))
 }
 
 func (t Template) Render(phase string, values map[string]string) (string, error) {

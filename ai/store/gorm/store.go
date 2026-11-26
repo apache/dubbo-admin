@@ -1412,13 +1412,15 @@ func (s *GormStore) deleteTurnAndReleaseUsage(tx *gorm.DB, tenantID, sessionID s
 	if err := tx.Delete(&turn).Error; err != nil {
 		return err
 	}
-	if turn.StoredBytes == 0 {
-		return nil
+	if turn.StoredBytes != 0 {
+		if err := tx.Model(&SessionModel{}).Where("id = ?", sessionID).Update("stored_bytes", gorm.Expr("CASE WHEN stored_bytes >= ? THEN stored_bytes - ? ELSE 0 END", turn.StoredBytes, turn.StoredBytes)).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&TenantUsageModel{}).Where("tenant_id = ?", tenantID).Update("stored_bytes", gorm.Expr("CASE WHEN stored_bytes >= ? THEN stored_bytes - ? ELSE 0 END", turn.StoredBytes, turn.StoredBytes)).Error; err != nil {
+			return err
+		}
 	}
-	if err := tx.Model(&SessionModel{}).Where("id = ?", sessionID).Update("stored_bytes", gorm.Expr("CASE WHEN stored_bytes >= ? THEN stored_bytes - ? ELSE 0 END", turn.StoredBytes, turn.StoredBytes)).Error; err != nil {
-		return err
-	}
-	return tx.Model(&TenantUsageModel{}).Where("tenant_id = ?", tenantID).Update("stored_bytes", gorm.Expr("CASE WHEN stored_bytes >= ? THEN stored_bytes - ? ELSE 0 END", turn.StoredBytes, turn.StoredBytes)).Error
+	return s.pruneReleasedToolBatches(tx, tenantID, sessionID)
 }
 
 // AddHistory is retained for callers of the pre-Store API. Production code

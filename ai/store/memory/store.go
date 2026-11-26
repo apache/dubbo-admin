@@ -885,6 +885,7 @@ func (m *MemoryStore) releaseExpiredInteractionLocked(sessionID, retryID string,
 		}
 		delete(history.active, active.TurnID)
 	}
+	m.pruneReleasedToolBatchesLocked(sessionID)
 	active.Status = conversationstore.InteractionStatusFailed
 	active.UpdatedAt = now
 	m.interactions[activeID] = active
@@ -952,6 +953,7 @@ func (m *MemoryStore) FailInteraction(ctx context.Context, access security.Acces
 		}
 		delete(history.active, turnID)
 	}
+	m.pruneReleasedToolBatchesLocked(sessionID)
 	interaction.Status = conversationstore.InteractionStatusFailed
 	interaction.UpdatedAt = time.Now()
 	m.interactions[interactionID] = interaction
@@ -1267,6 +1269,7 @@ func (m *MemoryStore) AbortTurnForTurn(ctx context.Context, access security.Acce
 	}
 	m.recordSummaryHistoryLocked(sessionID, turnID, conversationstore.InteractionStatusFailed)
 	delete(history.active, turnID)
+	m.pruneReleasedToolBatchesLocked(sessionID)
 	return nil
 }
 

@@ -142,6 +142,58 @@ func (m *MemoryStore) batchesLocked(id string, turn uint64) []store.ToolBatch {
 	return result
 }
 
+// pruneReleasedToolBatchesLocked keeps only the newest recovery window for
+// batches whose source Turn was released. Live completed/active Turns remain
+// untouched, and byte accounting is derived from the retained map.
+func (m *MemoryStore) pruneReleasedToolBatchesLocked(sessionID string) {
+	h := m.history[sessionID]
+	live := map[uint64]bool{}
+	if h != nil {
+		for _, t := range h.history {
+			live[t.id] = true
+		}
+		for id := range h.active {
+			live[id] = true
+		}
+	}
+	var released []store.ToolBatch
+	for _, b := range m.toolBatches {
+		if b.SessionID == sessionID && !live[b.TurnID] {
+			released = append(released, b)
+		}
+	}
+	if len(released) == 0 {
+		return
+	}
+	sort.Slice(released, func(i, j int) bool {
+		if released[i].TurnID != released[j].TurnID {
+			return released[i].TurnID > released[j].TurnID
+		}
+		return released[i].Sequence > released[j].Sequence
+	})
+	keep := 0
+	var keptBytes int64
+	for _, b := range released {
+		if keep >= store.MaxRecoveryToolBatches {
+			break
+		}
+		data, err := json.Marshal(b)
+		if err != nil {
+			break
+		}
+		// Always retain the newest batch so reclamation never hides the only
+		// uncertainty evidence; stop at the same byte window the reader uses.
+		if keep > 0 && keptBytes+int64(len(data)) > store.MaxRecoveryToolBytes {
+			break
+		}
+		keptBytes += int64(len(data))
+		keep++
+	}
+	for _, b := range released[keep:] {
+		delete(m.toolBatches, b.ID)
+	}
+}
+
 func (m *MemoryStore) ToolBatches(ctx context.Context, a security.AccessContext, id string, turn uint64, limit int) ([]store.ToolBatch, error) {
 	if err := checkContext(ctx); err != nil {
 		return nil, err
