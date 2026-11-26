@@ -24,6 +24,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"reflect"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -127,6 +128,38 @@ func port(key, fallback string) int {
 	}
 	return v
 }
+func buildServiceInfo(svc any, interfaceName string) *common.ServiceInfo {
+	typ := reflect.TypeOf(svc)
+	methods := make([]common.MethodInfo, 0, typ.NumMethod())
+	for i := 0; i < typ.NumMethod(); i++ {
+		m := typ.Method(i)
+		if m.Type.NumIn() < 2 {
+			continue
+		}
+		paramTypes := make([]reflect.Type, m.Type.NumIn()-2)
+		for j := 2; j < m.Type.NumIn(); j++ {
+			paramTypes[j-2] = m.Type.In(j)
+		}
+		typesCopy := paramTypes
+		methods = append(methods, common.MethodInfo{
+			Name: m.Name,
+			Type: constant.CallUnary,
+			ReqInitFunc: func() any {
+				params := make([]any, len(typesCopy))
+				for k, pt := range typesCopy {
+					params[k] = reflect.New(pt).Interface()
+				}
+				return params
+			},
+		})
+	}
+	return &common.ServiceInfo{
+		InterfaceName: interfaceName,
+		ServiceType:   svc,
+		Methods:       methods,
+	}
+}
+
 func main() {
 	hessian.RegisterPOJO(&Item{})
 	hessian.RegisterPOJO(&Envelope{})
@@ -143,8 +176,8 @@ func main() {
 		log.Fatal(err)
 	}
 	echo := &EchoService{}
-	// Pass a non-nil ServiceInfo to avoid dubbo-go v3.3.0 typed-nil panic in Server.exportServices.
-	if err = srv.Register(echo, &common.ServiceInfo{InterfaceName: "example.GoEchoService"}, server.WithInterface("example.GoEchoService"), server.WithProtocolIDs([]string{"dubbo", "tri"})); err != nil {
+	// Populate ServiceInfo.Methods via reflection so Triple registers all unary methods in dubbo-go v3.3.0.
+	if err = srv.Register(echo, buildServiceInfo(echo, "example.GoEchoService"), server.WithInterface("example.GoEchoService"), server.WithProtocolIDs([]string{"dubbo", "tri"})); err != nil {
 		log.Fatal(err)
 	}
 	mux := http.NewServeMux()
