@@ -111,6 +111,10 @@ type SourcePolicy struct {
 	Sensitivity     string
 	Required        bool
 	OptionalFailure bool
+	// Trimmable lets the compiler shrink this Source's rendered evidence with
+	// explicit markers when required candidates exceed the request budget. It
+	// is only valid together with Required.
+	Trimmable bool
 	// RecentSuffix prevents gaps only within this Source's ordered history.
 	RecentSuffix bool
 	Order        int
