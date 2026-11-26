@@ -420,8 +420,8 @@ function generateDefaultValue(type: string, typeMap: Record<string, TypeDef>, de
     'java.lang.Short': 0,
     byte: 0,
     'java.lang.Byte': 0,
-    char: '',
-    'java.lang.Character': ''
+    char: 'a',
+    'java.lang.Character': 'a'
   }
   if (type in primitives) return primitives[type]
 
