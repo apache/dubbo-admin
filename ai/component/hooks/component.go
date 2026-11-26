@@ -22,9 +22,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"dubbo-admin-ai/runtime"
+	conversationstore "dubbo-admin-ai/store"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -60,6 +62,10 @@ type Component struct {
 	spec         Spec
 	manager      *Manager
 	provider     *sdktrace.TracerProvider
+	usageStore   conversationstore.UsageAuditStore
+	usageOptions UsageAuditOptions
+	usageMu      sync.RWMutex
+	initialized  bool
 }
 
 type tracerProviderLifecycle interface {
@@ -68,7 +74,7 @@ type tracerProviderLifecycle interface {
 }
 
 func NewComponent(spec Spec) *Component {
-	return &Component{spec: spec, manager: NewManager(nil)}
+	return &Component{spec: spec, manager: NewManager(nil), usageOptions: DefaultUsageAuditOptions()}
 }
 
 func (c *Component) Name() string {
@@ -97,12 +103,10 @@ func (s TracingSpec) validate() error {
 	default:
 		return fmt.Errorf("tracing protocol must be %q or %q", ProtocolGRPC, ProtocolHTTP)
 	}
-	switch s.CaptureContent {
-	case CaptureNone, CaptureTruncated, CaptureFull:
-		return nil
-	default:
-		return fmt.Errorf("tracing capture_content must be one of %q, %q, or %q", CaptureNone, CaptureTruncated, CaptureFull)
+	if s.CaptureContent != CaptureNone {
+		return fmt.Errorf("tracing capture_content must be %q; content diagnostics require a separate controlled channel", CaptureNone)
 	}
+	return nil
 }
 
 func (c *Component) Init(rt *runtime.Runtime) error {
@@ -114,6 +118,25 @@ func (c *Component) Init(rt *runtime.Runtime) error {
 		return err
 	}
 	c.manager = NewManager(rt.GetLogger())
+	if c.usageStore == nil {
+		if memoryComponent, err := rt.GetComponent("memory"); err == nil {
+			if provider, ok := memoryComponent.(interface {
+				GetStore() (conversationstore.Store, error)
+			}); ok {
+				if store, storeErr := provider.GetStore(); storeErr == nil {
+					if usageStore, ok := store.(conversationstore.UsageAuditStore); ok {
+						c.usageStore = usageStore
+					}
+				}
+			}
+		}
+	}
+	if c.usageStore != nil {
+		if err := c.manager.Register(newUsageAuditRegistration(c.usageStore, rt.GetLogger(), c.usageAuditSnapshot)); err != nil {
+			return fmt.Errorf("register usage and audit hook: %w", err)
+		}
+	}
+	c.initialized = true
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{}, propagation.Baggage{},
 	))
@@ -199,6 +222,33 @@ func stopTracerProvider(provider tracerProviderLifecycle, timeout time.Duration)
 
 func (c *Component) GetManager() *Manager { return c.manager }
 
+// SetUsageAuditStore connects the privacy-safe recorder to a durable store.
+// It must be called before Init; the runtime owns component initialization.
+func (c *Component) SetUsageAuditStore(store conversationstore.UsageAuditStore) error {
+	if c == nil || c.initialized {
+		return fmt.Errorf("usage store must be configured before hooks Init")
+	}
+	c.usageStore = store
+	return nil
+}
+
+// SetUsageAuditFeatures updates rollout switches without replacing provenance.
+func (c *Component) SetUsageAuditFeatures(usagePersistence, auditEvents bool) {
+	if c == nil {
+		return
+	}
+	c.usageMu.Lock()
+	defer c.usageMu.Unlock()
+	c.usageOptions.UsagePersistence = usagePersistence
+	c.usageOptions.AuditEvents = auditEvents
+}
+
+func (c *Component) usageAuditSnapshot() UsageAuditOptions {
+	c.usageMu.RLock()
+	defer c.usageMu.RUnlock()
+	return c.usageOptions
+}
+
 // GetActiveManager is used by the agent hot path. The component retains its
 // manager for later registrations, but injects nil when no hooks are active.
 func (c *Component) GetActiveManager() *Manager {
@@ -233,7 +283,10 @@ func newLoggingHook(logger *slog.Logger, level slog.Level) Hook {
 			attrs = append(attrs, "fallback_reason", state.FallbackReason)
 		}
 		if state.Error != "" {
-			attrs = append(attrs, "error", state.Error)
+			attrs = append(attrs, "error_present", true)
+		}
+		if state.ErrorType != "" {
+			attrs = append(attrs, "error_type", state.ErrorType)
 		}
 		logger.Log(ctx, level, "Agent hook event", attrs...)
 		return ctx

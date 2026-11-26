@@ -12,12 +12,20 @@ paths:
       summary: 流式聊天
       deprecated: false
       description: >-
-        使用Server-Sent
-        Events实现的流式聊天，实时接收AI响应。第一次调用时创建新session，完成后通过X-Session-ID响应头返回session_id。后续对话通过X-Session-ID请求头传递session_id
+        使用Server-Sent Events实现流式聊天。先创建Session，再通过请求体的sessionID传递会话ID。
+        必须提供Idempotency-Key；新的逻辑请求使用新key，同一请求重试时复用原key及请求体。
+        已完成请求会重放保存的结果，不重复执行模型。
       operationId: streamChat
       tags:
         - 聊天
-      parameters: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
       requestBody:
         content:
           application/json:
@@ -100,6 +108,14 @@ paths:
               schema:
                 type: string
                 example: sess_20240118143022_abcd1234
+            X-Interaction-ID:
+              description: Stable interaction ID reused by idempotent retries
+              schema:
+                type: string
+        "409":
+          description: Idempotency conflict or active Session interaction
+        "429":
+          description: Conversation storage quota exhausted
         "400":
           description: 请求参数错误
           content:

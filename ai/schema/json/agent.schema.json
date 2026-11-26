@@ -14,6 +14,20 @@
       "additionalProperties": false,
       "required": ["model", "prompt_base_path"],
       "properties": {
+        "context_compiler_mode": {
+          "type": "string", "enum": ["enabled", "minimal"], "default": "enabled",
+          "description": "minimal keeps mandatory compiler security/budgets while disabling history and tools."
+        },
+        "context_tokens": { "type": "integer", "minimum": 1, "default": 32768 },
+        "context_safety_margin": { "type": "integer", "minimum": 1, "default": 1024 },
+        "max_context_bytes": { "type": "integer", "minimum": 1, "default": 8388608 },
+        "max_collect_bytes": { "type": "integer", "minimum": 1, "default": 8388608 },
+        "template_id": { "type": "string", "minLength": 1, "maxLength": 64, "default": "react" },
+        "template_version": { "type": "string", "minLength": 1, "maxLength": 32, "default": "1" },
+        "template_variables": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 4096 } },
+        "template_archive_files": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "allowed_tools": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "tool_required_scopes": { "type": "object", "additionalProperties": { "type": "string", "minLength": 1 } },
         "agent_type": {
           "type": "string",
           "default": "react",

@@ -19,6 +19,7 @@ package retrievers
 
 import (
 	"context"
+	"dubbo-admin-ai/security"
 	"dubbo-admin-ai/utils"
 	"fmt"
 	"log"
@@ -227,7 +228,7 @@ func NewMilvusRetriever(g *genkit.Genkit, config *MilvusConfig) (*MilvusRetrieve
 	// Load collection
 	loadOption := milvusclient.NewLoadCollectionOption(cfg.Collection)
 	if _, err := cli.LoadCollection(ctx, loadOption); err != nil {
-		log.Printf("Warning: failed to load collection: %v", err)
+		log.Printf("Warning: failed to load collection (%T)", err)
 	}
 
 	return &MilvusRetriever{
@@ -238,6 +239,7 @@ func NewMilvusRetriever(g *genkit.Genkit, config *MilvusConfig) (*MilvusRetrieve
 }
 
 func (r *MilvusRetriever) Retrieve(ctx context.Context, query string, opts ...retriever.Option) ([]*schema.Document, error) {
+	query = security.DefaultSanitizer().ModelInput(query)
 	switch r.config.SearchType {
 	case "dense":
 		return r.denseSearch(ctx, query, opts)
@@ -295,7 +297,7 @@ func (r *MilvusRetriever) denseSearch(ctx context.Context, query string, opts []
 		topK,
 		[]entity.Vector{entity.FloatVector(vector)},
 	).WithANNSField(r.config.DenseField). // Specify dense field for search
-		WithOutputFields(outputFields...) // Request text and metadata fields in results
+						WithOutputFields(outputFields...) // Request text and metadata fields in results
 
 	// Execute search
 	resultSets, err := r.client.Search(ctx, searchOption)
@@ -357,7 +359,7 @@ func (r *MilvusRetriever) sparseSearch(ctx context.Context, query string, opts [
 			topK,
 			[]entity.Vector{entity.Text(query)}, // entity.Text for BM25
 		).WithANNSField(r.config.SparseField). // Specify sparse field for search
-			WithOutputFields(outputFields...) // Request text and metadata fields in results
+							WithOutputFields(outputFields...) // Request text and metadata fields in results
 	} else {
 		// Fallback to sparse embedding generation
 		sparseEmbedding, err := r.sparseEmbedQuery(ctx, query)
@@ -439,7 +441,7 @@ func (r *MilvusRetriever) hybridSearch(ctx context.Context, query string, opts [
 		topK,
 		[]entity.Vector{entity.FloatVector(denseVector), sparseEmbedding},
 	).WithANNSField(r.config.DenseField). // Primary search field is dense
-		WithOutputFields(outputFields...) // Request text and metadata fields in results
+						WithOutputFields(outputFields...) // Request text and metadata fields in results
 
 	// Execute hybrid search
 	resultSets, err := r.client.Search(ctx, searchOption)
@@ -454,6 +456,7 @@ func (r *MilvusRetriever) hybridSearch(ctx context.Context, query string, opts [
 
 // embedQuery generates a dense embedding for the query.
 func (r *MilvusRetriever) embedQuery(ctx context.Context, query string) ([]float64, error) {
+	query = security.DefaultSanitizer().ModelInput(query)
 	if r.g == nil {
 		return nil, fmt.Errorf("genkit registry is nil")
 	}

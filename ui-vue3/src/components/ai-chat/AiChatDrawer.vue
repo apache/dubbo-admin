@@ -114,7 +114,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, nextTick } from 'vue'
+import { computed, ref, shallowRef, watch, onMounted, nextTick } from 'vue'
 import { message } from 'ant-design-vue'
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js'
@@ -162,6 +162,7 @@ const props = withDefaults(
   defineProps<{
     open?: boolean
     service: ChatService<unknown>
+    // Must return JSON-serializable data; the drawer snapshots it for retries.
     collectContext?: () => unknown
     labels?: Partial<AIChatLabels>
     suggestions?: ChatSuggestion[]
@@ -200,6 +201,8 @@ const sessions = ref<Session[]>([])
 const historyModalVisible = ref(false)
 
 const lastUserMessage = ref<string>('') // 保存最后一次用户消息用于重试
+const lastRequestContext = shallowRef<unknown>()
+const lastIdempotencyKey = ref('')
 const usageInfo = ref<any>(null) // 保存使用情况信息
 
 // 子组件引用
@@ -322,20 +325,22 @@ async function retryLastMessage() {
     return
   }
 
-  // 删除最后的错误消息，如果有的话
-  if (messages.value.length > 0 && messages.value[messages.value.length - 1].type === 'error') {
-    messages.value.pop()
+  // Reuse the original user-message node and discard its prior assistant/error
+  // nodes. The retry keeps the same idempotency key but must not duplicate UI.
+  const userIndex = [...messages.value].map((item) => item.role).lastIndexOf('user')
+  if (userIndex >= 0) {
+    messages.value = messages.value.slice(0, userIndex + 1)
   }
 
   // 重新发送上一条消息
   if (chatInputRef.value) {
     chatInputRef.value.inputMessage = lastUserMessage.value
   }
-  await sendMessage()
+  await sendMessage(true)
 }
 
 // 发送消息并接收流式响应
-async function sendMessage() {
+async function sendMessage(isRetry = false) {
   // 获取输入消息
   let inputMsg = ''
   if (chatInputRef.value) {
@@ -344,10 +349,28 @@ async function sendMessage() {
 
   if (!inputMsg.trim() || isLoading.value) return
 
-  const context = props.collectContext?.()
+  // Snapshot the JSON payload once so later page-state mutations cannot change
+  // the request associated with the same idempotency key. JSON also handles
+  // reactive context objects without passing Vue proxies to structuredClone.
+  let context: unknown
+  try {
+    const collected = isRetry ? lastRequestContext.value : props.collectContext?.()
+    context = isRetry || collected === undefined ? collected : JSON.parse(JSON.stringify(collected))
+  } catch {
+    addErrorMessage(resolvedLabels.value.requestFailed)
+    return
+  }
+  const idempotencyKey = isRetry ? lastIdempotencyKey.value : crypto.randomUUID()
+
+  if (!idempotencyKey) {
+    addErrorMessage(resolvedLabels.value.requestFailed)
+    return
+  }
 
   // 保存最后一条用户消息
   lastUserMessage.value = inputMsg
+  lastRequestContext.value = context
+  lastIdempotencyKey.value = idempotencyKey
 
   // 如果没有当前会话ID，先创建一个新会话
   if (!currentSessionId.value) {
@@ -359,14 +382,16 @@ async function sendMessage() {
     }
   }
 
-  const userMessage: ChatMessage = {
-    id: Date.now().toString(),
-    content: inputMsg,
-    role: 'user',
-    timestamp: Date.now()
+  let userMessage: ChatMessage
+  if (isRetry) {
+    const existing = [...messages.value].reverse().find((item) => item.role === 'user')
+    userMessage = existing || { id: Date.now().toString(), content: inputMsg, role: 'user', timestamp: Date.now() }
+    userMessage.content = inputMsg
+    if (!existing) messages.value.push(userMessage)
+  } else {
+    userMessage = { id: Date.now().toString(), content: inputMsg, role: 'user', timestamp: Date.now() }
+    messages.value.push(userMessage)
   }
-
-  messages.value.push(userMessage)
 
   const aiMessage: ChatMessage = {
     id: (Date.now() + 1).toString(),
@@ -395,7 +420,8 @@ async function sendMessage() {
     const stream = await props.service.sendChatMessage(
       userMessage.content,
       currentSessionId.value,
-      context
+      context,
+      idempotencyKey
     )
 
     // 处理SSE流

@@ -31,6 +31,7 @@ func TestAgentSpec_Validate(t *testing.T) {
 	}{
 		{name: "prompt_required", mutate: func(c *compReact.AgentSpec) { c.PromptFile = "" }, errContain: "prompt_file is required"},
 		{name: "context_window_turns_negative", mutate: func(c *compReact.AgentSpec) { c.ContextWindowTurns = -1 }, errContain: "context_window_turns must not be negative"},
+		{name: "collection_budget_negative", mutate: func(c *compReact.AgentSpec) { c.MaxCollectBytes = -1 }, errContain: "context budgets must not be negative"},
 		{name: "temperature_out_of_range", mutate: func(c *compReact.AgentSpec) { c.Temperature = 3 }, errContain: "temperature must be in"},
 		{name: "top_p_out_of_range", mutate: func(c *compReact.AgentSpec) { c.TopP = 2 }, errContain: "top_p must be in"},
 		{name: "max_tokens_required", mutate: func(c *compReact.AgentSpec) { c.MaxTokens = 0 }, errContain: "max_tokens must be greater than 0"},
@@ -58,6 +59,23 @@ func TestAgentSpec_ApplyDefaults_ContextWindowTurns(t *testing.T) {
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("defaulted config should validate, got %v", err)
+	}
+}
+
+func TestAgentSpecCollectionBudgetIsIndependentOfRequestBudget(t *testing.T) {
+	cfg := validAgentSpec()
+	cfg.MaxContextBytes = 16 << 10
+	cfg.ApplyDefaults()
+	if cfg.MaxCollectBytes != 8<<20 || cfg.MaxContextBytes != 16<<10 {
+		t.Fatal("collection limit followed the final request budget")
+	}
+	cfg.MaxCollectBytes = 256 << 10
+	cfg.ApplyDefaults()
+	if cfg.MaxCollectBytes != 256<<10 {
+		t.Fatal("explicit collection limit was overwritten")
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatal(err)
 	}
 }
 
