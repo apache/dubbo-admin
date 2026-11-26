@@ -30,7 +30,7 @@ type ExpansionConfig struct {
 	Enabled     bool
 	Model       string
 	Temperature float64
-	NumQueries  int  // Number of expanded queries to generate (default: 3)
+	NumQueries  int    // Number of expanded queries to generate (default: 3)
 	Prompt      string // Custom system prompt
 }
 
@@ -108,8 +108,9 @@ func (s *ExpansionStep) Process(ctx context.Context, query string) (*Result, err
 		return nil, nil
 	}
 
+	query = modelInput(query)
 	input := ExpansionInput{
-		Query:     query,
+		Query:      query,
 		NumQueries: s.cfg.NumQueries,
 	}
 
@@ -131,7 +132,7 @@ func (s *ExpansionStep) Process(ctx context.Context, query string) (*Result, err
 		Queries:  queries,
 		Modified: true,
 		Metadata: map[string]any{
-			"expansion_count": len(output.Queries),
+			"expansion_count":  len(output.Queries),
 			"expanded_queries": output.Queries,
 		},
 	}, nil
@@ -139,7 +140,7 @@ func (s *ExpansionStep) Process(ctx context.Context, query string) (*Result, err
 
 // ExpansionInput represents the input for query expansion.
 type ExpansionInput struct {
-	Query     string `json:"query"`
+	Query      string `json:"query"`
 	NumQueries int    `json:"num_queries"`
 }
 

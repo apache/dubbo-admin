@@ -28,6 +28,37 @@
           "minimum": 1,
           "default": 100
         },
+		"quota": {
+		  "type": "object",
+		  "additionalProperties": false,
+		  "properties": {
+			"max_sessions_per_tenant": {"type": "integer", "minimum": 1, "default": 1000},
+			"max_events_per_turn": {"type": "integer", "minimum": 1, "default": 1000},
+			"max_session_bytes": {"type": "integer", "minimum": 1, "default": 10485760},
+			"max_tenant_bytes": {"type": "integer", "minimum": 1, "default": 1073741824},
+			"max_in_memory_entities": {"type": "integer", "minimum": 1, "default": 100000, "description": "Maximum conversation entities retained by the in-process memory backend; ignored by the gorm backend"}
+		  }
+		},
+		"lifecycle": {
+		  "type": "object",
+		  "additionalProperties": false,
+		  "properties": {
+			"retention_seconds": {"type": "integer", "minimum": 1, "default": 86400},
+			"cleanup_interval_seconds": {"type": "integer", "minimum": 1, "default": 3600},
+			"cleanup_batch_size": {"type": "integer", "minimum": 1, "default": 100},
+			"interaction_lease_seconds": {"type": "integer", "minimum": 1, "default": 1800}
+		  }
+		},
+		"usage_audit": {
+		  "type": "object",
+		  "additionalProperties": false,
+		  "properties": {
+			"retention_seconds": {"type": "integer", "minimum": 1, "default": 2592000},
+			"max_usage_events": {"type": "integer", "minimum": 1, "default": 100000},
+			"max_audit_events": {"type": "integer", "minimum": 1, "default": 100000},
+			"cleanup_batch_size": {"type": "integer", "minimum": 1, "default": 1000}
+		  }
+		},
         "database": {
           "type": "object",
           "additionalProperties": false,

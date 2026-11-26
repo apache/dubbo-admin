@@ -19,18 +19,14 @@ package hooks
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
-
-const truncatedContentLimit = 4096
 
 func TraceIDFromContext(ctx context.Context) string {
 	spanContext := trace.SpanContextFromContext(ctx)
@@ -43,14 +39,14 @@ func TraceIDFromContext(ctx context.Context) string {
 // NewTracingRegistration returns a complete context-deriving tracing
 // registration. Its lifecycle events are intentionally not configurable so a
 // partial registration cannot leak a span or end an unrelated parent span.
-func NewTracingRegistration(tracer trace.Tracer, captureContent string) Registration {
+func NewTracingRegistration(tracer trace.Tracer, _ string) Registration {
 	return Registration{
 		Events:         AllEvents(),
 		Tools:          []string{AllTools},
-		CaptureContent: captureContent != CaptureNone,
+		CaptureContent: false,
 		DerivesContext: true,
 		lazyContent:    true,
-		Hook:           newTracingHook(tracer, captureContent),
+		Hook:           newTracingHook(tracer, CaptureNone),
 	}
 }
 
@@ -58,25 +54,18 @@ func newTracingHook(tracer trace.Tracer, captureContent string) Hook {
 	return func(ctx context.Context, state State) context.Context {
 		if eventStartsSpan(state.Event) {
 			attrs := stateAttributes(state)
-			var span trace.Span
-			ctx, span = tracer.Start(ctx, spanName(state),
+			ctx, _ = tracer.Start(ctx, spanName(state),
 				trace.WithSpanKind(spanKind(state.Event)),
 				trace.WithAttributes(attrs...),
 			)
-			if span.IsRecording() {
-				span.SetAttributes(contentAttributes(state, captureContent, true)...)
-			}
 			return ctx
 		}
 
 		span := trace.SpanFromContext(ctx)
 		span.SetAttributes(stateAttributes(state)...)
-		if span.IsRecording() {
-			span.SetAttributes(contentAttributes(state, captureContent, false)...)
-		}
 		if state.Error != "" {
-			span.RecordError(errors.New(state.Error))
-			span.SetStatus(codes.Error, state.Error)
+			span.RecordError(errors.New("operation failed"))
+			span.SetStatus(codes.Error, "operation failed")
 		}
 		switch state.Event {
 		case EventInteractionEnd, EventIterationEnd, EventStageEnd, EventModelCallEnd, EventToolCallEnd:
@@ -172,6 +161,9 @@ func stateAttributes(state State) []attribute.KeyValue {
 	if state.ErrorType != "" {
 		attrs = append(attrs, attribute.String("error.type", state.ErrorType))
 	}
+	if state.EstimatorVersion != "" {
+		attrs = append(attrs, attribute.Int("ai.context.estimated_input_tokens", state.EstimatedInputTokens), attribute.String("ai.context.template_ref", state.TemplateRef), attribute.String("ai.context.compiler_version", state.CompilerVersion), attribute.String("ai.context.estimator_version", state.EstimatorVersion))
+	}
 	if state.Event == EventModelCallEnd && state.InputTokens > 0 {
 		attrs = append(attrs, attribute.Int("gen_ai.usage.input_tokens", state.InputTokens))
 	}
@@ -182,79 +174,6 @@ func stateAttributes(state State) []attribute.KeyValue {
 		attrs = append(attrs, attribute.Int("agent.usage.total_tokens", state.TotalTokens))
 	}
 	return attrs
-}
-
-func contentAttributes(state State, policy string, input bool) []attribute.KeyValue {
-	if policy == CaptureNone {
-		return nil
-	}
-	value, key := semanticContent(state, input)
-	if value == "" {
-		return nil
-	}
-
-	text := value
-	if policy == CaptureTruncated && len(text) > truncatedContentLimit {
-		text = truncateSemanticJSON(text, key)
-	}
-	return []attribute.KeyValue{attribute.String(key, text)}
-}
-
-func truncateSemanticJSON(text, key string) string {
-	var value any
-	if err := json.Unmarshal([]byte(text), &value); err != nil {
-		return strconv.Quote(strings.ToValidUTF8(text[:truncatedContentLimit], "") + "…")
-	}
-	value = truncateJSONStrings(value, 512)
-	encoded, err := json.Marshal(value)
-	if err == nil && len(encoded) <= truncatedContentLimit {
-		return string(encoded)
-	}
-	if key == "gen_ai.input.messages" || key == "gen_ai.output.messages" {
-		return "[]"
-	}
-	return "{}"
-}
-
-func truncateJSONStrings(value any, limit int) any {
-	switch typed := value.(type) {
-	case string:
-		if len(typed) <= limit {
-			return typed
-		}
-		return strings.ToValidUTF8(typed[:limit], "") + "…"
-	case []any:
-		for i := range typed {
-			typed[i] = truncateJSONStrings(typed[i], limit)
-		}
-	case map[string]any:
-		for key := range typed {
-			typed[key] = truncateJSONStrings(typed[key], limit)
-		}
-	}
-	return value
-}
-
-func semanticContent(state State, input bool) (string, string) {
-	switch state.Event {
-	case EventModelCallStart:
-		if input {
-			return state.snapshotInputContent(), "gen_ai.input.messages"
-		}
-	case EventModelCallEnd:
-		if !input {
-			return state.snapshotOutputContent(), "gen_ai.output.messages"
-		}
-	case EventToolCallStart:
-		if input {
-			return state.snapshotInputContent(), "gen_ai.tool.call.arguments"
-		}
-	case EventToolCallEnd:
-		if !input && state.Error == "" && !state.Degraded {
-			return state.snapshotOutputContent(), "gen_ai.tool.call.result"
-		}
-	}
-	return "", ""
 }
 
 func providerName(model string) string {

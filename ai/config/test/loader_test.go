@@ -109,6 +109,42 @@ func TestLoader_Component_Parse(t *testing.T) {
 	}
 }
 
+func TestLoader_ConversationSummary(t *testing.T) {
+	for _, tc := range []struct {
+		name, settings string
+		invalid        bool
+	}{
+		{"defaults", "enabled: true", false},
+		{"unknown field", "enabled: true\n    background_queue: true", true},
+		{"unbounded calls", "enabled: true\n    recovery_max_calls: 100000", true},
+		{"fragment too large", "enabled: true\n    fragment_bytes: 1000000", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			t.Setenv("SCHEMA_DIR", repoSchemaDir(t))
+			writeFile(t, filepath.Join(dir, "agent.yaml"), "type: agent\nspec:\n  model: fixture\n  prompt_base_path: ./prompts\n  conversation_summary:\n    "+tc.settings+"\n")
+			loader := config.NewLoader(filepath.Join(dir, "config.yaml"))
+			cfg, err := loader.LoadComponent("agent.yaml")
+			if tc.invalid {
+				if err == nil {
+					t.Fatal("invalid summary configuration accepted")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			var spec react.AgentSpec
+			if err := cfg.Spec.Decode(&spec); err != nil {
+				t.Fatal(err)
+			}
+			if !spec.ConversationSummary.Enabled || spec.ConversationSummary.FragmentBytes != 8192 || spec.ConversationSummary.RecoveryMaxCalls != 8 {
+				t.Fatalf("summary config/defaults lost: %+v", spec.ConversationSummary)
+			}
+		})
+	}
+}
+
 func TestLoader_MainConfig_Structural(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -198,7 +234,7 @@ func TestLoader_Component_DefaultInjection(t *testing.T) {
 					t.Fatalf("decode server spec: %v", err)
 				}
 				if spec.Port != 8888 || spec.Host != "127.0.0.1" || spec.ReadTimeout != 30 || spec.WriteTimeout != 30 ||
-					spec.Authentication.Mode != "static" || spec.Authentication.TenantID != "default" || spec.Authentication.UserID != "local-user" {
+					spec.Auth.Enabled || spec.Auth.TenantID != "default" || spec.Auth.UserID != "local-user" {
 					t.Fatalf("server defaults not injected: %+v", spec)
 				}
 			},
@@ -315,6 +351,26 @@ spec:
 				t.Fatalf("LoadComponent() error: %v", err)
 			}
 			tt.assertFn(t, cfg)
+		})
+	}
+}
+
+func TestLoader_MemoryRejectsExplicitZeroQuota(t *testing.T) {
+	for _, spec := range []string{
+		"  max_turns: 0\n",
+		"  quota:\n    max_sessions_per_tenant: 0\n",
+		"  quota:\n    max_events_per_turn: 0\n",
+		"  quota:\n    max_session_bytes: 0\n",
+		"  quota:\n    max_tenant_bytes: 0\n",
+		"  quota:\n    max_in_memory_entities: 0\n",
+	} {
+		t.Run(strings.TrimSpace(spec), func(t *testing.T) {
+			dir := t.TempDir()
+			t.Setenv("SCHEMA_DIR", repoSchemaDir(t))
+			writeFile(t, filepath.Join(dir, "memory.yaml"), "type: memory\nspec:\n"+spec)
+			loader := config.NewLoader(filepath.Join(dir, "config.yaml"))
+			_, err := loader.LoadComponent("memory.yaml")
+			mustContain(t, err, "structural error")
 		})
 	}
 }
