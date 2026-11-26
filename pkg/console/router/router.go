@@ -38,6 +38,8 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) error {
 		auth.GET("/providers", authHandler.Providers)
 		auth.GET("/providers/:provider/login", authHandler.ProviderLogin)
 		auth.GET("/providers/:provider/callback", authHandler.ProviderCallback)
+		// JWKS (JSON Web Key Set) exposes public keys for verifying AI access tokens.
+		auth.GET("/jwks", authHandler.JWKS)
 	}
 
 	protected := api.Group("")
@@ -46,6 +48,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) error {
 		auth := protected.Group("/auth")
 		auth.POST("/logout", authHandler.Logout)
 		auth.GET("/userinfo", authHandler.UserInfo)
+		auth.POST("/token", authHandler.Token)
 	}
 
 	{

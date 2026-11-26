@@ -16,6 +16,7 @@
  */
 
 import request from '@/base/http/request'
+import { accessTokenManager } from '@/auth/accessToken'
 
 export interface AuthProvider {
   id: string
@@ -26,6 +27,7 @@ export interface AuthProvider {
 export interface AuthConfiguration {
   methods: string[]
   providers: AuthProvider[]
+  accessTokenEnabled?: boolean
 }
 
 export interface Principal {
@@ -47,6 +49,7 @@ export const login = (data: any): Promise<any> => {
   })
 }
 export const logout = (): Promise<any> => {
+  accessTokenManager.clear()
   return request({
     url: '/auth/logout',
     method: 'post'

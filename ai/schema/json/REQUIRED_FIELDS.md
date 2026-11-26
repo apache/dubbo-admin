@@ -80,8 +80,11 @@ This document defines required-field policy for configuration schemas.
 | `spec.cors_origins` | no | Default: `[]`; trusted browser origins must be listed explicitly. |
 | `spec.read_timeout` | no | Default: `30`, integer `>= 1`. |
 | `spec.write_timeout` | no | Default: `30`, integer `>= 1`. |
-| `spec.authentication.allow_insecure_static_auth` | no | Default: `false`; development-only opt-in for non-loopback static authentication. |
-| `spec.authentication.adopt_legacy_sessions` | no | Default: `false`; explicitly runs legacy ownership adoption. |
+| `spec.auth.enabled` | no | Default: `false`; enable Admin RS256/JWKS bearer authentication. |
+| `spec.auth.jwks_url`, `spec.auth.issuer`, `spec.auth.audience` | when enabled | Admin JWKS HTTP(S) URL and expected token issuer/audience. |
+| `spec.auth.tenant_id` | no | Default: `default`; trusted fallback for tokens without signed `tenant_id`. |
+| `spec.auth.allow_insecure_static_auth` | no | Default: `false`; development-only opt-in for non-loopback static authentication. |
+| `spec.auth.adopt_legacy_sessions` | no | Default: `false`; explicitly runs legacy ownership adoption. |
 
 ## RAG Component (`component/rag/rag.yaml`)
 

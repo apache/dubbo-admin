@@ -42,6 +42,10 @@ func NewRouter(agent agent.Agent, store conversationstore.Store, maintenance con
 }
 
 func NewRouterWithCORS(agent agent.Agent, store conversationstore.Store, maintenance conversationstore.MaintenanceStore, authenticator security.Authenticator, corsOrigins []string) (*Router, error) {
+	return NewRouterWithLifecycle(agent, store, maintenance, authenticator, corsOrigins, conversationstore.DefaultLifecyclePolicy())
+}
+
+func NewRouterWithLifecycle(agent agent.Agent, store conversationstore.Store, maintenance conversationstore.MaintenanceStore, authenticator security.Authenticator, corsOrigins []string, lifecycle conversationstore.LifecyclePolicy) (*Router, error) {
 	if authenticator == nil {
 		return nil, fmt.Errorf("authenticator is required")
 	}
@@ -51,8 +55,11 @@ func NewRouterWithCORS(agent agent.Agent, store conversationstore.Store, mainten
 	if maintenance == nil {
 		return nil, fmt.Errorf("maintenance store is required")
 	}
-	sessionMgr := session.NewManager(store, maintenance)
-	handler := NewAgentHandler(agent, sessionMgr)
+	// The Memory component owns the cleanup worker. The HTTP manager only owns
+	// request-facing session operations.
+	sessionMgr := session.NewManagerWithLifecycle(store, nil, security.OwnershipPolicy{}, lifecycle)
+	handler := NewAgentHandler(agent, sessionMgr, store)
+	handler.SetInteractionLease(lifecycle.InteractionLease)
 
 	router := &Router{
 		engine:        gin.Default(),
@@ -68,13 +75,20 @@ func NewRouterWithCORS(agent agent.Agent, store conversationstore.Store, mainten
 func (r *Router) setupRoutes(corsOrigins []string) {
 	// Add CORS middleware
 	r.engine.Use(corsMiddleware(corsOrigins))
+	r.engine.Use(authenticationMiddleware(r.authenticator))
 
 	// API v1 group
 	v1 := r.engine.Group("/api/v1/ai")
-	v1.Use(authenticationMiddleware(r.authenticator))
 	{
 		// Chat endpoints
 		v1.POST("/chat/stream", r.handler.StreamChat) // Streaming chat
+		v1.GET("/memories", r.handler.ListMemories)
+		v1.POST("/memories", r.handler.SaveMemory)
+		v1.PUT("/memories/:memoryId", r.handler.SaveMemory)
+		v1.DELETE("/memories/:memoryId", r.handler.DeleteMemory)
+		v1.POST("/memories/clear", r.handler.ClearMemories)
+		v1.GET("/memory-settings", r.handler.GetMemorySettings)
+		v1.PUT("/memory-settings", r.handler.ChangeMemorySettings)
 
 		// Session management
 		v1.POST("/sessions", r.handler.CreateSession)              // Create session
@@ -86,8 +100,15 @@ func (r *Router) setupRoutes(corsOrigins []string) {
 
 func authenticationMiddleware(authenticator security.Authenticator) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// The Router is the production authentication path; keep the explicit
+		// public probes exempt here as well, or tokenless health checks fail.
+		if isPublicProbe(c.Request.URL.Path) {
+			c.Next()
+			return
+		}
 		access, err := authenticator.Authenticate(c.Request)
 		if err != nil || access.Validate() != nil || access.IsSystem() {
+			c.Header("WWW-Authenticate", "Bearer")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, NewAPIErrorResponse("AUTHENTICATION_REQUIRED", "Authentication required"))
 			return
 		}
@@ -123,8 +144,8 @@ func corsMiddleware(allowedOrigins []string) gin.HandlerFunc {
 		}
 		if c.Writer.Header().Get("Access-Control-Allow-Origin") != "" {
 			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, traceparent, tracestate, baggage")
-			c.Header("Access-Control-Expose-Headers", "X-Trace-ID")
+			c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, Idempotency-Key, traceparent, tracestate, baggage")
+			c.Header("Access-Control-Expose-Headers", "X-Trace-ID, X-Interaction-ID, WWW-Authenticate")
 		}
 
 		if c.Request.Method == "OPTIONS" {

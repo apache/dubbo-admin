@@ -28,6 +28,7 @@ import (
 	"dubbo-admin-ai/security"
 	conversationstore "dubbo-admin-ai/store"
 	memorystore "dubbo-admin-ai/store/memory"
+	"dubbo-admin-ai/testutils"
 
 	"github.com/firebase/genkit/go/ai"
 )
@@ -36,6 +37,86 @@ func TestMemoryStore_Contract(t *testing.T) {
 	RunStoreContractTests(t, func() conversationstore.BackendStore {
 		return memorystore.NewMemoryStore(3)
 	}, 3)
+}
+
+func TestMemoryStore_CompilationContract(t *testing.T) {
+	RunCompilationContractTests(t, func() conversationstore.BackendStore { return memorystore.NewMemoryStore(10) })
+}
+
+func TestMemoryStore_SummaryContract(t *testing.T) {
+	RunSummaryContractTests(t, func() conversationstore.BackendStore { return memorystore.NewMemoryStore(20) })
+}
+
+func TestMemoryStore_ExplicitMemoryContract(t *testing.T) {
+	RunExplicitMemoryContractTests(t, func() conversationstore.BackendStore { return memorystore.NewMemoryStore(20) })
+}
+
+func TestMemoryStore_DisableMemoryForMultipleUsersAtFullQuota(t *testing.T) {
+	quota := conversationstore.DefaultQuotaPolicy()
+	quota.MaxTenantBytes = 1
+	m := memorystore.NewMemoryStoreWithPolicy(quota)
+	ctx := context.Background()
+	base := testutils.TestAccess()
+	for i := 0; i < 3; i++ {
+		a := base
+		a.Subject.UserID = fmt.Sprintf("full-quota-user-%d", i)
+		off := false
+		if _, err := m.ChangeMemorySettings(ctx, a, conversationstore.MemoryMutation{Generation: 1, StateVersion: 1, Enabled: &off}, false); err != nil {
+			t.Fatalf("user %d disable at full quota: %v", i, err)
+		}
+	}
+}
+
+func TestMemoryStore_QuotaContract(t *testing.T) {
+	RunQuotaContractTests(t, func(quota conversationstore.QuotaPolicy) conversationstore.BackendStore {
+		return memorystore.NewMemoryStoreWithPolicy(quota)
+	})
+}
+
+func TestMemoryStore_UsageAuditContract(t *testing.T) {
+	RunUsageAuditContractTests(t, func() conversationstore.UsageAuditMaintenanceStore { return memorystore.NewMemoryStore(3) })
+}
+
+func TestMemoryUsageAuditCleanupBoundsScanningAndAdvances(t *testing.T) {
+	for _, kind := range []string{"usage", "audit"} {
+		t.Run(kind, func(t *testing.T) {
+			s := memorystore.NewMemoryStore()
+			s.SetUsageAuditPolicy(conversationstore.UsageAuditPolicy{MaxUsageEvents: 4, MaxAuditEvents: 4, CleanupBatchSize: 1})
+			ctx := security.WithAccessContext(context.Background(), contractAccess)
+			cleanup := s.CleanupUsage
+			if kind == "audit" {
+				cleanup = s.CleanupAudit
+			}
+			record := func(id string, at time.Time) error {
+				if kind == "audit" {
+					return s.RecordAudit(ctx, conversationstore.AuditEvent{ID: id, TenantID: contractAccess.Subject.TenantID, CreatedAt: at})
+				}
+				return s.RecordUsage(ctx, conversationstore.UsageEvent{ID: id, TenantID: contractAccess.Subject.TenantID, CreatedAt: at})
+			}
+			for i := 0; i < 4; i++ {
+				at := time.Now()
+				if i == 3 {
+					at = at.Add(-40 * 24 * time.Hour)
+				}
+				if err := record(fmt.Sprint(i), at); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for i := 0; i < 4; i++ {
+				n, err := cleanup(ctx, security.SystemAccessContext(), time.Now(), 100)
+				want := 0
+				if i == 3 {
+					want = 1
+				}
+				if err != nil || n != want {
+					t.Fatalf("batch %d removed %d, %v; want %d", i, n, err, want)
+				}
+			}
+			if err := record("replacement", time.Now()); err != nil {
+				t.Fatalf("deleted record retained capacity: %v", err)
+			}
+		})
+	}
 }
 
 func newTestSession(id string, updatedAt time.Time) *conversationstore.Session {

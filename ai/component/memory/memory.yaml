@@ -2,3 +2,8 @@ type: memory
 spec:
   history_key: "chat_history"
   max_turns: 100
+  explicit_memory:
+    max_records: 128
+    max_value_bytes: 4096
+    max_user_bytes: 524288
+    max_ttl_seconds: 31536000
