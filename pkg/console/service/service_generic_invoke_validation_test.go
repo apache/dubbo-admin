@@ -25,7 +25,10 @@ import (
 	"testing"
 	"time"
 
+	dubbocommon "dubbo.apache.org/dubbo-go/v3/common"
 	dubboconstant "dubbo.apache.org/dubbo-go/v3/common/constant"
+	"dubbo.apache.org/dubbo-go/v3/common/extension"
+	protocolbase "dubbo.apache.org/dubbo-go/v3/protocol/base"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
@@ -36,6 +39,185 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/store"
 	memoryst "github.com/apache/dubbo-admin/pkg/store/memory"
 )
+
+func TestResolveGenericInvokeTimeout(t *testing.T) {
+	invocation := genericInvocation{Timeout: 5 * time.Second}
+
+	t.Run("uses remaining deadline", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		deadline, _ := ctx.Deadline()
+		before := ceilTimeoutToMillisecond(time.Until(deadline))
+		got, err := resolveGenericInvokeTimeout(ctx, invocation)
+		if err != nil || got <= 0 || got < time.Until(deadline) || got > before || got%time.Millisecond != 0 {
+			t.Fatalf("expected remaining millisecond-aligned context timeout, got %v, %v", got, err)
+		}
+	})
+
+	t.Run("rejects expired deadline", func(t *testing.T) {
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+		defer cancel()
+		_, err := resolveGenericInvokeTimeout(ctx, invocation)
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("expected deadline exceeded, got %v", err)
+		}
+	})
+
+	t.Run("rejects canceled context before deadline", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		cancel()
+		_, err := resolveGenericInvokeTimeout(ctx, invocation)
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("expected context canceled, got %v", err)
+		}
+	})
+
+	t.Run("uses shorter invocation timeout than context deadline", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		got, err := resolveGenericInvokeTimeout(ctx, genericInvocation{Timeout: 2 * time.Second})
+		if err != nil || got != 2*time.Second {
+			t.Fatalf("expected shorter invocation timeout 2s, got %v, %v", got, err)
+		}
+	})
+
+	t.Run("rounds sub-millisecond timeout up to 1ms", func(t *testing.T) {
+		got, err := resolveGenericInvokeTimeout(context.Background(), genericInvocation{Timeout: 500 * time.Microsecond})
+		if err != nil || got != time.Millisecond {
+			t.Fatalf("expected 1ms, got %v, %v", got, err)
+		}
+	})
+
+	t.Run("handles nil context", func(t *testing.T) {
+		got, err := resolveGenericInvokeTimeout(nil, invocation)
+		if err != nil || got != invocation.Timeout {
+			t.Fatalf("expected invocation timeout %v, got %v, %v", invocation.Timeout, got, err)
+		}
+	})
+
+	t.Run("uses request timeout without deadline", func(t *testing.T) {
+		got, err := resolveGenericInvokeTimeout(context.Background(), invocation)
+		if err != nil || got != invocation.Timeout {
+			t.Fatalf("expected request timeout %v, got %v, %v", invocation.Timeout, got, err)
+		}
+	})
+}
+
+type genericInvokeReferenceRecorder struct {
+	protocolbase.BaseProtocol
+	url *dubbocommon.URL
+}
+
+func (p *genericInvokeReferenceRecorder) Refer(url *dubbocommon.URL) protocolbase.Invoker {
+	p.url = url
+	return protocolbase.NewBaseInvoker(url)
+}
+
+func TestInvokeGenericServiceRPCReferenceTimeout(t *testing.T) {
+	originalDubbo := extension.GetProtocol(dubboconstant.DubboProtocol)
+	originalTriple := extension.GetProtocol(dubboconstant.TriProtocol)
+	t.Cleanup(func() {
+		extension.SetProtocol(dubboconstant.DubboProtocol, func() protocolbase.Protocol { return originalDubbo })
+		extension.SetProtocol(dubboconstant.TriProtocol, func() protocolbase.Protocol { return originalTriple })
+	})
+
+	for _, timeout := range []time.Duration{100 * time.Millisecond, 5 * time.Second} {
+		t.Run("dubbo/"+timeout.String(), func(t *testing.T) {
+			recorder := &genericInvokeReferenceRecorder{}
+			extension.SetProtocol(dubboconstant.DubboProtocol, func() protocolbase.Protocol { return recorder })
+
+			_, err := invokeGenericServiceRPC(context.Background(), genericInvocation{
+				URL:           "dubbo://127.0.0.1:20880",
+				Protocol:      dubboconstant.DubboProtocol,
+				Serialization: dubboconstant.Hessian2Serialization,
+				ServiceName:   "example.Calculator",
+				MethodName:    "delay",
+				Timeout:       timeout,
+			})
+			if err != nil {
+				t.Fatalf("invoke generic service: %v", err)
+			}
+			if recorder.url == nil {
+				t.Fatal("expected a Dubbo reference URL")
+			}
+			if got := recorder.url.GetParam(dubboconstant.TimeoutKey, ""); got != timeout.String() {
+				t.Fatalf("expected reference timeout %v, got %q", timeout, got)
+			}
+		})
+	}
+
+	t.Run("dubbo/context-deadline", func(t *testing.T) {
+		recorder := &genericInvokeReferenceRecorder{}
+		extension.SetProtocol(dubboconstant.DubboProtocol, func() protocolbase.Protocol { return recorder })
+
+		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+		defer cancel()
+		_, err := invokeGenericServiceRPC(ctx, genericInvocation{
+			URL:           "dubbo://127.0.0.1:20880",
+			Protocol:      dubboconstant.DubboProtocol,
+			Serialization: dubboconstant.Hessian2Serialization,
+			ServiceName:   "example.Calculator",
+			MethodName:    "delay",
+			Timeout:       5 * time.Second,
+		})
+		if err != nil {
+			t.Fatalf("invoke generic service: %v", err)
+		}
+		if recorder.url == nil {
+			t.Fatal("expected a Dubbo reference URL")
+		}
+		rawTimeout := recorder.url.GetParam(dubboconstant.TimeoutKey, "")
+		parsed, err := time.ParseDuration(rawTimeout)
+		if err != nil || parsed <= 0 || parsed > 200*time.Millisecond || parsed%time.Millisecond != 0 {
+			t.Fatalf("expected millisecond-aligned timeout in (0, 200ms], got %q (%v)", rawTimeout, err)
+		}
+	})
+
+	t.Run("dubbo/expired-context-skips-refer", func(t *testing.T) {
+		recorder := &genericInvokeReferenceRecorder{}
+		extension.SetProtocol(dubboconstant.DubboProtocol, func() protocolbase.Protocol { return recorder })
+
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+		defer cancel()
+		_, err := invokeGenericServiceRPC(ctx, genericInvocation{
+			URL:           "dubbo://127.0.0.1:20880",
+			Protocol:      dubboconstant.DubboProtocol,
+			Serialization: dubboconstant.Hessian2Serialization,
+			ServiceName:   "example.Calculator",
+			MethodName:    "delay",
+			Timeout:       5 * time.Second,
+		})
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("expected deadline exceeded, got %v", err)
+		}
+		if recorder.url != nil {
+			t.Fatalf("expected Refer not to be called for expired context, got %v", recorder.url)
+		}
+	})
+
+	t.Run("triple/150ms", func(t *testing.T) {
+		recorder := &genericInvokeReferenceRecorder{}
+		extension.SetProtocol(dubboconstant.TriProtocol, func() protocolbase.Protocol { return recorder })
+
+		_, err := invokeGenericServiceRPC(context.Background(), genericInvocation{
+			URL:           "tri://127.0.0.1:50051",
+			Protocol:      dubboconstant.TriProtocol,
+			Serialization: dubboconstant.Hessian2Serialization,
+			ServiceName:   "example.Calculator",
+			MethodName:    "delay",
+			Timeout:       150 * time.Millisecond,
+		})
+		if err != nil {
+			t.Fatalf("invoke generic service: %v", err)
+		}
+		if recorder.url == nil {
+			t.Fatal("expected a Triple reference URL")
+		}
+		if got := recorder.url.GetParam(dubboconstant.TimeoutKey, ""); got != (150 * time.Millisecond).String() {
+			t.Fatalf("expected reference timeout 150ms, got %q", got)
+		}
+	})
+}
 
 func TestInvokeServiceGenericInvalidArgsNoRPC(t *testing.T) {
 	stores := make(map[coremodel.ResourceKind]store.ResourceStore)
@@ -245,6 +427,9 @@ func TestInvokeServiceGenericInvalidArgsNoRPC(t *testing.T) {
 			"unexpected remaining timeout: %v",
 			remaining,
 		)
+	}
+	if capturedInvocation.Timeout != expectedTimeout {
+		t.Fatalf("expected invocation timeout %v, got %v", expectedTimeout, capturedInvocation.Timeout)
 	}
 	if receivedTraceID != "abc" {
 		t.Fatalf(

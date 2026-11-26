@@ -55,6 +55,7 @@ type genericInvocation struct {
 	MethodName     string
 	ParameterTypes []string
 	Args           []hessian.Object
+	Timeout        time.Duration
 }
 
 type genericInvokeTarget struct {
@@ -65,6 +66,11 @@ type genericInvokeTarget struct {
 }
 
 var invokeGenericServiceRPC = func(callCtx context.Context, invocation genericInvocation) (any, error) {
+	timeout, err := resolveGenericInvokeTimeout(callCtx, invocation)
+	if err != nil {
+		return nil, err
+	}
+
 	// TODO: Cache generic invoke clients to avoid recreating the Dubbo instance/client on every call.
 	ins, err := dubbo.NewInstance(dubbo.WithName(genericInvokeInstanceName))
 	if err != nil {
@@ -83,24 +89,61 @@ var invokeGenericServiceRPC = func(callCtx context.Context, invocation genericIn
 		return nil, fmt.Errorf("unsupported invoke protocol %s", invocation.Protocol)
 	}
 
-	cli, err := ins.NewClient(clientOpts...)
-	if err != nil {
-		return nil, err
-	}
-
-	svc, err := cli.NewGenericService(
-		invocation.ServiceName,
+	referenceOpts := []client.ReferenceOption{
 		client.WithURL(invocation.URL),
 		client.WithVersion(invocation.Version),
 		client.WithGroup(invocation.Group),
 		client.WithProtocol(invocation.Protocol),
 		client.WithSerialization(invocation.Serialization),
-	)
+	}
+	if timeout > 0 {
+		clientOpts = append(clientOpts, client.WithClientRequestTimeout(timeout))
+		referenceOpts = append(referenceOpts, client.WithRequestTimeout(timeout))
+	}
+
+	cli, err := ins.NewClient(clientOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	svc, err := cli.NewGenericService(invocation.ServiceName, referenceOpts...)
 	if err != nil {
 		return nil, err
 	}
 
 	return svc.Invoke(callCtx, invocation.MethodName, invocation.ParameterTypes, invocation.Args)
+}
+
+func resolveGenericInvokeTimeout(callCtx context.Context, invocation genericInvocation) (time.Duration, error) {
+	timeout := invocation.Timeout
+	if callCtx != nil {
+		if err := callCtx.Err(); err != nil {
+			return 0, err
+		}
+		if deadline, ok := callCtx.Deadline(); ok {
+			remaining := time.Until(deadline)
+			if remaining <= 0 {
+				return 0, context.DeadlineExceeded
+			}
+			if timeout <= 0 || remaining < timeout {
+				timeout = remaining
+			}
+		}
+	}
+	if timeout <= 0 {
+		return timeout, nil
+	}
+	return ceilTimeoutToMillisecond(timeout), nil
+}
+
+func ceilTimeoutToMillisecond(timeout time.Duration) time.Duration {
+	if timeout <= time.Millisecond {
+		return time.Millisecond
+	}
+	if rem := timeout % time.Millisecond; rem != 0 {
+		return timeout - rem + time.Millisecond
+	}
+	return timeout
 }
 
 func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvokeReq) (*model.ServiceGenericInvokeResp, error) {
@@ -230,7 +273,8 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 	if ctx != nil && ctx.AppContext() != nil {
 		parentCtx = ctx.AppContext()
 	}
-	callCtx, cancel := context.WithTimeout(parentCtx, time.Duration(req.TimeoutMs)*time.Millisecond)
+	timeout := time.Duration(req.TimeoutMs) * time.Millisecond
+	callCtx, cancel := context.WithTimeout(parentCtx, timeout)
 	defer cancel()
 
 	if len(req.Attachments) > 0 {
@@ -263,6 +307,7 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 		MethodName:     req.MethodName,
 		ParameterTypes: parameterTypes,
 		Args:           hessianArgs,
+		Timeout:        timeout,
 	})
 	elapsedMs := time.Since(startedAt).Milliseconds()
 	if err != nil {
