@@ -123,6 +123,18 @@ OpenTelemetry generative AI conventions model as a `reasoning` part of
 The reasoning policy is applied before the overall content truncation, so
 removing the reasoning parts also frees the content budget.
 
+The policies govern the whole trace, not only the spans the hook owns. Genkit
+records the request and the response of a model call on the span of its own
+action, and those attributes never reach the hook, so the exporter applies the
+same policies to them: a content attribute of Genkit is dropped when
+`capture_content` is `none`, and its reasoning parts follow the
+`capture_reasoning` policy.
+
+The reasoning policy is applied to the messages of a model and to nothing
+else. The arguments and the result of a tool call are business data: a tool
+that uses the field names of a message is reported in the trace as it was
+passed, because a rewritten argument would report a call that never happened.
+
 ## Available events
 
 Hooks observe lifecycle events. `hooks.schema.json` enumerates these 16 values

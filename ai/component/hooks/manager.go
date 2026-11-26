@@ -234,9 +234,11 @@ func (m *Manager) Emit(ctx context.Context, state State) context.Context {
 			hookState.outputContent = nil
 		} else if !reg.lazyContent {
 			// The eager content is materialized before the hook runs, so the
-			// reasoning policy is applied to it right away.
-			hookState.Input = ApplyReasoningPolicy(state.snapshotInputContent(), reg.captureReasoning)
-			hookState.Output = ApplyReasoningPolicy(state.snapshotOutputContent(), reg.captureReasoning)
+			// reasoning policy is applied to it right away. The policy only
+			// understands the message format, so the event decides whether it
+			// applies at all.
+			hookState.Input = state.applyReasoningPolicy(state.rawInputContent(), reg.captureReasoning)
+			hookState.Output = state.applyReasoningPolicy(state.rawOutputContent(), reg.captureReasoning)
 		} else {
 			// The lazy content is materialized inside the hook, so the policy
 			// travels with the state and is applied on access.

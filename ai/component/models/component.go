@@ -212,7 +212,9 @@ func registerModel(g *genkit.Genkit, oaiCompat *compat_oai.OpenAICompatible, pro
 		Supports: supports,
 		Versions: []string{cfg.Key},
 	})
-	genkit.RegisterAction(g, model)
+	// The wrapper adds the reasoning content of a response to the message, so
+	// that the capture policy has a reasoning part to act on.
+	genkit.RegisterAction(g, reasoningModel{inner: model})
 }
 
 func registerEmbedder(g *genkit.Genkit, oaiCompat *compat_oai.OpenAICompatible, providerName string, cfg EmbedderInfo) {
@@ -261,6 +263,9 @@ func createModelPlugin(providerName string, cfg ProviderConfig) api.Plugin {
 		Opts: []option.RequestOption{
 			option.WithAPIKey(cfg.APIKey),
 			option.WithBaseURL(cfg.BaseURL),
+			// The reasoning content of a response is read from the response
+			// body, because the adapter does not map it onto a reasoning part.
+			option.WithMiddleware(captureReasoningMiddleware),
 		},
 	}
 }

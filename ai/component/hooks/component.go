@@ -159,9 +159,18 @@ func (c *Component) initTracing(rt *runtime.Runtime, spec TracingSpec) error {
 	if err != nil {
 		return fmt.Errorf("create OTLP trace exporter: %w", err)
 	}
+	// Genkit records the request and the response of a model call on the span
+	// of its own action, and those attributes never reach the Manager. The
+	// exporter applies the capture policies to them, so the policies hold for
+	// the whole trace.
+	scrubbing := &contentScrubbingExporter{
+		inner:            exporter,
+		captureContent:   spec.CaptureContent,
+		captureReasoning: spec.captureReasoningPolicy(),
+	}
 	res := resource.NewSchemaless(attribute.String("service.name", spec.ServiceName))
 	provider := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exporter), sdktrace.WithResource(res),
+		sdktrace.WithBatcher(scrubbing), sdktrace.WithResource(res),
 		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(spec.SampleRatio))),
 	)
 	registration := NewTracingRegistration(provider.Tracer("dubbo-admin-ai/hooks"), spec.CaptureContent)
