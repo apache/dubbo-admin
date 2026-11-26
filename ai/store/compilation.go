@@ -32,6 +32,16 @@ var ErrContextConflict = errors.New("context version conflict")
 
 const MaxToolBatchBytes = 1 << 20
 
+// MaxRecoveryToolBatches bounds released-attempt evidence retained per Session.
+// Older released batches are reclaimed so repeated failures cannot consume the
+// Session and tenant quotas indefinitely.
+const MaxRecoveryToolBatches = 16
+
+// MaxRecoveryToolBytes bounds the encoded size of released-attempt evidence
+// retained per Session. RecoveryToolBatches never reads more than
+// MaxToolBatchBytes, so retaining more can only consume quota.
+const MaxRecoveryToolBytes = MaxToolBatchBytes
+
 // TurnContext preserves the storage boundary; callers must not infer it from roles.
 type TurnContext struct {
 	ByteLimited bool

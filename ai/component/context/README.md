@@ -105,14 +105,21 @@ released or replaced attempts cannot write back. Tool execution also checks the
 actual allowlist from the most recent compiled request.
 
 A batch has at most 64 calls and a 1 MiB encoded payload ceiling, and consumes
-Session/tenant byte capacity and backend entity/batch capacity. Oversized results
-or failed persistence abort the interaction instead of recording success without
-evidence. Best-effort interruption recording uses a fresh bounded context. If it
-cannot commit, pending remains an unknown execution outcome. Failure and lease
-cleanup release the Turn but retain this ledger under the Session's quotas and
-lifecycle. Session tombstones immediately block reads/writes, and normal Session
-cleanup removes the ledger. Failed records therefore never bypass retention or
-accumulate outside quota accounting.
+Session/tenant byte capacity and backend entity/batch capacity. A result that
+would exceed the encoded ceiling is persisted as explicit truncated evidence and
+marks the interaction degraded instead of aborting after the tool has run. This
+is the persistence ceiling, not the provider request budget: rendered mandatory
+tool evidence that cannot fit `context_tokens - max_tokens - safety_margin`
+still fails explicitly, as described under Sources. Failed persistence still
+aborts instead of recording success without evidence. Best-effort interruption
+recording uses a fresh bounded context. If it cannot commit, pending remains an
+unknown execution outcome. Failure and lease cleanup release the Turn and retain
+only the most recent released batches that fit both the 16-batch and 1 MiB
+recovery windows; older released batches are reclaimed from Session/tenant
+quota. Reclamation is silent: `ToolRecovery.Omitted` describes the retained read
+window, so an omission notice is not preserved for evidence already reclaimed.
+Session tombstones immediately block reads/writes, and normal Session cleanup
+removes the ledger.
 
 At interaction start, both backends query released-attempt batches independently
 of completed/current Turns, using the current Turn as an upper boundary. The

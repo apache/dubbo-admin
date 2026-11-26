@@ -662,6 +662,90 @@ func TestCancellationPreservesPartialBatchWithoutReplaying(t *testing.T) {
 	}
 }
 
+type failOnceCompilationStore struct {
+	store.CompilationStore
+	mu    sync.Mutex
+	calls int
+}
+
+func (s *failOnceCompilationStore) CompleteToolCall(ctx context.Context, a security.AccessContext, id, batch string, version uint64, index int, call store.ToolCall) error {
+	s.mu.Lock()
+	s.calls++
+	first := s.calls == 1
+	s.mu.Unlock()
+	if first {
+		return store.ErrResourceExhausted
+	}
+	return s.CompilationStore.CompleteToolCall(ctx, a, id, batch, version, index, call)
+}
+
+func TestToolResultPersistsTruncatedEvidenceAfterStorageFailure(t *testing.T) {
+	f := &providerFixture{first: `{"role":"assistant","tool_calls":[{"id":"quota-call","type":"function","function":{"name":"quota","arguments":"{}"}}]}`}
+	ra, s, spec, g, _ := compilerAgentFixture(t, f)
+	ra.Stop()
+	tool := genkit.DefineTool(g, "quota", "Quota fixture", func(ctx *ai.ToolContext, input struct{}) (string, error) {
+		return strings.Repeat("ordinary tool log ", 2000), nil
+	})
+	restored, err := NewReActAgentWithStore(g, s, spec, newToolTimeoutResolver(5, nil), nil, []ai.ToolRef{tool})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer restored.Stop()
+	failing := &failOnceCompilationStore{CompilationStore: s}
+	restored.compilationStore = failing
+	turn := runCompiledInteraction(t, restored, s, "retry-storage")
+	batches, err := s.ToolBatches(context.Background(), testutils.TestAccess(), "compiled", turn, 16)
+	if err != nil || len(batches) != 1 || len(batches[0].Calls) != 1 {
+		t.Fatalf("ledger: %+v %v", batches, err)
+	}
+	call := batches[0].Calls[0]
+	if call.ErrorCode != "TOOL_OUTPUT_TRUNCATED" || string(call.Output) != `{"truncated":true}` {
+		t.Fatalf("retry did not persist shrunk evidence: %+v", call)
+	}
+	failing.mu.Lock()
+	calls := failing.calls
+	failing.mu.Unlock()
+	if calls != 2 {
+		t.Fatalf("CompleteToolCall calls = %d, want 2", calls)
+	}
+}
+
+func TestOversizedToolResultDegradesInsteadOfAborting(t *testing.T) {
+	f := &providerFixture{first: `{"role":"assistant","tool_calls":[{"id":"huge-call","type":"function","function":{"name":"huge","arguments":"{}"}}]}`}
+	ra, s, spec, g, _ := compilerAgentFixture(t, f)
+	ra.Stop()
+	huge := genkit.DefineTool(g, "huge", "Huge fixture", func(ctx *ai.ToolContext, input struct{}) (string, error) {
+		return strings.Repeat("ordinary tool log ", 128<<10), nil
+	})
+	restored, err := NewReActAgentWithStore(g, s, spec, newToolTimeoutResolver(5, nil), nil, []ai.ToolRef{huge})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer restored.Stop()
+	turn := runCompiledInteraction(t, restored, s, "oversized")
+	batches, err := s.ToolBatches(context.Background(), testutils.TestAccess(), "compiled", turn, 16)
+	if err != nil || len(batches) != 1 || len(batches[0].Calls) != 1 {
+		t.Fatalf("ledger: %+v %v", batches, err)
+	}
+	call := batches[0].Calls[0]
+	if call.Status != "succeeded" || call.ErrorCode != "TOOL_OUTPUT_TRUNCATED" {
+		t.Fatalf("oversized result not degraded: %+v", call)
+	}
+	if len(call.Output) > store.MaxToolBatchBytes {
+		t.Fatalf("stored output exceeds the batch ceiling: %d", len(call.Output))
+	}
+	var envelope map[string]any
+	if err := json.Unmarshal(call.Output, &envelope); err != nil || envelope["truncated"] != true {
+		t.Fatalf("missing truncation evidence: %s", call.Output)
+	}
+	f.mu.Lock()
+	requests := len(f.requests)
+	f.mu.Unlock()
+	if requests != 2 {
+		t.Fatalf("interaction did not reach the final answer: %d requests", requests)
+	}
+}
+
 func TestRuntimeToolSetChangeKeepsPinnedSession(t *testing.T) {
 	f := &providerFixture{}
 	ra, s, spec, g, _ := compilerAgentFixture(t, f)

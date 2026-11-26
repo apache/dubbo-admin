@@ -489,7 +489,7 @@ func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserI
 				}
 			}
 			if err == nil {
-				state.recovery, err = ra.compilationStore.RecoveryToolBatches(parent, access, sessionID, turnID, 16, min(conversationstore.MaxToolBatchBytes, ra.compilerSpec.MaxCollectBytes))
+				state.recovery, err = ra.compilationStore.RecoveryToolBatches(parent, access, sessionID, turnID, conversationstore.MaxRecoveryToolBatches, min(conversationstore.MaxToolBatchBytes, ra.compilerSpec.MaxCollectBytes))
 			}
 			if err != nil {
 				if errors.Is(err, conversationstore.ErrResourceExhausted) {

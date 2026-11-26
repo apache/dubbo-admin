@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -33,7 +34,7 @@ import (
 
 func RunCompilationContractTests(t *testing.T, newStore func() store.BackendStore) {
 	t.Helper()
-	for _, scenario := range []string{"complete", "failed", "lease", "quota", "ownership", "snapshot", "pin", "concurrent", "bounded history", "recovery new request", "recovery retry"} {
+	for _, scenario := range []string{"complete", "failed", "lease", "quota", "ownership", "snapshot", "pin", "concurrent", "bounded history", "recovery new request", "recovery retry", "duplicate batch", "released ledger bounded"} {
 		t.Run(scenario, func(t *testing.T) {
 			s := newStore()
 			c, ok := s.(store.CompilationStore)
@@ -264,6 +265,66 @@ func RunCompilationContractTests(t *testing.T, newStore func() store.BackendStor
 				if success != 1 {
 					t.Fatalf("CAS winners: %d", success)
 				}
+			case "duplicate batch":
+				duplicateID := batch
+				duplicateID.Sequence = 2
+				if err := c.CreateToolBatch(ctx, a, duplicateID); !errors.Is(err, store.ErrContextConflict) {
+					t.Fatalf("duplicate batch ID: %v", err)
+				}
+				duplicateSequence := batch
+				duplicateSequence.ID = "batch-sequence"
+				if err := c.CreateToolBatch(ctx, a, duplicateSequence); !errors.Is(err, store.ErrContextConflict) {
+					t.Fatalf("duplicate tool sequence: %v", err)
+				}
+				wrongInteraction := batch
+				wrongInteraction.ID = "batch-interaction"
+				wrongInteraction.Sequence = 3
+				wrongInteraction.InteractionID = "other-interaction"
+				if err := c.CreateToolBatch(ctx, a, wrongInteraction); !errors.Is(err, store.ErrContextConflict) {
+					t.Fatalf("interaction mismatch: %v", err)
+				}
+				missingTurn := batch
+				missingTurn.ID = "batch-missing"
+				missingTurn.Sequence = 4
+				missingTurn.TurnID = prepared.TurnID + 100
+				if err := c.CreateToolBatch(ctx, a, missingTurn); !errors.Is(err, store.ErrTurnNotFound) {
+					t.Fatalf("missing turn: %v", err)
+				}
+			case "released ledger bounded":
+				if err := s.FailInteraction(ctx, a, "compile", prepared.InteractionID, prepared.TurnID); err != nil {
+					t.Fatal(err)
+				}
+				oldest := batch.ID
+				for i := 0; i < 20; i++ {
+					key := fmt.Sprintf("released-%d", i)
+					p, err := s.PrepareInteraction(ctx, a, "compile", key, key, time.Hour)
+					if err != nil {
+						t.Fatal(err)
+					}
+					released := batch
+					released.ID = key
+					released.TurnID = p.TurnID
+					released.InteractionID = p.InteractionID
+					if err := c.CreateToolBatch(ctx, a, released); err != nil {
+						t.Fatalf("create released batch: %v", err)
+					}
+					if err := s.FailInteraction(ctx, a, "compile", p.InteractionID, p.TurnID); err != nil {
+						t.Fatalf("release attempt: %v", err)
+					}
+				}
+				current, err := s.PrepareInteraction(ctx, a, "compile", "current", "current", time.Hour)
+				if err != nil {
+					t.Fatal(err)
+				}
+				recovered, err := c.RecoveryToolBatches(ctx, a, "compile", current.TurnID, 64, 1<<20)
+				if err != nil || len(recovered.Batches) != store.MaxRecoveryToolBatches {
+					t.Fatalf("released evidence not bounded: %+v %v", recovered, err)
+				}
+				for _, b := range recovered.Batches {
+					if b.ID == oldest {
+						t.Fatal("oldest released batch was not reclaimed")
+					}
+				}
 			}
 			if err := s.Delete(ctx, a, "compile"); err != nil {
 				t.Fatal(err)
@@ -324,4 +385,49 @@ func RunCompilationQuotaContractTests(t *testing.T, newStore func(store.QuotaPol
 			}
 		})
 	}
+	t.Run("released evidence respects the recovery byte window", func(t *testing.T) {
+		quota := store.DefaultQuotaPolicy()
+		quota.MaxSessionBytes = 1500 << 10
+		quota.MaxTenantBytes = 8 << 20
+		s := newStore(quota)
+		c := s.(store.CompilationStore)
+		ctx := context.Background()
+		a := contractAccess
+		now := time.Now()
+		if err := s.Create(ctx, a, &store.Session{ID: "reclaim-bytes", TenantID: a.Subject.TenantID, OwnerID: a.Subject.UserID, Version: 1, Status: store.SessionStatusActive, CreatedAt: now, UpdatedAt: now}); err != nil {
+			t.Fatal(err)
+		}
+		large := json.RawMessage(`"` + strings.Repeat("x", 700<<10) + `"`)
+		for i := 0; i < 2; i++ {
+			p, err := s.PrepareInteraction(ctx, a, "reclaim-bytes", fmt.Sprintf("attempt-%d", i), fmt.Sprintf("attempt-%d", i), time.Hour)
+			if err != nil {
+				t.Fatal(err)
+			}
+			b := store.ToolBatch{ID: fmt.Sprintf("released-%d", i), TenantID: a.Subject.TenantID, OwnerID: a.Subject.UserID, SessionID: "reclaim-bytes", TurnID: p.TurnID, InteractionID: p.InteractionID, Sequence: 1, Version: 1, SchemaVersion: "v1", Calls: []store.ToolCall{{ID: "call", Name: "lookup", Input: json.RawMessage(`{}`), Status: "pending"}}}
+			if err := c.CreateToolBatch(ctx, a, b); err != nil {
+				t.Fatal(err)
+			}
+			call := b.Calls[0]
+			call.Status = "succeeded"
+			call.Output = large
+			if err := c.CompleteToolCall(ctx, a, b.SessionID, b.ID, 1, 0, call); err != nil {
+				t.Fatalf("complete attempt %d: %v", i, err)
+			}
+			if err := s.FailInteraction(ctx, a, b.SessionID, p.InteractionID, p.TurnID); err != nil {
+				t.Fatal(err)
+			}
+		}
+		// Both released batches fit the count window but together exceed the
+		// 1 MiB recovery byte window, so the older one must be reclaimed.
+		next, err := s.PrepareInteraction(ctx, a, "reclaim-bytes", "next", "next", time.Hour)
+		if err != nil {
+			t.Fatalf("prepare after reclamation: %v", err)
+		}
+		if err := s.AddHistoryToTurn(ctx, a, "reclaim-bytes", next.TurnID, ai.NewUserTextMessage(strings.Repeat("x", 700<<10))); err != nil {
+			t.Fatalf("released evidence bytes were not reclaimed: %v", err)
+		}
+		if err := s.Delete(ctx, a, "reclaim-bytes"); err != nil {
+			t.Fatal(err)
+		}
+	})
 }
