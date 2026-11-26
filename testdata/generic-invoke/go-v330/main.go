@@ -29,6 +29,7 @@ import (
 	"time"
 
 	dubbo "dubbo.apache.org/dubbo-go/v3"
+	"dubbo.apache.org/dubbo-go/v3/common"
 	"dubbo.apache.org/dubbo-go/v3/common/constant"
 	_ "dubbo.apache.org/dubbo-go/v3/imports"
 	"dubbo.apache.org/dubbo-go/v3/protocol"
@@ -142,7 +143,8 @@ func main() {
 		log.Fatal(err)
 	}
 	echo := &EchoService{}
-	if err = srv.Register(echo, nil, server.WithInterface("example.GoEchoService"), server.WithProtocolIDs([]string{"dubbo", "tri"})); err != nil {
+	// Pass a non-nil ServiceInfo to avoid dubbo-go v3.3.0 typed-nil panic in Server.exportServices.
+	if err = srv.Register(echo, &common.ServiceInfo{InterfaceName: "example.GoEchoService"}, server.WithInterface("example.GoEchoService"), server.WithProtocolIDs([]string{"dubbo", "tri"})); err != nil {
 		log.Fatal(err)
 	}
 	mux := http.NewServeMux()
