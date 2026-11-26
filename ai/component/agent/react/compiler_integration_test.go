@@ -662,6 +662,25 @@ func TestCancellationPreservesPartialBatchWithoutReplaying(t *testing.T) {
 	}
 }
 
+func TestRuntimeToolSetChangeKeepsPinnedSession(t *testing.T) {
+	f := &providerFixture{}
+	ra, s, spec, g, _ := compilerAgentFixture(t, f)
+	runCompiledInteraction(t, ra, s, "before-tool-change")
+	pinned := ra.templateRef
+	extra := genkit.DefineTool(g, "extra", "Extra fixture", func(ctx *ai.ToolContext, input struct{}) (string, error) {
+		return "extra", nil
+	})
+	restored, err := NewReActAgentWithStore(g, s, spec, newToolTimeoutResolver(5, nil), nil, []ai.ToolRef{genkit.LookupTool(g, "lookup"), extra})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer restored.Stop()
+	if restored.templateRef != pinned {
+		t.Fatalf("tool registry change altered the pinned template ref: %s != %s", restored.templateRef, pinned)
+	}
+	runCompiledInteraction(t, restored, s, "after-tool-change")
+}
+
 func TestPinnedTemplateRequiresExactArchivedVersion(t *testing.T) {
 	f := &providerFixture{}
 	ra, s, spec, g, _ := compilerAgentFixture(t, f)

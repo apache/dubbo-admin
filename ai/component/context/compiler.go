@@ -51,11 +51,18 @@ func New(templates ...Template) (*Compiler, error) {
 			return nil, err
 		}
 		key := copy.ID + "@" + copy.Version
-		if old, ok := namedVersions[key]; ok && old != copy.Ref() {
+		ref := copy.Ref()
+		if old, ok := namedVersions[key]; ok && old != ref {
 			return nil, fmt.Errorf("template version content changed: %s", key)
 		}
-		namedVersions[key] = copy.Ref()
-		c.templates[copy.Ref()] = copy
+		namedVersions[key] = ref
+		// Ref intentionally excludes the runtime tool allowlist, so an archived
+		// definition with the same prompt identity must not replace the tool set
+		// built from the current process registry.
+		if _, exists := c.templates[ref]; exists {
+			continue
+		}
+		c.templates[ref] = copy
 	}
 	return c, nil
 }
@@ -428,7 +435,17 @@ func renderEvents(events []Event, kinds []string) ([]Message, bool, bool, error)
 				call.Output = JSON(map[string]any{"status": call.Status, "result": limitedOutput, "error_code": call.ErrorCode, "source_call_id": call.ID, "truncated": changed})
 				calls[i] = call
 			}
-			result = append(result, Message{Role: "model", Requests: calls}, Message{Role: "tool", Responses: calls})
+			// Request and response projections must not share a full ToolCall:
+			// the provider only sees Input in the assistant tool call and Output
+			// in the tool result. Passing the same calls to both messages would
+			// count every argument and result twice against the budget.
+			requestCalls := make([]store.ToolCall, len(calls))
+			responseCalls := make([]store.ToolCall, len(calls))
+			for i, call := range calls {
+				requestCalls[i] = store.ToolCall{ID: call.ID, Name: call.Name, Input: call.Input}
+				responseCalls[i] = store.ToolCall{ID: call.ID, Name: call.Name, Output: call.Output}
+			}
+			result = append(result, Message{Role: "model", Requests: requestCalls}, Message{Role: "tool", Responses: responseCalls})
 		default:
 			return nil, false, false, fmt.Errorf("unknown content kind")
 		}

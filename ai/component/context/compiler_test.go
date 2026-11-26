@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -346,6 +347,62 @@ func TestOptionalTemplateVariableDefaultsToEmpty(t *testing.T) {
 	text, err := tmpl.Render("act", nil)
 	if err != nil || text != "policy\n\n" {
 		t.Fatalf("optional template value: %q %v", text, err)
+	}
+}
+
+func TestTemplateRefExcludesRuntimeToolAllowlist(t *testing.T) {
+	base := Template{ID: "test", Version: "1", Shared: "policy", Act: "act", Answer: "answer"}
+	one := base
+	one.AllowedTools = []string{"lookup"}
+	two := base
+	two.AllowedTools = []string{"extra", "lookup"}
+	if one.Ref() != two.Ref() {
+		t.Fatalf("runtime tool allowlist changed the pinned identity: %s != %s", one.Ref(), two.Ref())
+	}
+	changed := base
+	changed.Shared = "other policy"
+	if one.Ref() == changed.Ref() {
+		t.Fatal("prompt content change did not alter the pinned identity")
+	}
+	c, err := New(one, two)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := c.templates[one.Ref()].AllowedTools; !reflect.DeepEqual(got, []string{"lookup"}) {
+		t.Fatalf("duplicate registration replaced the current tool allowlist: %v", got)
+	}
+}
+
+func TestLargeToolResultCountedOnceAgainstDefaultBudget(t *testing.T) {
+	c, req := fixture(t)
+	req.ContextTokens, req.OutputTokens, req.SafetyMargin = 32768, 3000, 1024
+	// Sixteen 1 KiB strings survive limitValue, so the rendered evidence is
+	// large enough that counting the same result in both the request and the
+	// response message cannot fit the default budget.
+	output := map[string]any{}
+	for i := 0; i < 16; i++ {
+		output[fmt.Sprintf("field-%02d", i)] = strings.Repeat("ordinary tool log ", 60)
+	}
+	req.Turns[1].Batches = []store.ToolBatch{{ID: "large", SessionID: "session", TurnID: 2, TenantID: "tenant", OwnerID: "owner", Version: 1, SchemaVersion: "v1", Calls: []store.ToolCall{
+		{ID: "large-call", Name: "lookup", Input: JSON(map[string]any{}), Output: JSON(output), Status: "succeeded"},
+	}}}
+	req.Tools = []Tool{{Name: "lookup", InputSchema: map[string]any{"type": "object"}}}
+	out, err := c.Compile(context.Background(), req)
+	if err != nil {
+		t.Fatalf("rendered tool evidence exceeded the default budget: %v", err)
+	}
+	if len(out.Messages) != 6 {
+		t.Fatalf("unexpected messages: %+v", out.Messages)
+	}
+	var result map[string]any
+	if err := json.Unmarshal(out.Messages[5].Responses[0].Output, &result); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := result["result"].(map[string]any); !reflect.DeepEqual(got, output) {
+		t.Fatal("rendered tool result changed")
+	}
+	if len(out.Messages[4].Requests[0].Output) != 0 || len(out.Messages[5].Responses[0].Input) != 0 {
+		t.Fatal("request and response views shared the full tool call")
 	}
 }
 

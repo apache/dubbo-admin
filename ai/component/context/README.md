@@ -60,7 +60,11 @@ Current Agent variables are server-owned strings, required and limited to 4096
 bytes each. User text is never evaluated as a template.
 
 The persisted Session template reference includes ID, version and a SHA-256
-content identity. The Session API stores the current reference atomically when
+content identity. The identity covers the shared/phase policy text and the
+declared variable contract; the runtime tool allowlist is resolved from the
+current registry at compile time and is deliberately excluded, so tool discovery
+or `enable_*_tools` changes do not invalidate pinned Sessions. The Session API
+stores the current reference atomically when
 creating a new Session. Existing Sessions without a reference are atomically pinned
 on their first Compiler-backed interaction. Subsequent attempts cannot replace
 that reference. Changing content requires a new named version; keep the exact old
@@ -75,8 +79,14 @@ Sessions. Archives pin rules and text, not historical variable values: retain
 configuration values needed by old versions. Direct Template rendering still
 rejects undeclared input variables.
 Archived versions still intersect their tool allowlists with the current runtime
-and caller permission sets. The registry rejects conflicting content under the
-same ID/version.
+and caller permission sets. Because the runtime allowlist is not part of the
+identity, an archive with the same ID/version and prompt content as the current
+template is deduplicated in favor of the current process registry; only archives
+with a different identity keep their own allowlist. Changing `allowed_tools` or
+the registered tool set therefore applies to every Session pinned to the current
+identity, including Sessions created before the change; that is intentional and
+not a reference change. The registry rejects conflicting content under the same
+ID/version.
 
 GORM migration adds `template_ref`, the `ai_tool_batches` table, and independent
 estimate/template/compiler/estimator fields to Usage events. Existing message
