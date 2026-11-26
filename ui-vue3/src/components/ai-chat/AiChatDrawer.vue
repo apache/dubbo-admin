@@ -114,7 +114,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, nextTick } from 'vue'
+import { computed, ref, shallowRef, watch, onMounted, nextTick } from 'vue'
 import { message } from 'ant-design-vue'
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js'
@@ -162,7 +162,9 @@ const props = withDefaults(
   defineProps<{
     open?: boolean
     service: ChatService<unknown>
+    // Must return JSON-serializable data; the drawer snapshots it for retries.
     collectContext?: () => unknown
+    formatError?: (error: unknown) => string | undefined
     labels?: Partial<AIChatLabels>
     suggestions?: ChatSuggestion[]
     drawerWidth?: string | number
@@ -170,6 +172,7 @@ const props = withDefaults(
   {
     open: false,
     collectContext: undefined,
+    formatError: undefined,
     labels: () => ({}),
     suggestions: () => [],
     drawerWidth: 600
@@ -178,6 +181,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (event: 'update:open', value: boolean): void
+  (event: 'session-changed'): void
 }>()
 
 const resolvedLabels = computed<AIChatLabels>(() => ({
@@ -200,6 +204,8 @@ const sessions = ref<Session[]>([])
 const historyModalVisible = ref(false)
 
 const lastUserMessage = ref<string>('') // 保存最后一次用户消息用于重试
+const lastRequestContext = shallowRef<unknown>()
+const lastIdempotencyKey = ref('')
 const usageInfo = ref<any>(null) // 保存使用情况信息
 
 // 子组件引用
@@ -294,12 +300,14 @@ async function fetchSessionInfo(sessionId: string) {
 
 // 删除会话
 async function deleteSession(sessionId: string) {
+  if (isLoading.value) return
   if (!props.service.deleteSession) return
   try {
     await props.service.deleteSession(sessionId)
     if (currentSessionId.value === sessionId) {
       currentSessionId.value = ''
       messages.value = []
+      resetRequest()
     }
     await fetchSessions()
     message.success(resolvedLabels.value.sessionDeleted)
@@ -322,20 +330,22 @@ async function retryLastMessage() {
     return
   }
 
-  // 删除最后的错误消息，如果有的话
-  if (messages.value.length > 0 && messages.value[messages.value.length - 1].type === 'error') {
-    messages.value.pop()
+  // Reuse the original user-message node and discard its prior assistant/error
+  // nodes. The retry keeps the same idempotency key but must not duplicate UI.
+  const userIndex = [...messages.value].map((item) => item.role).lastIndexOf('user')
+  if (userIndex >= 0) {
+    messages.value = messages.value.slice(0, userIndex + 1)
   }
 
   // 重新发送上一条消息
   if (chatInputRef.value) {
     chatInputRef.value.inputMessage = lastUserMessage.value
   }
-  await sendMessage()
+  await sendMessage(true)
 }
 
 // 发送消息并接收流式响应
-async function sendMessage() {
+async function sendMessage(isRetry = false) {
   // 获取输入消息
   let inputMsg = ''
   if (chatInputRef.value) {
@@ -344,10 +354,29 @@ async function sendMessage() {
 
   if (!inputMsg.trim() || isLoading.value) return
 
-  const context = props.collectContext?.()
+  // Snapshot the JSON payload once so later page-state mutations cannot change
+  // the request associated with the same idempotency key. JSON also handles
+  // reactive context objects without passing Vue proxies to structuredClone.
+  let context: unknown
+  try {
+    const collected = isRetry ? lastRequestContext.value : props.collectContext?.()
+    context = isRetry || collected === undefined ? collected : JSON.parse(JSON.stringify(collected))
+  } catch {
+    addErrorMessage(resolvedLabels.value.requestFailed)
+    return
+  }
+  const idempotencyKey = isRetry ? lastIdempotencyKey.value : crypto.randomUUID()
+
+  if (!idempotencyKey) {
+    addErrorMessage(resolvedLabels.value.requestFailed)
+    return
+  }
 
   // 保存最后一条用户消息
   lastUserMessage.value = inputMsg
+  lastRequestContext.value = context
+  lastIdempotencyKey.value = idempotencyKey
+  isLoading.value = true
 
   // 如果没有当前会话ID，先创建一个新会话
   if (!currentSessionId.value) {
@@ -359,14 +388,26 @@ async function sendMessage() {
     }
   }
 
-  const userMessage: ChatMessage = {
-    id: Date.now().toString(),
-    content: inputMsg,
-    role: 'user',
-    timestamp: Date.now()
+  let userMessage: ChatMessage
+  if (isRetry) {
+    const existing = [...messages.value].reverse().find((item) => item.role === 'user')
+    userMessage = existing || {
+      id: Date.now().toString(),
+      content: inputMsg,
+      role: 'user',
+      timestamp: Date.now()
+    }
+    userMessage.content = inputMsg
+    if (!existing) messages.value.push(userMessage)
+  } else {
+    userMessage = {
+      id: Date.now().toString(),
+      content: inputMsg,
+      role: 'user',
+      timestamp: Date.now()
+    }
+    messages.value.push(userMessage)
   }
-
-  messages.value.push(userMessage)
 
   const aiMessage: ChatMessage = {
     id: (Date.now() + 1).toString(),
@@ -395,7 +436,8 @@ async function sendMessage() {
     const stream = await props.service.sendChatMessage(
       userMessage.content,
       currentSessionId.value,
-      context
+      context,
+      idempotencyKey
     )
 
     // 处理SSE流
@@ -590,11 +632,12 @@ async function sendMessage() {
     console.error('发送消息失败:', error)
 
     // 处理错误响应
-    let errorMessage = resolvedLabels.value.requestFailed
-    if (error.response?.data) {
+    const formattedError = props.formatError?.(error)
+    let errorMessage = formattedError || resolvedLabels.value.requestFailed
+    if (!formattedError && error.response?.data) {
       // JSON 格式的错误响应，直接使用 message 字段
       errorMessage = error.response.data.message || error.response.data.error || errorMessage
-    } else if (error.message) {
+    } else if (!formattedError && error.message) {
       // 普通的 Error 对象
       if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
         errorMessage = resolvedLabels.value.networkError
@@ -634,8 +677,13 @@ function clearHistory() {
 
 // 处理新对话按钮点击
 async function handleNewChat() {
+  if (isLoading.value) return
+  isLoading.value = true
   // 创建新对话
-  await createNewSession()
+  const session = await createNewSession()
+  isLoading.value = false
+  if (!session) return
+  resetRequest()
   // 清空使用情况信息
   usageInfo.value = null
   message.success(resolvedLabels.value.newChatCreated)
@@ -676,11 +724,13 @@ onMounted(() => {
 
 // 加载选定的会话
 async function loadSession(sessionId: string) {
+  if (isLoading.value) return
   try {
     isLoading.value = true
     const sessionInfo = await fetchSessionInfo(sessionId)
     if (sessionInfo) {
       currentSessionId.value = sessionId
+      resetRequest()
       messages.value = sessionInfo.messages || []
       historyModalVisible.value = false
       // 加载会话后滚动到底部
@@ -692,6 +742,13 @@ async function loadSession(sessionId: string) {
   } finally {
     isLoading.value = false
   }
+}
+
+function resetRequest() {
+  lastUserMessage.value = ''
+  lastRequestContext.value = undefined
+  lastIdempotencyKey.value = ''
+  emit('session-changed')
 }
 </script>
 

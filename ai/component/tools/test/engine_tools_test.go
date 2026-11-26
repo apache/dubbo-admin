@@ -11,6 +11,7 @@ import (
 	compRag "dubbo-admin-ai/component/rag"
 	toolEngine "dubbo-admin-ai/component/tools/engine"
 	"dubbo-admin-ai/runtime"
+	conversationstore "dubbo-admin-ai/store"
 	"dubbo-admin-ai/testutils"
 
 	"github.com/firebase/genkit/go/ai"
@@ -115,6 +116,7 @@ func TestMemoryToolReadsInjectedStore(t *testing.T) {
 		t.Fatalf("NewInternalToolManager() error = %v", err)
 	}
 	ctx := testutils.ContextWithTestAccess(context.Background())
+	ctx = conversationstore.WithPreparedInteraction(ctx, &conversationstore.PreparedInteraction{TurnID: turnID})
 	output, err := toolEngine.Call(ctx, rt.GetGenkitRegistry(), toolEngine.GetAllMemoryTool, map[string]any{
 		"session_id": session.ID,
 	})
@@ -129,6 +131,11 @@ func TestMemoryToolReadsInjectedStore(t *testing.T) {
 	if !ok {
 		t.Fatalf("memory tool result = %#v, want shared-store message", output.Result)
 	}
+	messages, ok := message["Messages"].([]interface{})
+	if !ok || len(messages) != 1 {
+		t.Fatalf("bounded turn messages = %#v", message)
+	}
+	message = messages[0].(map[string]interface{})
 	content, ok := message["content"].([]interface{})
 	if !ok || len(content) != 1 {
 		t.Fatalf("memory tool content = %#v, want one content item", message["content"])

@@ -27,7 +27,6 @@ import ServiceTabHeaderSlot from '@/views/resources/services/slots/ServiceTabHea
 import AddConditionRuleTabHeaderSlot from '@/views/traffic/routingRule/slots/addConditionRuleTabHeaderSlot.vue'
 import AgentDrawer from '@/components/AgentDrawer.vue'
 import SearchTable from '@/components/SearchTable.vue'
-import { AI_CONTEXT_UNSAVED_CHANGES_SECTION_ID } from '../selection'
 import type { AIContextProvider, AIContextSnapshot } from '../types'
 
 const mocks = vi.hoisted(() => ({
@@ -103,13 +102,13 @@ vi.mock('@/components/ai-chat/ChatInput.vue', async () => {
   }
 })
 
-vi.mock('@/components/ai-context/AIContextPreview.vue', async () => {
+vi.mock('@/components/ai-memory/MemoryMatchSelector.vue', async () => {
   const { defineComponent, h } = await import('vue')
   return {
     default: defineComponent({
-      name: 'AIContextPreview',
-      props: ['snapshot', 'enabled', 'excludedSectionIds'],
-      emits: ['update:enabled', 'update:excludedSectionIds', 'refresh'],
+      name: 'MemoryMatchSelector',
+      props: ['modelValue', 'active'],
+      emits: ['update:modelValue'],
       setup() {
         return () => h('div')
       }
@@ -428,7 +427,7 @@ describe('page AI context integration', () => {
   })
 })
 
-describe('AI context request integration', () => {
+describe('AI explicit matching request integration', () => {
   const snapshot: AIContextSnapshot = {
     version: 1,
     capturedAt: '2026-07-23T08:00:00.000Z',
@@ -450,10 +449,11 @@ describe('AI context request integration', () => {
     mocks.sendChatMessage.mockImplementation(async () => createEmptyStream())
   })
 
-  it('excludes the draft from the next request and resets the one-shot selection', async () => {
+  it('sends only explicit matching and resets the one-shot selection', async () => {
     const wrapper = mount(AgentDrawer, {
       props: { agentDrawerOpen: true },
       global: {
+        plugins: [createI18n({ legacy: false, locale: 'en', messages: { en: {} } })],
         stubs: {
           'a-drawer': { template: '<div><slot /></div>' }
         }
@@ -461,34 +461,36 @@ describe('AI context request integration', () => {
     })
     await flushPromises()
 
-    const preview = wrapper.findComponent({ name: 'AIContextPreview' })
+    const preview = wrapper.findComponent({ name: 'MemoryMatchSelector' })
     const input = wrapper.findComponent({ name: 'ChatInput' })
     const exposedInput = input.vm.$.exposed as {
       inputMessage: { value: string }
     }
-    await preview.vm.$emit('update:excludedSectionIds', [AI_CONTEXT_UNSAVED_CHANGES_SECTION_ID])
+    await preview.vm.$emit('update:modelValue', { projectRef: 'project-a', taskType: 'diagnosis' })
     exposedInput.inputMessage.value = 'review this rule'
     await input.vm.$emit('sendMessage')
     await flushPromises()
 
-    const firstContext = mocks.sendChatMessage.mock.calls[0][2] as AIContextSnapshot
-    expect(firstContext.state).toEqual({ selection: { group: 'prod' } })
+    expect(mocks.sendChatMessage.mock.calls[0][2]).toEqual({
+      matchContext: { projectRef: 'project-a', taskType: 'diagnosis' }
+    })
+    expect(mocks.snapshot).not.toHaveBeenCalled()
 
     exposedInput.inputMessage.value = 'review it again'
     await input.vm.$emit('sendMessage')
     await flushPromises()
 
-    const secondContext = mocks.sendChatMessage.mock.calls[1][2] as AIContextSnapshot
-    expect(secondContext.state?.unsavedChanges).toEqual(snapshot.state?.unsavedChanges)
+    expect(mocks.sendChatMessage.mock.calls[1][2]).toEqual({ matchContext: {} })
     wrapper.unmount()
   })
 
-  it('parses the same SSE response with context enabled or disabled', async () => {
+  it('parses the same SSE response with or without explicit matching', async () => {
     const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => undefined)
     mocks.sendChatMessage.mockImplementation(async () => createMessageStream('streamed answer'))
     const wrapper = mount(AgentDrawer, {
       props: { agentDrawerOpen: true },
       global: {
+        plugins: [createI18n({ legacy: false, locale: 'en', messages: { en: {} } })],
         stubs: {
           'a-drawer': { template: '<div><slot /></div>' }
         }
@@ -496,21 +498,24 @@ describe('AI context request integration', () => {
     })
     await flushPromises()
 
-    const preview = wrapper.findComponent({ name: 'AIContextPreview' })
+    const preview = wrapper.findComponent({ name: 'MemoryMatchSelector' })
     const input = wrapper.findComponent({ name: 'ChatInput' })
     const exposedInput = input.vm.$.exposed as { inputMessage: { value: string } }
 
+    await preview.vm.$emit('update:modelValue', { projectRef: 'project-a' })
     exposedInput.inputMessage.value = 'with context'
     await input.vm.$emit('sendMessage')
     await flushPromises()
 
-    await preview.vm.$emit('update:enabled', false)
+    await preview.vm.$emit('update:modelValue', {})
     exposedInput.inputMessage.value = 'without context'
     await input.vm.$emit('sendMessage')
     await flushPromises()
 
-    expect(mocks.sendChatMessage.mock.calls[0][2]).toEqual(snapshot)
-    expect(mocks.sendChatMessage.mock.calls[1][2]).toBeUndefined()
+    expect(mocks.sendChatMessage.mock.calls[0][2]).toEqual({
+      matchContext: { projectRef: 'project-a' }
+    })
+    expect(mocks.sendChatMessage.mock.calls[1][2]).toEqual({ matchContext: {} })
 
     const messages = wrapper.findComponent({ name: 'MessageList' }).props('messages') as Array<{
       role: string

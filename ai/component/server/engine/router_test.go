@@ -19,22 +19,173 @@ package engine
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"dubbo-admin-ai/security"
 	memorystore "dubbo-admin-ai/store/memory"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type rejectingAuthenticator struct{}
 
 func (rejectingAuthenticator) Authenticate(*http.Request) (security.AccessContext, error) {
 	return security.AccessContext{}, security.ErrAuthenticationRequired
+}
+
+func TestRouterProtectsRoutesOutsideAIPrefix(t *testing.T) {
+	store := memorystore.NewMemoryStore()
+	router, err := NewRouter(nil, store, store, rejectingAuthenticator{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = router.Close() })
+	router.GetEngine().GET("/future-endpoint", func(c *gin.Context) { c.Status(http.StatusNoContent) })
+	assertAIStatus(t, router.GetEngine(), http.MethodGet, "/future-endpoint", "", http.StatusUnauthorized)
+}
+
+func TestRouterHealthProbesArePublic(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwksServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(jwksForTest(map[string]*rsa.PublicKey{"key": &key.PublicKey}))
+	}))
+	defer jwksServer.Close()
+	auth, err := NewJWTVerifier(JWTAuthConfig{JWKSURL: jwksServer.URL, Issuer: "issuer", Audience: "audience"}, jwksServer.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := memorystore.NewMemoryStore()
+	router, err := NewRouter(nil, store, store, auth)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = router.Close() })
+	// Mirror ServerComponent.Start, which registers probes on the routed engine.
+	for _, path := range []string{"/health", "/healthz", "/readyz"} {
+		router.GetEngine().GET(path, func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
+	}
+	for _, path := range []string{"/health", "/healthz", "/readyz"} {
+		assertAIStatus(t, router.GetEngine(), http.MethodGet, path, "", http.StatusOK)
+	}
+	// Everything outside the explicit probe list still requires authentication.
+	assertAIStatus(t, router.GetEngine(), http.MethodGet, "/api/v1/ai/sessions", "", http.StatusUnauthorized)
+}
+
+func TestJWTAuthenticationFlowsIntoSessionOwnership(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	secret, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wrongKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwksServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(jwksForTest(map[string]*rsa.PublicKey{"key": &secret.PublicKey}))
+	}))
+	defer jwksServer.Close()
+	auth, err := NewJWTVerifier(JWTAuthConfig{JWKSURL: jwksServer.URL, Issuer: "issuer", Audience: "audience"}, jwksServer.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := memorystore.NewMemoryStore()
+	router, err := NewRouter(nil, store, store, auth)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = router.Close() })
+	claims := jwt.MapClaims{"iss": "issuer", "aud": "audience", "sub": "user-a", "tenant_id": "tenant-a", "iat": time.Now().Unix(), "exp": time.Now().Add(time.Minute).Unix()}
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	token.Header["kid"] = "key"
+	value, _ := token.SignedString(secret)
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/ai/sessions", nil)
+	request.Header.Set("Authorization", "Bearer "+value)
+	request.Header.Set("X-Tenant-ID", "attacker")
+	response := httptest.NewRecorder()
+	router.GetEngine().ServeHTTP(response, request)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"tenant_id":"tenant-a"`) {
+		t.Fatalf("JWT session create = %d, body = %s", response.Code, response.Body.String())
+	}
+	var created struct {
+		Data struct {
+			SessionID string `json:"session_id"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	if created.Data.SessionID == "" {
+		t.Fatal("missing session ID")
+	}
+	for _, caller := range []struct {
+		name, tenant, user string
+		secret             *rsa.PrivateKey
+	}{
+		{"other user", "tenant-a", "user-b", secret},
+		{"other tenant", "tenant-b", "user-a", secret},
+		{"wrong signature", "tenant-a", "user-a", wrongKey},
+	} {
+		t.Run(caller.name, func(t *testing.T) {
+			claims := jwt.MapClaims{"iss": "issuer", "aud": "audience", "sub": caller.user, "tenant_id": caller.tenant, "iat": time.Now().Unix(), "exp": time.Now().Add(time.Minute).Unix()}
+			token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+			token.Header["kid"] = "key"
+			value, err := token.SignedString(caller.secret)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, route := range []struct {
+				method, path, body string
+				status             int
+				code               string
+			}{
+				{http.MethodGet, "/api/v1/ai/sessions/" + created.Data.SessionID, "", http.StatusNotFound, "RESOURCE_NOT_ACCESSIBLE"},
+				{http.MethodGet, "/api/v1/ai/sessions", "", http.StatusOK, ""},
+				{http.MethodPost, "/api/v1/ai/chat/stream", `{"message":"hello","sessionID":"` + created.Data.SessionID + `"}`, http.StatusBadRequest, "RESOURCE_NOT_ACCESSIBLE"},
+				{http.MethodDelete, "/api/v1/ai/sessions/" + created.Data.SessionID, "", http.StatusNotFound, "RESOURCE_NOT_ACCESSIBLE"},
+			} {
+				request := httptest.NewRequest(route.method, route.path, strings.NewReader(route.body))
+				request.Header.Set("Authorization", "Bearer "+value)
+				request.Header.Set("Content-Type", "application/json")
+				request.Header.Set("X-Tenant-ID", "tenant-a")
+				request.Header.Set("X-User-ID", "user-a")
+				response := httptest.NewRecorder()
+				router.GetEngine().ServeHTTP(response, request)
+				want, code := route.status, route.code
+				if caller.name == "wrong signature" {
+					want, code = http.StatusUnauthorized, "AUTHENTICATION_REQUIRED"
+				}
+				if response.Code != want || (code != "" && !strings.Contains(response.Body.String(), code)) {
+					t.Fatalf("%s %s = %d %s", route.method, route.path, response.Code, response.Body.String())
+				}
+				if want == http.StatusOK && !strings.Contains(response.Body.String(), `"total":0`) {
+					t.Fatalf("JWT list exposed another owner's session: %s", response.Body.String())
+				}
+			}
+		})
+	}
+	owner, err := auth.Authenticate(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sessions, err := store.List(t.Context(), owner); err != nil || len(sessions) != 1 {
+		t.Fatalf("unauthorized requests changed sessions: %v, %v", sessions, err)
+	}
+	if messages, err := store.AllMemory(t.Context(), owner, created.Data.SessionID); err != nil || len(messages) != 0 {
+		t.Fatalf("unauthorized chat persisted messages: %v, %v", messages, err)
+	}
 }
 
 type systemAuthenticator struct{}
@@ -64,8 +215,8 @@ func TestCORSMiddlewareAllowsTracePropagationHeaders(t *testing.T) {
 			t.Fatalf("Access-Control-Allow-Headers = %q, missing %q", allowed, header)
 		}
 	}
-	if exposed := response.Header().Get("Access-Control-Expose-Headers"); exposed != "X-Trace-ID" {
-		t.Fatalf("Access-Control-Expose-Headers = %q, want X-Trace-ID", exposed)
+	if exposed := response.Header().Get("Access-Control-Expose-Headers"); exposed != "X-Trace-ID, X-Interaction-ID, WWW-Authenticate" {
+		t.Fatalf("Access-Control-Expose-Headers = %q, want trace and interaction IDs", exposed)
 	}
 }
 

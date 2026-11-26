@@ -27,11 +27,13 @@ import (
 const (
 	AuthMethodStatic = "static"
 	AuthMethodSystem = "system"
+	AuthMethodJWT    = "jwt"
 
 	ScopeSessionAdmin = "ai:sessions:admin"
 )
 
 var (
+	ErrAuthMisconfigured      = errors.New("authentication configuration is invalid")
 	ErrAuthenticationRequired = errors.New("authentication required")
 	ErrResourceNotAccessible  = errors.New("resource not accessible")
 )

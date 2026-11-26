@@ -15,67 +15,73 @@
  * limitations under the License.
  */
 
-import axios from 'axios'
-import type { AIContextSnapshot } from '@/ai-context'
+import { aiClient, AIAPIError, authenticatedFetch } from './aiTransport'
+import type { AIChatRequestContext } from './aiMemory'
 import type { ChatResponse, ChatService, Session } from '@/components/ai-chat/types'
-
 export type { ChatMessage, ChatResponse, Session } from '@/components/ai-chat/types'
+export { authenticatedFetch } from './aiTransport'
 
 const BASE_URL = '/api/v1'
 
 // AI 服务接口
-export const aiService: ChatService<AIContextSnapshot> = {
+export const aiService: ChatService<AIChatRequestContext> = {
   // 创建新会话
   async createSession(): Promise<string> {
-    const response = await axios.post(`${BASE_URL}/ai/sessions`)
+    const response = await aiClient.post('/sessions')
     return response.data.data.session_id
   },
 
   // 获取会话列表
   async getSessions(): Promise<Session[]> {
-    const response = await axios.get(`${BASE_URL}/ai/sessions`)
+    const response = await aiClient.get('/sessions')
     return response.data.data.sessions || []
   },
 
   // 获取特定会话信息
   async getSessionInfo(sessionId: string): Promise<ChatResponse> {
-    const response = await axios.get(`${BASE_URL}/ai/sessions/${sessionId}`)
+    const response = await aiClient.get(`/sessions/${sessionId}`)
     return response.data
   },
 
   // 删除会话
   async deleteSession(sessionId: string): Promise<void> {
-    await axios.delete(`${BASE_URL}/ai/sessions/${sessionId}`)
+    await aiClient.delete(`/sessions/${sessionId}`)
   },
 
   // 发送聊天消息（流式响应）
   async sendChatMessage(
     message: string,
     sessionId?: string,
-    context?: AIContextSnapshot
+    context?: AIChatRequestContext,
+    idempotencyKey?: string
   ): Promise<ReadableStream<Uint8Array>> {
+    if (!idempotencyKey) {
+      throw new Error('An idempotency key is required for chat requests')
+    }
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Idempotency-Key': idempotencyKey
     }
 
     if (sessionId) {
       headers['X-Session-ID'] = sessionId
     }
 
-    const response = await fetch(`${BASE_URL}/ai/chat/stream`, {
+    const response = await authenticatedFetch(`${BASE_URL}/ai/chat/stream`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
         message,
         sessionID: sessionId,
-        context
+        matchContext: context?.matchContext
       }),
       mode: 'cors', // 允许跨域
-      credentials: 'include' // 允许携带 cookie
+      credentials: 'omit'
     })
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
+      const body = await response.json().catch(() => ({}))
+      throw new AIAPIError(body.code || 'REQUEST_FAILED', response.status)
     }
     if (!response.body) {
       throw new Error('AI service returned an empty response body')

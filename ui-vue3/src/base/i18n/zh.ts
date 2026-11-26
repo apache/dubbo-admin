@@ -18,6 +18,84 @@
 import type { I18nType } from './type.ts'
 
 const words: I18nType = {
+  aiMemory: {
+    title: '我的记忆',
+    add: '新增记忆',
+    edit: '编辑',
+    delete: '删除',
+    clear: '清空全部记忆',
+    enable: '启用记忆',
+    disable: '禁用记忆',
+    refresh: '刷新',
+    more: '加载更多',
+    empty: '暂无已保存的记忆',
+    category: '类别',
+    project: '项目',
+    task: '任务',
+    value: '内容',
+    expiry: '有效期（本地时间）',
+    source: '来源',
+    sourceUnavailable: '来源会话不可用，内容已隐藏',
+    explicitSource: '用户显式保存',
+    noExpiry: '不过期',
+    expired: '已过期',
+    noProject: '未选择项目',
+    noTask: '未选择任务',
+    cancel: '取消',
+    save: '确认并保存',
+    confirm: '确认记忆变更',
+    unknownCategory: '暂不支持的类别',
+    selectionHint: '仅用于下一条消息；未选择时不召回项目或任务专属记忆。',
+    retentionHint:
+      '记忆可用于你的不同会话。删除记忆不会清除独立的聊天陈述或过去的回答；清除规范聊天历史需删除来源会话。',
+    confirmSave: '点击保存即确认将这些信息用于之后符合适用条件的会话。',
+    expiryHint: '选填，服务端会校验配置允许的最长有效期。',
+    readOnlyHint: '表达只读诊断偏好；实际工具权限仍由服务端控制。',
+    validation: '请填写内容，为项目背景选择项目，并将有效期设为未来时间。',
+    conflictHint: '草稿已保留。请关闭编辑窗口、刷新列表，检查最新版本后重新确认保存。',
+    deleteHint: '确认删除这条记忆？之后不再作为有效记忆使用，独立聊天陈述和过去的回答仍会保留。',
+    clearHint: '确认清空全部记忆？将删除所有分页中的已保存记忆，聊天历史仍会保留。',
+    disableHint: '确认禁用记忆？数据仍保留，将停止匹配注入并禁止新增或编辑。',
+    enableHint: '确认启用记忆？有效记录将可用于之后符合条件的会话。',
+    disabledHint: '记忆已禁用。已保存的数据仍可查看、删除或清空。',
+    categories: {
+      language: '回答语言',
+      style: '回答风格',
+      background: '项目背景',
+      priority: '诊断优先事项',
+      readOnly: '只读诊断'
+    },
+    tasks: {
+      diagnosis: '诊断',
+      configuration: '配置',
+      inspection: '巡检'
+    },
+    errors: {
+      AUTHENTICATION_REQUIRED: '请重新登录后管理记忆。',
+      MEMORY_INVALID:
+        '记忆无效，请检查类别、适用条件、有效期和内容；敏感信息及覆盖系统规则的内容会被拒绝。',
+      MEMORY_VERSION_CONFLICT: '记忆已在其他位置变更，或同类事实已存在；请刷新并检查后重新操作。',
+      MEMORY_DISABLED: '记忆已禁用，请刷新设置。',
+      MEMORY_NOT_FOUND: '这条记忆已不存在，请刷新列表。',
+      RESOURCE_NOT_ACCESSIBLE: '你无法访问所选项目或来源会话。',
+      RESOURCE_EXHAUSTED: '记忆容量已达上限，请删除无用记录或缩短内容。',
+      MEMORY_UNAVAILABLE: '记忆存储暂不可用。',
+      MEMORY_OPTIONS_UNAVAILABLE: '项目选项暂不可用。',
+      NETWORK_ERROR: '请求失败，请检查网络后重试。'
+    }
+  },
+  aiChat: {
+    errors: {
+      SESSION_BUSY: '当前会话正在处理其他请求，请等待完成。',
+      INTERACTION_IN_PROGRESS: '原请求仍在处理中，请稍后重试。',
+      IDEMPOTENCY_CONFLICT: '重试请求与原请求不一致，请重新发送消息。',
+      RESOURCE_EXHAUSTED: '对话存储容量已耗尽，请清理旧会话或联系管理员。',
+      AUTHENTICATION_REQUIRED: '登录状态已过期，请重新登录后重试。',
+      RESOURCE_NOT_ACCESSIBLE: '当前账号无法访问该会话。',
+      SERVER_ERROR: 'AI 服务返回错误，请稍后重试。',
+      NETWORK_ERROR: '网络连接失败，请检查网络后重试。'
+    }
+  },
   destinationRuleDomain: {
     YAMLView: 'YAML视图',
     formView: '表单视图'

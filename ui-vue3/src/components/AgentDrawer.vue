@@ -19,31 +19,25 @@
   <AiChatDrawer
     v-model:open="localOpen"
     :service="aiService"
-    :collect-context="consumeSelectedContext"
+    :collect-context="consumeMatchContext"
+    :format-error="formatError"
     :labels="labels"
     :suggestions="suggestions"
+    @session-changed="matchContext = {}"
   >
     <template #context>
-      <AIContextPreview
-        v-model:enabled="contextEnabled"
-        v-model:excluded-section-ids="excludedContextSectionIds"
-        :snapshot="contextSnapshot"
-        @refresh="refreshContextSnapshot"
-      />
+      <MemoryMatchSelector v-model="matchContext" :active="localOpen" />
     </template>
   </AiChatDrawer>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { aiService } from '@/api/service/ai'
-import {
-  AI_CONTEXT_UNSAVED_CHANGES_SECTION_ID,
-  aiContextManager,
-  selectAIContextSnapshot
-} from '@/ai-context'
-import type { AIContextSnapshot } from '@/ai-context'
-import AIContextPreview from './ai-context/AIContextPreview.vue'
+import { type AIChatRequestContext, type MatchContext } from '@/api/service/aiMemory'
+import { chatErrorKey } from './ai-chat/errors'
+import MemoryMatchSelector from './ai-memory/MemoryMatchSelector.vue'
 import { AiChatDrawer, type AIChatLabels, type ChatSuggestion } from './ai-chat'
 
 const props = withDefaults(
@@ -60,9 +54,12 @@ const emit = defineEmits<{
 }>()
 
 const localOpen = ref(props.agentDrawerOpen)
-const contextSnapshot = ref<AIContextSnapshot>()
-const contextEnabled = ref(true)
-const excludedContextSectionIds = ref<string[]>([])
+const { t } = useI18n()
+const formatError = (error: unknown) => {
+  const key = chatErrorKey(error)
+  return key ? t(key) : undefined
+}
+const matchContext = ref<MatchContext>({})
 
 const labels: Partial<AIChatLabels> = {
   title: 'Dubbo Admin AI',
@@ -129,42 +126,17 @@ const suggestions: ChatSuggestion[] = [
   }
 ]
 
-const refreshContextSnapshot = () => {
-  try {
-    const snapshot = aiContextManager.snapshot()
-    const availableSectionIds = new Set(snapshot.evidence?.map((section) => section.id) || [])
-    if (snapshot.state?.unsavedChanges) {
-      availableSectionIds.add(AI_CONTEXT_UNSAVED_CHANGES_SECTION_ID)
-    }
-    excludedContextSectionIds.value = excludedContextSectionIds.value.filter((id) =>
-      availableSectionIds.has(id)
-    )
-    contextSnapshot.value = snapshot
-  } catch (error) {
-    contextSnapshot.value = undefined
-    console.warn('Failed to collect page context:', error)
-  }
-}
-
-const consumeSelectedContext = (): AIContextSnapshot | undefined => {
-  refreshContextSnapshot()
-  const selected = contextSnapshot.value
-    ? selectAIContextSnapshot(contextSnapshot.value, {
-        enabled: contextEnabled.value,
-        excludedSectionIds: excludedContextSectionIds.value
-      })
-    : undefined
-
-  contextEnabled.value = true
-  excludedContextSectionIds.value = []
-  return selected
+const consumeMatchContext = (): AIChatRequestContext => {
+  const selected = { ...matchContext.value }
+  matchContext.value = {}
+  return { matchContext: selected }
 }
 
 watch(
   () => props.agentDrawerOpen,
   (open) => {
     localOpen.value = open
-    if (open) refreshContextSnapshot()
+    if (!open) matchContext.value = {}
   },
   { immediate: true }
 )

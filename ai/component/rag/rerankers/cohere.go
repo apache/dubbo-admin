@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"os"
 
+	"dubbo-admin-ai/security"
+
 	"github.com/cloudwego/eino/schema"
 	cohere "github.com/cohere-ai/cohere-go/v2"
 	cohereClient "github.com/cohere-ai/cohere-go/v2/client"
@@ -44,7 +46,7 @@ type Reranker interface {
 type Result struct {
 	Content        string
 	RelevanceScore float64
-	Index          int    // Original index in input docs
+	Index          int // Original index in input docs
 	Metadata       map[string]any
 }
 
@@ -155,6 +157,7 @@ type cohereReranker struct {
 }
 
 func (r *cohereReranker) Rerank(ctx context.Context, query string, docs any, opts ...Option) ([]*Result, error) {
+	query = security.DefaultSanitizer().ModelInput(query)
 	if query == "" {
 		return nil, fmt.Errorf("query is empty")
 	}
@@ -187,7 +190,7 @@ func (r *cohereReranker) Rerank(ctx context.Context, query string, docs any, opt
 
 	texts := make([]*string, 0, len(schemaDocs))
 	for _, d := range schemaDocs {
-		c := d.Content
+		c := security.DefaultSanitizer().ModelInput(d.Content)
 		texts = append(texts, &c)
 	}
 

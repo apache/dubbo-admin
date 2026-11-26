@@ -451,7 +451,7 @@ func (r *RAGComponent) maybeSeed() {
 			return
 		}
 		if err != nil {
-			r.rt.GetLogger().Warn("RAG seed skipped", "error", err)
+			r.rt.GetLogger().Warn("RAG seed skipped", "error_type", fmt.Sprintf("%T", err))
 			return
 		}
 		r.rt.GetLogger().Info("RAG seed completed", "indexed_chunks", n)

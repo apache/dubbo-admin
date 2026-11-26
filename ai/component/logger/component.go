@@ -19,6 +19,7 @@ package logger
 
 import (
 	"dubbo-admin-ai/runtime"
+	"dubbo-admin-ai/security"
 	"fmt"
 	"log/slog"
 
@@ -70,7 +71,7 @@ func (l *LoggerComponent) Init(rt *runtime.Runtime) error {
 	default:
 		logger = l.infoLogger()
 	}
-	slog.SetDefault(logger)
+	slog.SetDefault(slog.New(security.NewRedactingHandler(logger.Handler())))
 	slog.Info("Logger component initialized",
 		"level", l.level)
 

@@ -18,6 +18,96 @@
 import type { I18nType } from './type.ts'
 
 const words: I18nType = {
+  aiMemory: {
+    title: 'My memories',
+    add: 'Add memory',
+    edit: 'Edit',
+    delete: 'Delete',
+    clear: 'Clear all memories',
+    enable: 'Enable memory',
+    disable: 'Disable memory',
+    refresh: 'Refresh',
+    more: 'Load more',
+    empty: 'No saved memories',
+    category: 'Category',
+    project: 'Project',
+    task: 'Task',
+    value: 'Content',
+    expiry: 'Expires at (local time)',
+    source: 'Source',
+    sourceUnavailable: 'Source conversation unavailable; content hidden',
+    explicitSource: 'Explicitly saved by you',
+    noExpiry: 'No expiry',
+    expired: 'Expired',
+    noProject: 'No project selected',
+    noTask: 'No task selected',
+    cancel: 'Cancel',
+    save: 'Confirm and save',
+    confirm: 'Confirm memory change',
+    unknownCategory: 'Unsupported category',
+    selectionHint:
+      'Applies to the next message only. Without a selection, project and task memories are excluded.',
+    retentionHint:
+      'Memories apply across your conversations. Deleting a memory does not erase independent chat statements or past replies. Delete the source conversation to remove its canonical history.',
+    confirmSave: 'Saving confirms this information for use in future matching conversations.',
+    expiryHint: 'Optional. The server enforces the configured maximum lifetime.',
+    readOnlyHint:
+      'Advisory preference for read-only diagnosis; tool permissions remain server controlled.',
+    validation:
+      'Enter content, select a project for project background, and use a future expiry date.',
+    conflictHint:
+      'Your draft is preserved. Close this editor, refresh the list, and review the latest version before saving again.',
+    deleteHint:
+      'Delete this memory? It will stop being used as an active memory. Independent chat statements and earlier replies remain.',
+    clearHint:
+      'Clear all your memories? This removes every saved memory, including records on other pages. Chat history remains.',
+    disableHint:
+      'Disable memory? Records remain saved. Matching injection and new saves will be disabled.',
+    enableHint: 'Enable memory? Valid saved records may be used in future matching conversations.',
+    disabledHint:
+      'Memory is disabled. Saved records remain available for viewing, deletion and clearing.',
+    categories: {
+      language: 'Response language',
+      style: 'Response style',
+      background: 'Project background',
+      priority: 'Diagnostic priority',
+      readOnly: 'Read-only diagnosis'
+    },
+    tasks: {
+      diagnosis: 'Diagnosis',
+      configuration: 'Configuration',
+      inspection: 'Inspection'
+    },
+    errors: {
+      AUTHENTICATION_REQUIRED: 'Sign in again to manage memories.',
+      MEMORY_INVALID:
+        'Invalid memory. Check its category, applicability, expiry and content. Sensitive values and policy overrides are rejected.',
+      MEMORY_VERSION_CONFLICT:
+        'Memory changed elsewhere or this fact already exists. Refresh and review before trying again.',
+      MEMORY_DISABLED: 'Memory is disabled. Refresh its settings.',
+      MEMORY_NOT_FOUND: 'This memory no longer exists. Refresh the list.',
+      RESOURCE_NOT_ACCESSIBLE: 'The selected project or source conversation is unavailable to you.',
+      RESOURCE_EXHAUSTED:
+        'Memory capacity has been reached. Delete unused records or shorten the content.',
+      MEMORY_UNAVAILABLE: 'Memory storage is unavailable.',
+      MEMORY_OPTIONS_UNAVAILABLE: 'Project options are unavailable.',
+      NETWORK_ERROR: 'The request failed. Check your connection and retry.'
+    }
+  },
+  aiChat: {
+    errors: {
+      SESSION_BUSY: 'This session is already processing another request. Please wait.',
+      INTERACTION_IN_PROGRESS:
+        'The original request is still processing. Please try again shortly.',
+      IDEMPOTENCY_CONFLICT: 'This retry does not match the original request. Start a new message.',
+      RESOURCE_EXHAUSTED:
+        'Conversation storage is full. Clear old conversations or contact an administrator.',
+      AUTHENTICATION_REQUIRED: 'Your session has expired. Sign in again and retry.',
+      RESOURCE_NOT_ACCESSIBLE: 'This conversation is no longer available to your account.',
+      SERVER_ERROR: 'The AI service returned an error. Please try again later.',
+      NETWORK_ERROR: 'Network connection failed. Check your connection and retry.'
+    }
+  },
   loginDomain: {
     username: 'Username',
     password: 'Password',
