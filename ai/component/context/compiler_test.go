@@ -373,6 +373,68 @@ func TestTemplateRefExcludesRuntimeToolAllowlist(t *testing.T) {
 	}
 }
 
+func TestCompileTrimsMandatoryToolEvidenceToRequestBudget(t *testing.T) {
+	c, req := fixture(t)
+	req.ContextTokens, req.OutputTokens, req.SafetyMargin = 32768, 3000, 1024
+	output := map[string]any{}
+	for i := 0; i < 32; i++ {
+		output[fmt.Sprintf("field-%02d", i)] = strings.Repeat("ordinary tool log ", 80)
+	}
+	if size := len(JSON(output)); size < 40<<10 {
+		t.Fatalf("fixture output too small: %d", size)
+	}
+	req.Turns[1].Batches = []store.ToolBatch{{ID: "large", SessionID: "session", TurnID: 2, TenantID: "tenant", OwnerID: "owner", Version: 1, SchemaVersion: "v1", Calls: []store.ToolCall{
+		{ID: "large-call", Name: "lookup", Input: JSON(map[string]any{"name": "large"}), Output: JSON(output), Status: "succeeded"},
+		{ID: "small-call", Name: "lookup", Input: JSON(map[string]any{"name": "small"}), Output: JSON(map[string]any{"ok": true}), Status: "succeeded"},
+	}}}
+	req.Tools = []Tool{{Name: "lookup", InputSchema: map[string]any{"type": "object"}}}
+	out, err := c.Compile(context.Background(), req)
+	if err != nil {
+		t.Fatalf("mandatory tool evidence was not trimmed: %v", err)
+	}
+	if len(out.Messages) != 6 || len(out.Messages[4].Requests) != 2 || len(out.Messages[5].Responses) != 2 {
+		t.Fatalf("tool pairing changed: %+v", out.Messages)
+	}
+	if out.Messages[4].Requests[0].ID != "large-call" || out.Messages[5].Responses[0].ID != "large-call" {
+		t.Fatal("call IDs were reordered or dropped")
+	}
+	if !strings.Contains(string(out.Messages[5].Responses[0].Output), "REQUEST_BUDGET_TRUNCATED") {
+		t.Fatalf("large result was not trimmed: %s", out.Messages[5].Responses[0].Output)
+	}
+	if strings.Contains(string(out.Messages[5].Responses[1].Output), "REQUEST_BUDGET_TRUNCATED") {
+		t.Fatal("small result was trimmed before the large one")
+	}
+	trimmed := false
+	for _, d := range out.Report.Decisions {
+		if d.ReasonCode == "REQUEST_BUDGET_TRUNCATED" {
+			trimmed = true
+		}
+	}
+	if !trimmed || !out.Report.Degraded {
+		t.Fatalf("compilation report did not record the trim: %+v", out.Report)
+	}
+	again, err := c.Compile(context.Background(), req)
+	if err != nil || !reflect.DeepEqual(out, again) {
+		t.Fatalf("trimming is not deterministic: %v", err)
+	}
+}
+
+func TestOversizedCurrentInputIsNeverTrimmed(t *testing.T) {
+	c, req := fixture(t)
+	req.ContextTokens, req.OutputTokens, req.SafetyMargin = 4000, 500, 100
+	req.Turns[1].Messages = []*ai.Message{ai.NewUserTextMessage(strings.Repeat("question ", 1200))}
+	if _, err := c.Compile(context.Background(), req); !errors.Is(err, ErrMandatoryBudget) {
+		t.Fatalf("oversized current input was trimmed instead of rejected: %v", err)
+	}
+}
+
+func TestTrimmableSourceMustBeRequired(t *testing.T) {
+	c, _ := fixture(t)
+	if err := c.Register(testSource{}, SourcePolicy{Kinds: []string{"evidence"}, Trimmable: true}); err == nil {
+		t.Fatal("optional trimmable source accepted")
+	}
+}
+
 func TestLargeToolResultCountedOnceAgainstDefaultBudget(t *testing.T) {
 	c, req := fixture(t)
 	req.ContextTokens, req.OutputTokens, req.SafetyMargin = 32768, 3000, 1024
@@ -564,8 +626,19 @@ func TestLargeToolResultsAreBoundedBeforeRequestBudget(t *testing.T) {
 				}
 				req.MaxCollectBytes = 256 << 10
 				req.MaxBytes = 512
+				overflow, overflowErr := c.Compile(context.Background(), req)
+				if overflowErr != nil {
+					// Trimming may still be impossible when the base prompt and
+					// tool schemas alone exceed the rendered byte budget.
+					if !errors.Is(overflowErr, ErrMandatoryBudget) {
+						t.Fatalf("rendered mandatory overflow error: %v", overflowErr)
+					}
+				} else if size := len(JSON(overflow.Messages)) + len(JSON(overflow.Tools)); size > req.MaxBytes || !strings.Contains(string(JSON(overflow.Messages)), "REQUEST_BUDGET_TRUNCATED") {
+					t.Fatalf("rendered mandatory overflow escaped: %d > %d", size, req.MaxBytes)
+				}
+				req.MaxBytes = 64
 				if _, err = c.Compile(context.Background(), req); !errors.Is(err, ErrMandatoryBudget) {
-					t.Fatalf("rendered mandatory overflow ignored: %v", err)
+					t.Fatalf("impossible mandatory budget ignored: %v", err)
 				}
 				// Arguments are bounded in the model-facing view while the canonical
 				// ledger remains unchanged.

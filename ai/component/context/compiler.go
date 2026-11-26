@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 
 	"dubbo-admin-ai/security"
 	"dubbo-admin-ai/store"
@@ -98,6 +99,9 @@ func (c *Compiler) Register(source ContextSource, p SourcePolicy) error {
 	if p.Scope != "session" && p.Scope != "user" {
 		return fmt.Errorf("unsupported source scope")
 	}
+	if p.Trimmable && !p.Required {
+		return fmt.Errorf("trimmable source must be required")
+	}
 	c.sources = append(c.sources, registration{source, d, p})
 	sort.Slice(c.sources, func(i, j int) bool {
 		a, b := c.sources[i], c.sources[j]
@@ -112,6 +116,7 @@ func (c *Compiler) Register(source ContextSource, p SourcePolicy) error {
 type candidate struct {
 	messages    []Message
 	required    bool
+	trimable    bool
 	tokens      int
 	decision    int
 	bytes       int
@@ -295,7 +300,7 @@ func (c *Compiler) Compile(ctx context.Context, req CompileRequest) (*CompiledRe
 			}
 			index := len(out.Report.Decisions)
 			out.Report.Decisions = append(out.Report.Decisions, d)
-			v := candidate{messages: messages, required: r.policy.Required, tokens: d.EstimatedTokens, bytes: len(JSON(messages)) + 1, decision: index}
+			v := candidate{messages: messages, required: r.policy.Required, trimable: r.policy.Trimmable, tokens: d.EstimatedTokens, bytes: len(JSON(messages)) + 1, decision: index}
 			if r.policy.RecentSuffix {
 				v.sequence = r.descriptor.ID
 			}
@@ -311,7 +316,10 @@ func (c *Compiler) Compile(ctx context.Context, req CompileRequest) (*CompiledRe
 		}
 	}
 	if used > available || usedBytes > req.MaxBytes {
-		return nil, ErrMandatoryBudget
+		used, usedBytes = trimRequiredEvidence(out, candidates, used, usedBytes, available, req.MaxBytes)
+		if used > available || usedBytes > req.MaxBytes {
+			return nil, ErrMandatoryBudget
+		}
 	}
 	selected := map[int]bool{}
 	// Optional history is collected chronologically; choose a recent suffix and
@@ -351,6 +359,153 @@ func (c *Compiler) Compile(ctx context.Context, req CompileRequest) (*CompiledRe
 	}
 	out.Report.InputTokens = used
 	return out, nil
+}
+
+// trimRequiredEvidence shrinks trimmable required candidates with explicit
+// markers until the request fits or no candidate can release more bytes.
+func trimRequiredEvidence(out *CompiledRequest, candidates []candidate, used, usedBytes, available, maxBytes int) (int, int) {
+	for i := range candidates {
+		if used <= available && usedBytes <= maxBytes {
+			break
+		}
+		v := &candidates[i]
+		if !v.required || !v.trimable {
+			continue
+		}
+		overflowTokens := max(used-available, 0)
+		overflowBytes := max(usedBytes-maxBytes, 0)
+		limit := min(v.tokens-overflowTokens-16, v.bytes-overflowBytes-1)
+		if limit < 0 {
+			limit = 0
+		}
+		messages, changed := fitMessages(v.messages, limit)
+		if !changed {
+			continue
+		}
+		tokens := Estimate(messages)
+		bytes := len(JSON(messages)) + 1
+		used += tokens - v.tokens
+		usedBytes += bytes - v.bytes
+		v.messages, v.tokens, v.bytes = messages, tokens, bytes
+		d := &out.Report.Decisions[v.decision]
+		d.EstimatedTokens = tokens
+		d.Status = "trimmed"
+		d.ReasonCode = "REQUEST_BUDGET_TRUNCATED"
+		out.Report.Degraded = true
+	}
+	return used, usedBytes
+}
+
+type fitSlot struct {
+	message int
+	text    bool
+	request bool
+	call    int
+}
+
+func callSlots(message int, calls []store.ToolCall, request bool) []fitSlot {
+	if len(calls) == 0 {
+		return nil
+	}
+	order := make([]int, len(calls))
+	for i := range order {
+		order[i] = i
+	}
+	sort.SliceStable(order, func(i, j int) bool {
+		if request {
+			return len(calls[order[i]].Input) > len(calls[order[j]].Input)
+		}
+		return len(calls[order[i]].Output) > len(calls[order[j]].Output)
+	})
+	slots := make([]fitSlot, len(order))
+	for i, call := range order {
+		slots[i] = fitSlot{message: message, request: request, call: call}
+	}
+	return slots
+}
+
+// fitMessages shrinks rendered tool evidence to maxBytes (the encoded JSON
+// length of messages) using explicit markers. Call IDs, names, statuses and
+// request/response pairing are preserved; only Text and call data are trimmed.
+// Messages arrive chronologically, so older batches release data before the
+// most recent tool result; arguments go before results within a batch.
+func fitMessages(messages []Message, maxBytes int) ([]Message, bool) {
+	if len(messages) == 0 || maxBytes < 0 {
+		return messages, false
+	}
+	sizes := make([]int, len(messages))
+	total := len(messages) + 1
+	for i := range messages {
+		sizes[i] = len(JSON(messages[i]))
+		total += sizes[i]
+	}
+	if total <= maxBytes {
+		return messages, false
+	}
+	out := make([]Message, len(messages))
+	for i, message := range messages {
+		out[i] = message
+		out[i].Requests = append([]store.ToolCall(nil), message.Requests...)
+		out[i].Responses = append([]store.ToolCall(nil), message.Responses...)
+	}
+	var slots []fitSlot
+	for i := range out {
+		if out[i].Text != "" {
+			slots = append(slots, fitSlot{message: i, text: true})
+		}
+		slots = append(slots, callSlots(i, out[i].Requests, true)...)
+		slots = append(slots, callSlots(i, out[i].Responses, false)...)
+	}
+	changed := false
+	for _, slot := range slots {
+		if total <= maxBytes {
+			break
+		}
+		message := &out[slot.message]
+		oldSize := sizes[slot.message]
+		var restore func()
+		switch {
+		case slot.text:
+			old := message.Text
+			message.Text = truncateEvidenceText(old)
+			restore = func() { message.Text = old }
+		case slot.request:
+			call := &message.Requests[slot.call]
+			old := call.Input
+			call.Input = truncationMarker(old)
+			restore = func() { call.Input = old }
+		default:
+			call := &message.Responses[slot.call]
+			old := call.Output
+			call.Output = truncationMarker(old)
+			restore = func() { call.Output = old }
+		}
+		newSize := len(JSON(*message))
+		if newSize >= oldSize {
+			restore()
+			continue
+		}
+		sizes[slot.message] = newSize
+		total += newSize - oldSize
+		changed = true
+	}
+	return out, changed
+}
+
+func truncationMarker(value json.RawMessage) json.RawMessage {
+	return JSON(map[string]any{
+		"truncated":      true,
+		"reason":         "REQUEST_BUDGET_TRUNCATED",
+		"original_bytes": len(value),
+	})
+}
+
+func truncateEvidenceText(text string) string {
+	marker := fmt.Sprintf("[REQUEST_BUDGET_TRUNCATED: request budget exceeded; original_bytes=%d]", len(text))
+	if i := strings.IndexByte(text, '\n'); i >= 0 {
+		return text[:i+1] + marker
+	}
+	return marker
 }
 
 func renderEvents(events []Event, kinds []string) ([]Message, bool, bool, error) {

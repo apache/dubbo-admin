@@ -109,17 +109,17 @@ Session/tenant byte capacity and backend entity/batch capacity. A result that
 would exceed the encoded ceiling is persisted as explicit truncated evidence and
 marks the interaction degraded instead of aborting after the tool has run. This
 is the persistence ceiling, not the provider request budget: rendered mandatory
-tool evidence that cannot fit `context_tokens - max_tokens - safety_margin`
-still fails explicitly, as described under Sources. Failed persistence still
-aborts instead of recording success without evidence. Best-effort interruption
-recording uses a fresh bounded context. If it cannot commit, pending remains an
-unknown execution outcome. Failure and lease cleanup release the Turn and retain
-only the most recent released batches that fit both the 16-batch and 1 MiB
-recovery windows; older released batches are reclaimed from Session/tenant
-quota. Reclamation is silent: `ToolRecovery.Omitted` describes the retained read
-window, so an omission notice is not preserved for evidence already reclaimed.
-Session tombstones immediately block reads/writes, and normal Session cleanup
-removes the ledger.
+tool evidence is trimmed further with `REQUEST_BUDGET_TRUNCATED` markers when it
+cannot fit, and compilation fails only if the base prompt, current input and
+minimal markers still exceed the window. Failed persistence still aborts instead
+of recording success without evidence. Best-effort interruption recording uses a
+fresh bounded context. If it cannot commit, pending remains an unknown execution
+outcome. Failure and lease cleanup release the Turn and retain only the most
+recent released batches that fit both the 16-batch and 1 MiB recovery windows;
+older released batches are reclaimed from Session/tenant quota. Reclamation is
+silent: `ToolRecovery.Omitted` describes the retained read window, so an omission
+notice is not preserved for evidence already reclaimed. Session tombstones
+immediately block reads/writes, and normal Session cleanup removes the ledger.
 
 At interaction start, both backends query released-attempt batches independently
 of completed/current Turns, using the current Turn as an upper boundary. The
@@ -152,10 +152,14 @@ copy of the collection snapshot. Content cannot become a system message.
 
 The first Sources consume bounded Input, History and Tool snapshots. Whole
 completed Turns are selected as a recent suffix. A tool response batch is never
-split. Current input and current tool evidence are mandatory; they cannot be
-silently truncated. Tool *result data* has deterministic depth/collection/string
-limits and explicit truncation/source markers, while call IDs and arguments
-remain protocol-complete. Canonical records are never rewritten by this view.
+split. Current input and current tool evidence are mandatory. The current input is
+never truncated. A `Trimmable` mandatory Source (the tool evidence source) may be
+trimmed further with explicit `REQUEST_BUDGET_TRUNCATED` markers when the
+rendered required request exceeds `context_tokens - max_tokens - safety_margin`;
+older batches release data before the most recent result, and call IDs, names,
+statuses and request/response pairing remain intact. Tool data also has
+deterministic depth/collection/string limits and explicit truncation/source
+markers. Canonical records are never rewritten by this view.
 
 `max_collect_bytes` limits raw Store snapshots and Source groups before rendering;
 `max_context_bytes` independently limits rendered Compiler messages plus tool

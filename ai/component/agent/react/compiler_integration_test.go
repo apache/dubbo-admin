@@ -679,6 +679,42 @@ func (s *failOnceCompilationStore) CompleteToolCall(ctx context.Context, a secur
 	return s.CompilationStore.CompleteToolCall(ctx, a, id, batch, version, index, call)
 }
 
+func TestLargeToolResultIsTrimmedForTheRequestBudget(t *testing.T) {
+	f := &providerFixture{first: `{"role":"assistant","tool_calls":[{"id":"large-call","type":"function","function":{"name":"large","arguments":"{}"}}]}`}
+	ra, s, spec, g, _ := compilerAgentFixture(t, f)
+	ra.Stop()
+	tool := genkit.DefineTool(g, "large", "Large fixture", func(ctx *ai.ToolContext, input struct{}) (map[string]any, error) {
+		output := make(map[string]any, 32)
+		for i := 0; i < 32; i++ {
+			output[fmt.Sprintf("field-%02d", i)] = strings.Repeat("ordinary tool log ", 80)
+		}
+		return output, nil
+	})
+	restored, err := NewReActAgentWithStore(g, s, spec, newToolTimeoutResolver(5, nil), nil, []ai.ToolRef{tool})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer restored.Stop()
+	turn := runCompiledInteraction(t, restored, s, "request-budget")
+	batches, err := s.ToolBatches(context.Background(), testutils.TestAccess(), "compiled", turn, 16)
+	if err != nil || len(batches) != 1 {
+		t.Fatalf("ledger: %+v %v", batches, err)
+	}
+	if output := string(batches[0].Calls[0].Output); len(output) < 40<<10 || strings.Contains(output, "REQUEST_BUDGET_TRUNCATED") {
+		t.Fatalf("canonical output changed or was too small: %d", len(output))
+	}
+	f.mu.Lock()
+	requests := append([]map[string]any(nil), f.requests...)
+	f.mu.Unlock()
+	if len(requests) != 2 {
+		t.Fatalf("interaction did not reach the final answer: %d requests", len(requests))
+	}
+	second, _ := json.Marshal(requests[1])
+	if !strings.Contains(string(second), "REQUEST_BUDGET_TRUNCATED") {
+		t.Fatal("provider request did not receive truncated evidence")
+	}
+}
+
 func TestToolResultPersistsTruncatedEvidenceAfterStorageFailure(t *testing.T) {
 	f := &providerFixture{first: `{"role":"assistant","tool_calls":[{"id":"quota-call","type":"function","function":{"name":"quota","arguments":"{}"}}]}`}
 	ra, s, spec, g, _ := compilerAgentFixture(t, f)
