@@ -54,6 +54,7 @@ type ReActAgent struct {
 	compilationStore conversationstore.CompilationStore
 	compilerSpec     AgentSpec
 	templateRef      string
+	templateWarnings *templateWarningSet
 	compiledTools    []compcontext.Tool
 	registry         *genkit.Genkit
 	memoryCtx        context.Context
@@ -80,6 +81,34 @@ var interactionSequence atomic.Uint64
 var ErrAgentStopping = errors.New("agent is stopping")
 
 const persistenceTimeout = 30 * time.Second
+
+const maxTemplateWarnings = 4096
+
+// templateWarningSet logs a pinned-identity mismatch once per Session/ref while
+// bounding memory for long-running processes.
+type templateWarningSet struct {
+	mu    sync.Mutex
+	seen  map[string]struct{}
+	order []string
+}
+
+func (w *templateWarningSet) first(key string) bool {
+	if w == nil {
+		return true
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if _, ok := w.seen[key]; ok {
+		return false
+	}
+	if len(w.order) >= maxTemplateWarnings {
+		delete(w.seen, w.order[0])
+		w.order = w.order[1:]
+	}
+	w.seen[key] = struct{}{}
+	w.order = append(w.order, key)
+	return true
+}
 
 type interactionState struct {
 	matchContext  conversationstore.MatchContext
@@ -137,6 +166,7 @@ func NewReActAgentWithStore(g *genkit.Genkit, messageStore conversationstore.Mes
 		contextWindowTurns: contextWindowTurns,
 		callTimeout:        time.Duration(spec.Timeout) * time.Second,
 		bufferSize:         max(spec.ChannelBufferSize, 1),
+		templateWarnings:   &templateWarningSet{seen: map[string]struct{}{}},
 	}
 
 	var ok bool
@@ -457,6 +487,13 @@ func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserI
 		state.matchContext = match
 		if ra.compiler != nil {
 			state.templateRef, err = ra.compilationStore.PinTemplate(parent, access, sessionID, ra.templateRef)
+			if err == nil && state.templateRef != ra.templateRef && ra.templateWarnings.first(sessionID+"\x00"+state.templateRef) {
+				// A pinned older identity still needs its exact archive; make the
+				// otherwise silent reference change observable to operators once
+				// per Session/ref instead of on every interaction.
+				rt.GetLogger().Warn("session pinned to a different template identity",
+					"session_id", sessionID, "pinned_template_ref", state.templateRef, "current_template_ref", ra.templateRef)
+			}
 			if err == nil {
 				limit := ra.contextWindowTurns
 				if ra.compilerSpec.ContextCompilerMode == "minimal" {
@@ -472,7 +509,7 @@ func (ra *ReActAgent) newInteraction(parent context.Context, input *schema.UserI
 				}
 			}
 			if err == nil {
-				state.recovery, err = ra.compilationStore.RecoveryToolBatches(parent, access, sessionID, turnID, 16, min(conversationstore.MaxToolBatchBytes, ra.compilerSpec.MaxCollectBytes))
+				state.recovery, err = ra.compilationStore.RecoveryToolBatches(parent, access, sessionID, turnID, conversationstore.MaxRecoveryToolBatches, min(conversationstore.MaxToolBatchBytes, ra.compilerSpec.MaxCollectBytes))
 			}
 			if err == nil && ra.summaryService != nil && ra.compilerSpec.ContextCompilerMode != "minimal" {
 				summaryInteractionID := interactionID

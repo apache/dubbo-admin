@@ -110,9 +110,23 @@ func (ra *ReActAgent) execCanonicalTools(ctx context.Context, state *interaction
 			return marshalErr
 		}
 		call.Output = data
+		var truncated bool
+		call, truncated = boundToolOutput(batch, i, call)
+		if truncated {
+			s.Degraded = true
+		}
 		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), persistenceTimeout)
 		writeErr := ra.compilationStore.CompleteToolCall(persistCtx, state.access, s.Session, batch.ID, batch.Version, i, call)
 		cancel()
+		if errors.Is(writeErr, store.ErrResourceExhausted) {
+			// The tool already ran; narrow the evidence and retry once so a
+			// quota failure cannot discard the whole interaction.
+			call = shrinkToolOutput(call)
+			s.Degraded = true
+			persistCtx, cancel = context.WithTimeout(context.WithoutCancel(ctx), persistenceTimeout)
+			writeErr = ra.compilationStore.CompleteToolCall(persistCtx, state.access, s.Session, batch.ID, batch.Version, i, call)
+			cancel()
+		}
 		if writeErr != nil {
 			return writeErr
 		}
@@ -129,4 +143,78 @@ func (ra *ReActAgent) execCanonicalTools(ctx context.Context, state *interaction
 		}
 	}
 	return fmt.Errorf("active context turn missing")
+}
+
+// toolBatchEncodingReserve covers small growth such as the batch version digit
+// count so a bounded result does not race the store's exact payload check.
+const toolBatchEncodingReserve = 32
+
+// boundToolOutput keeps the complete encoded batch within the store ceiling.
+// Tool execution already happened, so an oversized result degrades to explicit
+// truncated evidence instead of aborting the interaction.
+func boundToolOutput(batch store.ToolBatch, index int, call store.ToolCall) (store.ToolCall, bool) {
+	probe := batch
+	probe.Calls = append([]store.ToolCall(nil), batch.Calls...)
+	probe.Calls[index] = call
+	if encoded, err := json.Marshal(probe); err == nil && len(encoded)+toolBatchEncodingReserve <= store.MaxToolBatchBytes {
+		return call, false
+	}
+	original := len(call.Output)
+	// Measure the batch with the result replaced by a small placeholder, then
+	// fit a JSON envelope into the remaining room.
+	probe.Calls[index].Output = json.RawMessage(`""`)
+	base, err := json.Marshal(probe)
+	if err != nil {
+		return shrinkToolOutput(call), true
+	}
+	budget := store.MaxToolBatchBytes - toolBatchEncodingReserve
+	room := budget - (len(base) - len(`""`))
+	preview := string(call.Output)
+	if room < 0 {
+		room = 0
+	}
+	if len(preview) > room {
+		preview = preview[:room]
+	}
+	for len(preview) > 0 {
+		envelope, encodeErr := json.Marshal(map[string]any{
+			"truncated":      true,
+			"reason":         "TOOL_OUTPUT_TOO_LARGE",
+			"original_bytes": original,
+			"preview":        preview,
+		})
+		if encodeErr != nil {
+			break
+		}
+		if len(base)-len(`""`)+len(envelope) <= budget {
+			call.Output = envelope
+			call.ErrorCode = "TOOL_OUTPUT_TRUNCATED"
+			return call, true
+		}
+		preview = preview[:len(preview)/2]
+	}
+	marker := json.RawMessage(fmt.Sprintf(`{"truncated":true,"reason":"TOOL_OUTPUT_TOO_LARGE","original_bytes":%d}`, original))
+	if len(base)-len(`""`)+len(marker) <= budget {
+		call.Output = marker
+		call.ErrorCode = "TOOL_OUTPUT_TRUNCATED"
+		return call, true
+	}
+	call = shrinkToolOutput(call)
+	probe.Calls[index] = call
+	if encoded, err := json.Marshal(probe); err == nil && len(encoded) <= store.MaxToolBatchBytes {
+		return call, true
+	}
+	// An empty object with no error code is not larger than the pending null
+	// result for a successful call, so the terminal update still fits; the
+	// degraded turn keeps the truncation observable. CompleteToolCall remains
+	// the final arbiter for unusual status/version combinations.
+	call.Output = json.RawMessage(`{}`)
+	call.ErrorCode = ""
+	return call, true
+}
+
+func shrinkToolOutput(call store.ToolCall) store.ToolCall {
+	call.Output = json.RawMessage(`{"truncated":true}`)
+	call.ErrorCode = "TOOL_OUTPUT_TRUNCATED"
+	return call
 }

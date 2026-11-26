@@ -161,7 +161,7 @@ func RegisterCoreSources(c *Compiler) error {
 	}{
 		{"history", SourcePolicy{Order: 10, History: true, RecentSuffix: true, Kinds: []string{"user", "model", "legacy", "tool_batch", "evidence"}}},
 		{"input", SourcePolicy{Order: 20, Required: true, Kinds: []string{"user", "model", "legacy"}}},
-		{"tools", SourcePolicy{Order: 30, Required: true, Kinds: []string{"tool_batch"}}},
+		{"tools", SourcePolicy{Order: 30, Required: true, Trimmable: true, Kinds: []string{"tool_batch"}}},
 	} {
 		if err := c.Register(SnapshotSource{v.kind}, v.p); err != nil {
 			return err
