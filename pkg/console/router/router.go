@@ -48,7 +48,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) error {
 		auth := protected.Group("/auth")
 		auth.POST("/logout", authHandler.Logout)
 		auth.GET("/userinfo", authHandler.UserInfo)
-		auth.POST("/token", authHandler.Token)
+		auth.POST("/token", consoleauth.RequireAICookieRequest(), authHandler.Token)
 	}
 
 	{

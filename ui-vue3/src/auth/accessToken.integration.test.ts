@@ -38,16 +38,7 @@ vi.mock('@/router', async () => {
 
 const server = setupServer()
 const defaultAdapter = request.defaults.adapter
-const tokenResponse = {
-  code: 'Success',
-  message: 'success',
-  data: {
-    accessToken: `header.${btoa(JSON.stringify({ exp: 9999999999 }))}.signature`,
-    tokenType: 'Bearer',
-    expiresIn: 1800,
-    expiresAt: 9999999999
-  }
-}
+const tokenResponse = { code: 'Success', message: 'success', data: true }
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterAll(() => server.close())
@@ -56,7 +47,6 @@ beforeEach(async () => {
   setActivePinia(createPinia())
   await router.push('/applications?search=demo')
   updateAuthState(true, 'alice')
-  accessTokenManager.clear()
   accessTokenManager.setEnabled(true)
   // Node fetch needs absolute URLs; keep both browser transports intercepted by MSW.
   const interceptedFetch = globalThis.fetch
@@ -78,20 +68,6 @@ afterEach(() => {
 })
 
 describe('Admin access token requests', () => {
-  it('issues and reuses a token from the Admin response envelope', async () => {
-    let requests = 0
-    server.use(
-      http.post('*/api/v1/auth/token', () => {
-        requests++
-        return HttpResponse.json(tokenResponse)
-      })
-    )
-
-    await expect(accessTokenManager.getToken()).resolves.toBe(tokenResponse.data.accessToken)
-    await expect(accessTokenManager.getToken()).resolves.toBe(tokenResponse.data.accessToken)
-    expect(requests).toBe(1)
-  })
-
   it('clears expired login state and redirects to login after an AI Bearer challenge', async () => {
     server.use(
       http.get('*/api/v1/ai/sessions', () =>
@@ -104,11 +80,9 @@ describe('Admin access token requests', () => {
         HttpResponse.json({ code: 'Unauthorized', message: 'login required' }, { status: 401 })
       )
     )
-    accessTokenManager.setTokenForTest('expired-token')
 
     await expect(aiService.getSessions()).rejects.toBeDefined()
     expect(getAuthState().state).not.toBe(true)
-    expect(accessTokenManager.peek()).toBeUndefined()
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/login'))
   })
 
@@ -123,7 +97,7 @@ describe('Admin access token requests', () => {
       http.get('*/api/v1/ai/sessions', ({ request }) => {
         const authorization = request.headers.get('Authorization')
         authorizations.push(authorization)
-        if (authorization === `Bearer ${tokenResponse.data.accessToken}`) {
+        if (issuances === 1) {
           return HttpResponse.json({ code: 'Success', message: 'success', data: { sessions: [] } })
         }
         return HttpResponse.json(
@@ -135,13 +109,9 @@ describe('Admin access token requests', () => {
         )
       })
     )
-    accessTokenManager.setTokenForTest('expired-token')
 
     await expect(aiService.getSessions()).resolves.toEqual([])
-    expect(authorizations).toEqual([
-      'Bearer expired-token',
-      `Bearer ${tokenResponse.data.accessToken}`
-    ])
+    expect(authorizations).toEqual([null, null])
     expect(issuances).toBe(1)
   })
 
@@ -155,24 +125,13 @@ describe('Admin access token requests', () => {
       throw new AxiosError('timeout of 30000ms exceeded', AxiosError.ECONNABORTED, config)
     }
 
-    const result = await Promise.allSettled([accessTokenManager.getToken()])
+    const result = await Promise.allSettled([accessTokenManager.refresh()])
     expect(result[0].status).toBe('rejected')
     expect(configuredTimeout).toBe(30_000)
     expect(getAuthState().state).toBe(true)
     expect(router.currentRoute.value.path).toBe('/applications')
 
     request.defaults.adapter = defaultAdapter
-    await expect(accessTokenManager.getToken()).resolves.toBe(tokenResponse.data.accessToken)
-  })
-
-  it('rejects an empty token instead of caching a malformed successful response', async () => {
-    server.use(
-      http.post('*/api/v1/auth/token', () =>
-        HttpResponse.json({ ...tokenResponse, data: { ...tokenResponse.data, accessToken: '' } })
-      )
-    )
-
-    await expect(accessTokenManager.getToken()).rejects.toThrow('empty AI access token')
-    expect(accessTokenManager.peek()).toBeUndefined()
+    await expect(accessTokenManager.refresh()).resolves.toBeUndefined()
   })
 })

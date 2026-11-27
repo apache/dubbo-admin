@@ -21,7 +21,9 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -90,8 +92,8 @@ func TestJWTVerifierMiddlewareAndKeyRotation(t *testing.T) {
 	router.Use(corsMiddleware(nil), verifier.Middleware())
 	router.GET("/health", func(c *gin.Context) { c.Status(http.StatusNoContent) })
 	router.GET("/api/v1/ai/test", func(c *gin.Context) {
-		claims, ok := ClaimsFromContext(c)
-		if !ok || claims.Subject == "" {
+		access, err := security.AccessContextFromContext(c.Request.Context())
+		if err != nil || access.Subject.UserID == "" {
 			c.Status(http.StatusInternalServerError)
 			return
 		}
@@ -137,20 +139,39 @@ func TestSessionRoutesWithJWTGate(t *testing.T) {
 	}
 	token := "Bearer " + signAITestToken(t, key, "key", "admin", "ai", "jwt-user", time.Now().Add(time.Minute), time.Now())
 	store := memorystore.NewMemoryStore()
-	newRouter := func(owner string, middleware ...gin.HandlerFunc) *Router {
-		t.Helper()
-		auth, err := security.NewStaticAuthenticator(security.Subject{TenantID: "tenant", UserID: owner, AuthMethod: security.AuthMethodStatic})
-		if err != nil {
-			t.Fatal(err)
-		}
-		router, err := NewRouterWithCORS(nil, store, store, auth, []string{"http://trusted.example"}, middleware...)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { _ = router.Close() })
-		return router
+	routes, err := NewRouterWithCORS(nil, store, store, JWTRequestAuthenticator{}, []string{"http://trusted.example"}, verifier.Middleware())
+	if err != nil {
+		t.Fatal(err)
 	}
-	router := newRouter("owner", verifier.Middleware()).GetEngine()
+	t.Cleanup(func() { _ = routes.Close() })
+	router := routes.GetEngine()
+	digest := sha256.Sum256([]byte("login-A"))
+	cookieToken := signAITestToken(t, key, "key", "admin", "ai", "jwt-user", time.Now().Add(time.Minute), time.Now(), hex.EncodeToString(digest[:]))
+	for _, tc := range []struct {
+		name, session, site, marker string
+		status                      int
+	}{
+		{"active login", "login-A", "same-origin", "1", 200},
+		{"logged out", "", "same-origin", "1", 401},
+		{"account switched", "login-B", "same-origin", "1", 401},
+		{"foreign origin", "login-A", "cross-site", "1", 403},
+		{"missing request header", "login-A", "same-origin", "", 403},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/ai/sessions", nil)
+			req.AddCookie(&http.Cookie{Name: "dubbo_ai", Value: cookieToken})
+			if tc.session != "" {
+				req.AddCookie(&http.Cookie{Name: "session", Value: tc.session})
+			}
+			req.Header.Set("Sec-Fetch-Site", tc.site)
+			req.Header.Set("X-AI-Cookie", tc.marker)
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, req)
+			if rec.Code != tc.status {
+				t.Fatalf("status %d, want %d", rec.Code, tc.status)
+			}
+		})
+	}
 	router.GET("/health", func(c *gin.Context) { c.Status(http.StatusNoContent) })
 	for _, route := range []struct{ method, path string }{
 		{http.MethodPost, "/api/v1/ai/sessions"},
@@ -161,7 +182,11 @@ func TestSessionRoutesWithJWTGate(t *testing.T) {
 	} {
 		for _, authorization := range []string{"", "Bearer invalid"} {
 			response := assertAIStatus(t, router, route.method, route.path, authorization, http.StatusUnauthorized)
-			if response.Header().Get("WWW-Authenticate") != "Bearer" {
+			wantChallenge := "Bearer"
+			if authorization != "" {
+				wantChallenge = `Bearer error="invalid_token"`
+			}
+			if response.Header().Get("WWW-Authenticate") != wantChallenge {
 				t.Fatal("missing Bearer challenge")
 			}
 		}
@@ -177,16 +202,19 @@ func TestSessionRoutesWithJWTGate(t *testing.T) {
 	if err := json.Unmarshal(created.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	if body.Data.TenantID != "tenant" || body.Data.OwnerID != "owner" {
+	if body.Data.TenantID != "admin" || body.Data.OwnerID != "jwt-user" {
 		t.Fatalf("ownership changed: %+v", body.Data)
 	}
 	path := "/api/v1/ai/sessions/" + body.Data.SessionID
 	assertAIStatus(t, router, http.MethodGet, path, token, http.StatusOK)
-	other := newRouter("other", verifier.Middleware()).GetEngine()
-	assertAIStatus(t, other, http.MethodGet, path, token, http.StatusNotFound)
-	assertAIStatus(t, other, http.MethodDelete, path, token, http.StatusNotFound)
+	other := "Bearer " + signAITestToken(t, key, "key", "admin", "ai", "other-user", time.Now().Add(time.Minute), time.Now())
+	list := assertAIStatus(t, router, http.MethodGet, "/api/v1/ai/sessions", other, http.StatusOK)
+	if strings.Contains(list.Body.String(), body.Data.SessionID) {
+		t.Fatal("foreign session in list")
+	}
+	assertAIStatus(t, router, http.MethodGet, path, other, http.StatusNotFound)
+	assertAIStatus(t, router, http.MethodDelete, path, other, http.StatusNotFound)
 	assertAIStatus(t, router, http.MethodGet, path, token, http.StatusOK)
-	assertAIStatus(t, newRouter("owner").GetEngine(), http.MethodGet, path, "", http.StatusOK)
 	assertAIStatus(t, router, http.MethodGet, "/health", "", http.StatusNoContent)
 	for _, method := range []string{http.MethodOptions, http.MethodGet} {
 		req := httptest.NewRequest(method, "/api/v1/ai/sessions", nil)
@@ -333,7 +361,7 @@ func TestJWKSExpiryRevokesRemovedKey(t *testing.T) {
 	now = now.Add(jwksRefreshInterval)
 	for i := 0; i < 5; i++ {
 		assertAIStatus(t, r, http.MethodGet, "/api/v1/ai/test", "Bearer "+newToken, http.StatusNoContent)
-		assertAIStatus(t, r, http.MethodGet, "/api/v1/ai/test", "Bearer "+oldToken, http.StatusUnauthorized)
+		assertAIStatus(t, r, http.MethodGet, "/api/v1/ai/test", "Bearer "+oldToken, http.StatusServiceUnavailable)
 	}
 	if calls.Load() != 3 {
 		t.Fatalf("JWKS calls = %d", calls.Load())
@@ -385,11 +413,14 @@ func assertAIStatus(t *testing.T, router http.Handler, method, path, authorizati
 	return recorder
 }
 
-func signAITestToken(t *testing.T, key *rsa.PrivateKey, kid, issuer, audience, subject string, expires, issuedAt time.Time) string {
+func signAITestToken(t *testing.T, key *rsa.PrivateKey, kid, issuer, audience, subject string, expires, issuedAt time.Time, binding ...string) string {
 	t.Helper()
 	claims := Claims{RegisteredClaims: jwt.RegisteredClaims{
 		Issuer: issuer, Subject: subject, Audience: jwt.ClaimStrings{audience}, ExpiresAt: jwt.NewNumericDate(expires), IssuedAt: jwt.NewNumericDate(issuedAt),
 	}}
+	if len(binding) > 0 {
+		claims.SessionHash = binding[0]
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 	token.Header["kid"] = kid
 	signed, err := token.SignedString(key)

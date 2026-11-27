@@ -18,109 +18,14 @@
 import { describe, expect, it, vi } from 'vitest'
 import { AccessTokenManager } from './accessToken'
 
-function tokenWithExpiry(exp: number): string {
-  const payload = btoa(JSON.stringify({ exp }))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '')
-  return `header.${payload}.signature`
-}
-
-describe('AccessTokenManager', () => {
-  it('does not issue tokens while disabled', async () => {
-    const issue = vi.fn(async () => tokenWithExpiry(Date.now() / 1000 + 3600))
+describe('cookie renewal', () => {
+  it('shares pending renewal and retries after a failed issuance', async () => {
+    const issue = vi.fn().mockRejectedValueOnce(new Error('timeout')).mockResolvedValue(undefined)
     const manager = new AccessTokenManager(issue)
-    await expect(manager.getToken()).resolves.toBeUndefined()
-    expect(issue).not.toHaveBeenCalled()
-  })
-
-  it('shares one issuance across concurrent requests', async () => {
-    let resolveIssue: (token: string) => void = () => undefined
-    const issue = vi.fn(
-      () =>
-        new Promise<string>((resolve) => {
-          resolveIssue = resolve
-        })
-    )
-    const manager = new AccessTokenManager(issue)
-    manager.setEnabled(true)
-    const first = manager.getToken()
-    const second = manager.getToken()
-    expect(issue).toHaveBeenCalledTimes(1)
-    const token = tokenWithExpiry(Math.floor(Date.now() / 1000) + 120)
-    resolveIssue(token)
-    await expect(Promise.all([first, second])).resolves.toEqual([token, token])
-  })
-
-  it('preserves an in-flight issuance when a request without a token is rejected', async () => {
-    let resolveIssue: (token: string) => void = () => undefined
-    const issue = vi.fn(
-      () =>
-        new Promise<string>((resolve) => {
-          resolveIssue = resolve
-        })
-    )
-    const manager = new AccessTokenManager(issue)
-    manager.setEnabled(true)
-
-    const pending = manager.getToken()
-    const retry = manager.refreshAfterUnauthorized(undefined)
-    resolveIssue('new-token')
-
-    await expect(Promise.all([pending, retry])).resolves.toEqual(['new-token', 'new-token'])
-    await expect(manager.getToken()).resolves.toBe('new-token')
-    expect(issue).toHaveBeenCalledTimes(1)
-  })
-
-  it.each([30, 0, -30])(
-    'reuses a cached token with %i seconds remaining until rejected',
-    async (remaining) => {
-      const token = tokenWithExpiry(Math.floor(Date.now() / 1000) + remaining)
-      const issue = vi.fn(async () => token)
-      const manager = new AccessTokenManager(issue)
-      manager.setEnabled(true)
-
-      await expect(manager.getToken()).resolves.toBe(token)
-      await expect(manager.getToken()).resolves.toBe(token)
-      expect(issue).toHaveBeenCalledTimes(1)
-    }
-  )
-
-  it('reuses a replacement token when a late request rejects the previous token', async () => {
-    const issue = vi.fn().mockResolvedValue('new-token').mockResolvedValueOnce('old-token')
-    const manager = new AccessTokenManager(issue)
-    manager.setEnabled(true)
-    await manager.getToken()
-
-    await expect(manager.refreshAfterUnauthorized('old-token')).resolves.toBe('new-token')
-    await expect(manager.refreshAfterUnauthorized('old-token')).resolves.toBe('new-token')
+    const pending = manager.refresh()
+    expect(manager.refresh()).toBe(pending)
+    await expect(pending).rejects.toThrow('timeout')
+    await manager.refresh()
     expect(issue).toHaveBeenCalledTimes(2)
-  })
-
-  it('keeps the token only in runtime memory', () => {
-    const storageSpy = vi.spyOn(Storage.prototype, 'setItem')
-    const manager = new AccessTokenManager(async () => tokenWithExpiry(1))
-    manager.setEnabled(true)
-    manager.setTokenForTest(tokenWithExpiry(9999999999))
-    manager.clear()
-    expect(manager.peek()).toBeUndefined()
-    expect(storageSpy).not.toHaveBeenCalled()
-  })
-
-  it('discards a token issued after the manager was cleared', async () => {
-    let resolveIssue: (token: string) => void = () => undefined
-    const manager = new AccessTokenManager(
-      () =>
-        new Promise<string>((resolve) => {
-          resolveIssue = resolve
-        })
-    )
-    manager.setEnabled(true)
-    const pending = manager.getToken()
-    manager.clear()
-    resolveIssue(tokenWithExpiry(Math.floor(Date.now() / 1000) + 120))
-
-    await expect(pending).rejects.toThrow('discarded')
-    expect(manager.peek()).toBeUndefined()
   })
 })

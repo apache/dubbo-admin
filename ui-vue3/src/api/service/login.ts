@@ -16,7 +16,6 @@
  */
 
 import request from '@/base/http/request'
-import { accessTokenManager } from '@/auth/accessToken'
 
 export interface AuthProvider {
   id: string
@@ -40,13 +39,6 @@ export interface Principal {
   provider: string
 }
 
-export interface AccessTokenResponse {
-  accessToken: string
-  tokenType: string
-  expiresIn: number
-  expiresAt: number
-}
-
 export const login = (data: any): Promise<any> => {
   return request({
     url: '/auth/login',
@@ -56,7 +48,6 @@ export const login = (data: any): Promise<any> => {
   })
 }
 export const logout = (): Promise<any> => {
-  accessTokenManager.clear()
   return request({
     url: '/auth/logout',
     method: 'post'
@@ -69,5 +60,5 @@ export const getAuthProviders = (): Promise<{ data: AuthConfiguration }> =>
 export const getUserInfo = (): Promise<{ data: Principal }> =>
   request({ url: '/auth/userinfo', method: 'get' })
 
-export const issueAccessToken = (): Promise<{ data: AccessTokenResponse }> =>
-  request({ url: '/auth/token', method: 'post' })
+export const issueAccessToken = (): Promise<{ data: boolean }> =>
+  request({ url: '/auth/token', method: 'post', headers: { 'X-AI-Cookie': '1' } })

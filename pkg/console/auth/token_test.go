@@ -44,7 +44,7 @@ func TestTokenIssuerSignsPrincipalAndPublishesPublicJWKS(t *testing.T) {
 	}
 	principal := Principal{Subject: "github:123", Username: "alice", Email: "alice@example.com", AuthType: "oauth", Provider: "github"}
 	now := time.Unix(1_787_458_200, 0)
-	response, err := issuer.Issue(principal, now)
+	response, err := issuer.IssueForSession(principal, now, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestTokenIssuerDisabled(t *testing.T) {
 	if issuer.Enabled() {
 		t.Fatal("disabled issuer reported enabled")
 	}
-	if _, err := issuer.Issue(LocalPrincipal("admin"), time.Now()); err == nil {
+	if _, err := issuer.IssueForSession(LocalPrincipal("admin"), time.Now(), ""); err == nil {
 		t.Fatal("disabled issuer created a token")
 	}
 }
@@ -101,7 +101,7 @@ func TestTokenIssuerMultipleKeysAndRotation(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		response, err := issuer.Issue(LocalPrincipal("admin"), time.Now())
+		response, err := issuer.IssueForSession(LocalPrincipal("admin"), time.Now(), "")
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -25,13 +25,7 @@ const BASE_URL = '/api/v1'
 
 type RetryConfig = InternalAxiosRequestConfig & { _aiAuthRetried?: boolean }
 
-const aiClient = axios.create({ baseURL: `${BASE_URL}/ai` })
-
-aiClient.interceptors.request.use(async (config) => {
-  const token = await accessTokenManager.getToken()
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
+const aiClient = axios.create({ baseURL: `${BASE_URL}/ai`, headers: { 'X-AI-Cookie': '1' } })
 
 aiClient.interceptors.response.use(undefined, async (error) => {
   const config = error.config as RetryConfig | undefined
@@ -45,13 +39,7 @@ aiClient.interceptors.response.use(undefined, async (error) => {
     !config._aiAuthRetried
   ) {
     config._aiAuthRetried = true
-    const authorization = config.headers.Authorization
-    const rejectedToken =
-      typeof authorization === 'string' && authorization.startsWith('Bearer ')
-        ? authorization.slice(7)
-        : undefined
-    const token = await accessTokenManager.refreshAfterUnauthorized(rejectedToken)
-    if (token) config.headers.Authorization = `Bearer ${token}`
+    await accessTokenManager.refresh()
     return aiClient.request(config)
   }
   return Promise.reject(error)
@@ -63,23 +51,19 @@ export async function authenticatedFetch(
   manager: AccessTokenManager = accessTokenManager,
   fetcher: typeof fetch = fetch
 ): Promise<Response> {
-  const execute = async (retried: boolean, suppliedToken?: string): Promise<Response> => {
-    const token = suppliedToken ?? (await manager.getToken())
-    const headers = new Headers(init.headers)
-    if (token) headers.set('Authorization', `Bearer ${token}`)
-    const response = await fetcher(input, { ...init, headers })
-    if (
-      !retried &&
-      manager.isEnabled() &&
-      response.status === 401 &&
-      response.headers.get('WWW-Authenticate')?.toLowerCase().includes('bearer')
-    ) {
-      const refreshedToken = await manager.refreshAfterUnauthorized(token)
-      return execute(true, refreshedToken)
-    }
-    return response
+  const headers = new Headers(init.headers)
+  headers.set('X-AI-Cookie', '1')
+  const options: RequestInit = { ...init, headers, credentials: 'same-origin', mode: 'same-origin' }
+  const response = await fetcher(input, options)
+  if (
+    manager.isEnabled() &&
+    response.status === 401 &&
+    response.headers.get('WWW-Authenticate')?.toLowerCase().includes('bearer')
+  ) {
+    await manager.refresh()
+    return fetcher(input, options)
   }
-  return execute(false)
+  return response
 }
 // AI 服务接口
 export const aiService: ChatService<AIContextSnapshot> = {
@@ -127,9 +111,7 @@ export const aiService: ChatService<AIContextSnapshot> = {
         message,
         sessionID: sessionId,
         context
-      }),
-      mode: 'cors', // 允许跨域
-      credentials: 'omit'
+      })
     })
 
     if (!response.ok) {

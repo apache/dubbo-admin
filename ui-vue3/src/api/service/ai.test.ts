@@ -21,7 +21,7 @@ import { authenticatedFetch } from './ai'
 
 describe('authenticatedFetch', () => {
   it('keeps anonymous compatibility while access tokens are disabled', async () => {
-    const manager = new AccessTokenManager(async () => 'unused')
+    const manager = new AccessTokenManager(async () => undefined)
     const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       void input
       void init
@@ -31,8 +31,8 @@ describe('authenticatedFetch', () => {
     expect(new Headers(fetcher.mock.calls[0][1]?.headers).get('Authorization')).toBeNull()
   })
 
-  it('adds Bearer and retries one challenged 401 with a refreshed token', async () => {
-    const issue = vi.fn().mockResolvedValueOnce('first-token').mockResolvedValueOnce('second-token')
+  it('retries one challenged 401 with same-origin cookies', async () => {
+    const issue = vi.fn().mockResolvedValue(undefined)
     const manager = new AccessTokenManager(issue)
     manager.setEnabled(true)
     const fetcher = vi
@@ -43,30 +43,29 @@ describe('authenticatedFetch', () => {
       .mockResolvedValueOnce(new Response('', { status: 200 }))
     const response = await authenticatedFetch('/api/v1/ai/test', {}, manager, fetcher)
     expect(response.status).toBe(200)
-    expect(issue).toHaveBeenCalledTimes(2)
+    expect(issue).toHaveBeenCalledTimes(1)
     expect(fetcher).toHaveBeenCalledTimes(2)
-    expect(new Headers(fetcher.mock.calls[1][1]?.headers).get('Authorization')).toBe(
-      'Bearer second-token'
-    )
+    expect(fetcher.mock.calls[1][1].credentials).toBe('same-origin')
+    expect(new Headers(fetcher.mock.calls[1][1].headers).has('Authorization')).toBe(false)
   })
 
   it('does not refresh a 403', async () => {
-    const issue = vi.fn().mockResolvedValue('token')
+    const issue = vi.fn().mockResolvedValue(undefined)
     const manager = new AccessTokenManager(issue)
     manager.setEnabled(true)
     const fetcher = vi.fn(async () => new Response('', { status: 403 }))
     await authenticatedFetch('/api/v1/ai/test', {}, manager, fetcher)
-    expect(issue).toHaveBeenCalledTimes(1)
+    expect(issue).toHaveBeenCalledTimes(0)
     expect(fetcher).toHaveBeenCalledTimes(1)
   })
 
   it('shares one refresh across concurrent Bearer challenges', async () => {
-    const issue = vi.fn().mockResolvedValueOnce('old-token').mockResolvedValueOnce('new-token')
+    const issue = vi.fn().mockResolvedValue(undefined)
     const manager = new AccessTokenManager(issue)
     manager.setEnabled(true)
     const fetcher = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
-      const authorization = new Headers(init?.headers).get('Authorization')
-      return authorization === 'Bearer new-token'
+      void init
+      return issue.mock.calls.length > 0
         ? new Response('', { status: 200 })
         : new Response('', { status: 401, headers: { 'WWW-Authenticate': 'Bearer' } })
     })
@@ -77,6 +76,6 @@ describe('authenticatedFetch', () => {
     ])
 
     expect(responses.map((response) => response.status)).toEqual([200, 200])
-    expect(issue).toHaveBeenCalledTimes(2)
+    expect(issue).toHaveBeenCalledTimes(1)
   })
 })

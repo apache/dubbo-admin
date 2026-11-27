@@ -191,7 +191,7 @@ func TestJWKSRefreshFailureGraceAndRecovery(t *testing.T) {
 				go func() {
 					defer wg.Done()
 					assertAIStatus(t, router, http.MethodGet, "/api/v1/ai/test", "Bearer "+valid, http.StatusNoContent)
-					assertAIStatus(t, router, http.MethodGet, "/api/v1/ai/test", "Bearer "+unknown, http.StatusUnauthorized)
+					assertAIStatus(t, router, http.MethodGet, "/api/v1/ai/test", "Bearer "+unknown, http.StatusServiceUnavailable)
 				}()
 			}
 			wg.Wait()
@@ -202,7 +202,10 @@ func TestJWKSRefreshFailureGraceAndRecovery(t *testing.T) {
 			clock.Add(int64(119 * time.Second))
 			assertAIStatus(t, router, http.MethodGet, "/api/v1/ai/test", "Bearer "+valid, http.StatusNoContent)
 			clock.Add(int64(time.Second))
-			assertAIStatus(t, router, http.MethodGet, "/api/v1/ai/test", "Bearer "+valid, http.StatusUnauthorized)
+			resp := assertAIStatus(t, router, http.MethodGet, "/api/v1/ai/test", "Bearer "+valid, http.StatusServiceUnavailable)
+			if got := resp.Header().Get("WWW-Authenticate"); got != "" {
+				t.Fatalf("503 challenged credentials: %q", got)
+			}
 			if calls.Load() != 3 {
 				t.Fatalf("JWKS calls at hard expiry during backoff = %d, want 3", calls.Load())
 			}

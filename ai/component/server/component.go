@@ -112,6 +112,9 @@ func (s *ServerComponent) Validate() error {
 	if err := s.auth.Validate(); err != nil {
 		return err
 	}
+	if s.auth.Enabled {
+		return nil
+	}
 	if s.authentication.Mode != "static" {
 		return fmt.Errorf("unsupported authentication mode %q", s.authentication.Mode)
 	}
@@ -203,25 +206,31 @@ func (s *ServerComponent) Start() error {
 		gin.SetMode(gin.DebugMode)
 	}
 
-	subject := security.Subject{
-		TenantID:   s.authentication.TenantID,
-		UserID:     s.authentication.UserID,
-		Roles:      append([]string(nil), s.authentication.Roles...),
-		Scopes:     append([]string(nil), s.authentication.Scopes...),
-		AuthMethod: security.AuthMethodStatic,
-	}
-	authenticator, err := security.NewStaticAuthenticator(subject)
-	if err != nil {
-		return fmt.Errorf("failed to configure authenticator: %w", err)
-	}
-
-	// Create router with AI interface
-	if err := adoptLegacySessions(context.Background(), maintenanceStore, s.authentication.AdoptLegacySessions, subject); err != nil {
-		return fmt.Errorf("failed to adopt legacy sessions: %w", err)
-	}
+	var authenticator security.Authenticator
 	var authMiddleware []gin.HandlerFunc
-	if s.jwtVerifier != nil {
+	if s.auth.Enabled {
+		if s.jwtVerifier == nil {
+			return fmt.Errorf("JWT verifier is not initialized")
+		}
+		authenticator = engine.JWTRequestAuthenticator{}
 		authMiddleware = append(authMiddleware, s.jwtVerifier.Middleware())
+	} else {
+		subject := security.Subject{
+			TenantID:   s.authentication.TenantID,
+			UserID:     s.authentication.UserID,
+			Roles:      append([]string(nil), s.authentication.Roles...),
+			Scopes:     append([]string(nil), s.authentication.Scopes...),
+			AuthMethod: security.AuthMethodStatic,
+		}
+		authenticator, err = security.NewStaticAuthenticator(subject)
+		if err != nil {
+			return fmt.Errorf("failed to configure authenticator: %w", err)
+		}
+
+		// Create router with AI interface
+		if err := adoptLegacySessions(context.Background(), maintenanceStore, s.authentication.AdoptLegacySessions, subject); err != nil {
+			return fmt.Errorf("failed to adopt legacy sessions: %w", err)
+		}
 	}
 	router, err := engine.NewRouterWithCORS(agentComponent.Agent, conversationStore, maintenanceStore, authenticator, s.corsOrigins, authMiddleware...)
 	if err != nil {

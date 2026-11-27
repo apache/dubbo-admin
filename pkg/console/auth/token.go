@@ -32,6 +32,9 @@ import (
 var ErrAccessTokenDisabled = errors.New("AI access token signing is not configured")
 
 type AccessTokenClaims struct {
+	// SessionHash binds the AI cookie to the Admin session that requested it.
+	// This lets AI reject a stale cookie delivered after logout or an account switch.
+	SessionHash string `json:"session_hash,omitempty"`
 	josejwt.Claims
 	Username string   `json:"username"`
 	Email    string   `json:"email"`
@@ -42,10 +45,8 @@ type AccessTokenClaims struct {
 }
 
 type TokenResponse struct {
-	AccessToken string `json:"accessToken"`
-	TokenType   string `json:"tokenType"`
-	ExpiresIn   int    `json:"expiresIn"`
-	ExpiresAt   int64  `json:"expiresAt"`
+	AccessToken string
+	ExpiresIn   int
 }
 
 type TokenIssuer struct {
@@ -93,12 +94,12 @@ func (i *TokenIssuer) Enabled() bool {
 	return i != nil && i.enabled
 }
 
-func (i *TokenIssuer) Issue(principal Principal, now time.Time) (TokenResponse, error) {
+func (i *TokenIssuer) IssueForSession(principal Principal, now time.Time, sessionHash string) (TokenResponse, error) {
 	if !i.Enabled() {
 		return TokenResponse{}, ErrAccessTokenDisabled
 	}
 	expiresAt := now.Add(time.Duration(i.config.TTL) * time.Second)
-	claims := AccessTokenClaims{
+	claims := AccessTokenClaims{SessionHash: sessionHash,
 		Claims: josejwt.Claims{
 			Issuer: i.config.Issuer, Subject: principal.Subject, Audience: josejwt.Audience(append([]string(nil), i.config.Audiences...)),
 			IssuedAt: josejwt.NewNumericDate(now), Expiry: josejwt.NewNumericDate(expiresAt), ID: uuid.NewString(),
@@ -110,7 +111,7 @@ func (i *TokenIssuer) Issue(principal Principal, now time.Time) (TokenResponse, 
 	if err != nil {
 		return TokenResponse{}, err
 	}
-	return TokenResponse{AccessToken: serialized, TokenType: "Bearer", ExpiresIn: i.config.TTL, ExpiresAt: expiresAt.Unix()}, nil
+	return TokenResponse{AccessToken: serialized, ExpiresIn: i.config.TTL}, nil
 }
 
 func (i *TokenIssuer) JWKS() jose.JSONWebKeySet {

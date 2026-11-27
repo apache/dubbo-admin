@@ -50,3 +50,17 @@ func RequireLogin() gin.HandlerFunc {
 		ctx.Next()
 	}
 }
+
+// RequireAICookieRequest checks the browser request before issuing an AI cookie.
+func RequireAICookieRequest() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("Cache-Control", "no-store")
+		c.Header("Pragma", "no-cache")
+		site := c.GetHeader("Sec-Fetch-Site")
+		if c.GetHeader("X-AI-Cookie") != "1" || (site != "" && site != "same-origin") {
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+		c.Next()
+	}
+}

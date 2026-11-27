@@ -20,7 +20,9 @@ package engine
 import (
 	"context"
 	"crypto/rsa"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -29,11 +31,11 @@ import (
 	"sync"
 	"time"
 
+	"dubbo-admin-ai/security"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
-
-const jwtClaimsContextKey = "dubbo-admin-ai.jwt-claims"
 
 const (
 	jwksRefreshInterval = 30 * time.Second
@@ -42,6 +44,8 @@ const (
 	jwksStaleGracePeriod = 2 * time.Minute
 	jwksFetchTimeout     = 10 * time.Second
 )
+
+var errJWKSUnavailable = errors.New("verification keys temporarily unavailable")
 
 type jwksRefresh struct {
 	done chan struct{}
@@ -55,6 +59,9 @@ type JWTAuthConfig struct {
 }
 
 type Claims struct {
+	// SessionHash binds the AI cookie to the Admin session that requested it.
+	// This lets AI reject a stale cookie delivered after logout or an account switch.
+	SessionHash string `json:"session_hash,omitempty"`
 	jwt.RegisteredClaims
 	Username string   `json:"username"`
 	Email    string   `json:"email"`
@@ -65,14 +72,15 @@ type Claims struct {
 }
 
 type JWTVerifier struct {
-	config        JWTAuthConfig
-	client        *JWKSClient
-	mu            sync.RWMutex
-	keys          map[string]*rsa.PublicKey
-	nextRefreshAt time.Time
-	staleUntil    time.Time
-	now           func() time.Time
-	refreshing    *jwksRefresh
+	config         JWTAuthConfig
+	client         *JWKSClient
+	mu             sync.RWMutex
+	keys           map[string]*rsa.PublicKey
+	nextRefreshAt  time.Time
+	lastRefreshErr error
+	staleUntil     time.Time
+	now            func() time.Time
+	refreshing     *jwksRefresh
 }
 
 func NewJWTVerifier(config JWTAuthConfig, client *http.Client) (*JWTVerifier, error) {
@@ -90,34 +98,61 @@ func (v *JWTVerifier) Middleware() gin.HandlerFunc {
 			return
 		}
 		header := c.GetHeader("Authorization")
-		if len(header) < 8 || !strings.EqualFold(header[:7], "Bearer ") || strings.TrimSpace(header[7:]) == "" {
-			abortUnauthorized(c)
-			return
+		var raw, sessionHash string
+		if header != "" {
+			if len(header) < 8 || !strings.EqualFold(header[:7], "Bearer ") {
+				abortUnauthorized(c, "Bearer")
+				return
+			}
+			raw = strings.TrimSpace(header[7:])
+		} else {
+			cookie, err := c.Request.Cookie("dubbo_ai")
+			session, sessionErr := c.Request.Cookie("session")
+			if err != nil || sessionErr != nil {
+				abortUnauthorized(c, "Bearer")
+				return
+			}
+			digest := sha256.Sum256([]byte(session.Value))
+			sessionHash = hex.EncodeToString(digest[:])
+			raw = cookie.Value
+			if c.Request.Method != http.MethodGet && c.Request.Method != http.MethodHead {
+				if c.GetHeader("X-AI-Cookie") != "1" || (c.GetHeader("Sec-Fetch-Site") != "" && c.GetHeader("Sec-Fetch-Site") != "same-origin") {
+					c.AbortWithStatus(http.StatusForbidden)
+					return
+				}
+			}
 		}
 		claims := &Claims{}
-		token, err := jwt.ParseWithClaims(strings.TrimSpace(header[7:]), claims, func(token *jwt.Token) (any, error) {
+		token, err := jwt.ParseWithClaims(raw, claims, func(token *jwt.Token) (any, error) {
 			return v.keyForToken(c.Request.Context(), token)
 		},
 			jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Alg()}),
 			jwt.WithIssuer(v.config.Issuer), jwt.WithAudience(v.config.Audience),
 			jwt.WithExpirationRequired(), jwt.WithIssuedAt(), jwt.WithLeeway(30*time.Second),
 		)
-		if err != nil || !token.Valid || claims.Subject == "" || claims.IssuedAt == nil {
-			abortUnauthorized(c)
+		if errors.Is(err, errJWKSUnavailable) {
+			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": errJWKSUnavailable.Error()})
 			return
 		}
-		c.Set(jwtClaimsContextKey, claims)
+		if err != nil || !token.Valid || claims.Subject == "" || claims.IssuedAt == nil || claims.SessionHash != sessionHash {
+			abortUnauthorized(c, `Bearer error="invalid_token"`)
+			return
+		}
+		access, err := security.NewAccessContext(security.Subject{TenantID: claims.Issuer, UserID: claims.Subject, AuthMethod: "jwt"})
+		if err != nil {
+			abortUnauthorized(c, `Bearer error="invalid_token"`)
+			return
+		}
+		c.Request = c.Request.WithContext(security.WithAccessContext(c.Request.Context(), access))
 		c.Next()
 	}
 }
 
-func ClaimsFromContext(c *gin.Context) (*Claims, bool) {
-	value, ok := c.Get(jwtClaimsContextKey)
-	if !ok {
-		return nil, false
-	}
-	claims, ok := value.(*Claims)
-	return claims, ok
+// JWTRequestAuthenticator retrieves the identity established by JWT verification.
+type JWTRequestAuthenticator struct{}
+
+func (JWTRequestAuthenticator) Authenticate(r *http.Request) (security.AccessContext, error) {
+	return security.AccessContextFromContext(r.Context())
 }
 
 func (v *JWTVerifier) keyForToken(ctx context.Context, token *jwt.Token) (any, error) {
@@ -137,13 +172,13 @@ func (v *JWTVerifier) keyForToken(ctx context.Context, token *jwt.Token) (any, e
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 	if !v.clock().Before(v.staleUntil) {
-		if refreshErr != nil {
-			return nil, refreshErr
-		}
-		return nil, errors.New("JWKS cache expired")
+		return nil, errJWKSUnavailable
 	}
 	key := v.keys[kid]
 	if key == nil {
+		if refreshErr != nil {
+			return nil, errJWKSUnavailable
+		}
 		return nil, errors.New("JWT kid is unknown")
 	}
 	return key, nil
@@ -164,8 +199,9 @@ func (v *JWTVerifier) refresh(ctx context.Context) error {
 	flight := v.refreshing
 	if flight == nil {
 		if v.clock().Before(v.nextRefreshAt) {
+			err := v.lastRefreshErr
 			v.mu.Unlock()
-			return nil
+			return err
 		}
 		flight = &jwksRefresh{done: make(chan struct{})}
 		v.refreshing = flight
@@ -188,6 +224,7 @@ func (v *JWTVerifier) refresh(ctx context.Context) error {
 				v.nextRefreshAt = now.Add(jwksRetryInterval)
 				// Failure must not extend the last successful snapshot's hard expiry.
 			}
+			v.lastRefreshErr = err
 			flight.err = err
 			v.refreshing = nil
 			close(flight.done)
@@ -240,7 +277,7 @@ func (v *JWTVerifier) fetchKeys(ctx context.Context) (map[string]*rsa.PublicKey,
 	return keys, nil
 }
 
-func abortUnauthorized(c *gin.Context) {
-	c.Header("WWW-Authenticate", "Bearer")
+func abortUnauthorized(c *gin.Context, challenge string) {
+	c.Header("WWW-Authenticate", challenge)
 	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or missing bearer token"})
 }

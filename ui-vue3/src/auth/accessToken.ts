@@ -15,76 +15,28 @@
  * limitations under the License.
  */
 
-type TokenIssuer = () => Promise<string>
+import { issueAccessToken } from '@/api/service/login'
 
 export class AccessTokenManager {
   private enabled = false
-  private token: string | undefined
-  private refreshPromise: Promise<string> | undefined
-  private generation = 0
-
-  constructor(private readonly issue: TokenIssuer) {}
-
-  setEnabled(enabled: boolean): void {
+  private pending?: Promise<void>
+  constructor(private readonly issue: () => Promise<void>) {}
+  setEnabled(enabled: boolean) {
     this.enabled = enabled
-    if (!enabled) this.clear()
   }
-
-  isEnabled(): boolean {
+  isEnabled() {
     return this.enabled
   }
-
-  async getToken(): Promise<string | undefined> {
-    if (!this.enabled) return undefined
-    if (this.token) {
-      return this.token
+  refresh(): Promise<void> {
+    if (!this.pending) {
+      this.pending = this.issue().finally(() => {
+        this.pending = undefined
+      })
     }
-    if (!this.refreshPromise) {
-      const generation = this.generation
-      const refresh = this.issue()
-        .then((token) => {
-          if (!token) throw new Error('Admin returned an empty AI access token')
-          if (generation !== this.generation) {
-            throw new Error('AI access token issuance was discarded')
-          }
-          this.token = token
-          return token
-        })
-        .finally(() => {
-          if (this.refreshPromise === refresh) this.refreshPromise = undefined
-        })
-      this.refreshPromise = refresh
-    }
-    return this.refreshPromise
-  }
-
-  async refreshAfterUnauthorized(rejectedToken: string | undefined): Promise<string | undefined> {
-    if (!this.enabled) return undefined
-    if (rejectedToken !== undefined && this.token === rejectedToken) {
-      this.generation++
-      this.token = undefined
-    }
-    return this.getToken()
-  }
-
-  clear(): void {
-    this.generation++
-    this.token = undefined
-    this.refreshPromise = undefined
-  }
-
-  peek(): string | undefined {
-    return this.token
-  }
-
-  setTokenForTest(token: string): void {
-    this.token = token
+    return this.pending
   }
 }
 
 export const accessTokenManager = new AccessTokenManager(async () => {
-  // Load the API lazily: the shared HTTP client imports this manager to clear it on 401.
-  const { issueAccessToken } = await import('@/api/service/login')
-  const { data } = await issueAccessToken()
-  return data?.accessToken ?? ''
+  await issueAccessToken()
 })
