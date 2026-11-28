@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import { http, type HttpHandler } from 'msw'
+import { http, HttpResponse, type HttpHandler } from 'msw'
 import { success, base } from '../utils'
 import type {
   ServiceSearchItem,
@@ -125,67 +125,110 @@ const serviceList: ServiceSearchItem[] = [
   }
 ]
 
-const serviceMethods: ServiceMethod[] = [
+const userType: ServiceMethodDetail['types'][number] = {
+  type: 'org.apache.demo.UserDTO',
+  properties: { id: 'java.lang.String', name: 'java.lang.String', age: 'java.lang.Integer' },
+  items: [],
+  enums: []
+}
+
+const methodFixtures: { detail: ServiceMethodDetail; result: unknown }[] = [
   {
-    methodName: 'query',
-    parameterTypes: ['java.lang.String'],
-    signature: 'java.lang.String->org.apache.demo.UserDTO'
+    detail: {
+      methodName: 'query',
+      signature: 'java.lang.String->org.apache.demo.UserDTO',
+      parameterTypes: ['java.lang.String'],
+      parameters: [{ name: 'id', type: 'java.lang.String' }],
+      returnType: 'org.apache.demo.UserDTO',
+      types: [userType]
+    },
+    result: { id: '1001', name: 'Alice', age: 18 }
   },
   {
-    methodName: 'create',
-    parameterTypes: ['org.apache.demo.UserCreateReq'],
-    signature: 'org.apache.demo.UserCreateReq->java.lang.Boolean'
+    detail: {
+      methodName: 'query',
+      signature: 'char->org.apache.demo.UserDTO',
+      parameterTypes: ['char'],
+      parameters: [{ name: 'initial', type: 'char' }],
+      returnType: 'org.apache.demo.UserDTO',
+      types: [userType]
+    },
+    result: { id: '1002', name: 'Bob', age: 20 }
   },
   {
-    methodName: 'delete',
-    parameterTypes: ['java.lang.String'],
-    signature: 'java.lang.String->java.lang.Boolean'
+    detail: {
+      methodName: 'create',
+      signature: 'org.apache.demo.UserCreateReq->java.lang.Boolean',
+      parameterTypes: ['org.apache.demo.UserCreateReq'],
+      parameters: [{ name: 'req', type: 'org.apache.demo.UserCreateReq' }],
+      returnType: 'java.lang.Boolean',
+      types: [
+        {
+          type: 'org.apache.demo.UserCreateReq',
+          properties: {
+            name: 'java.lang.String',
+            age: 'java.lang.Integer',
+            email: 'java.lang.String'
+          },
+          items: [],
+          enums: []
+        }
+      ]
+    },
+    result: true
+  },
+  {
+    detail: {
+      methodName: 'delete',
+      signature: 'java.lang.String->java.lang.Boolean',
+      parameterTypes: ['java.lang.String'],
+      parameters: [{ name: 'id', type: 'java.lang.String' }],
+      returnType: 'java.lang.Boolean',
+      types: []
+    },
+    result: true
   }
 ]
 
-const methodDetails: Record<string, ServiceMethodDetail> = {
-  query: {
-    methodName: 'query',
-    signature: 'java.lang.String->org.apache.demo.UserDTO',
-    parameterTypes: ['java.lang.String'],
-    parameters: [{ name: 'id', type: 'java.lang.String' }],
-    returnType: 'org.apache.demo.UserDTO',
-    types: [
-      {
-        type: 'org.apache.demo.UserDTO',
-        properties: { id: 'java.lang.String', name: 'java.lang.String', age: 'java.lang.Integer' },
-        items: [],
-        enums: []
-      }
-    ]
-  },
-  create: {
-    methodName: 'create',
-    signature: 'org.apache.demo.UserCreateReq->java.lang.Boolean',
-    parameterTypes: ['org.apache.demo.UserCreateReq'],
-    parameters: [{ name: 'req', type: 'org.apache.demo.UserCreateReq' }],
-    returnType: 'java.lang.Boolean',
-    types: [
-      {
-        type: 'org.apache.demo.UserCreateReq',
-        properties: {
-          name: 'java.lang.String',
-          age: 'java.lang.Integer',
-          email: 'java.lang.String'
-        },
-        items: [],
-        enums: []
-      }
-    ]
-  },
-  delete: {
-    methodName: 'delete',
-    signature: 'java.lang.String->java.lang.Boolean',
-    parameterTypes: ['java.lang.String'],
-    parameters: [{ name: 'id', type: 'java.lang.String' }],
-    returnType: 'java.lang.Boolean',
-    types: []
-  }
+const serviceMethods: ServiceMethod[] = methodFixtures.map(({ detail }) => ({
+  methodName: detail.methodName,
+  signature: detail.signature,
+  parameterTypes: detail.parameterTypes
+}))
+
+function findMethodFixture(
+  methodName: string | null | undefined,
+  signature: string | null | undefined
+) {
+  return methodFixtures.find(
+    ({ detail }) => detail.methodName === methodName && detail.signature === signature
+  )
+}
+
+function invalidArgument(message: string, field?: string) {
+  return HttpResponse.json({
+    code: 'InvalidArgument',
+    message,
+    data: null,
+    ...(field ? { field, expected: 'non-empty', actual: '' } : {})
+  })
+}
+
+function methodNotFound(serviceName: string, methodName: string, signature?: string) {
+  // collectMethods in the backend sorts signatures before building this field.
+  const expected = methodFixtures
+    .filter(({ detail }) => detail.methodName === methodName)
+    .map(({ detail }) => detail.signature)
+    .sort()
+    .join(' | ')
+  return HttpResponse.json({
+    code: 'NotFoundError',
+    message: `method ${methodName} not found for service ${serviceName}`,
+    data: null,
+    ...(signature !== undefined && expected
+      ? { field: 'signature', expected, actual: signature }
+      : {})
+  })
 }
 
 const providerInstances: ProviderInstance[] = [
@@ -247,13 +290,33 @@ export const serviceHandlers: HttpHandler[] = [
 
   http.get(`${base}/service/method/detail`, ({ request }) => {
     const url = new URL(request.url)
-    const methodName = url.searchParams.get('methodName') || 'query'
-    return success(methodDetails[methodName] || methodDetails.query)
+    const serviceName = (url.searchParams.get('serviceName') || '').trim()
+    const methodName = (url.searchParams.get('methodName') || '').trim()
+    const signature = (url.searchParams.get('signature') || '').trim()
+    if (!methodName) return invalidArgument('method name is empty')
+    if (!signature) return invalidArgument('signature is empty')
+    const fixture = findMethodFixture(methodName, signature)
+    return fixture ? success(fixture.detail) : methodNotFound(serviceName, methodName)
   }),
 
-  http.post(`${base}/service/generic/invoke`, () =>
-    success({ elapsedMs: 12, rawResult: { id: '1001', name: 'Alice', age: 18 } })
-  ),
+  http.post(`${base}/service/generic/invoke`, async ({ request }) => {
+    let body: { serviceName?: string; methodName?: string; signature?: string } | null
+    try {
+      body = (await request.json()) as typeof body
+    } catch {
+      // Match ShouldBindJSON's business error envelope, without emulating Go's parser diagnostics.
+      return invalidArgument('invalid JSON request body')
+    }
+    const serviceName = typeof body?.serviceName === 'string' ? body.serviceName.trim() : ''
+    const methodName = typeof body?.methodName === 'string' ? body.methodName.trim() : ''
+    const signature = typeof body?.signature === 'string' ? body.signature.trim() : ''
+    if (!methodName) return invalidArgument('method name is empty', 'methodName')
+    if (!signature) return invalidArgument('signature is empty', 'signature')
+    const fixture = findMethodFixture(methodName, signature)
+    return fixture
+      ? success({ elapsedMs: 12, rawResult: fixture.result })
+      : methodNotFound(serviceName, methodName, signature)
+  }),
 
   http.get(`${base}/service/event`, () => {
     const sources = ['deployment-controller', 'nacos', 'zookeeper', 'kubelet']
