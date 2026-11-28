@@ -41,7 +41,9 @@ func NewAPIErrorResponse(code, message string) *Response {
 	return response
 }
 
-// ChatRequest defines streaming chat request
+// ChatRequest defines the streaming chat request. When adding fields that affect
+// execution, update hashChatRequest's versioned projection and its tests so
+// different requests cannot replay the same interaction result.
 type ChatRequest struct {
 	Message   string `json:"message" binding:"required"`   // User message
 	SessionID string `json:"sessionID" binding:"required"` // Session ID

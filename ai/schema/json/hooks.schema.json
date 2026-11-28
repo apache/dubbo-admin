@@ -59,11 +59,7 @@
                 },
                 "capture_content": {
                   "type": "string",
-                  "enum": [
-                    "none",
-                    "truncated",
-                    "full"
-                  ],
+                  "const": "none",
                   "default": "none"
                 }
               }
@@ -151,11 +147,7 @@
         },
         "capture_content": {
           "type": "string",
-          "enum": [
-            "none",
-            "truncated",
-            "full"
-          ],
+          "const": "none",
           "default": "none"
         }
       }

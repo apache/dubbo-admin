@@ -38,6 +38,12 @@ func TestMemoryStore_Contract(t *testing.T) {
 	}, 3)
 }
 
+func TestMemoryStore_QuotaContract(t *testing.T) {
+	RunQuotaContractTests(t, func(quota conversationstore.QuotaPolicy) conversationstore.BackendStore {
+		return memorystore.NewMemoryStoreWithPolicy(quota)
+	})
+}
+
 func newTestSession(id string, updatedAt time.Time) *conversationstore.Session {
 	return &conversationstore.Session{
 		ID:        id,

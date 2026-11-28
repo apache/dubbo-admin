@@ -20,6 +20,7 @@ package react
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -109,7 +110,8 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 	})
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			err = fmt.Errorf("iteration %d panicked: %v", s.Iteration, recovered)
+			runtime.GetLogger().Error("iteration panicked", "iteration", s.Iteration, "panic_type", fmt.Sprintf("%T", recovered))
+			err = errors.New("iteration panicked")
 			emitIterationEnd(s, iterationCtx, iterationStartedAt, err)
 			panic(recovered)
 		}
@@ -130,7 +132,8 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 	})
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			err = fmt.Errorf("stage %s panicked: %v", s.Stage, recovered)
+			runtime.GetLogger().Error("stage panicked", "stage", s.Stage, "panic_type", fmt.Sprintf("%T", recovered))
+			err = errors.New("stage panicked")
 			emitStageEnd(s, ctx, stageStartedAt, err)
 			panic(recovered)
 		}
@@ -146,16 +149,20 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 	} else {
 		messages = history.WindowMemory(s.Session)
 	}
+	modelMessages, err := modelInputView(messages)
+	if err != nil {
+		return false, err
+	}
 	// Model and tool deadlines are independent; cancellation still propagates.
 	resp, err := func() (*ai.ModelResponse, error) {
 		lctx, cancel := withTimeout(ctx, ra.callTimeout)
 		defer cancel()
-		return executeModelCall(lctx, s, prompt, messages, func(resp *ai.ModelResponse, err error) {
+		return executeModelCall(lctx, s, prompt, modelMessages, func(resp *ai.ModelResponse, err error) {
 			if err == nil && forceAnswer && resp.Text() == "" {
 				s.FallbackUsed = true
 				s.FallbackReason = hooks.FallbackReasonEmptyResponse
 			}
-		}, ai.WithMessages(messages...))
+		}, ai.WithMessages(modelMessages...))
 	}()
 	if err != nil {
 		return false, fmt.Errorf("failed to execute react prompt: %w", err)
@@ -184,6 +191,7 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 		runtime.GetLogger().Warn("react: empty forced answer, using fallback")
 		answer = fallbackAnswer
 	}
+	s.FinalAnswer = answer
 	if err := ra.finish(ctx, chans, history, s.Session, turnID, answer); err != nil {
 		return false, err
 	}
@@ -228,7 +236,9 @@ func (ra *ReActAgent) execTools(ctx context.Context, history *memory.HistoryMemo
 		if err != nil {
 			return nil, err
 		}
-		if err := ra.messageStore.AddHistoryToTurn(persistenceContext(ctx), access, s.Session, turnID, message); err != nil {
+		persistCtx, cancel := persistenceContext(ctx)
+		defer cancel()
+		if err := ra.messageStore.AddHistoryToTurn(persistCtx, access, s.Session, turnID, message); err != nil {
 			return nil, fmt.Errorf("failed to record tool output: %w", err)
 		}
 	} else {
@@ -248,7 +258,9 @@ func (ra *ReActAgent) finish(ctx context.Context, chans *agent.Channels, history
 			if err != nil {
 				return err
 			}
-			if err := ra.messageStore.AddHistoryToTurn(persistenceContext(ctx), access, sessionID, turnID, message); err != nil {
+			persistCtx, cancel := persistenceContext(ctx)
+			defer cancel()
+			if err := ra.messageStore.AddHistoryToTurn(persistCtx, access, sessionID, turnID, message); err != nil {
 				return fmt.Errorf("failed to persist final answer: %w", err)
 			}
 		} else {
@@ -288,11 +300,12 @@ func sessionIDFromCtx(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("session id not found in context")
 }
 
-func persistenceContext(ctx context.Context) context.Context {
-	if state, ok := ctx.Value(persistenceContextKey).(context.Context); ok && state != nil {
-		return state
-	}
-	return ctx
+// persistenceContext returns a fresh bounded context for a single Store write.
+// Each write gets its own budget: an interaction may legally outlive the
+// 30-second write timeout in a long model/tool loop, and reusing one deadline
+// created at interaction start would drop later writes (including the answer).
+func persistenceContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), persistenceTimeout)
 }
 
 // withTimeout wraps ctx with a deadline when timeout > 0; otherwise it returns

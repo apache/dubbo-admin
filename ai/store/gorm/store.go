@@ -29,12 +29,17 @@ import (
 	conversationstore "dubbo-admin-ai/store"
 
 	"github.com/firebase/genkit/go/ai"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
-const sessionExpiration = 24 * time.Hour
 const expirationCleanupBatchSize = 100
+
+// usageBackfillMigration identifies the one-time rebuild of absolute usage
+// counters. It must run exactly once per database: re-running it while other
+// replicas serve traffic would overwrite counters those replicas are updating.
+const usageBackfillMigration = "backfill_conversation_usage_v1"
 
 // DefaultMaxTurns matches MemorySpec's default conversation limit.
 const DefaultMaxTurns = 100
@@ -43,8 +48,10 @@ const DefaultMaxTurns = 100
 // It deliberately does not use database foreign keys: relationship checks and
 // deletion ordering are handled explicitly by the store transaction.
 type GormStore struct {
-	db    *gorm.DB
-	limit int
+	db        *gorm.DB
+	limit     int
+	quota     conversationstore.QuotaPolicy
+	lifecycle conversationstore.LifecyclePolicy
 }
 
 var _ conversationstore.BackendStore = (*GormStore)(nil)
@@ -53,6 +60,7 @@ var _ conversationstore.BackendStore = (*GormStore)(nil)
 // optional limit exists for runtime configuration and tests; the default
 // matches MemorySpec.
 func NewGormStore(db *gorm.DB, limits ...int) (*GormStore, error) {
+	quota := conversationstore.DefaultQuotaPolicy()
 	if db == nil {
 		return nil, fmt.Errorf("gorm database is nil")
 	}
@@ -67,7 +75,25 @@ func NewGormStore(db *gorm.DB, limits ...int) (*GormStore, error) {
 	if len(limits) > 0 && limits[0] > 0 {
 		limit = limits[0]
 	}
-	return &GormStore{db: db, limit: limit}, nil
+	quota.MaxTurnsPerSession = limit
+	return NewGormStoreWithPolicy(db, quota)
+}
+
+func NewGormStoreWithPolicy(db *gorm.DB, quota conversationstore.QuotaPolicy) (*GormStore, error) {
+	return NewGormStoreWithPolicies(db, quota, conversationstore.DefaultLifecyclePolicy())
+}
+
+func NewGormStoreWithPolicies(db *gorm.DB, quota conversationstore.QuotaPolicy, lifecycle conversationstore.LifecyclePolicy) (*GormStore, error) {
+	if db == nil {
+		return nil, fmt.Errorf("gorm database is nil")
+	}
+	if db.Config == nil {
+		db.Config = &gorm.Config{}
+	}
+	db.Config.DisableForeignKeyConstraintWhenMigrating = true
+	quota = quota.WithDefaults()
+	lifecycle = lifecycle.WithDefaults()
+	return &GormStore{db: db, limit: quota.MaxTurnsPerSession, quota: quota, lifecycle: lifecycle}, nil
 }
 
 // Migrate creates or updates the Store tables. Gorm's model associations are
@@ -76,9 +102,220 @@ func (s *GormStore) Migrate(ctx context.Context) error {
 	if err := s.checkContext(ctx); err != nil {
 		return err
 	}
-	return s.db.WithContext(normalizeContext(ctx)).AutoMigrate(
-		&SessionModel{}, &TurnModel{}, &MessageModel{},
-	)
+	db := s.db.WithContext(normalizeContext(ctx))
+	if err := db.AutoMigrate(
+		&SessionModel{}, &TurnModel{}, &MessageModel{}, &InteractionModel{},
+		&DerivedArtifactModel{}, &CleanupJobModel{}, &OutboxEventModel{}, &TenantUsageModel{},
+		&SchemaMigrationModel{},
+	); err != nil {
+		return err
+	}
+	// These repairs are idempotent and must run on every start: a rolling
+	// upgrade can still write legacy rows after a newer replica has started.
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		return s.migrateLegacyRows(tx)
+	}); err != nil {
+		return err
+	}
+	// Rebuilding absolute counters is not idempotent under concurrent traffic.
+	// Fast-path ordinary restarts: only the first start after an upgrade pays
+	// for the backfill.
+	var applied SchemaMigrationModel
+	switch err := db.Where("name = ?", usageBackfillMigration).First(&applied).Error; {
+	case err == nil:
+		return nil
+	case !errors.Is(err, gorm.ErrRecordNotFound):
+		return err
+	}
+	// Claim the migration in its own short transaction. Other replicas either
+	// see the committed marker at the fast path or fail the insert with a
+	// duplicate key; neither waits for the long backfill to finish (and no
+	// replica can hit a lock-wait timeout because of it).
+	claimed := false
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		var err error
+		claimed, err = claimUsageBackfill(tx)
+		return err
+	}); err != nil {
+		return err
+	}
+	if !claimed {
+		return nil
+	}
+	// Run the backfill separately so a failure can release the claim and let a
+	// later start retry instead of leaving counters half-rebuilt.
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		return s.backfillUsage(tx)
+	}); err != nil {
+		// Release even when the failure was cancellation; otherwise a shutdown
+		// would strand the marker and permanently skip the retry.
+		releaseDB := s.db.WithContext(context.WithoutCancel(normalizeContext(ctx)))
+		if releaseErr := releaseDB.Where("name = ?", usageBackfillMigration).Delete(&SchemaMigrationModel{}).Error; releaseErr != nil {
+			return fmt.Errorf("usage backfill failed: %w (release claim: %v)", err, releaseErr)
+		}
+		return err
+	}
+	return nil
+}
+
+// claimUsageBackfill reports whether this replica should run the one-time
+// counter repair. Losing the unique-key race is a normal "someone else
+// claimed it" result, not an error.
+func claimUsageBackfill(tx *gorm.DB) (bool, error) {
+	if err := tx.Create(&SchemaMigrationModel{Name: usageBackfillMigration, AppliedAt: time.Now()}).Error; err != nil {
+		if isDuplicateKeyError(tx, err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (s *GormStore) migrateLegacyRows(tx *gorm.DB) error {
+	var artifacts []DerivedArtifactModel
+	if err := tx.Where("source_session_id = ?", "").Find(&artifacts).Error; err != nil {
+		return err
+	}
+	for i := range artifacts {
+		sessionID, err := conversationstore.SessionIDFromCanonicalSource(artifacts[i].CanonicalSourceID)
+		if err != nil {
+			continue
+		}
+		if err := tx.Model(&DerivedArtifactModel{}).Where("id = ?", artifacts[i].ID).UpdateColumn("source_session_id", sessionID).Error; err != nil {
+			return err
+		}
+	}
+	// Pre-PR3 active Turns have no durable Interaction or lease and cannot be
+	// resumed safely after deployment.
+	var orphaned []TurnModel
+	if err := tx.Where("completed_at IS NULL AND (interaction_id IS NULL OR interaction_id = ?)", "").Find(&orphaned).Error; err != nil {
+		return err
+	}
+	for i := range orphaned {
+		if err := tx.Where("turn_id = ?", orphaned[i].ID).Delete(&MessageModel{}).Error; err != nil {
+			return err
+		}
+	}
+	if err := tx.Where("completed_at IS NULL AND (interaction_id IS NULL OR interaction_id = ?)", "").Delete(&TurnModel{}).Error; err != nil {
+		return err
+	}
+	if err := tx.Model(&TurnModel{}).Where("completed_at IS NOT NULL").Update("status", conversationstore.InteractionStatusCompleted).Error; err != nil {
+		return err
+	}
+	var sessions []SessionModel
+	if err := tx.Where("expires_at IS NULL").Find(&sessions).Error; err != nil {
+		return err
+	}
+	for i := range sessions {
+		expiresAt := sessions[i].UpdatedAt.Add(s.lifecycle.Retention)
+		// UpdateColumn keeps a backfill from masquerading as session activity.
+		if err := tx.Model(&SessionModel{}).Where("id = ?", sessions[i].ID).UpdateColumn("expires_at", expiresAt).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *GormStore) backfillUsage(tx *gorm.DB) error {
+	var sessions []SessionModel
+	sessionQuery := tx
+	// Lock live rows so concurrent quota updates either land before the
+	// recomputation or apply on top of it after this transaction commits.
+	if supportsRowLock(tx) {
+		sessionQuery = sessionQuery.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+	if err := sessionQuery.Find(&sessions).Error; err != nil {
+		return err
+	}
+	var usages []TenantUsageModel
+	usageQuery := tx
+	if supportsRowLock(tx) {
+		usageQuery = usageQuery.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+	if err := usageQuery.Find(&usages).Error; err != nil {
+		return err
+	}
+	// Read the byte totals in two grouped queries instead of two queries per
+	// Session. This keeps the one-time lock window short on large databases.
+	messageBytes, err := groupedByteTotals(tx, "ai_messages", "ai_turns.session_id", "ai_messages.payload", "JOIN ai_turns ON ai_turns.id = ai_messages.turn_id")
+	if err != nil {
+		return err
+	}
+	resultBytes, err := groupedByteTotals(tx, "ai_interactions", "session_id", "result", "")
+	if err != nil {
+		return err
+	}
+	type usage struct{ sessions, bytes int64 }
+	byTenant := make(map[string]usage)
+	for i := range sessions {
+		storedBytes := messageBytes[sessions[i].ID] + resultBytes[sessions[i].ID]
+		if sessions[i].Status == conversationstore.SessionStatusDeleted {
+			storedBytes = 0
+		}
+		if err := tx.Model(&SessionModel{}).Where("id = ?", sessions[i].ID).UpdateColumn("stored_bytes", storedBytes).Error; err != nil {
+			return err
+		}
+		current := byTenant[sessions[i].TenantID]
+		if sessions[i].Status != conversationstore.SessionStatusDeleted {
+			current.sessions++
+		}
+		current.bytes += storedBytes
+		byTenant[sessions[i].TenantID] = current
+	}
+	if err := tx.Model(&TenantUsageModel{}).Where("1 = 1").Updates(map[string]any{"session_count": 0, "stored_bytes": 0}).Error; err != nil {
+		return err
+	}
+	for tenantID, current := range byTenant {
+		model := TenantUsageModel{TenantID: tenantID}
+		if err := tx.Where("tenant_id = ?", tenantID).FirstOrCreate(&model).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&TenantUsageModel{}).Where("tenant_id = ?", tenantID).Updates(map[string]any{"session_count": current.sessions, "stored_bytes": current.bytes}).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// byteLengthSQL returns a dialect-specific expression that counts the bytes,
+// not characters, of a text column. SQLite's LENGTH() counts characters for
+// TEXT, while MySQL and PostgreSQL's OCTET_LENGTH() always counts bytes.
+func byteLengthSQL(tx *gorm.DB, column string) string {
+	if strings.EqualFold(tx.Dialector.Name(), "sqlite") {
+		return "LENGTH(CAST(" + column + " AS BLOB))"
+	}
+	return "OCTET_LENGTH(" + column + ")"
+}
+
+// groupedByteTotals sums byte lengths per Session in one grouped query.
+func groupedByteTotals(tx *gorm.DB, table, groupColumn, byteColumn, join string) (map[string]int64, error) {
+	var rows []struct {
+		SessionID string `gorm:"column:session_id"`
+		Total     int64  `gorm:"column:total"`
+	}
+	query := tx.Table(table).
+		Select(groupColumn + " AS session_id, COALESCE(SUM(" + byteLengthSQL(tx, byteColumn) + "), 0) AS total")
+	if join != "" {
+		query = query.Joins(join)
+	}
+	if err := query.Group(groupColumn).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	totals := make(map[string]int64, len(rows))
+	for i := range rows {
+		totals[rows[i].SessionID] = rows[i].Total
+	}
+	return totals, nil
+}
+
+func isDuplicateKeyError(tx *gorm.DB, err error) bool {
+	if err == nil {
+		return false
+	}
+	if translator, ok := tx.Dialector.(gorm.ErrorTranslator); ok {
+		err = translator.Translate(err)
+	}
+	return errors.Is(err, gorm.ErrDuplicatedKey)
 }
 
 // DB returns the underlying database for connection-pool configuration and
@@ -111,7 +348,24 @@ func (s *GormStore) Create(ctx context.Context, access security.AccessContext, s
 		return security.ErrResourceNotAccessible
 	}
 	model := sessionModelFromDomain(session)
-	return s.db.WithContext(normalizeContext(ctx)).Create(&model).Error
+	if model.ExpiresAt == nil {
+		expiresAt := model.UpdatedAt.Add(s.lifecycle.Retention)
+		model.ExpiresAt = &expiresAt
+	}
+	return s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
+		usage := TenantUsageModel{TenantID: session.TenantID}
+		if err := tx.Where("tenant_id = ?", session.TenantID).FirstOrCreate(&usage).Error; err != nil {
+			return err
+		}
+		reserved := tx.Model(&TenantUsageModel{}).Where("tenant_id = ? AND session_count < ?", session.TenantID, s.quota.MaxSessionsPerTenant).Update("session_count", gorm.Expr("session_count + 1"))
+		if reserved.Error != nil {
+			return reserved.Error
+		}
+		if reserved.RowsAffected != 1 {
+			return conversationstore.ErrResourceExhausted
+		}
+		return tx.Create(&model).Error
+	})
 }
 
 func (s *GormStore) Get(ctx context.Context, access security.AccessContext, sessionID string) (*conversationstore.Session, error) {
@@ -125,7 +379,10 @@ func (s *GormStore) Get(ctx context.Context, access security.AccessContext, sess
 	if err != nil {
 		return nil, err
 	}
-	if isExpired(model, time.Now()) {
+	if model.Status != conversationstore.SessionStatusActive {
+		return nil, conversationstore.ErrSessionNotFound
+	}
+	if s.isExpired(model, time.Now()) {
 		return nil, conversationstore.ErrSessionExpired
 	}
 	return sessionDomainFromModel(model), nil
@@ -140,7 +397,7 @@ func (s *GormStore) List(ctx context.Context, access security.AccessContext) ([]
 	}
 	var models []SessionModel
 	now := time.Now()
-	cutoff := now.Add(-sessionExpiration)
+	cutoff := now.Add(-s.lifecycle.Retention)
 	err := scopeSessions(s.db.WithContext(normalizeContext(ctx)), access).
 		Where("status = ? AND ((expires_at IS NOT NULL AND expires_at > ?) OR (expires_at IS NULL AND updated_at >= ?))", "active", now, cutoff).
 		Find(&models).Error
@@ -157,7 +414,7 @@ func (s *GormStore) List(ctx context.Context, access security.AccessContext) ([]
 	return result, nil
 }
 
-func (s *GormStore) Touch(ctx context.Context, access security.AccessContext, sessionID string, updatedAt time.Time) error {
+func (s *GormStore) Touch(ctx context.Context, access security.AccessContext, sessionID string, updatedAt time.Time, retentions ...time.Duration) error {
 	if err := s.checkContext(ctx); err != nil {
 		return err
 	}
@@ -169,7 +426,11 @@ func (s *GormStore) Touch(ctx context.Context, access security.AccessContext, se
 		if err != nil {
 			return err
 		}
-		expiresAt := updatedAt.Add(sessionExpiration)
+		retention := s.lifecycle.Retention
+		if len(retentions) > 0 && retentions[0] > 0 {
+			retention = retentions[0]
+		}
+		expiresAt := updatedAt.Add(retention)
 		return scopeSessions(tx.Model(&SessionModel{}), access).Where("id = ?", sessionID).Updates(map[string]any{
 			"updated_at": updatedAt,
 			"expires_at": expiresAt,
@@ -186,14 +447,14 @@ func (s *GormStore) Delete(ctx context.Context, access security.AccessContext, s
 		return err
 	}
 	return s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
-		if _, err := s.findSession(tx, access, sessionID, true); err != nil {
+		if _, err := s.findActiveSession(tx, access, sessionID, true); err != nil {
 			return err
 		}
-		return deleteSessionData(tx, sessionID)
+		return markSessionForDeletion(tx, sessionID, access.Subject.TenantID, time.Now())
 	})
 }
 
-func (s *GormStore) DeleteExpired(ctx context.Context, access security.AccessContext, now time.Time) (int, error) {
+func (s *GormStore) DeleteExpired(ctx context.Context, access security.AccessContext, now time.Time, batchSizes ...int) (int, error) {
 	if err := s.checkContext(ctx); err != nil {
 		return 0, err
 	}
@@ -203,13 +464,16 @@ func (s *GormStore) DeleteExpired(ctx context.Context, access security.AccessCon
 	if !access.IsSystem() {
 		return 0, security.ErrResourceNotAccessible
 	}
-	cutoff := now.Add(-sessionExpiration)
+	cutoff := now.Add(-s.lifecycle.Retention)
+	batchLimit := expirationCleanupBatchSize
+	if len(batchSizes) > 0 && batchSizes[0] > 0 {
+		batchLimit = batchSizes[0]
+	}
 	deleted := 0
 	for {
 		batchDeleted := 0
-		batchSize := 0
 		err := s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
-			query := tx.Where("(expires_at IS NOT NULL AND expires_at <= ?) OR (expires_at IS NULL AND updated_at < ?)", now, cutoff).Order("updated_at ASC").Limit(expirationCleanupBatchSize)
+			query := tx.Where("((status = ?) AND ((expires_at IS NOT NULL AND expires_at <= ?) OR (expires_at IS NULL AND updated_at < ?))) OR status IN ?", conversationstore.SessionStatusActive, now, cutoff, []string{conversationstore.SessionStatusDeletionPending, conversationstore.SessionStatusDerivedCleanup}).Order("updated_at ASC, tenant_id ASC, id ASC").Limit(batchLimit)
 			if supportsRowLock(tx) {
 				query = query.Clauses(clause.Locking{Strength: "UPDATE"})
 			}
@@ -217,7 +481,6 @@ func (s *GormStore) DeleteExpired(ctx context.Context, access security.AccessCon
 			if err := query.Find(&sessions).Error; err != nil {
 				return err
 			}
-			batchSize = len(sessions)
 			for i := range sessions {
 				// Re-read the row after acquiring the transaction lock. This prevents
 				// cleanup from deleting a session refreshed by another instance.
@@ -228,13 +491,21 @@ func (s *GormStore) DeleteExpired(ctx context.Context, access security.AccessCon
 					}
 					return err
 				}
-				if !isExpired(current, now) {
+				if current.Status == conversationstore.SessionStatusActive && !s.isExpired(current, now) {
 					continue
 				}
-				if err := deleteSessionData(tx, sessions[i].ID); err != nil {
+				if current.Status == conversationstore.SessionStatusActive {
+					if err := markSessionForDeletion(tx, current.ID, current.TenantID, now); err != nil {
+						return err
+					}
+				}
+				finalized, err := cleanupSessionData(tx, current.ID, current.TenantID, now)
+				if err != nil {
 					return err
 				}
-				batchDeleted++
+				if finalized {
+					batchDeleted++
+				}
 			}
 			return nil
 		})
@@ -242,10 +513,412 @@ func (s *GormStore) DeleteExpired(ctx context.Context, access security.AccessCon
 			return deleted, err
 		}
 		deleted += batchDeleted
-		if batchSize < expirationCleanupBatchSize {
-			return deleted, nil
+		return deleted, nil
+	}
+}
+
+func (s *GormStore) DeleteExpiredPage(ctx context.Context, access security.AccessContext, now time.Time, cursor conversationstore.CleanupCursor, limit int) (int, conversationstore.CleanupCursor, error) {
+	if err := s.checkContext(ctx); err != nil {
+		return 0, cursor, err
+	}
+	if err := access.Validate(); err != nil {
+		return 0, cursor, err
+	}
+	if !access.IsSystem() {
+		return 0, cursor, security.ErrResourceNotAccessible
+	}
+	if limit <= 0 {
+		limit = expirationCleanupBatchSize
+	}
+	cutoff := now.Add(-s.lifecycle.Retention)
+	var sessions []SessionModel
+	err := s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
+		query := tx.Where("((status = ?) AND ((expires_at IS NOT NULL AND expires_at <= ?) OR (expires_at IS NULL AND updated_at < ?))) OR status IN ?", conversationstore.SessionStatusActive, now, cutoff, []string{conversationstore.SessionStatusDeletionPending, conversationstore.SessionStatusDerivedCleanup})
+		if cursor.Valid {
+			query = query.Where("(updated_at > ?) OR (updated_at = ? AND tenant_id > ?) OR (updated_at = ? AND tenant_id = ? AND id > ?)", cursor.SortTime, cursor.SortTime, cursor.TenantID, cursor.SortTime, cursor.TenantID, cursor.ID)
+		}
+		query = query.Order("updated_at ASC, tenant_id ASC, id ASC").Limit(limit)
+		if supportsRowLock(tx) {
+			query = query.Clauses(clause.Locking{Strength: "UPDATE"})
+		}
+		return query.Find(&sessions).Error
+	})
+	if err != nil {
+		return 0, cursor, err
+	}
+	// A short page means this sweep reached the end of the keyset. Keep the
+	// cursor only when a full page might hide more candidates; otherwise an
+	// older, naturally-expired Session could stay behind a cursor that newer
+	// deletions keep pushing forward.
+	next := conversationstore.CleanupCursor{}
+	if len(sessions) == limit {
+		last := sessions[len(sessions)-1]
+		next = conversationstore.CleanupCursor{SortTime: last.UpdatedAt, TenantID: last.TenantID, ID: last.ID, Valid: true}
+	}
+	deleted := 0
+	for i := range sessions {
+		if err := ctx.Err(); err != nil {
+			return deleted, next, err
+		}
+		if err := s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
+			current, err := s.findSession(tx, access, sessions[i].ID, true)
+			if err != nil {
+				// Another replica already removed or rejected this candidate.
+				if errors.Is(err, conversationstore.ErrSessionNotFound) {
+					return nil
+				}
+				return err
+			}
+			if current.Status == conversationstore.SessionStatusActive && !s.isExpired(current, now) {
+				return nil
+			}
+			if current.Status == conversationstore.SessionStatusActive {
+				if err := markSessionForDeletion(tx, current.ID, current.TenantID, now); err != nil {
+					return err
+				}
+			}
+			finalized, err := cleanupSessionData(tx, current.ID, current.TenantID, now)
+			if err != nil {
+				return err
+			}
+			if finalized {
+				deleted++
+			}
+			return nil
+		}); err != nil {
+			return deleted, next, err
 		}
 	}
+	return deleted, next, nil
+}
+
+func markSessionForDeletion(tx *gorm.DB, sessionID, tenantID string, now time.Time) error {
+	result := tx.Model(&SessionModel{}).Where("id = ? AND status = ?", sessionID, conversationstore.SessionStatusActive).Updates(map[string]any{
+		"status": conversationstore.SessionStatusDeletionPending, "version": gorm.Expr("version + 1"),
+		"updated_at": now, "active_interaction_id": nil,
+	})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil
+	}
+	canonicalID := "session:" + sessionID
+	job := CleanupJobModel{ID: uuid.NewString(), TenantID: tenantID, CanonicalSourceID: canonicalID, Status: "pending", CreatedAt: now, UpdatedAt: now}
+	if err := tx.Where("canonical_source_id = ?", canonicalID).FirstOrCreate(&job).Error; err != nil {
+		return err
+	}
+	return tx.Create(&OutboxEventModel{ID: uuid.NewString(), TenantID: tenantID, AggregateID: canonicalID, EventType: "session.deletion_requested", CreatedAt: now}).Error
+}
+
+// cleanupSessionData advances one deletable Session toward its terminal state.
+// It reports true only for the caller that performs the terminal
+// derived_cleanup -> deleted transition, so concurrent replicas cannot release
+// tenant usage twice.
+func cleanupSessionData(tx *gorm.DB, sessionID, tenantID string, now time.Time) (bool, error) {
+	canonicalID := "session:" + sessionID
+	var session SessionModel
+	if err := tx.Select("stored_bytes", "status").Where("id = ?", sessionID).First(&session).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	// Defense in depth: never touch canonical data unless the persisted state
+	// proves this Session is already being deleted. The callers check first,
+	// but this keeps the helper safe if a future caller forgets.
+	if session.Status != conversationstore.SessionStatusDeletionPending && session.Status != conversationstore.SessionStatusDerivedCleanup {
+		return false, nil
+	}
+	// Do not gate on RowsAffected here: setting an already-derived_cleanup row
+	// to the same value can report zero rows on some dialects. The terminal
+	// update below is the only authority for releasing tenant usage.
+	if err := tx.Model(&SessionModel{}).
+		Where("id = ? AND status IN ?", sessionID, []string{conversationstore.SessionStatusDeletionPending, conversationstore.SessionStatusDerivedCleanup}).
+		UpdateColumn("status", conversationstore.SessionStatusDerivedCleanup).Error; err != nil {
+		return false, err
+	}
+	var artifactCount int64
+	if err := tx.Model(&DerivedArtifactModel{}).Where("tenant_id = ? AND canonical_source_id = ? AND status <> ?", tenantID, canonicalID, "deleted").Count(&artifactCount).Error; err != nil {
+		return false, err
+	}
+	if artifactCount > 0 {
+		// A late replica must not reopen a job another replica already
+		// completed for the same canonical source.
+		return false, tx.Model(&CleanupJobModel{}).Where("canonical_source_id = ? AND status <> ?", canonicalID, "completed").Updates(map[string]any{"status": "cleanup_failed", "attempts": gorm.Expr("attempts + 1"), "last_error_code": "HANDLER_REQUIRED", "updated_at": now}).Error
+	}
+	var turns []TurnModel
+	if err := tx.Where("session_id = ?", sessionID).Find(&turns).Error; err != nil {
+		return false, err
+	}
+	for i := range turns {
+		if err := tx.Where("turn_id = ?", turns[i].ID).Delete(&MessageModel{}).Error; err != nil {
+			return false, err
+		}
+	}
+	if err := tx.Where("session_id = ?", sessionID).Delete(&TurnModel{}).Error; err != nil {
+		return false, err
+	}
+	if err := tx.Where("session_id = ?", sessionID).Delete(&InteractionModel{}).Error; err != nil {
+		return false, err
+	}
+	// Only the replica that wins this CAS may release tenant usage. A loser
+	// returns without touching counters that the winner already adjusted.
+	terminal := tx.Model(&SessionModel{}).
+		Where("id = ? AND status = ?", sessionID, conversationstore.SessionStatusDerivedCleanup).
+		UpdateColumns(map[string]any{
+			"status":                conversationstore.SessionStatusDeleted,
+			"updated_at":            now,
+			"active_interaction_id": nil,
+			"stored_bytes":          0,
+		})
+	if terminal.Error != nil {
+		return false, terminal.Error
+	}
+	if terminal.RowsAffected != 1 {
+		return false, nil
+	}
+	if err := tx.Model(&TenantUsageModel{}).Where("tenant_id = ?", tenantID).Updates(map[string]any{
+		"session_count": gorm.Expr("CASE WHEN session_count > 0 THEN session_count - 1 ELSE 0 END"),
+		"stored_bytes":  gorm.Expr("CASE WHEN stored_bytes >= ? THEN stored_bytes - ? ELSE 0 END", session.StoredBytes, session.StoredBytes),
+	}).Error; err != nil {
+		return false, err
+	}
+	if err := tx.Model(&CleanupJobModel{}).Where("canonical_source_id = ?", canonicalID).Updates(map[string]any{"status": "completed", "attempts": gorm.Expr("attempts + 1"), "last_error_code": "", "next_retry_at": nil, "updated_at": now}).Error; err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (s *GormStore) RegisterDerivedArtifact(ctx context.Context, access security.AccessContext, artifact conversationstore.DerivedArtifact) error {
+	if err := s.checkContext(ctx); err != nil {
+		return err
+	}
+	if err := access.Validate(); err != nil {
+		return err
+	}
+	if !access.IsSystem() || artifact.ID == "" || artifact.TenantID == "" || artifact.CanonicalSourceID == "" || artifact.Kind == "" || artifact.Locator == "" {
+		return security.ErrResourceNotAccessible
+	}
+	sessionID, err := conversationstore.SessionIDFromCanonicalSource(artifact.CanonicalSourceID)
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	model := DerivedArtifactModel{ID: artifact.ID, TenantID: artifact.TenantID, CanonicalSourceID: artifact.CanonicalSourceID, SourceSessionID: sessionID, Kind: artifact.Kind, Locator: artifact.Locator, Status: "active", CreatedAt: now, UpdatedAt: now}
+	return s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
+		query := tx.Where("id = ? AND tenant_id = ? AND status = ?", sessionID, artifact.TenantID, conversationstore.SessionStatusActive)
+		if supportsRowLock(tx) {
+			query = query.Clauses(clause.Locking{Strength: "UPDATE"})
+		}
+		var session SessionModel
+		if err := query.First(&session).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+			return conversationstore.ErrCanonicalSourceNotWritable
+		} else if err != nil {
+			return err
+		}
+		return tx.Create(&model).Error
+	})
+}
+
+func (s *GormStore) ListDerivedArtifactsForCleanup(ctx context.Context, access security.AccessContext, now time.Time, limit int) ([]conversationstore.DerivedArtifact, error) {
+	if err := s.checkContext(ctx); err != nil {
+		return nil, err
+	}
+	if err := access.Validate(); err != nil {
+		return nil, err
+	}
+	if !access.IsSystem() {
+		return nil, security.ErrResourceNotAccessible
+	}
+	query := s.db.WithContext(normalizeContext(ctx)).Table("ai_derived_artifacts AS artifact").
+		Select("artifact.*").
+		Joins("LEFT JOIN ai_sessions AS session ON artifact.source_session_id = session.id").
+		Where("artifact.status <> ? AND (artifact.next_retry_at IS NULL OR artifact.next_retry_at <= ?) AND (session.id IS NULL OR session.tenant_id <> artifact.tenant_id OR session.status IN ?)", "deleted", now, []string{conversationstore.SessionStatusDeletionPending, conversationstore.SessionStatusDerivedCleanup, conversationstore.SessionStatusDeleted}).
+		Order("COALESCE(artifact.next_retry_at, artifact.created_at) ASC, artifact.tenant_id ASC, artifact.id ASC")
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	var models []DerivedArtifactModel
+	if err := query.Scan(&models).Error; err != nil {
+		return nil, err
+	}
+	result := make([]conversationstore.DerivedArtifact, 0, len(models))
+	for i := range models {
+		result = append(result, conversationstore.DerivedArtifact{
+			ID: models[i].ID, TenantID: models[i].TenantID, CanonicalSourceID: models[i].CanonicalSourceID,
+			Kind: models[i].Kind, Locator: models[i].Locator, Status: models[i].Status,
+			CleanupAttempts: models[i].CleanupAttempts, LastErrorCode: models[i].LastErrorCode,
+			NextRetryAt: models[i].NextRetryAt, CreatedAt: models[i].CreatedAt, UpdatedAt: models[i].UpdatedAt,
+		})
+	}
+	return result, nil
+}
+
+func (s *GormStore) ListDerivedArtifactsForCleanupPage(ctx context.Context, access security.AccessContext, now time.Time, cursor conversationstore.CleanupCursor, limit int) ([]conversationstore.DerivedArtifact, conversationstore.CleanupCursor, error) {
+	if err := s.checkContext(ctx); err != nil {
+		return nil, cursor, err
+	}
+	if err := access.Validate(); err != nil {
+		return nil, cursor, err
+	}
+	if !access.IsSystem() {
+		return nil, cursor, security.ErrResourceNotAccessible
+	}
+	if limit <= 0 {
+		limit = expirationCleanupBatchSize
+	}
+	query := s.db.WithContext(normalizeContext(ctx)).Table("ai_derived_artifacts AS artifact").Select("artifact.*").Joins("LEFT JOIN ai_sessions AS session ON artifact.source_session_id = session.id").Where("artifact.status <> ? AND (artifact.next_retry_at IS NULL OR artifact.next_retry_at <= ?) AND (session.id IS NULL OR session.tenant_id <> artifact.tenant_id OR session.status IN ?)", "deleted", now, []string{conversationstore.SessionStatusDeletionPending, conversationstore.SessionStatusDerivedCleanup, conversationstore.SessionStatusDeleted})
+	if cursor.Valid {
+		query = query.Where("(COALESCE(artifact.next_retry_at, artifact.created_at) > ?) OR (COALESCE(artifact.next_retry_at, artifact.created_at) = ? AND artifact.tenant_id > ?) OR (COALESCE(artifact.next_retry_at, artifact.created_at) = ? AND artifact.tenant_id = ? AND artifact.id > ?)", cursor.SortTime, cursor.SortTime, cursor.TenantID, cursor.SortTime, cursor.TenantID, cursor.ID)
+	}
+	query = query.Order("COALESCE(artifact.next_retry_at, artifact.created_at) ASC, artifact.tenant_id ASC, artifact.id ASC").Limit(limit)
+	var models []DerivedArtifactModel
+	if err := query.Scan(&models).Error; err != nil {
+		return nil, cursor, err
+	}
+	result := make([]conversationstore.DerivedArtifact, 0, len(models))
+	for i := range models {
+		result = append(result, conversationstore.DerivedArtifact{ID: models[i].ID, TenantID: models[i].TenantID, CanonicalSourceID: models[i].CanonicalSourceID, Kind: models[i].Kind, Locator: models[i].Locator, Status: models[i].Status, CleanupAttempts: models[i].CleanupAttempts, LastErrorCode: models[i].LastErrorCode, NextRetryAt: models[i].NextRetryAt, CreatedAt: models[i].CreatedAt, UpdatedAt: models[i].UpdatedAt})
+	}
+	next := conversationstore.CleanupCursor{}
+	if len(result) == limit {
+		last := result[len(result)-1]
+		at := last.CreatedAt
+		if last.NextRetryAt != nil {
+			at = *last.NextRetryAt
+		}
+		next = conversationstore.CleanupCursor{SortTime: at, TenantID: last.TenantID, ID: last.ID, Valid: true}
+	}
+	return result, next, nil
+}
+
+func (s *GormStore) MarkDerivedArtifactDeleted(ctx context.Context, access security.AccessContext, artifactID string) error {
+	if err := s.checkContext(ctx); err != nil {
+		return err
+	}
+	if err := access.Validate(); err != nil {
+		return err
+	}
+	if !access.IsSystem() {
+		return security.ErrResourceNotAccessible
+	}
+	return s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
+		var artifact DerivedArtifactModel
+		query := tx.Where("id = ?", artifactID)
+		if supportsRowLock(tx) {
+			query = query.Clauses(clause.Locking{Strength: "UPDATE"})
+		}
+		if err := query.First(&artifact).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+			return conversationstore.ErrDerivedArtifactNotFound
+		} else if err != nil {
+			return err
+		}
+		now := time.Now()
+		if err := tx.Model(&DerivedArtifactModel{}).Where("id = ?", artifactID).Updates(map[string]any{
+			"status": "deleted", "last_error_code": "", "next_retry_at": nil, "updated_at": now,
+		}).Error; err != nil {
+			return err
+		}
+		return refreshCleanupJobRetryProjection(tx, artifact.CanonicalSourceID, now)
+	})
+}
+
+func (s *GormStore) MarkDerivedArtifactCleanupFailed(ctx context.Context, access security.AccessContext, artifactID, errorCode string, failedAt time.Time) error {
+	if err := s.checkContext(ctx); err != nil {
+		return err
+	}
+	if err := access.Validate(); err != nil {
+		return err
+	}
+	if !access.IsSystem() {
+		return security.ErrResourceNotAccessible
+	}
+	return s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
+		var artifact DerivedArtifactModel
+		query := tx.Where("id = ?", artifactID)
+		if supportsRowLock(tx) {
+			query = query.Clauses(clause.Locking{Strength: "UPDATE"})
+		}
+		if err := query.First(&artifact).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+			return conversationstore.ErrDerivedArtifactNotFound
+		} else if err != nil {
+			return err
+		}
+		if artifact.Status == "deleted" {
+			return nil
+		}
+		attempt := artifact.CleanupAttempts + 1
+		nextRetryAt := conversationstore.DerivedArtifactRetryAt(failedAt, attempt)
+		if err := tx.Model(&DerivedArtifactModel{}).Where("id = ? AND status <> ?", artifactID, "deleted").Updates(map[string]any{
+			"cleanup_attempts": attempt, "last_error_code": errorCode, "next_retry_at": nextRetryAt, "updated_at": failedAt,
+		}).Error; err != nil {
+			return err
+		}
+		var job CleanupJobModel
+		err := tx.Where("canonical_source_id = ?", artifact.CanonicalSourceID).First(&job).Error
+		switch {
+		case errors.Is(err, gorm.ErrRecordNotFound):
+			job = CleanupJobModel{
+				ID:                uuid.NewString(),
+				TenantID:          artifact.TenantID,
+				CanonicalSourceID: artifact.CanonicalSourceID,
+				Status:            "cleanup_failed",
+				CreatedAt:         failedAt,
+				UpdatedAt:         failedAt,
+			}
+			if err := tx.Create(&job).Error; err != nil {
+				return err
+			}
+		case err != nil:
+			return err
+		}
+		result := tx.Model(&CleanupJobModel{}).Where("canonical_source_id = ?", artifact.CanonicalSourceID).Updates(map[string]any{
+			"status": "cleanup_failed", "attempts": gorm.Expr("attempts + 1"), "last_error_code": errorCode, "updated_at": failedAt,
+		})
+		if result.Error != nil {
+			return result.Error
+		}
+		return refreshCleanupJobRetryProjection(tx, artifact.CanonicalSourceID, failedAt)
+	})
+}
+
+// refreshCleanupJobRetryProjection keeps the canonical-source job useful for
+// observation without making it a second scheduler. A nil projection means at
+// least one pending artifact is immediately eligible (or none remain).
+func refreshCleanupJobRetryProjection(tx *gorm.DB, canonicalSourceID string, updatedAt time.Time) error {
+	var job CleanupJobModel
+	jobQuery := tx.Select("id").Where("canonical_source_id = ?", canonicalSourceID)
+	if supportsRowLock(tx) {
+		jobQuery = jobQuery.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+	if err := jobQuery.First(&job).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	var immediate int64
+	if err := tx.Model(&DerivedArtifactModel{}).
+		Where("canonical_source_id = ? AND status <> ? AND next_retry_at IS NULL", canonicalSourceID, "deleted").
+		Count(&immediate).Error; err != nil {
+		return err
+	}
+	var nextRetryAt *time.Time
+	if immediate == 0 {
+		var artifact DerivedArtifactModel
+		err := tx.Select("next_retry_at").
+			Where("canonical_source_id = ? AND status <> ?", canonicalSourceID, "deleted").
+			Order("next_retry_at ASC").First(&artifact).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		if err == nil {
+			nextRetryAt = artifact.NextRetryAt
+		}
+	}
+	return tx.Model(&CleanupJobModel{}).
+		Where("canonical_source_id = ?", canonicalSourceID).
+		Updates(map[string]any{"next_retry_at": nextRetryAt, "updated_at": updatedAt}).Error
 }
 
 func (s *GormStore) AdoptLegacySessions(ctx context.Context, access security.AccessContext, tenantID, ownerID string) (int, error) {
@@ -276,12 +949,12 @@ func (s *GormStore) AdoptLegacySessions(ctx context.Context, access security.Acc
 			}
 			expiresAt := legacy[i].ExpiresAt
 			if expiresAt == nil {
-				value := legacy[i].UpdatedAt.Add(sessionExpiration)
+				value := legacy[i].UpdatedAt.Add(s.lifecycle.Retention)
 				expiresAt = &value
 			}
 			result := tx.Model(&SessionModel{}).
 				Where("id = ? AND (tenant_id IS NULL OR tenant_id = ?) AND (owner_id IS NULL OR owner_id = ?)", legacy[i].ID, "", "").
-				Updates(map[string]any{
+				UpdateColumns(map[string]any{
 					"tenant_id":  tenantID,
 					"owner_id":   ownerID,
 					"version":    version,
@@ -297,15 +970,254 @@ func (s *GormStore) AdoptLegacySessions(ctx context.Context, access security.Acc
 	return updated, err
 }
 
+func (s *GormStore) PrepareInteraction(ctx context.Context, access security.AccessContext, sessionID, idempotencyKey, requestHash string, leaseDuration time.Duration) (*conversationstore.PreparedInteraction, error) {
+	if err := s.checkContext(ctx); err != nil {
+		return nil, err
+	}
+	if idempotencyKey == "" || requestHash == "" || leaseDuration <= 0 {
+		return nil, errors.New("idempotency key, request hash, and positive lease are required")
+	}
+	var prepared conversationstore.PreparedInteraction
+	duplicateInsert := false
+	err := s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
+		session, err := s.findActiveSession(tx, access, sessionID, true)
+		if err != nil {
+			return err
+		}
+		now := time.Now()
+		var existing InteractionModel
+		err = tx.Where("tenant_id = ? AND owner_id = ? AND session_id = ? AND idempotency_key = ?", access.Subject.TenantID, access.Subject.UserID, sessionID, idempotencyKey).First(&existing).Error
+		if err == nil {
+			if existing.RequestHash != requestHash {
+				return conversationstore.ErrIdempotencyConflict
+			}
+			if existing.Status == conversationstore.InteractionStatusCompleted {
+				prepared = conversationstore.PreparedInteraction{InteractionID: existing.ID, TurnID: existing.TurnID, Replayed: true, Result: existing.Result}
+				return nil
+			}
+			if existing.Status == conversationstore.InteractionStatusRunning && existing.LeaseExpiresAt.After(now) {
+				return conversationstore.ErrInteractionInProgress
+			}
+			if err := s.releaseExpiredInteraction(tx, session, existing.ID, now); err != nil {
+				return err
+			}
+			var completedTurnCount int64
+			if err := tx.Model(&TurnModel{}).Where("session_id = ? AND completed_at IS NOT NULL", sessionID).Count(&completedTurnCount).Error; err != nil {
+				return err
+			}
+			if completedTurnCount >= int64(s.limit) {
+				return conversationstore.ErrResourceExhausted
+			}
+			if existing.TurnID != 0 {
+				if err := s.deleteTurnAndReleaseUsage(tx, access.Subject.TenantID, sessionID, existing.TurnID); err != nil && !errors.Is(err, conversationstore.ErrTurnNotFound) {
+					return err
+				}
+			}
+			turn := TurnModel{SessionID: sessionID, InteractionID: existing.ID, Status: conversationstore.InteractionStatusRunning, CreatedAt: now}
+			if err := tx.Create(&turn).Error; err != nil {
+				return err
+			}
+			updates := map[string]any{"turn_id": turn.ID, "status": conversationstore.InteractionStatusRunning, "attempt": gorm.Expr("attempt + 1"), "result": "", "lease_expires_at": now.Add(leaseDuration), "updated_at": now, "completed_at": nil}
+			if err := tx.Model(&InteractionModel{}).Where("id = ?", existing.ID).Updates(updates).Error; err != nil {
+				return err
+			}
+			claimed := tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id IS NULL", sessionID).UpdateColumn("active_interaction_id", existing.ID)
+			if claimed.Error != nil {
+				return claimed.Error
+			}
+			if claimed.RowsAffected != 1 {
+				return conversationstore.ErrSessionBusy
+			}
+			prepared = conversationstore.PreparedInteraction{InteractionID: existing.ID, TurnID: turn.ID}
+			return nil
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		if err := s.releaseExpiredInteraction(tx, session, "", now); err != nil {
+			return err
+		}
+		var completedTurnCount int64
+		if err := tx.Model(&TurnModel{}).Where("session_id = ? AND completed_at IS NOT NULL", sessionID).Count(&completedTurnCount).Error; err != nil {
+			return err
+		}
+		if completedTurnCount >= int64(s.limit) {
+			return conversationstore.ErrResourceExhausted
+		}
+		interactionID := uuid.NewString()
+		turn := TurnModel{SessionID: sessionID, InteractionID: interactionID, Status: conversationstore.InteractionStatusRunning, CreatedAt: now}
+		if err := tx.Create(&turn).Error; err != nil {
+			return err
+		}
+		interaction := InteractionModel{
+			ID: interactionID, TenantID: access.Subject.TenantID, OwnerID: access.Subject.UserID,
+			SessionID: sessionID, IdempotencyKey: idempotencyKey, RequestHash: requestHash,
+			TurnID: turn.ID, Status: conversationstore.InteractionStatusRunning, Attempt: 1,
+			LeaseExpiresAt: now.Add(leaseDuration), CreatedAt: now, UpdatedAt: now,
+		}
+		if err := tx.Create(&interaction).Error; err != nil {
+			duplicateInsert = isDuplicateKeyError(tx, err)
+			return err
+		}
+		result := tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id IS NULL", sessionID).UpdateColumn("active_interaction_id", interactionID)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return conversationstore.ErrSessionBusy
+		}
+		prepared = conversationstore.PreparedInteraction{InteractionID: interactionID, TurnID: turn.ID}
+		return nil
+	})
+	if err != nil {
+		if !duplicateInsert {
+			return nil, err
+		}
+		// Resolve only an interaction insert conflict. Authorization and lifecycle
+		// must still hold after rollback, before any retained result is read.
+		lookupErr := s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
+			if _, accessErr := s.findActiveSession(tx, access, sessionID, true); accessErr != nil {
+				return accessErr
+			}
+			var existing InteractionModel
+			if lookupErr := tx.Where("tenant_id = ? AND owner_id = ? AND session_id = ? AND idempotency_key = ?", access.Subject.TenantID, access.Subject.UserID, sessionID, idempotencyKey).First(&existing).Error; lookupErr != nil {
+				return err
+			}
+			if existing.RequestHash != requestHash {
+				return conversationstore.ErrIdempotencyConflict
+			}
+			if existing.Status == conversationstore.InteractionStatusCompleted {
+				prepared = conversationstore.PreparedInteraction{InteractionID: existing.ID, TurnID: existing.TurnID, Replayed: true, Result: existing.Result}
+				return nil
+			}
+			if existing.Status == conversationstore.InteractionStatusRunning && existing.LeaseExpiresAt.After(time.Now()) {
+				return conversationstore.ErrInteractionInProgress
+			}
+			return err
+		})
+		if lookupErr != nil {
+			return nil, lookupErr
+		}
+	}
+	return &prepared, nil
+}
+
+// releaseExpiredInteraction runs under the Session lock in PrepareInteraction.
+// A live holder blocks a retry before any Turn or attempt is changed.
+func (s *GormStore) releaseExpiredInteraction(tx *gorm.DB, session *SessionModel, retryID string, now time.Time) error {
+	if session.ActiveInteractionID == nil || *session.ActiveInteractionID == "" {
+		return nil
+	}
+	if *session.ActiveInteractionID == retryID {
+		// The caller replaces this expired attempt. Release its pointer so the
+		// subsequent claim also changes a row on MySQL without clientFoundRows.
+		return tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id = ?", session.ID, retryID).UpdateColumn("active_interaction_id", nil).Error
+	}
+	var active InteractionModel
+	activeErr := tx.Where("id = ?", *session.ActiveInteractionID).First(&active).Error
+	if activeErr == nil {
+		if active.Status == conversationstore.InteractionStatusRunning && active.LeaseExpiresAt.After(now) {
+			return conversationstore.ErrSessionBusy
+		}
+		if active.TurnID != 0 {
+			if err := s.deleteTurnAndReleaseUsage(tx, session.TenantID, session.ID, active.TurnID); err != nil && !errors.Is(err, conversationstore.ErrTurnNotFound) {
+				return err
+			}
+		}
+		if err := tx.Model(&InteractionModel{}).Where("id = ?", active.ID).Updates(map[string]any{"status": conversationstore.InteractionStatusFailed, "updated_at": now}).Error; err != nil {
+			return err
+		}
+	} else if !errors.Is(activeErr, gorm.ErrRecordNotFound) {
+		return activeErr
+	}
+	return tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id = ?", session.ID, *session.ActiveInteractionID).UpdateColumn("active_interaction_id", nil).Error
+}
+
+func (s *GormStore) CompleteInteraction(ctx context.Context, access security.AccessContext, sessionID, interactionID string, turnID uint64, result string) error {
+	if err := s.checkContext(ctx); err != nil {
+		return err
+	}
+	return s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
+		if _, err := s.findActiveSession(tx, access, sessionID, true); err != nil {
+			return err
+		}
+		resultBytes := int64(len([]byte(result)))
+		sessionReserved := tx.Model(&SessionModel{}).Where("id = ? AND stored_bytes + ? <= ?", sessionID, resultBytes, s.quota.MaxSessionBytes).UpdateColumn("stored_bytes", gorm.Expr("stored_bytes + ?", resultBytes))
+		if sessionReserved.Error != nil {
+			return sessionReserved.Error
+		}
+		if sessionReserved.RowsAffected != 1 {
+			return conversationstore.ErrResourceExhausted
+		}
+		tenantReserved := tx.Model(&TenantUsageModel{}).Where("tenant_id = ? AND stored_bytes + ? <= ?", access.Subject.TenantID, resultBytes, s.quota.MaxTenantBytes).UpdateColumn("stored_bytes", gorm.Expr("stored_bytes + ?", resultBytes))
+		if tenantReserved.Error != nil {
+			return tenantReserved.Error
+		}
+		if tenantReserved.RowsAffected != 1 {
+			return conversationstore.ErrResourceExhausted
+		}
+		now := time.Now()
+		updated := tx.Model(&InteractionModel{}).Where("id = ? AND session_id = ? AND turn_id = ? AND status = ?", interactionID, sessionID, turnID, conversationstore.InteractionStatusRunning).Updates(map[string]any{"status": conversationstore.InteractionStatusCompleted, "result": result, "updated_at": now, "completed_at": now})
+		if updated.Error != nil {
+			return updated.Error
+		}
+		if updated.RowsAffected != 1 {
+			return conversationstore.ErrTurnNotFound
+		}
+		if err := tx.Model(&TurnModel{}).Where("id = ? AND session_id = ?", turnID, sessionID).Updates(map[string]any{"status": conversationstore.InteractionStatusCompleted, "completed_at": now}).Error; err != nil {
+			return err
+		}
+		return tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id = ?", sessionID, interactionID).UpdateColumn("active_interaction_id", nil).Error
+	})
+}
+
+func (s *GormStore) FailInteraction(ctx context.Context, access security.AccessContext, sessionID, interactionID string, turnID uint64) error {
+	if err := s.checkContext(ctx); err != nil {
+		return err
+	}
+	return s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
+		if _, err := s.findActiveSession(tx, access, sessionID, true); err != nil {
+			return err
+		}
+		// Claim the running -> failed transition before touching the Turn. A late
+		// failure for an already completed Interaction must not delete its Turn or
+		// messages, because that result is what replay returns.
+		now := time.Now()
+		updated := tx.Model(&InteractionModel{}).
+			Where("id = ? AND session_id = ? AND turn_id = ? AND status = ?", interactionID, sessionID, turnID, conversationstore.InteractionStatusRunning).
+			Updates(map[string]any{"status": conversationstore.InteractionStatusFailed, "updated_at": now})
+		if updated.Error != nil {
+			return updated.Error
+		}
+		if updated.RowsAffected != 1 {
+			return conversationstore.ErrTurnNotFound
+		}
+		if err := s.deleteTurnAndReleaseUsage(tx, access.Subject.TenantID, sessionID, turnID); err != nil {
+			return err
+		}
+		return tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id = ?", sessionID, interactionID).UpdateColumn("active_interaction_id", nil).Error
+	})
+}
+
 func (s *GormStore) BeginTurn(ctx context.Context, access security.AccessContext, sessionID string) (uint64, error) {
 	if err := s.checkContext(ctx); err != nil {
 		return 0, err
 	}
 	var turnID uint64
 	err := s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
-		_, err := s.findActiveSession(tx, access, sessionID, true)
+		session, err := s.findActiveSession(tx, access, sessionID, true)
 		if err != nil {
 			return err
+		}
+		if session.ActiveInteractionID != nil && *session.ActiveInteractionID != "" {
+			return conversationstore.ErrSessionBusy
+		}
+		var activeCount int64
+		if err := tx.Model(&TurnModel{}).Where("session_id = ? AND completed_at IS NULL", sessionID).Count(&activeCount).Error; err != nil {
+			return err
+		}
+		if activeCount > 0 {
+			return conversationstore.ErrSessionBusy
 		}
 
 		var turnCount int64
@@ -317,7 +1229,7 @@ func (s *GormStore) BeginTurn(ctx context.Context, access security.AccessContext
 		if turnCount >= int64(s.limit) {
 			return fmt.Errorf("%w: current session's context is full, please create a new session", conversationstore.ErrTurnLimitReached)
 		}
-		turn := TurnModel{SessionID: sessionID, CreatedAt: time.Now()}
+		turn := TurnModel{SessionID: sessionID, Status: conversationstore.InteractionStatusRunning, CreatedAt: time.Now()}
 		if err := tx.Create(&turn).Error; err != nil {
 			return err
 		}
@@ -347,7 +1259,7 @@ func (s *GormStore) AddHistoryToTurn(ctx context.Context, access security.Access
 			return conversationstore.ErrTurnNotFound
 		}
 
-		return insertMessages(tx, turn.ID, messages)
+		return s.insertMessages(tx, access, sessionID, turn.ID, messages)
 	})
 	if err != nil {
 		// BeginTurn is intentionally separate from message persistence. If this
@@ -508,7 +1420,7 @@ func (s *GormStore) NextTurnForTurn(ctx context.Context, access security.AccessC
 			return fmt.Errorf("%w: current session's context is full, please create a new session", conversationstore.ErrTurnLimitReached)
 		}
 		completedAt := time.Now()
-		return tx.Model(&TurnModel{}).Where("id = ?", active.ID).Update("completed_at", completedAt).Error
+		return tx.Model(&TurnModel{}).Where("id = ?", active.ID).Updates(map[string]any{"completed_at": completedAt, "status": conversationstore.InteractionStatusCompleted}).Error
 	})
 }
 
@@ -528,11 +1440,30 @@ func (s *GormStore) AbortTurnForTurn(ctx context.Context, access security.Access
 		} else if err != nil {
 			return err
 		}
-		if err := tx.Where("turn_id = ?", turnID).Delete(&MessageModel{}).Error; err != nil {
-			return err
-		}
-		return tx.Delete(&turn).Error
+		return s.deleteTurnAndReleaseUsage(tx, access.Subject.TenantID, sessionID, turn.ID)
 	})
+}
+
+func (s *GormStore) deleteTurnAndReleaseUsage(tx *gorm.DB, tenantID, sessionID string, turnID uint64) error {
+	var turn TurnModel
+	if err := tx.Where("id = ? AND session_id = ?", turnID, sessionID).First(&turn).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+		return conversationstore.ErrTurnNotFound
+	} else if err != nil {
+		return err
+	}
+	if err := tx.Where("turn_id = ?", turnID).Delete(&MessageModel{}).Error; err != nil {
+		return err
+	}
+	if err := tx.Delete(&turn).Error; err != nil {
+		return err
+	}
+	if turn.StoredBytes == 0 {
+		return nil
+	}
+	if err := tx.Model(&SessionModel{}).Where("id = ?", sessionID).UpdateColumn("stored_bytes", gorm.Expr("CASE WHEN stored_bytes >= ? THEN stored_bytes - ? ELSE 0 END", turn.StoredBytes, turn.StoredBytes)).Error; err != nil {
+		return err
+	}
+	return tx.Model(&TenantUsageModel{}).Where("tenant_id = ?", tenantID).UpdateColumn("stored_bytes", gorm.Expr("CASE WHEN stored_bytes >= ? THEN stored_bytes - ? ELSE 0 END", turn.StoredBytes, turn.StoredBytes)).Error
 }
 
 // AddHistory is retained for callers of the pre-Store API. Production code
@@ -569,11 +1500,11 @@ func (s *GormStore) AddHistory(ctx context.Context, access security.AccessContex
 		default:
 			return fmt.Errorf("session %q has multiple active turns; use AddHistoryToTurn", sessionID)
 		}
-		return insertMessages(tx, turn.ID, messages)
+		return s.insertMessages(tx, access, sessionID, turn.ID, messages)
 	})
 }
 
-func insertMessages(tx *gorm.DB, turnID uint64, messages []*ai.Message) error {
+func (s *GormStore) insertMessages(tx *gorm.DB, access security.AccessContext, sessionID string, turnID uint64, messages []*ai.Message) error {
 	var last MessageModel
 	err := tx.Where("turn_id = ?", turnID).Order("sequence DESC").First(&last).Error
 	nextSequence := uint64(0)
@@ -582,6 +1513,8 @@ func insertMessages(tx *gorm.DB, turnID uint64, messages []*ai.Message) error {
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return err
 	}
+	models := make([]MessageModel, 0, len(messages))
+	var addedBytes int64
 	for _, message := range messages {
 		if message == nil || !supportedRole(message.Role) {
 			continue
@@ -590,11 +1523,35 @@ func insertMessages(tx *gorm.DB, turnID uint64, messages []*ai.Message) error {
 		if err != nil {
 			return fmt.Errorf("failed to encode message: %w", err)
 		}
-		stored := MessageModel{TurnID: turnID, Sequence: nextSequence, Payload: payload, CreatedAt: time.Now()}
-		if err := tx.Create(&stored).Error; err != nil {
+		models = append(models, MessageModel{TurnID: turnID, Sequence: nextSequence, Payload: payload, CreatedAt: time.Now()})
+		addedBytes += int64(len(payload))
+		nextSequence++
+	}
+	turnReserved := tx.Model(&TurnModel{}).Where("id = ? AND event_count + ? <= ?", turnID, len(models), s.quota.MaxEventsPerTurn).Updates(map[string]any{"event_count": gorm.Expr("event_count + ?", len(models)), "stored_bytes": gorm.Expr("stored_bytes + ?", addedBytes)})
+	if turnReserved.Error != nil {
+		return turnReserved.Error
+	}
+	if turnReserved.RowsAffected != 1 {
+		return conversationstore.ErrResourceExhausted
+	}
+	sessionReserved := tx.Model(&SessionModel{}).Where("id = ? AND stored_bytes + ? <= ?", sessionID, addedBytes, s.quota.MaxSessionBytes).UpdateColumn("stored_bytes", gorm.Expr("stored_bytes + ?", addedBytes))
+	if sessionReserved.Error != nil {
+		return sessionReserved.Error
+	}
+	if sessionReserved.RowsAffected != 1 {
+		return conversationstore.ErrResourceExhausted
+	}
+	tenantReserved := tx.Model(&TenantUsageModel{}).Where("tenant_id = ? AND stored_bytes + ? <= ?", access.Subject.TenantID, addedBytes, s.quota.MaxTenantBytes).UpdateColumn("stored_bytes", gorm.Expr("stored_bytes + ?", addedBytes))
+	if tenantReserved.Error != nil {
+		return tenantReserved.Error
+	}
+	if tenantReserved.RowsAffected != 1 {
+		return conversationstore.ErrResourceExhausted
+	}
+	for i := range models {
+		if err := tx.Create(&models[i]).Error; err != nil {
 			return err
 		}
-		nextSequence++
 	}
 	return nil
 }
@@ -701,7 +1658,7 @@ func (s *GormStore) findActiveSession(tx *gorm.DB, access security.AccessContext
 	if err != nil {
 		return nil, err
 	}
-	if err := conversationstore.ValidateSessionActive(sessionID, model.Status, isExpired(model, time.Now())); err != nil {
+	if err := conversationstore.ValidateSessionActive(sessionID, model.Status, s.isExpired(model, time.Now())); err != nil {
 		return nil, err
 	}
 	return model, nil
@@ -777,6 +1734,6 @@ func supportedRole(role ai.Role) bool {
 	return role == ai.RoleSystem || role == ai.RoleUser || role == ai.RoleModel
 }
 
-func isExpired(session *SessionModel, now time.Time) bool {
-	return conversationstore.IsSessionExpired(session.ExpiresAt, session.UpdatedAt, now, sessionExpiration)
+func (s *GormStore) isExpired(session *SessionModel, now time.Time) bool {
+	return conversationstore.IsSessionExpired(session.ExpiresAt, session.UpdatedAt, now, s.lifecycle.Retention)
 }

@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"dubbo-admin-ai/security"
+	conversationstore "dubbo-admin-ai/store"
 )
 
 func TestAuthenticationSpecRoleDefaultsDistinguishMissingAndEmpty(t *testing.T) {
@@ -50,6 +51,7 @@ func TestNormalizeHostIPv6(t *testing.T) {
 }
 
 type recordingMaintenanceStore struct {
+	conversationstore.MaintenanceStore
 	called   bool
 	access   security.AccessContext
 	tenantID string
@@ -57,7 +59,7 @@ type recordingMaintenanceStore struct {
 	err      error
 }
 
-func (s *recordingMaintenanceStore) DeleteExpired(context.Context, security.AccessContext, time.Time) (int, error) {
+func (s *recordingMaintenanceStore) DeleteExpired(context.Context, security.AccessContext, time.Time, ...int) (int, error) {
 	return 0, nil
 }
 

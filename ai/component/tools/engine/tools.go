@@ -52,7 +52,7 @@ func Call(ctx context.Context, g *genkit.Genkit, toolName string, input any) (to
 	if rawToolOutput == nil {
 		return toolOutput, fmt.Errorf("tool %s is unavailable", toolName)
 	}
-	runtime.GetLogger().Info("Tool output:", "output", rawToolOutput)
+	runtime.GetLogger().Info("Tool execution completed", "tool", toolName, "output_type", fmt.Sprintf("%T", rawToolOutput))
 
 	rawMap, ok := rawToolOutput.(map[string]any)
 	if !ok {

@@ -109,11 +109,13 @@ func TestNewInteractionBuildsStableContextSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("newInteraction() error = %v", err)
 	}
-	defer state.cancelPersistence()
 	defer func() { _ = store.AbortTurnForTurn(context.Background(), access, "snapshot-session", state.turnID) }()
 
 	if got, want := messageTextList(state.messages), []string{"first question", "first answer", "follow-up"}; fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("context snapshot = %v, want %v", got, want)
+	}
+	if err := store.NextTurnForTurn(ctx, access, "snapshot-session", state.turnID); err != nil {
+		t.Fatalf("NextTurnForTurn(snapshot) error = %v", err)
 	}
 
 	other, err := store.BeginTurn(ctx, access, "snapshot-session")
@@ -159,7 +161,6 @@ func TestRunAppendsToolOutputToContextSnapshotWithoutReloading(t *testing.T) {
 	if err != nil {
 		t.Fatalf("newInteraction() error = %v", err)
 	}
-	defer state.cancelPersistence()
 	defer func() {
 		_ = baseStore.AbortTurnForTurn(context.Background(), access, "tool-snapshot-session", state.turnID)
 	}()
@@ -201,6 +202,35 @@ func TestNewInteractionAbortsTurnWhenContextLoadFails(t *testing.T) {
 	}
 	if len(messages) != 0 {
 		t.Fatalf("failed context load left turn messages behind: %#v", messages)
+	}
+}
+
+func TestPreparedInteractionCanRetryAfterContextLoadFails(t *testing.T) {
+	ctx := testutils.ContextWithTestAccess(context.Background())
+	access := testutils.TestAccess()
+	baseStore := memorystore.NewMemoryStore(10)
+	const sessionID = "prepared-context-failure"
+	createAgentSession(t, baseStore, sessionID)
+	prepared, err := baseStore.PrepareInteraction(ctx, access, sessionID, "request", "hash", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := &trackingContextStore{Store: baseStore, fail: errors.New("context unavailable")}
+	ra := &ReActAgent{messageStore: store, contextWindowTurns: 5}
+	parent := conversationstore.WithPreparedInteraction(ctx, prepared)
+	if _, _, err := ra.newInteraction(parent, &schema.UserInput{Content: "hello"}, sessionID); err == nil || !strings.Contains(err.Error(), "failed to load conversation context") {
+		t.Fatalf("newInteraction() error = %v, want context load failure", err)
+	}
+	assertNoStoredMessages(t, baseStore, sessionID)
+	retried, err := baseStore.PrepareInteraction(ctx, access, sessionID, "request", "hash", time.Minute)
+	if err != nil {
+		t.Fatalf("PrepareInteraction(retry) error = %v", err)
+	}
+	if retried.InteractionID != prepared.InteractionID || retried.TurnID == prepared.TurnID {
+		t.Fatalf("retried interaction = %#v, original = %#v", retried, prepared)
+	}
+	if err := baseStore.FailInteraction(ctx, access, sessionID, retried.InteractionID, retried.TurnID); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -285,5 +315,104 @@ func assertNoStoredMessages(t *testing.T, store conversationstore.Store, session
 	}
 	if len(messages) != 0 {
 		t.Fatalf("failed interaction left messages behind: %#v", messages)
+	}
+}
+
+// setPersistenceTimeout shrinks the per-write budget for one test and restores
+// it afterwards. Tests in this package run sequentially (none calls
+// t.Parallel), so mutating the package-level budget is safe here.
+func setPersistenceTimeout(t *testing.T, timeout time.Duration) {
+	t.Helper()
+	previous := persistenceTimeout
+	persistenceTimeout = timeout
+	t.Cleanup(func() { persistenceTimeout = previous })
+}
+
+// collectInteraction drains an interaction until it finishes, returning the
+// streamed text and the first non-nil error. Channels stay open after Done so
+// the post-done drain cannot miss a buffered event.
+func collectInteraction(t *testing.T, channels *agent.Channels) (string, error) {
+	t.Helper()
+	var text strings.Builder
+	var interactionErr error
+	timeout := time.After(10 * time.Second)
+	for {
+		select {
+		case feedback := <-channels.UserRespChan:
+			text.WriteString(feedback.Text())
+		case err := <-channels.ErrorChan:
+			if err != nil && interactionErr == nil {
+				interactionErr = err
+			}
+		case <-channels.Done():
+			for {
+				select {
+				case feedback := <-channels.UserRespChan:
+					text.WriteString(feedback.Text())
+				default:
+					return text.String(), interactionErr
+				}
+			}
+		case <-timeout:
+			t.Fatal("interaction did not finish")
+			return text.String(), interactionErr
+		}
+	}
+}
+
+func TestInteractionLongerThanPersistenceBudgetStillPersists(t *testing.T) {
+	// The interaction outlives its write budget; each write must still receive
+	// a fresh budget instead of inheriting one created at interaction start.
+	setPersistenceTimeout(t, 50*time.Millisecond)
+
+	ctx := testutils.ContextWithTestAccess(context.Background())
+	store := memorystore.NewMemoryStore(10)
+	createAgentSession(t, store, "long-interaction-session")
+
+	g := genkit.Init(ctx)
+	genkit.DefineTool(g, "slow_persistence_tool", "tool slower than the persistence budget",
+		func(toolCtx *ai.ToolContext, input map[string]any) (map[string]any, error) {
+			select {
+			case <-time.After(150 * time.Millisecond):
+				return map[string]any{"summary": "slow tool result"}, nil
+			case <-toolCtx.Done():
+				return nil, toolCtx.Err()
+			}
+		})
+	script := &scriptPrompt{resps: []*ai.ModelResponse{
+		toolReqResp("slow_persistence_tool", map[string]any{}),
+		textResp("final answer after slow tool"),
+	}}
+	ra := &ReActAgent{
+		registry:           g,
+		messageStore:       store,
+		actPrompt:          script,
+		answerPrompt:       script,
+		maxIterations:      2,
+		contextWindowTurns: 5,
+		toolTimeouts:       newToolTimeoutResolver(defaultToolTimeoutSeconds, nil),
+	}
+
+	channels := ra.Interact(ctx, &schema.UserInput{Content: "hello"}, "long-interaction-session")
+	text, err := collectInteraction(t, channels)
+	if err != nil {
+		t.Fatalf("interaction failed after outliving the write budget: %v", err)
+	}
+	if !strings.Contains(text, "final answer after slow tool") {
+		t.Fatalf("streamed text = %q, want the final answer", text)
+	}
+
+	messages, err := store.AllMemory(context.Background(), testutils.TestAccess(), "long-interaction-session")
+	if err != nil {
+		t.Fatalf("AllMemory() error = %v", err)
+	}
+	if len(messages) != 3 {
+		t.Fatalf("persisted message count = %d, want user, tool result, and final answer", len(messages))
+	}
+	joined := strings.Join(messageTextList(messages), "\n")
+	for _, want := range []string{"slow tool result", "final answer after slow tool"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("persisted history = %q, want to contain %q", joined, want)
+		}
 	}
 }

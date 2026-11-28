@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import { defineComponent, h, ref } from 'vue'
+import { defineComponent, h, reactive, ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import AiChatDrawer from '../AiChatDrawer.vue'
@@ -40,9 +40,10 @@ const DrawerStub = defineComponent({
 const MessageListStub = defineComponent({
   name: 'MessageList',
   props: ['messages', 'labels', 'suggestions'],
-  setup(_, { expose }) {
+  emits: ['retryLastMessage'],
+  setup(_, { emit, expose }) {
     expose({ scrollToBottom: vi.fn() })
-    return () => h('div')
+    return () => h('button', { class: 'retry-message', onClick: () => emit('retryLastMessage') })
   }
 })
 
@@ -126,6 +127,7 @@ const mountDrawerWithMessages = (service: ChatService<unknown>) => {
 describe('AiChatDrawer', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('sends messages through the injected service with collected context', async () => {
@@ -148,8 +150,92 @@ describe('AiChatDrawer', () => {
     expect(service.sendChatMessage).toHaveBeenCalledWith(
       'inspect this resource',
       'session-1',
-      context
+      context,
+      expect.stringMatching(/^[0-9a-f-]{36}$/)
     )
+  })
+
+  it('sends when crypto.randomUUID is unavailable', async () => {
+    // Non-secure contexts (plain HTTP on a non-localhost address) expose
+    // neither randomUUID nor getRandomValues.
+    vi.stubGlobal('crypto', {})
+    const service: ChatService<unknown> = {
+      createSession: vi.fn().mockResolvedValue('session-1'),
+      sendChatMessage: vi.fn().mockResolvedValue(createEmptyStream())
+    }
+    const wrapper = mountDrawer(service, { collectContext: () => ({ page: 'instances' }) })
+    const input = wrapper.findComponent(ChatInputStub)
+    const exposed = input.vm.$.exposed as { inputMessage: { value: string } }
+
+    exposed.inputMessage.value = 'inspect this resource'
+    await input.find('.send-message').trigger('click')
+    await flushPromises()
+
+    expect(service.sendChatMessage).toHaveBeenCalledOnce()
+    const key = vi.mocked(service.sendChatMessage).mock.calls[0][3]
+    expect(typeof key).toBe('string')
+    expect(key.length).toBeGreaterThan(0)
+  })
+
+  it('builds a UUID from getRandomValues when randomUUID is absent', async () => {
+    const getRandomValues = vi.fn((bytes: Uint8Array) => {
+      bytes.fill(7)
+      return bytes
+    })
+    vi.stubGlobal('crypto', { getRandomValues })
+    const service: ChatService<unknown> = {
+      createSession: vi.fn().mockResolvedValue('session-1'),
+      sendChatMessage: vi.fn().mockResolvedValue(createEmptyStream())
+    }
+    const wrapper = mountDrawer(service, { collectContext: () => ({ page: 'instances' }) })
+    const input = wrapper.findComponent(ChatInputStub)
+    const exposed = input.vm.$.exposed as { inputMessage: { value: string } }
+
+    exposed.inputMessage.value = 'inspect this resource'
+    await input.find('.send-message').trigger('click')
+    await flushPromises()
+
+    expect(getRandomValues).toHaveBeenCalledOnce()
+    const key = vi.mocked(service.sendChatMessage).mock.calls[0][3]
+    expect(key).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
+  })
+
+  it('reuses the logical request key and context snapshot when retrying', async () => {
+    const firstContext = reactive({ page: 'instances', selection: { version: 1 } })
+    const collectContext = vi.fn(() => firstContext)
+    const service: ChatService<unknown> = {
+      createSession: vi.fn().mockResolvedValue('session-1'),
+      sendChatMessage: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('network failed'))
+        .mockResolvedValueOnce(createEmptyStream())
+    }
+    const wrapper = mountDrawer(service, { collectContext })
+    const input = wrapper.findComponent(ChatInputStub)
+    const exposed = input.vm.$.exposed as { inputMessage: { value: string } }
+    exposed.inputMessage.value = 'inspect this resource'
+
+    await input.find('.send-message').trigger('click')
+    await flushPromises()
+    const originalUserMessage = wrapper.findComponent(MessageListStub).props('messages')[0]
+    firstContext.page = 'services'
+    firstContext.selection.version = 2
+    await wrapper.find('.retry-message').trigger('click')
+    await flushPromises()
+
+    expect(service.sendChatMessage).toHaveBeenCalledTimes(2)
+    const firstCall = vi.mocked(service.sendChatMessage).mock.calls[0]
+    const retryCall = vi.mocked(service.sendChatMessage).mock.calls[1]
+    expect(retryCall[0]).toBe(firstCall[0])
+    expect(retryCall[1]).toBe(firstCall[1])
+    expect(firstCall[2]).toEqual({ page: 'instances', selection: { version: 1 } })
+    expect(retryCall[2]).toEqual({ page: 'instances', selection: { version: 1 } })
+    expect(retryCall[3]).toBe(firstCall[3])
+    expect(collectContext).toHaveBeenCalledOnce()
+    const renderedMessages = wrapper.findComponent(MessageListStub).props('messages') as Array<{ role: string }>
+    expect(renderedMessages).toHaveLength(2)
+    expect(renderedMessages[0]).toBe(originalUserMessage)
+    expect(renderedMessages.map((item) => item.role)).toEqual(['user', 'assistant'])
   })
 
   it('works without session history and forwards labels and suggestions', () => {

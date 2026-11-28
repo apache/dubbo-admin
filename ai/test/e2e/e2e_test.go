@@ -346,6 +346,7 @@ func TestAPIWithMockSession(t *testing.T) {
 		}
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Accept", "text/event-stream")
+		req.Header.Set("Idempotency-Key", fmt.Sprintf("e2e-%d", time.Now().UnixNano()))
 
 		client := &http.Client{Timeout: 30 * time.Second}
 		resp, err := client.Do(req)
