@@ -407,6 +407,28 @@ func RegisterTools(server *Server) {
 	})
 
 	server.RegisterTool(&common.ToolDef{
+		Name:        "search_traces",
+		Description: "Search distributed traces by service, time window, and optional filters, returning bounded per-trace summaries to discover candidate traces",
+		InputSchema: common.InputSchema{
+			Type:       "object",
+			Properties: tracetools.SearchProperties(),
+			Required:   []string{"service"},
+		},
+		Handler: tracetools.SearchTraces,
+	})
+
+	server.RegisterTool(&common.ToolDef{
+		Name:        "analyze_trace",
+		Description: "Diagnose a distributed trace by TraceID and return the critical path, service latency breakdown, slow spans, error root causes, dependency edges, and GenAI usage",
+		InputSchema: common.InputSchema{
+			Type:       "object",
+			Properties: tracetools.AnalyzeProperties(),
+			Required:   []string{"traceId"},
+		},
+		Handler: tracetools.AnalyzeTrace,
+	})
+
+	server.RegisterTool(&common.ToolDef{
 		Name:        "get_observability_capabilities",
 		Description: "Report Prometheus and trace providers, capabilities, and enforced query limits",
 		InputSchema: common.InputSchema{Type: "object"},

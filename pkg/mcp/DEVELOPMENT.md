@@ -417,6 +417,8 @@ Dubbo Admin MCP 提供以下只读诊断工具：
 | `query_prometheus` | Prometheus | 执行即时 PromQL 查询 |
 | `query_prometheus_range` | Prometheus | 执行最长 24 小时的区间 PromQL 查询 |
 | `get_trace_by_id` | Jaeger | 按 TraceID 查询规范化调用链 |
+| `search_traces` | Jaeger | 按服务、时间窗与过滤条件发现候选链路，返回逐条摘要 |
+| `analyze_trace` | Jaeger | 对单条链路做结构化诊断：关键路径、耗时分解、错误归因、依赖边、GenAI 用量 |
 | `get_observability_capabilities` | 本地配置 | 查询数据源和查询限制 |
 
 Prometheus 工具复用 `observability.prometheus`。区间查询的 `step` 不得低于 15 秒，返回结果最多包含 100 个时间序列和 5000 个采样点。结果被裁剪时，响应中的 `truncated` 为 `true`。
@@ -436,3 +438,5 @@ observability:
 ```
 
 诊断工具不会记录完整 PromQL、Bearer Token 或完整 trace attributes。工具只读，不提供流量、配置或部署变更能力。
+
+`search_traces` 必须提供 `service` 锚点，默认请求 20 条、最多 100 条，本地最多保留 100 条摘要；后端命中条数上限时 `truncated` 为 `true`。`analyze_trace` 最多输出 32 跳关键路径、10 个慢 span、20 个错误 span、20 个 GenAI 明细，并给出一句话结论。分析器只读取 `gen_ai.*` 元数据属性，不回显 prompt、completion 与工具入参等 Opt-In 内容。
