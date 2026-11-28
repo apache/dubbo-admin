@@ -19,18 +19,16 @@ package listerwatcher
 
 import (
 	"fmt"
+	"sync"
 
-	"github.com/dubbogo/go-zookeeper/zk"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/apache/dubbo-admin/pkg/common/bizerror"
-	"github.com/apache/dubbo-admin/pkg/common/constants"
 	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
 	"github.com/apache/dubbo-admin/pkg/core/clients"
-	"github.com/apache/dubbo-admin/pkg/core/logger"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/discovery/zk/zkwatcher"
 )
@@ -42,15 +40,18 @@ type ToDeleteResourceFunc func(mesh, nodePath string) coremodel.Resource
 type ListerWatcher[T coremodel.Resource] struct {
 	basePath             string
 	rk                   coremodel.ResourceKind
-	conn                 *zk.Conn
+	conn                 zkwatcher.Connection
 	cfg                  *discoverycfg.Config
 	toUpsertResourceFunc ToUpsertResourceFunc
 	toDeleteResourceFunc ToDeleteResourceFunc
 	newResourceFunc      coremodel.NewResourceFunc
 	newResListFunc       coremodel.NewResourceListFunc
-	watcher              *zkwatcher.RecursiveWatcher
-	resultChan           chan watch.Event
-	stopChan             chan struct{}
+	listMu               sync.Mutex
+	mu                   sync.Mutex
+	stream               *resourceWatch
+	pending              *resourceWatch
+	healthMu             sync.RWMutex
+	watchHealth          func(error)
 }
 
 func NewListerWatcher(
@@ -80,129 +81,101 @@ func NewListerWatcher(
 		cfg:                  cfg,
 		newResourceFunc:      newResourceFunc,
 		newResListFunc:       newResListFunc,
-		resultChan:           make(chan watch.Event, 1000),
-		stopChan:             make(chan struct{}),
 	}, nil
 }
 
 func (lw *ListerWatcher[T]) List(_ metav1.ListOptions) (k8sruntime.Object, error) {
-	resList, err := lw.listRecursively(lw.basePath)
-	if err != nil {
-		logger.Errorf("list all %s under path %s in zk %s failed, cause: %v", lw.rk, lw.basePath, lw.zkAddr(), err)
+	lw.listMu.Lock()
+	defer lw.listMu.Unlock()
+	lw.Stop()
+	lw.reportWatchHealth(fmt.Errorf("zookeeper snapshot is being reconciled for %s", lw.basePath))
+
+	stream := &resourceWatch{
+		watcher:    zkwatcher.NewRecursiveWatcher(lw.conn, lw.basePath),
+		resultChan: make(chan watch.Event, 1000),
+		stopChan:   make(chan struct{}),
+		doneChan:   make(chan struct{}),
+		health:     lw.reportWatchHealth,
+		toEvent:    lw.toWatchEvent,
+	}
+	lw.mu.Lock()
+	lw.stream, lw.pending = stream, nil
+	lw.mu.Unlock()
+	go stream.run()
+	if err := stream.watcher.StartAsync(); err != nil {
+		stream.Stop()
+		lw.reportWatchHealth(err)
 		return nil, err
 	}
-	resListObj := lw.newResListFunc()
-	resListObj.SetItems(resList)
-	return resListObj, nil
-}
 
-func (lw *ListerWatcher[T]) listRecursively(path string) ([]coremodel.Resource, error) {
-	resList := make([]coremodel.Resource, 0)
-	nodeData, _, err := lw.conn.Get(path)
-	if err != nil {
-		errStr := fmt.Sprintf("get %s from zk failed, path: %s, addr: %s, cause: %v", lw.rk, path, lw.zkAddr(), err)
-		logger.Errorf(errStr)
-		return nil, bizerror.Wrap(err, bizerror.ZKError, errStr)
-	}
-	res := lw.toUpsertResourceFunc(lw.mesh(), path, string(nodeData))
-	if res != nil {
-		resList = append(resList, res)
-	}
-	children, _, err := lw.conn.Children(path)
-	if err != nil {
-		errStr := fmt.Sprintf("list %s from zk failed, path: %s, addr: %s, cause: %v", lw.rk, path, lw.zkAddr(), err)
-		logger.Errorf(errStr)
-		return nil, bizerror.Wrap(err, bizerror.ZKError, errStr)
-	}
-	if len(children) == 0 {
-		return resList, nil
-	}
-	for _, childPath := range children {
-		resources, err := lw.listRecursively(path + constants.PathSeparator + childPath)
-		if err != nil {
-			return nil, err
+	items := make([]coremodel.Resource, 0)
+	for _, event := range stream.watcher.Snapshot() {
+		if res := lw.toUpsertResourceFunc(lw.cfg.ID, event.Path, event.Data); res != nil {
+			items = append(items, res)
 		}
-		resList = append(resList, resources...)
 	}
-	return resList, nil
+	if err := stream.watcher.Err(); err != nil {
+		stream.Stop()
+		lw.reportWatchHealth(err)
+		return nil, err
+	}
+	list := lw.newResListFunc()
+	list.SetItems(items)
+	lw.mu.Lock()
+	lw.pending = stream
+	lw.mu.Unlock()
+	return list, nil
 }
 
 func (lw *ListerWatcher[T]) Watch(_ metav1.ListOptions) (watch.Interface, error) {
-	watcher := zkwatcher.NewRecursiveWatcher(lw.conn, lw.basePath)
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.EventChan():
-				if !ok {
-					logger.Warnf("zookeeper watcher stopped, path: %s, addr: %s", lw.basePath, lw.zkAddr())
-					return
-				}
-				lw.handleEvent(event)
-			case <-lw.stopChan:
-				logger.Warnf("stop watching %s in %s,", lw.basePath, lw.zkAddr())
-				return
-			}
-
-		}
-	}()
-	err := watcher.StartAsync()
-	lw.watcher = watcher
-	if err != nil {
-		lw.Stop()
+	lw.mu.Lock()
+	stream := lw.pending
+	lw.pending = nil
+	lw.mu.Unlock()
+	if stream == nil {
+		err := apierrors.NewResourceExpired("zookeeper watch requires a fresh List")
+		lw.reportWatchHealth(err)
 		return nil, err
 	}
-	return lw, nil
+	// Reflector has replaced its store with List's complete snapshot before Watch.
+	// A connection/session transition alone must never restore health.
+	if err := stream.reportReady(); err != nil {
+		stream.Stop()
+		return nil, apierrors.NewResourceExpired(err.Error())
+	}
+	return stream, nil
 }
 
-func (lw *ListerWatcher[T]) handleEvent(event zkwatcher.ZookeeperEvent) {
-	switch event.Type {
-	case zkwatcher.NodeCreated:
-		res := lw.toUpsertResourceFunc(lw.mesh(), event.Path, event.Data)
-		if res == nil {
-			logger.Warnf("skip creating resource, parse zookeeper node data to %s failed, path: %s, zk: %s, event: %v",
-				lw.rk, event.Path, lw.zkAddr(), event)
-			return
-		}
-		logger.Infof("%s added, rsKey: %s", lw.rk, res.ResourceKey())
-		lw.resultChan <- watch.Event{
-			Type:   watch.Added,
-			Object: res,
-		}
-	case zkwatcher.NodeChanged:
-		res := lw.toUpsertResourceFunc(lw.mesh(), event.Path, event.Data)
-		if res == nil {
-			logger.Warnf("skip updating resource, parse zookeeper node data to %s failed, path: %s, zk: %s, event: %v",
-				lw.rk, event.Path, lw.zkAddr(), event)
-			return
-		}
-		logger.Infof("%s modified, rsKey: %s", lw.rk, res.ResourceKey())
-		lw.resultChan <- watch.Event{
-			Type:   watch.Modified,
-			Object: res,
-		}
-	case zkwatcher.NodeDeleted:
-		res := lw.toDeleteResourceFunc(lw.mesh(), event.Path)
-		if res == nil {
-			logger.Warnf("skip deleting resource, parse zookeeper node data to %s failed, path: %s, zk: %s, event: %v",
-				lw.rk, event.Path, lw.zkAddr(), event)
-			return
-		}
-		logger.Infof("%s deleted, rsKey: %s", lw.rk, res.ResourceKey())
-		lw.resultChan <- watch.Event{
-			Type:   watch.Deleted,
-			Object: res,
-		}
-	default:
-		logger.Warnf("unknown event type, event: %v", event)
+func (lw *ListerWatcher[T]) SetWatchHealthHandler(handler func(error)) {
+	lw.healthMu.Lock()
+	defer lw.healthMu.Unlock()
+	lw.watchHealth = handler
+}
+
+func (lw *ListerWatcher[T]) reportWatchHealth(err error) {
+	lw.healthMu.RLock()
+	handler := lw.watchHealth
+	lw.healthMu.RUnlock()
+	if handler != nil {
+		handler(err)
 	}
 }
 
-func (lw *ListerWatcher[T]) zkAddr() string {
-	return lw.cfg.Address.Registry
-}
-
-func (lw *ListerWatcher[T]) mesh() string {
-	return lw.cfg.ID
+func (lw *ListerWatcher[T]) toWatchEvent(event zkwatcher.ZookeeperEvent) *watch.Event {
+	var res coremodel.Resource
+	var typ watch.EventType
+	switch event.Type {
+	case zkwatcher.NodeCreated:
+		res, typ = lw.toUpsertResourceFunc(lw.cfg.ID, event.Path, event.Data), watch.Added
+	case zkwatcher.NodeChanged:
+		res, typ = lw.toUpsertResourceFunc(lw.cfg.ID, event.Path, event.Data), watch.Modified
+	case zkwatcher.NodeDeleted:
+		res, typ = lw.toDeleteResourceFunc(lw.cfg.ID, event.Path), watch.Deleted
+	}
+	if res == nil {
+		return nil
+	}
+	return &watch.Event{Type: typ, Object: res}
 }
 
 func (lw *ListerWatcher[T]) ResourceKind() coremodel.ResourceKind {
@@ -213,15 +186,120 @@ func (lw *ListerWatcher[T]) TransformFunc() cache.TransformFunc {
 	return nil
 }
 
+// Stop stops the current watch, leaving the connection available for the next List.
 func (lw *ListerWatcher[T]) Stop() {
-	if lw.watcher != nil {
-		lw.watcher.Stop()
+	lw.mu.Lock()
+	stream := lw.stream
+	lw.mu.Unlock()
+	if stream != nil {
+		stream.Stop()
 	}
-	close(lw.stopChan)
-	close(lw.resultChan)
-	lw.conn.Close()
+}
+
+// Close releases the shared connection after the informer has stopped.
+func (lw *ListerWatcher[T]) Close() {
+	lw.listMu.Lock()
+	defer lw.listMu.Unlock()
+	lw.Stop()
+	if conn, ok := lw.conn.(interface{ Close() }); ok {
+		conn.Close()
+	}
 }
 
 func (lw *ListerWatcher[T]) ResultChan() <-chan watch.Event {
-	return lw.resultChan
+	lw.mu.Lock()
+	defer lw.mu.Unlock()
+	if lw.stream == nil {
+		return nil
+	}
+	return lw.stream.ResultChan()
+}
+
+// resourceWatch is a single watch generation. Only run sends to/closes resultChan.
+type resourceWatch struct {
+	watcher    *zkwatcher.RecursiveWatcher
+	resultChan chan watch.Event
+	stopChan   chan struct{}
+	doneChan   chan struct{}
+	stopOnce   sync.Once
+	healthMu   sync.Mutex
+	health     func(error)
+	toEvent    func(zkwatcher.ZookeeperEvent) *watch.Event
+}
+
+func (w *resourceWatch) Stop() {
+	w.stopOnce.Do(func() { close(w.stopChan) })
+	// Cancel producers too, including a snapshot still being read by List.
+	w.watcher.Stop()
+	<-w.doneChan
+}
+
+func (w *resourceWatch) ResultChan() <-chan watch.Event {
+	return w.resultChan
+}
+
+func (w *resourceWatch) reportReady() error {
+	w.healthMu.Lock()
+	defer w.healthMu.Unlock()
+	err := w.watcher.Err()
+	w.health(err)
+	return err
+}
+
+func (w *resourceWatch) run() {
+	defer func() {
+		w.healthMu.Lock()
+		w.health(fmt.Errorf("zookeeper watch stopped"))
+		w.healthMu.Unlock()
+		w.watcher.Stop()
+		close(w.resultChan)
+		close(w.doneChan)
+	}()
+	for {
+		select {
+		case <-w.stopChan:
+			return
+		case err, ok := <-w.watcher.ErrorChan():
+			if !ok {
+				err = w.watcher.Err()
+			}
+			w.invalidate(err)
+			return
+		case event, ok := <-w.watcher.EventChan():
+			if !ok {
+				w.invalidate(w.watcher.Err())
+				return
+			}
+			if err := w.watcher.Err(); err != nil {
+				w.invalidate(err)
+				return
+			}
+			if result := w.toEvent(event); result != nil {
+				select {
+				case w.resultChan <- *result:
+				case <-w.stopChan:
+					return
+				case err := <-w.watcher.ErrorChan():
+					if err == nil {
+						err = w.watcher.Err()
+					}
+					w.invalidate(err)
+					return
+				}
+			}
+		}
+	}
+}
+
+func (w *resourceWatch) invalidate(err error) {
+	w.healthMu.Lock()
+	w.health(err)
+	w.healthMu.Unlock()
+	// A plain close can restart Watch without List in client-go. Expired forces
+	// a new List/Replace, including deletions missed while disconnected.
+	status := apierrors.NewResourceExpired(err.Error()).ErrStatus
+	select {
+	case w.resultChan <- watch.Event{Type: watch.Error, Object: &status}:
+	case <-w.stopChan:
+	}
 }

@@ -18,4 +18,6 @@
 package discovery
 
 // ResourceDiscovery is the component which discovers the rpc services and save them into store.ResourceStore
-type ResourceDiscovery interface{}
+type ResourceDiscovery interface {
+	SyncState(mesh string) SyncState
+}

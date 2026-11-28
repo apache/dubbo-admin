@@ -57,6 +57,8 @@ type Informers []controller.Informer
 type discoveryComponent struct {
 	configs             []*discovery.Config
 	informers           map[string]Informers
+	watched             map[string][]*watchedInformer
+	normalizations      []*trackedNormalization
 	subscribers         []events.Subscriber
 	subscriptionMgr     events.SubscriptionManager
 	leaderElection      *leader.LeaderElection
@@ -74,6 +76,7 @@ func (d *discoveryComponent) RequiredDependencies() []runtime.ComponentType {
 func newDiscoveryComponent() Component {
 	return &discoveryComponent{
 		informers:   make(map[string]Informers),
+		watched:     make(map[string][]*watchedInformer),
 		subscribers: make([]events.Subscriber, 0),
 	}
 }
@@ -222,7 +225,18 @@ func (d *discoveryComponent) initInformers(cfg *discovery.Config, storeRouter st
 		if err != nil {
 			return nil, fmt.Errorf("cannot find store for resource kind %s", lw.ResourceKind())
 		}
-		informer := controller.NewInformerWithOptions(lw, eventBus, resourceStore, keyFunc, controller.Options{ResyncPeriod: 0})
+		item := &watchedInformer{}
+		tracked := &trackedListerWatcher{ResourceListerWatcher: lw, health: &item.health}
+		emitter := trackedEmitter{Emitter: eventBus, generation: &item.generation}
+		informer := controller.NewInformerWithOptions(tracked, emitter, resourceStore, keyFunc, controller.Options{ResyncPeriod: 0})
+		if err := informer.SetWatchErrorHandler(d.markWatchError(item)); err != nil {
+			return nil, err
+		}
+		if reporter, ok := lw.(interface{ SetWatchHealthHandler(func(error)) }); ok {
+			reporter.SetWatchHealthHandler(func(err error) { item.health.Store(err == nil) })
+		}
+		item.informer = informer
+		d.watched[cfg.ID] = append(d.watched[cfg.ID], item)
 		informers[i] = informer
 	}
 	return informers, nil
@@ -274,7 +288,7 @@ func (d *discoveryComponent) initSubscribes(storeRouter store.Router, emitter ev
 	})
 	if hasNacosDiscovery {
 		nacosServiceSub := subscriber.NewNacosServiceEventSubscriber(emitter, storeRouter)
-		d.subscribers = append(d.subscribers, nacosServiceSub)
+		d.subscribers = append(d.subscribers, d.trackNormalization(nacosServiceSub))
 	}
 	// if there is a zk discovery, a ZKMetadataEventSubscriber and ZKConfigEventSubscriber is needed
 	_, hasZkDiscovery := slice.FindBy(d.configs, func(index int, item *discovery.Config) bool {
@@ -283,7 +297,7 @@ func (d *discoveryComponent) initSubscribes(storeRouter store.Router, emitter ev
 	if hasZkDiscovery {
 		zkMetadataSub := subscriber.NewZKMetadataEventSubscriber(emitter, storeRouter)
 		zkConfigSub := subscriber.NewZKConfigEventSubscriber(emitter, storeRouter)
-		d.subscribers = append(d.subscribers, zkMetadataSub, zkConfigSub)
+		d.subscribers = append(d.subscribers, d.trackNormalization(zkMetadataSub), zkConfigSub)
 	}
 
 	// LifecycleEventSubscriber processes all LifecycleEvent resources on the EventBus,

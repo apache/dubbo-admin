@@ -14,8 +14,11 @@ message RPCInstanceMetadata {
 
   string app = 1;
   string revision = 2;
-  // key format is '{group}/{interface name}:{version}:{protocol}'
+  // Dubbo service key: optional group/version plus interface and protocol.
   map<string, ServiceInfo> services = 4;
+  // Set for interface-level registrations; revision metadata leaves these unset.
+  string instanceName = 5;
+  optional bool available = 6;
 }
 
 message ServiceInfo {
