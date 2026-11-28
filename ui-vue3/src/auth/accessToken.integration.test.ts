@@ -38,6 +38,12 @@ vi.mock('@/router', async () => {
 
 const server = setupServer()
 const defaultAdapter = request.defaults.adapter
+const authenticationError = {
+  code: 'AUTHENTICATION_REQUIRED',
+  message: 'Authentication required',
+  request_id: 'req_test',
+  timestamp: 1700000000
+}
 const tokenResponse = { code: 'Success', message: 'success', data: true }
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
@@ -71,10 +77,10 @@ describe('Admin access token requests', () => {
   it('clears expired login state and redirects to login after an AI Bearer challenge', async () => {
     server.use(
       http.get('*/api/v1/ai/sessions', () =>
-        HttpResponse.json(
-          { error: 'invalid or missing bearer token' },
-          { status: 401, headers: { 'WWW-Authenticate': 'Bearer' } }
-        )
+        HttpResponse.json(authenticationError, {
+          status: 401,
+          headers: { 'WWW-Authenticate': 'Bearer' }
+        })
       ),
       http.post('*/api/v1/auth/token', () =>
         HttpResponse.json({ code: 'Unauthorized', message: 'login required' }, { status: 401 })
@@ -100,13 +106,10 @@ describe('Admin access token requests', () => {
         if (issuances === 1) {
           return HttpResponse.json({ code: 'Success', message: 'success', data: { sessions: [] } })
         }
-        return HttpResponse.json(
-          { error: 'invalid or missing bearer token' },
-          {
-            status: 401,
-            headers: { 'WWW-Authenticate': 'Bearer' }
-          }
-        )
+        return HttpResponse.json(authenticationError, {
+          status: 401,
+          headers: { 'WWW-Authenticate': 'Bearer' }
+        })
       })
     )
 

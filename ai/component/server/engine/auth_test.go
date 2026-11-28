@@ -182,6 +182,13 @@ func TestSessionRoutesWithJWTGate(t *testing.T) {
 	} {
 		for _, authorization := range []string{"", "Bearer invalid"} {
 			response := assertAIStatus(t, router, route.method, route.path, authorization, http.StatusUnauthorized)
+			var body Response
+			if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+				t.Fatal(err)
+			}
+			if body.Code != "AUTHENTICATION_REQUIRED" || body.Message != "Authentication required" || body.RequestID == "" || body.Timestamp == 0 {
+				t.Fatalf("unexpected authentication error: %+v", body)
+			}
 			wantChallenge := "Bearer"
 			if authorization != "" {
 				wantChallenge = `Bearer error="invalid_token"`

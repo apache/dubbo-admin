@@ -279,5 +279,5 @@ func (v *JWTVerifier) fetchKeys(ctx context.Context) (map[string]*rsa.PublicKey,
 
 func abortUnauthorized(c *gin.Context, challenge string) {
 	c.Header("WWW-Authenticate", challenge)
-	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or missing bearer token"})
+	c.AbortWithStatusJSON(http.StatusUnauthorized, NewAPIErrorResponse("AUTHENTICATION_REQUIRED", "Authentication required"))
 }
