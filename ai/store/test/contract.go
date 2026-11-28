@@ -706,6 +706,53 @@ func RunStoreContractTests(t *testing.T, newStore func() conversationstore.Backe
 		}
 	})
 
+	t.Run("cleanup cursor resets after a partial page", func(t *testing.T) {
+		ctx := context.Background()
+		s := withAccess(newStore())
+		now := time.Now()
+		for _, id := range []string{"partial-cursor-a", "partial-cursor-b"} {
+			if err := s.Create(ctx, &conversationstore.Session{ID: id, CreatedAt: now, UpdatedAt: now, Status: conversationstore.SessionStatusActive}); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.Delete(ctx, id); err != nil {
+				t.Fatal(err)
+			}
+		}
+		deleted, cursor, err := s.BackendStore.DeleteExpiredPage(ctx, security.SystemAccessContext(), now.Add(time.Second), conversationstore.CleanupCursor{}, 10)
+		if err != nil || deleted != 2 {
+			t.Fatalf("DeleteExpiredPage(partial) = %d, %#v, %v; want 2, invalid cursor, nil", deleted, cursor, err)
+		}
+		if cursor.Valid {
+			t.Fatalf("cursor after partial page = %#v, want invalid cursor", cursor)
+		}
+	})
+
+	t.Run("blocked paged cleanup does not count as deleted", func(t *testing.T) {
+		ctx := context.Background()
+		s := withAccess(newStore())
+		now := time.Now()
+		session := &conversationstore.Session{ID: "paged-blocked-session", CreatedAt: now, UpdatedAt: now, Status: conversationstore.SessionStatusActive}
+		if err := s.Create(ctx, session); err != nil {
+			t.Fatal(err)
+		}
+		artifact := conversationstore.DerivedArtifact{ID: "paged-blocked-artifact", TenantID: s.access.Subject.TenantID, CanonicalSourceID: "session:" + session.ID, Kind: "test", Locator: "test://blocked"}
+		if err := s.BackendStore.RegisterDerivedArtifact(ctx, security.SystemAccessContext(), artifact); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.Delete(ctx, session.ID); err != nil {
+			t.Fatal(err)
+		}
+		if cleaned, _, err := s.BackendStore.DeleteExpiredPage(ctx, security.SystemAccessContext(), now.Add(time.Second), conversationstore.CleanupCursor{}, 10); err != nil || cleaned != 0 {
+			t.Fatalf("blocked DeleteExpiredPage = %d, %v; want 0, nil", cleaned, err)
+		}
+		if err := s.BackendStore.MarkDerivedArtifactDeleted(ctx, security.SystemAccessContext(), artifact.ID); err != nil {
+			t.Fatal(err)
+		}
+		if cleaned, _, err := s.BackendStore.DeleteExpiredPage(ctx, security.SystemAccessContext(), now.Add(2*time.Second), conversationstore.CleanupCursor{}, 10); err != nil || cleaned != 1 {
+			t.Fatalf("unblocked DeleteExpiredPage = %d, %v; want 1, nil", cleaned, err)
+		}
+	})
+
 	t.Run("context window contains recent completed turns and selected active turn", func(t *testing.T) {
 		ctx := context.Background()
 		s := withAccess(newStore())

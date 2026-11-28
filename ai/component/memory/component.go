@@ -238,17 +238,11 @@ func (m *MemoryComponent) runCleanupOnce(ctx context.Context, now time.Time, bat
 		return deleted, err
 	}
 	m.cleanupSessionCursor = nextSession
-	if !nextSession.Valid {
-		m.cleanupSessionCursor = conversationstore.CleanupCursor{}
-	}
 	artifacts, nextArtifact, err := m.store.ListDerivedArtifactsForCleanupPage(ctx, access, now, m.cleanupArtifactCursor, batchSize)
 	if err != nil {
 		return deleted, err
 	}
 	m.cleanupArtifactCursor = nextArtifact
-	if len(artifacts) == 0 {
-		m.cleanupArtifactCursor = conversationstore.CleanupCursor{}
-	}
 	cleanedArtifact := false
 	for i := range artifacts {
 		m.cleanupMu.RLock()
@@ -275,12 +269,18 @@ func (m *MemoryComponent) runCleanupOnce(ctx context.Context, now time.Time, bat
 	if !cleanedArtifact {
 		return deleted, nil
 	}
-	finalized, nextSession, err := m.store.DeleteExpiredPage(ctx, access, now, m.cleanupSessionCursor, batchSize)
-	m.cleanupSessionCursor = nextSession
-	if !nextSession.Valid {
-		m.cleanupSessionCursor = conversationstore.CleanupCursor{}
+	// Sessions unblocked by this artifact pass may sit anywhere in the keyset,
+	// including behind the primary cursor. Rescan from the beginning so they
+	// reach their terminal state in the same round instead of waiting for the
+	// cursor to wrap.
+	finalized, nextSession, err := m.store.DeleteExpiredPage(ctx, access, now, conversationstore.CleanupCursor{}, batchSize)
+	if err != nil {
+		return deleted + finalized, err
 	}
-	return deleted + finalized, err
+	if !m.cleanupSessionCursor.Valid {
+		m.cleanupSessionCursor = nextSession
+	}
+	return deleted + finalized, nil
 }
 
 // initLegacyMemory initializes the deprecated context-backed memory only when

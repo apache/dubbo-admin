@@ -36,6 +36,11 @@ import (
 
 const expirationCleanupBatchSize = 100
 
+// usageBackfillMigration identifies the one-time rebuild of absolute usage
+// counters. It must run exactly once per database: re-running it while other
+// replicas serve traffic would overwrite counters those replicas are updating.
+const usageBackfillMigration = "backfill_conversation_usage_v1"
+
 // DefaultMaxTurns matches MemorySpec's default conversation limit.
 const DefaultMaxTurns = 100
 
@@ -101,89 +106,216 @@ func (s *GormStore) Migrate(ctx context.Context) error {
 	if err := db.AutoMigrate(
 		&SessionModel{}, &TurnModel{}, &MessageModel{}, &InteractionModel{},
 		&DerivedArtifactModel{}, &CleanupJobModel{}, &OutboxEventModel{}, &TenantUsageModel{},
+		&SchemaMigrationModel{},
 	); err != nil {
 		return err
 	}
-	return db.Transaction(func(tx *gorm.DB) error {
-		var artifacts []DerivedArtifactModel
-		if err := tx.Where("source_session_id = ?", "").Find(&artifacts).Error; err != nil {
-			return err
-		}
-		for i := range artifacts {
-			sessionID, err := conversationstore.SessionIDFromCanonicalSource(artifacts[i].CanonicalSourceID)
-			if err != nil {
-				continue
-			}
-			if err := tx.Model(&DerivedArtifactModel{}).Where("id = ?", artifacts[i].ID).Update("source_session_id", sessionID).Error; err != nil {
-				return err
-			}
-		}
-		// Pre-PR3 active Turns have no durable Interaction or lease and cannot be
-		// resumed safely after deployment.
-		var orphaned []TurnModel
-		if err := tx.Where("completed_at IS NULL AND (interaction_id IS NULL OR interaction_id = ?)", "").Find(&orphaned).Error; err != nil {
-			return err
-		}
-		for i := range orphaned {
-			if err := tx.Where("turn_id = ?", orphaned[i].ID).Delete(&MessageModel{}).Error; err != nil {
-				return err
-			}
-		}
-		if err := tx.Where("completed_at IS NULL AND (interaction_id IS NULL OR interaction_id = ?)", "").Delete(&TurnModel{}).Error; err != nil {
-			return err
-		}
-		if err := tx.Model(&TurnModel{}).Where("completed_at IS NOT NULL").Update("status", conversationstore.InteractionStatusCompleted).Error; err != nil {
-			return err
-		}
-		var sessions []SessionModel
-		if err := tx.Find(&sessions).Error; err != nil {
-			return err
-		}
-		type usage struct{ sessions, bytes int64 }
-		byTenant := make(map[string]usage)
-		for i := range sessions {
-			if sessions[i].ExpiresAt == nil {
-				expiresAt := sessions[i].UpdatedAt.Add(s.lifecycle.Retention)
-				if err := tx.Model(&SessionModel{}).Where("id = ?", sessions[i].ID).Update("expires_at", expiresAt).Error; err != nil {
-					return err
-				}
-				sessions[i].ExpiresAt = &expiresAt
-			}
-			var messageBytes, resultBytes int64
-			if err := tx.Table("ai_messages").Select("COALESCE(SUM(LENGTH(ai_messages.payload)), 0)").Joins("JOIN ai_turns ON ai_turns.id = ai_messages.turn_id").Where("ai_turns.session_id = ?", sessions[i].ID).Scan(&messageBytes).Error; err != nil {
-				return err
-			}
-			if err := tx.Model(&InteractionModel{}).Select("COALESCE(SUM(LENGTH(result)), 0)").Where("session_id = ?", sessions[i].ID).Scan(&resultBytes).Error; err != nil {
-				return err
-			}
-			storedBytes := messageBytes + resultBytes
-			if sessions[i].Status == conversationstore.SessionStatusDeleted {
-				storedBytes = 0
-			}
-			if err := tx.Model(&SessionModel{}).Where("id = ?", sessions[i].ID).Update("stored_bytes", storedBytes).Error; err != nil {
-				return err
-			}
-			current := byTenant[sessions[i].TenantID]
-			if sessions[i].Status != conversationstore.SessionStatusDeleted {
-				current.sessions++
-			}
-			current.bytes += storedBytes
-			byTenant[sessions[i].TenantID] = current
-		}
-		if err := tx.Model(&TenantUsageModel{}).Where("1 = 1").Updates(map[string]any{"session_count": 0, "stored_bytes": 0}).Error; err != nil {
-			return err
-		}
-		for tenantID, current := range byTenant {
-			model := TenantUsageModel{TenantID: tenantID}
-			if err := tx.Where("tenant_id = ?", tenantID).FirstOrCreate(&model).Error; err != nil {
-				return err
-			}
-			if err := tx.Model(&TenantUsageModel{}).Where("tenant_id = ?", tenantID).Updates(map[string]any{"session_count": current.sessions, "stored_bytes": current.bytes}).Error; err != nil {
-				return err
-			}
-		}
+	// These repairs are idempotent and must run on every start: a rolling
+	// upgrade can still write legacy rows after a newer replica has started.
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		return s.migrateLegacyRows(tx)
+	}); err != nil {
+		return err
+	}
+	// Rebuilding absolute counters is not idempotent under concurrent traffic.
+	// Fast-path ordinary restarts: only the first start after an upgrade pays
+	// for the backfill.
+	var applied SchemaMigrationModel
+	switch err := db.Where("name = ?", usageBackfillMigration).First(&applied).Error; {
+	case err == nil:
 		return nil
-	})
+	case !errors.Is(err, gorm.ErrRecordNotFound):
+		return err
+	}
+	// Claim the migration in its own short transaction. Other replicas either
+	// see the committed marker at the fast path or fail the insert with a
+	// duplicate key; neither waits for the long backfill to finish (and no
+	// replica can hit a lock-wait timeout because of it).
+	claimed := false
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		var err error
+		claimed, err = claimUsageBackfill(tx)
+		return err
+	}); err != nil {
+		return err
+	}
+	if !claimed {
+		return nil
+	}
+	// Run the backfill separately so a failure can release the claim and let a
+	// later start retry instead of leaving counters half-rebuilt.
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		return s.backfillUsage(tx)
+	}); err != nil {
+		// Release even when the failure was cancellation; otherwise a shutdown
+		// would strand the marker and permanently skip the retry.
+		releaseDB := s.db.WithContext(context.WithoutCancel(normalizeContext(ctx)))
+		if releaseErr := releaseDB.Where("name = ?", usageBackfillMigration).Delete(&SchemaMigrationModel{}).Error; releaseErr != nil {
+			return fmt.Errorf("usage backfill failed: %w (release claim: %v)", err, releaseErr)
+		}
+		return err
+	}
+	return nil
+}
+
+// claimUsageBackfill reports whether this replica should run the one-time
+// counter repair. Losing the unique-key race is a normal "someone else
+// claimed it" result, not an error.
+func claimUsageBackfill(tx *gorm.DB) (bool, error) {
+	if err := tx.Create(&SchemaMigrationModel{Name: usageBackfillMigration, AppliedAt: time.Now()}).Error; err != nil {
+		if isDuplicateKeyError(tx, err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (s *GormStore) migrateLegacyRows(tx *gorm.DB) error {
+	var artifacts []DerivedArtifactModel
+	if err := tx.Where("source_session_id = ?", "").Find(&artifacts).Error; err != nil {
+		return err
+	}
+	for i := range artifacts {
+		sessionID, err := conversationstore.SessionIDFromCanonicalSource(artifacts[i].CanonicalSourceID)
+		if err != nil {
+			continue
+		}
+		if err := tx.Model(&DerivedArtifactModel{}).Where("id = ?", artifacts[i].ID).UpdateColumn("source_session_id", sessionID).Error; err != nil {
+			return err
+		}
+	}
+	// Pre-PR3 active Turns have no durable Interaction or lease and cannot be
+	// resumed safely after deployment.
+	var orphaned []TurnModel
+	if err := tx.Where("completed_at IS NULL AND (interaction_id IS NULL OR interaction_id = ?)", "").Find(&orphaned).Error; err != nil {
+		return err
+	}
+	for i := range orphaned {
+		if err := tx.Where("turn_id = ?", orphaned[i].ID).Delete(&MessageModel{}).Error; err != nil {
+			return err
+		}
+	}
+	if err := tx.Where("completed_at IS NULL AND (interaction_id IS NULL OR interaction_id = ?)", "").Delete(&TurnModel{}).Error; err != nil {
+		return err
+	}
+	if err := tx.Model(&TurnModel{}).Where("completed_at IS NOT NULL").Update("status", conversationstore.InteractionStatusCompleted).Error; err != nil {
+		return err
+	}
+	var sessions []SessionModel
+	if err := tx.Where("expires_at IS NULL").Find(&sessions).Error; err != nil {
+		return err
+	}
+	for i := range sessions {
+		expiresAt := sessions[i].UpdatedAt.Add(s.lifecycle.Retention)
+		// UpdateColumn keeps a backfill from masquerading as session activity.
+		if err := tx.Model(&SessionModel{}).Where("id = ?", sessions[i].ID).UpdateColumn("expires_at", expiresAt).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *GormStore) backfillUsage(tx *gorm.DB) error {
+	var sessions []SessionModel
+	sessionQuery := tx
+	// Lock live rows so concurrent quota updates either land before the
+	// recomputation or apply on top of it after this transaction commits.
+	if supportsRowLock(tx) {
+		sessionQuery = sessionQuery.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+	if err := sessionQuery.Find(&sessions).Error; err != nil {
+		return err
+	}
+	var usages []TenantUsageModel
+	usageQuery := tx
+	if supportsRowLock(tx) {
+		usageQuery = usageQuery.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+	if err := usageQuery.Find(&usages).Error; err != nil {
+		return err
+	}
+	// Read the byte totals in two grouped queries instead of two queries per
+	// Session. This keeps the one-time lock window short on large databases.
+	messageBytes, err := groupedByteTotals(tx, "ai_messages", "ai_turns.session_id", "ai_messages.payload", "JOIN ai_turns ON ai_turns.id = ai_messages.turn_id")
+	if err != nil {
+		return err
+	}
+	resultBytes, err := groupedByteTotals(tx, "ai_interactions", "session_id", "result", "")
+	if err != nil {
+		return err
+	}
+	type usage struct{ sessions, bytes int64 }
+	byTenant := make(map[string]usage)
+	for i := range sessions {
+		storedBytes := messageBytes[sessions[i].ID] + resultBytes[sessions[i].ID]
+		if sessions[i].Status == conversationstore.SessionStatusDeleted {
+			storedBytes = 0
+		}
+		if err := tx.Model(&SessionModel{}).Where("id = ?", sessions[i].ID).UpdateColumn("stored_bytes", storedBytes).Error; err != nil {
+			return err
+		}
+		current := byTenant[sessions[i].TenantID]
+		if sessions[i].Status != conversationstore.SessionStatusDeleted {
+			current.sessions++
+		}
+		current.bytes += storedBytes
+		byTenant[sessions[i].TenantID] = current
+	}
+	if err := tx.Model(&TenantUsageModel{}).Where("1 = 1").Updates(map[string]any{"session_count": 0, "stored_bytes": 0}).Error; err != nil {
+		return err
+	}
+	for tenantID, current := range byTenant {
+		model := TenantUsageModel{TenantID: tenantID}
+		if err := tx.Where("tenant_id = ?", tenantID).FirstOrCreate(&model).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&TenantUsageModel{}).Where("tenant_id = ?", tenantID).Updates(map[string]any{"session_count": current.sessions, "stored_bytes": current.bytes}).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// byteLengthSQL returns a dialect-specific expression that counts the bytes,
+// not characters, of a text column. SQLite's LENGTH() counts characters for
+// TEXT, while MySQL and PostgreSQL's OCTET_LENGTH() always counts bytes.
+func byteLengthSQL(tx *gorm.DB, column string) string {
+	if strings.EqualFold(tx.Dialector.Name(), "sqlite") {
+		return "LENGTH(CAST(" + column + " AS BLOB))"
+	}
+	return "OCTET_LENGTH(" + column + ")"
+}
+
+// groupedByteTotals sums byte lengths per Session in one grouped query.
+func groupedByteTotals(tx *gorm.DB, table, groupColumn, byteColumn, join string) (map[string]int64, error) {
+	var rows []struct {
+		SessionID string `gorm:"column:session_id"`
+		Total     int64  `gorm:"column:total"`
+	}
+	query := tx.Table(table).
+		Select(groupColumn + " AS session_id, COALESCE(SUM(" + byteLengthSQL(tx, byteColumn) + "), 0) AS total")
+	if join != "" {
+		query = query.Joins(join)
+	}
+	if err := query.Group(groupColumn).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	totals := make(map[string]int64, len(rows))
+	for i := range rows {
+		totals[rows[i].SessionID] = rows[i].Total
+	}
+	return totals, nil
+}
+
+func isDuplicateKeyError(tx *gorm.DB, err error) bool {
+	if err == nil {
+		return false
+	}
+	if translator, ok := tx.Dialector.(gorm.ErrorTranslator); ok {
+		err = translator.Translate(err)
+	}
+	return errors.Is(err, gorm.ErrDuplicatedKey)
 }
 
 // DB returns the underlying database for connection-pool configuration and
@@ -367,14 +499,11 @@ func (s *GormStore) DeleteExpired(ctx context.Context, access security.AccessCon
 						return err
 					}
 				}
-				if err := cleanupSessionData(tx, current.ID, current.TenantID, now); err != nil {
+				finalized, err := cleanupSessionData(tx, current.ID, current.TenantID, now)
+				if err != nil {
 					return err
 				}
-				var cleaned SessionModel
-				if err := tx.Select("status").Where("id = ?", current.ID).First(&cleaned).Error; err != nil {
-					return err
-				}
-				if cleaned.Status == conversationstore.SessionStatusDeleted {
+				if finalized {
 					batchDeleted++
 				}
 			}
@@ -417,8 +546,12 @@ func (s *GormStore) DeleteExpiredPage(ctx context.Context, access security.Acces
 	if err != nil {
 		return 0, cursor, err
 	}
+	// A short page means this sweep reached the end of the keyset. Keep the
+	// cursor only when a full page might hide more candidates; otherwise an
+	// older, naturally-expired Session could stay behind a cursor that newer
+	// deletions keep pushing forward.
 	next := conversationstore.CleanupCursor{}
-	if len(sessions) > 0 {
+	if len(sessions) == limit {
 		last := sessions[len(sessions)-1]
 		next = conversationstore.CleanupCursor{SortTime: last.UpdatedAt, TenantID: last.TenantID, ID: last.ID, Valid: true}
 	}
@@ -430,6 +563,10 @@ func (s *GormStore) DeleteExpiredPage(ctx context.Context, access security.Acces
 		if err := s.db.WithContext(normalizeContext(ctx)).Transaction(func(tx *gorm.DB) error {
 			current, err := s.findSession(tx, access, sessions[i].ID, true)
 			if err != nil {
+				// Another replica already removed or rejected this candidate.
+				if errors.Is(err, conversationstore.ErrSessionNotFound) {
+					return nil
+				}
 				return err
 			}
 			if current.Status == conversationstore.SessionStatusActive && !s.isExpired(current, now) {
@@ -440,10 +577,13 @@ func (s *GormStore) DeleteExpiredPage(ctx context.Context, access security.Acces
 					return err
 				}
 			}
-			if err := cleanupSessionData(tx, current.ID, current.TenantID, now); err != nil {
+			finalized, err := cleanupSessionData(tx, current.ID, current.TenantID, now)
+			if err != nil {
 				return err
 			}
-			deleted++
+			if finalized {
+				deleted++
+			}
 			return nil
 		}); err != nil {
 			return deleted, next, err
@@ -471,47 +611,83 @@ func markSessionForDeletion(tx *gorm.DB, sessionID, tenantID string, now time.Ti
 	return tx.Create(&OutboxEventModel{ID: uuid.NewString(), TenantID: tenantID, AggregateID: canonicalID, EventType: "session.deletion_requested", CreatedAt: now}).Error
 }
 
-func cleanupSessionData(tx *gorm.DB, sessionID, tenantID string, now time.Time) error {
+// cleanupSessionData advances one deletable Session toward its terminal state.
+// It reports true only for the caller that performs the terminal
+// derived_cleanup -> deleted transition, so concurrent replicas cannot release
+// tenant usage twice.
+func cleanupSessionData(tx *gorm.DB, sessionID, tenantID string, now time.Time) (bool, error) {
 	canonicalID := "session:" + sessionID
 	var session SessionModel
-	if err := tx.Select("stored_bytes").Where("id = ?", sessionID).First(&session).Error; err != nil {
-		return err
+	if err := tx.Select("stored_bytes", "status").Where("id = ?", sessionID).First(&session).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
 	}
-	if err := tx.Model(&SessionModel{}).Where("id = ? AND status = ?", sessionID, conversationstore.SessionStatusDeletionPending).Update("status", conversationstore.SessionStatusDerivedCleanup).Error; err != nil {
-		return err
+	// Defense in depth: never touch canonical data unless the persisted state
+	// proves this Session is already being deleted. The callers check first,
+	// but this keeps the helper safe if a future caller forgets.
+	if session.Status != conversationstore.SessionStatusDeletionPending && session.Status != conversationstore.SessionStatusDerivedCleanup {
+		return false, nil
+	}
+	// Do not gate on RowsAffected here: setting an already-derived_cleanup row
+	// to the same value can report zero rows on some dialects. The terminal
+	// update below is the only authority for releasing tenant usage.
+	if err := tx.Model(&SessionModel{}).
+		Where("id = ? AND status IN ?", sessionID, []string{conversationstore.SessionStatusDeletionPending, conversationstore.SessionStatusDerivedCleanup}).
+		UpdateColumn("status", conversationstore.SessionStatusDerivedCleanup).Error; err != nil {
+		return false, err
 	}
 	var artifactCount int64
 	if err := tx.Model(&DerivedArtifactModel{}).Where("tenant_id = ? AND canonical_source_id = ? AND status <> ?", tenantID, canonicalID, "deleted").Count(&artifactCount).Error; err != nil {
-		return err
+		return false, err
 	}
 	if artifactCount > 0 {
-		return tx.Model(&CleanupJobModel{}).Where("canonical_source_id = ?", canonicalID).Updates(map[string]any{"status": "cleanup_failed", "attempts": gorm.Expr("attempts + 1"), "last_error_code": "HANDLER_REQUIRED", "updated_at": now}).Error
+		// A late replica must not reopen a job another replica already
+		// completed for the same canonical source.
+		return false, tx.Model(&CleanupJobModel{}).Where("canonical_source_id = ? AND status <> ?", canonicalID, "completed").Updates(map[string]any{"status": "cleanup_failed", "attempts": gorm.Expr("attempts + 1"), "last_error_code": "HANDLER_REQUIRED", "updated_at": now}).Error
 	}
 	var turns []TurnModel
 	if err := tx.Where("session_id = ?", sessionID).Find(&turns).Error; err != nil {
-		return err
+		return false, err
 	}
 	for i := range turns {
 		if err := tx.Where("turn_id = ?", turns[i].ID).Delete(&MessageModel{}).Error; err != nil {
-			return err
+			return false, err
 		}
 	}
 	if err := tx.Where("session_id = ?", sessionID).Delete(&TurnModel{}).Error; err != nil {
-		return err
+		return false, err
 	}
 	if err := tx.Where("session_id = ?", sessionID).Delete(&InteractionModel{}).Error; err != nil {
-		return err
+		return false, err
+	}
+	// Only the replica that wins this CAS may release tenant usage. A loser
+	// returns without touching counters that the winner already adjusted.
+	terminal := tx.Model(&SessionModel{}).
+		Where("id = ? AND status = ?", sessionID, conversationstore.SessionStatusDerivedCleanup).
+		UpdateColumns(map[string]any{
+			"status":                conversationstore.SessionStatusDeleted,
+			"updated_at":            now,
+			"active_interaction_id": nil,
+			"stored_bytes":          0,
+		})
+	if terminal.Error != nil {
+		return false, terminal.Error
+	}
+	if terminal.RowsAffected != 1 {
+		return false, nil
 	}
 	if err := tx.Model(&TenantUsageModel{}).Where("tenant_id = ?", tenantID).Updates(map[string]any{
 		"session_count": gorm.Expr("CASE WHEN session_count > 0 THEN session_count - 1 ELSE 0 END"),
 		"stored_bytes":  gorm.Expr("CASE WHEN stored_bytes >= ? THEN stored_bytes - ? ELSE 0 END", session.StoredBytes, session.StoredBytes),
 	}).Error; err != nil {
-		return err
+		return false, err
 	}
-	if err := tx.Model(&SessionModel{}).Where("id = ?", sessionID).Updates(map[string]any{"status": conversationstore.SessionStatusDeleted, "updated_at": now, "active_interaction_id": nil, "stored_bytes": 0}).Error; err != nil {
-		return err
+	if err := tx.Model(&CleanupJobModel{}).Where("canonical_source_id = ?", canonicalID).Updates(map[string]any{"status": "completed", "attempts": gorm.Expr("attempts + 1"), "last_error_code": "", "next_retry_at": nil, "updated_at": now}).Error; err != nil {
+		return false, err
 	}
-	return tx.Model(&CleanupJobModel{}).Where("canonical_source_id = ?", canonicalID).Updates(map[string]any{"status": "completed", "attempts": gorm.Expr("attempts + 1"), "last_error_code": "", "next_retry_at": nil, "updated_at": now}).Error
+	return true, nil
 }
 
 func (s *GormStore) RegisterDerivedArtifact(ctx context.Context, access security.AccessContext, artifact conversationstore.DerivedArtifact) error {
@@ -606,7 +782,7 @@ func (s *GormStore) ListDerivedArtifactsForCleanupPage(ctx context.Context, acce
 		result = append(result, conversationstore.DerivedArtifact{ID: models[i].ID, TenantID: models[i].TenantID, CanonicalSourceID: models[i].CanonicalSourceID, Kind: models[i].Kind, Locator: models[i].Locator, Status: models[i].Status, CleanupAttempts: models[i].CleanupAttempts, LastErrorCode: models[i].LastErrorCode, NextRetryAt: models[i].NextRetryAt, CreatedAt: models[i].CreatedAt, UpdatedAt: models[i].UpdatedAt})
 	}
 	next := conversationstore.CleanupCursor{}
-	if len(result) > 0 {
+	if len(result) == limit {
 		last := result[len(result)-1]
 		at := last.CreatedAt
 		if last.NextRetryAt != nil {
@@ -778,7 +954,7 @@ func (s *GormStore) AdoptLegacySessions(ctx context.Context, access security.Acc
 			}
 			result := tx.Model(&SessionModel{}).
 				Where("id = ? AND (tenant_id IS NULL OR tenant_id = ?) AND (owner_id IS NULL OR owner_id = ?)", legacy[i].ID, "", "").
-				Updates(map[string]any{
+				UpdateColumns(map[string]any{
 					"tenant_id":  tenantID,
 					"owner_id":   ownerID,
 					"version":    version,
@@ -845,7 +1021,7 @@ func (s *GormStore) PrepareInteraction(ctx context.Context, access security.Acce
 			if err := tx.Model(&InteractionModel{}).Where("id = ?", existing.ID).Updates(updates).Error; err != nil {
 				return err
 			}
-			claimed := tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id IS NULL", sessionID).Update("active_interaction_id", existing.ID)
+			claimed := tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id IS NULL", sessionID).UpdateColumn("active_interaction_id", existing.ID)
 			if claimed.Error != nil {
 				return claimed.Error
 			}
@@ -880,14 +1056,10 @@ func (s *GormStore) PrepareInteraction(ctx context.Context, access security.Acce
 			LeaseExpiresAt: now.Add(leaseDuration), CreatedAt: now, UpdatedAt: now,
 		}
 		if err := tx.Create(&interaction).Error; err != nil {
-			translated := err
-			if translator, ok := tx.Dialector.(gorm.ErrorTranslator); ok {
-				translated = translator.Translate(err)
-			}
-			duplicateInsert = errors.Is(translated, gorm.ErrDuplicatedKey)
+			duplicateInsert = isDuplicateKeyError(tx, err)
 			return err
 		}
-		result := tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id IS NULL", sessionID).Update("active_interaction_id", interactionID)
+		result := tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id IS NULL", sessionID).UpdateColumn("active_interaction_id", interactionID)
 		if result.Error != nil {
 			return result.Error
 		}
@@ -939,7 +1111,7 @@ func (s *GormStore) releaseExpiredInteraction(tx *gorm.DB, session *SessionModel
 	if *session.ActiveInteractionID == retryID {
 		// The caller replaces this expired attempt. Release its pointer so the
 		// subsequent claim also changes a row on MySQL without clientFoundRows.
-		return tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id = ?", session.ID, retryID).Update("active_interaction_id", nil).Error
+		return tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id = ?", session.ID, retryID).UpdateColumn("active_interaction_id", nil).Error
 	}
 	var active InteractionModel
 	activeErr := tx.Where("id = ?", *session.ActiveInteractionID).First(&active).Error
@@ -958,7 +1130,7 @@ func (s *GormStore) releaseExpiredInteraction(tx *gorm.DB, session *SessionModel
 	} else if !errors.Is(activeErr, gorm.ErrRecordNotFound) {
 		return activeErr
 	}
-	return tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id = ?", session.ID, *session.ActiveInteractionID).Update("active_interaction_id", nil).Error
+	return tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id = ?", session.ID, *session.ActiveInteractionID).UpdateColumn("active_interaction_id", nil).Error
 }
 
 func (s *GormStore) CompleteInteraction(ctx context.Context, access security.AccessContext, sessionID, interactionID string, turnID uint64, result string) error {
@@ -970,14 +1142,14 @@ func (s *GormStore) CompleteInteraction(ctx context.Context, access security.Acc
 			return err
 		}
 		resultBytes := int64(len([]byte(result)))
-		sessionReserved := tx.Model(&SessionModel{}).Where("id = ? AND stored_bytes + ? <= ?", sessionID, resultBytes, s.quota.MaxSessionBytes).Update("stored_bytes", gorm.Expr("stored_bytes + ?", resultBytes))
+		sessionReserved := tx.Model(&SessionModel{}).Where("id = ? AND stored_bytes + ? <= ?", sessionID, resultBytes, s.quota.MaxSessionBytes).UpdateColumn("stored_bytes", gorm.Expr("stored_bytes + ?", resultBytes))
 		if sessionReserved.Error != nil {
 			return sessionReserved.Error
 		}
 		if sessionReserved.RowsAffected != 1 {
 			return conversationstore.ErrResourceExhausted
 		}
-		tenantReserved := tx.Model(&TenantUsageModel{}).Where("tenant_id = ? AND stored_bytes + ? <= ?", access.Subject.TenantID, resultBytes, s.quota.MaxTenantBytes).Update("stored_bytes", gorm.Expr("stored_bytes + ?", resultBytes))
+		tenantReserved := tx.Model(&TenantUsageModel{}).Where("tenant_id = ? AND stored_bytes + ? <= ?", access.Subject.TenantID, resultBytes, s.quota.MaxTenantBytes).UpdateColumn("stored_bytes", gorm.Expr("stored_bytes + ?", resultBytes))
 		if tenantReserved.Error != nil {
 			return tenantReserved.Error
 		}
@@ -995,7 +1167,7 @@ func (s *GormStore) CompleteInteraction(ctx context.Context, access security.Acc
 		if err := tx.Model(&TurnModel{}).Where("id = ? AND session_id = ?", turnID, sessionID).Updates(map[string]any{"status": conversationstore.InteractionStatusCompleted, "completed_at": now}).Error; err != nil {
 			return err
 		}
-		return tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id = ?", sessionID, interactionID).Update("active_interaction_id", nil).Error
+		return tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id = ?", sessionID, interactionID).UpdateColumn("active_interaction_id", nil).Error
 	})
 }
 
@@ -1023,7 +1195,7 @@ func (s *GormStore) FailInteraction(ctx context.Context, access security.AccessC
 		if err := s.deleteTurnAndReleaseUsage(tx, access.Subject.TenantID, sessionID, turnID); err != nil {
 			return err
 		}
-		return tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id = ?", sessionID, interactionID).Update("active_interaction_id", nil).Error
+		return tx.Model(&SessionModel{}).Where("id = ? AND active_interaction_id = ?", sessionID, interactionID).UpdateColumn("active_interaction_id", nil).Error
 	})
 }
 
@@ -1288,10 +1460,10 @@ func (s *GormStore) deleteTurnAndReleaseUsage(tx *gorm.DB, tenantID, sessionID s
 	if turn.StoredBytes == 0 {
 		return nil
 	}
-	if err := tx.Model(&SessionModel{}).Where("id = ?", sessionID).Update("stored_bytes", gorm.Expr("CASE WHEN stored_bytes >= ? THEN stored_bytes - ? ELSE 0 END", turn.StoredBytes, turn.StoredBytes)).Error; err != nil {
+	if err := tx.Model(&SessionModel{}).Where("id = ?", sessionID).UpdateColumn("stored_bytes", gorm.Expr("CASE WHEN stored_bytes >= ? THEN stored_bytes - ? ELSE 0 END", turn.StoredBytes, turn.StoredBytes)).Error; err != nil {
 		return err
 	}
-	return tx.Model(&TenantUsageModel{}).Where("tenant_id = ?", tenantID).Update("stored_bytes", gorm.Expr("CASE WHEN stored_bytes >= ? THEN stored_bytes - ? ELSE 0 END", turn.StoredBytes, turn.StoredBytes)).Error
+	return tx.Model(&TenantUsageModel{}).Where("tenant_id = ?", tenantID).UpdateColumn("stored_bytes", gorm.Expr("CASE WHEN stored_bytes >= ? THEN stored_bytes - ? ELSE 0 END", turn.StoredBytes, turn.StoredBytes)).Error
 }
 
 // AddHistory is retained for callers of the pre-Store API. Production code
@@ -1362,14 +1534,14 @@ func (s *GormStore) insertMessages(tx *gorm.DB, access security.AccessContext, s
 	if turnReserved.RowsAffected != 1 {
 		return conversationstore.ErrResourceExhausted
 	}
-	sessionReserved := tx.Model(&SessionModel{}).Where("id = ? AND stored_bytes + ? <= ?", sessionID, addedBytes, s.quota.MaxSessionBytes).Update("stored_bytes", gorm.Expr("stored_bytes + ?", addedBytes))
+	sessionReserved := tx.Model(&SessionModel{}).Where("id = ? AND stored_bytes + ? <= ?", sessionID, addedBytes, s.quota.MaxSessionBytes).UpdateColumn("stored_bytes", gorm.Expr("stored_bytes + ?", addedBytes))
 	if sessionReserved.Error != nil {
 		return sessionReserved.Error
 	}
 	if sessionReserved.RowsAffected != 1 {
 		return conversationstore.ErrResourceExhausted
 	}
-	tenantReserved := tx.Model(&TenantUsageModel{}).Where("tenant_id = ? AND stored_bytes + ? <= ?", access.Subject.TenantID, addedBytes, s.quota.MaxTenantBytes).Update("stored_bytes", gorm.Expr("stored_bytes + ?", addedBytes))
+	tenantReserved := tx.Model(&TenantUsageModel{}).Where("tenant_id = ? AND stored_bytes + ? <= ?", access.Subject.TenantID, addedBytes, s.quota.MaxTenantBytes).UpdateColumn("stored_bytes", gorm.Expr("stored_bytes + ?", addedBytes))
 	if tenantReserved.Error != nil {
 		return tenantReserved.Error
 	}

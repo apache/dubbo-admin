@@ -252,6 +252,10 @@ func (h *AgentHandler) writeInteractionError(c *gin.Context, err error) {
 		status, code, message = http.StatusConflict, "INTERACTION_IN_PROGRESS", "The original interaction is still in progress"
 	case errors.Is(err, conversationstore.ErrSessionBusy):
 		status, code, message = http.StatusConflict, "SESSION_BUSY", "The session already has an active interaction"
+	case errors.Is(err, conversationstore.ErrSessionNotFound), errors.Is(err, conversationstore.ErrSessionExpired), errors.Is(err, security.ErrResourceNotAccessible):
+		// The Session can expire or enter deletion-pending between the earlier
+		// GetSession check and the interaction claim.
+		status, code, message = http.StatusBadRequest, "RESOURCE_NOT_ACCESSIBLE", "Invalid session ID"
 	case errors.Is(err, conversationstore.ErrResourceExhausted), errors.Is(err, conversationstore.ErrTurnLimitReached):
 		status, code, message = http.StatusTooManyRequests, "RESOURCE_EXHAUSTED", "Conversation storage quota exhausted"
 	}
@@ -329,6 +333,10 @@ func (h *AgentHandler) CreateSession(c *gin.Context) {
 	}
 	sessionObj, err := h.sessionMgr.CreateSession(c.Request.Context(), access)
 	if err != nil {
+		if errors.Is(err, conversationstore.ErrResourceExhausted) {
+			c.JSON(http.StatusTooManyRequests, NewAPIErrorResponse("RESOURCE_EXHAUSTED", "Conversation storage quota exhausted"))
+			return
+		}
 		c.JSON(http.StatusInternalServerError, NewErrorResponse("Failed to create session"))
 		return
 	}

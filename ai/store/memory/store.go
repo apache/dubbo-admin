@@ -292,60 +292,85 @@ func (m *MemoryStore) DeleteExpired(ctx context.Context, access security.AccessC
 		if err := ctx.Err(); err != nil {
 			return deleted, err
 		}
-		sessionID := candidate.sessionID
-		session := m.sessions[sessionID]
+		session, ok := m.sessions[candidate.sessionID]
+		if !ok {
+			continue
+		}
 		if session.Status == conversationstore.SessionStatusActive && !m.isExpired(session, now) {
 			continue
 		}
-		if session.Status == conversationstore.SessionStatusDeleted {
-			continue
+		if m.cleanupSessionLocked(candidate.sessionID, now) {
+			deleted++
 		}
-		if session.Status == conversationstore.SessionStatusActive {
-			session.Status = conversationstore.SessionStatusDeletionPending
-			session.Version++
-			m.enqueueCleanupLocked(session)
-		}
-		session.Status = conversationstore.SessionStatusDerivedCleanup
-		canonicalID := "session:" + sessionID
-		blocked := false
-		for _, artifact := range m.derivedArtifacts {
-			if artifact.CanonicalSourceID == canonicalID && artifact.Status != "deleted" {
-				blocked = true
-				break
-			}
-		}
-		job := m.cleanupJobs[canonicalID]
-		job.Attempts++
-		job.UpdatedAt = now
-		if blocked {
-			job.Status = "cleanup_failed"
-			job.LastErrorCode = "HANDLER_REQUIRED"
-			m.cleanupJobs[canonicalID] = job
-			m.sessions[sessionID] = session
-			continue
-		}
-		delete(m.history, sessionID)
-		for id, interaction := range m.interactions {
-			if interaction.SessionID == sessionID {
-				delete(m.interactions, id)
-			}
-		}
-		for key, id := range m.idempotency {
-			if _, exists := m.interactions[id]; !exists {
-				delete(m.idempotency, key)
-			}
-		}
-		delete(m.activeInteractions, sessionID)
-		session.Status = conversationstore.SessionStatusDeleted
-		session.UpdatedAt = now
-		m.sessions[sessionID] = session
-		job.Status = "completed"
-		job.LastErrorCode = ""
-		job.NextRetryAt = nil
-		m.cleanupJobs[canonicalID] = job
-		deleted++
 	}
 	return deleted, nil
+}
+
+// cleanupSessionLocked advances one deletable Session toward its terminal
+// state. It reports true only when the Session was fully removed. The caller
+// must hold m.mu.
+func (m *MemoryStore) cleanupSessionLocked(sessionID string, now time.Time) bool {
+	session, ok := m.sessions[sessionID]
+	if !ok || session.Status == conversationstore.SessionStatusDeleted {
+		return false
+	}
+	if session.Status == conversationstore.SessionStatusActive {
+		session.Status = conversationstore.SessionStatusDeletionPending
+		session.Version++
+		m.enqueueCleanupLocked(session)
+	}
+	session.Status = conversationstore.SessionStatusDerivedCleanup
+	canonicalID := "session:" + sessionID
+	blocked := false
+	for _, artifact := range m.derivedArtifacts {
+		if artifact.CanonicalSourceID == canonicalID && artifact.Status != "deleted" {
+			blocked = true
+			break
+		}
+	}
+	job := m.cleanupJobs[canonicalID]
+	job.Attempts++
+	job.UpdatedAt = now
+	if blocked {
+		job.Status = "cleanup_failed"
+		job.LastErrorCode = "HANDLER_REQUIRED"
+		m.cleanupJobs[canonicalID] = job
+		m.sessions[sessionID] = session
+		return false
+	}
+	delete(m.history, sessionID)
+	for id, interaction := range m.interactions {
+		if interaction.SessionID == sessionID {
+			delete(m.interactions, id)
+		}
+	}
+	for key, id := range m.idempotency {
+		if _, exists := m.interactions[id]; !exists {
+			delete(m.idempotency, key)
+		}
+	}
+	delete(m.activeInteractions, sessionID)
+	// Reclaim the tombstone and terminal metadata instead of retaining deleted
+	// entities forever. Otherwise a long-running process eventually exhausts
+	// MaxInMemoryEntities even with no live Sessions.
+	delete(m.sessions, sessionID)
+	for id, artifact := range m.derivedArtifacts {
+		if artifact.CanonicalSourceID == canonicalID && artifact.Status == "deleted" {
+			delete(m.derivedArtifacts, id)
+		}
+	}
+	// Published outbox events already reached a consumer and are safe to drop;
+	// pending notifications stay available for the future publisher.
+	for id, event := range m.outbox {
+		if event.AggregateID == canonicalID && event.PublishedAt != nil {
+			delete(m.outbox, id)
+		}
+	}
+	// The job is a progress projection for a canonical source that is now
+	// fully cleaned; retaining it would grow without bound in a long-running
+	// process.
+	delete(m.cleanupJobs, canonicalID)
+	return true
 }
 
 func (m *MemoryStore) DeleteExpiredPage(ctx context.Context, access security.AccessContext, now time.Time, cursor conversationstore.CleanupCursor, limit int) (int, conversationstore.CleanupCursor, error) {
@@ -382,62 +407,29 @@ func (m *MemoryStore) DeleteExpiredPage(ctx context.Context, access security.Acc
 	if len(items) > limit {
 		items = items[:limit]
 	}
+	// A short page means this sweep reached the end of the keyset. Keeping the
+	// cursor past a partial page would let newer deletions push it forward and
+	// permanently skip older, naturally-expired Sessions.
 	next := conversationstore.CleanupCursor{}
+	if len(items) == limit {
+		last := items[len(items)-1]
+		next = conversationstore.CleanupCursor{SortTime: last.at, TenantID: last.tenant, ID: last.id, Valid: true}
+	}
 	deleted := 0
 	for _, item := range items {
 		if err := ctx.Err(); err != nil {
 			return deleted, next, err
 		}
-		next = conversationstore.CleanupCursor{SortTime: item.at, TenantID: item.tenant, ID: item.id, Valid: true}
-		session := m.sessions[item.id]
+		session, ok := m.sessions[item.id]
+		if !ok {
+			continue
+		}
 		if session.Status == conversationstore.SessionStatusActive && !m.isExpired(session, now) {
 			continue
 		}
-		if session.Status == conversationstore.SessionStatusActive {
-			session.Status = conversationstore.SessionStatusDeletionPending
-			session.Version++
-			m.enqueueCleanupLocked(session)
+		if m.cleanupSessionLocked(item.id, now) {
+			deleted++
 		}
-		session.Status = conversationstore.SessionStatusDerivedCleanup
-		canonicalID := "session:" + item.id
-		blocked := false
-		for _, artifact := range m.derivedArtifacts {
-			if artifact.CanonicalSourceID == canonicalID && artifact.Status != "deleted" {
-				blocked = true
-				break
-			}
-		}
-		job := m.cleanupJobs[canonicalID]
-		job.Attempts++
-		job.UpdatedAt = now
-		if blocked {
-			job.Status = "cleanup_failed"
-			job.LastErrorCode = "HANDLER_REQUIRED"
-			m.cleanupJobs[canonicalID] = job
-			session.UpdatedAt = now
-			m.sessions[item.id] = session
-			continue
-		}
-		delete(m.history, item.id)
-		for id, interaction := range m.interactions {
-			if interaction.SessionID == item.id {
-				delete(m.interactions, id)
-			}
-		}
-		for key, id := range m.idempotency {
-			if _, exists := m.interactions[id]; !exists {
-				delete(m.idempotency, key)
-			}
-		}
-		delete(m.activeInteractions, item.id)
-		session.Status = conversationstore.SessionStatusDeleted
-		session.UpdatedAt = now
-		m.sessions[item.id] = session
-		job.Status = "completed"
-		job.LastErrorCode = ""
-		job.NextRetryAt = nil
-		m.cleanupJobs[canonicalID] = job
-		deleted++
 	}
 	return deleted, next, nil
 }
@@ -603,7 +595,7 @@ func (m *MemoryStore) ListDerivedArtifactsForCleanupPage(ctx context.Context, ac
 		result = result[:limit]
 	}
 	next := conversationstore.CleanupCursor{}
-	if len(result) > 0 {
+	if len(result) == limit {
 		last := result[len(result)-1]
 		at := last.CreatedAt
 		if last.NextRetryAt != nil {
@@ -1022,7 +1014,13 @@ func (m *MemoryStore) tenantBytesLocked(tenantID string) int64 {
 }
 
 func (m *MemoryStore) entityCountLocked() int {
-	total := len(m.sessions) + len(m.interactions)
+	total := len(m.interactions)
+	for _, session := range m.sessions {
+		if session.Status == conversationstore.SessionStatusDeleted {
+			continue
+		}
+		total++
+	}
 	for _, history := range m.history {
 		total += len(history.active) + len(history.history)
 		for _, current := range history.active {

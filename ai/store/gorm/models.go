@@ -114,6 +114,16 @@ type CleanupJobModel struct {
 
 func (CleanupJobModel) TableName() string { return "ai_cleanup_jobs" }
 
+// SchemaMigrationModel records one-time data migrations so that concurrent or
+// later replica starts do not re-run destructive backfills against live
+// counters.
+type SchemaMigrationModel struct {
+	Name      string    `gorm:"primaryKey;size:128"`
+	AppliedAt time.Time `gorm:"not null"`
+}
+
+func (SchemaMigrationModel) TableName() string { return "ai_schema_migrations" }
+
 type OutboxEventModel struct {
 	ID          string     `gorm:"primaryKey;size:64"`
 	TenantID    string     `gorm:"size:128;not null;index"`

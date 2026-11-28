@@ -96,6 +96,60 @@ func TestMemoryEntityQuotaBoundsInProcessConversationState(t *testing.T) {
 	}
 }
 
+func TestCleanupReclaimsDeletedSessionsFromEntityQuota(t *testing.T) {
+	quota := conversationstore.DefaultQuotaPolicy()
+	quota.MaxInMemoryEntities = 2
+	store := NewMemoryStoreWithPolicy(quota)
+	access := security.MustAccessContext(security.Subject{TenantID: "tenant", UserID: "owner", AuthMethod: security.AuthMethodStatic})
+	ctx := context.Background()
+	now := time.Now()
+	for _, id := range []string{"tombstone-1", "tombstone-2", "tombstone-3", "tombstone-4"} {
+		session := &conversationstore.Session{ID: id, TenantID: "tenant", OwnerID: "owner", Version: 1, CreatedAt: now, UpdatedAt: now, Status: conversationstore.SessionStatusActive}
+		if err := store.Create(ctx, access, session); err != nil {
+			t.Fatalf("Create(%q) error = %v", id, err)
+		}
+		if err := store.Delete(ctx, access, id); err != nil {
+			t.Fatalf("Delete(%q) error = %v", id, err)
+		}
+		cleaned, err := store.DeleteExpired(ctx, security.SystemAccessContext(), now.Add(time.Second))
+		if err != nil || cleaned != 1 {
+			t.Fatalf("DeleteExpired() after %q = %d, %v; want 1, nil", id, cleaned, err)
+		}
+		if len(store.cleanupJobs) != 0 {
+			t.Fatalf("cleanup jobs retained after finalizing %q: %d", id, len(store.cleanupJobs))
+		}
+	}
+}
+
+func TestCleanupReclaimsPublishedOutboxEvents(t *testing.T) {
+	store := NewMemoryStore()
+	access := security.MustAccessContext(security.Subject{TenantID: "tenant", UserID: "owner", AuthMethod: security.AuthMethodStatic})
+	ctx := context.Background()
+	now := time.Now()
+	session := &conversationstore.Session{ID: "outbox-reclaim", TenantID: "tenant", OwnerID: "owner", Version: 1, CreatedAt: now, UpdatedAt: now, Status: conversationstore.SessionStatusActive}
+	if err := store.Create(ctx, access, session); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Delete(ctx, access, session.ID); err != nil {
+		t.Fatal(err)
+	}
+	store.mu.Lock()
+	for id, event := range store.outbox {
+		publishedAt := now
+		event.PublishedAt = &publishedAt
+		store.outbox[id] = event
+	}
+	store.mu.Unlock()
+	if cleaned, err := store.DeleteExpired(ctx, security.SystemAccessContext(), now.Add(time.Second)); err != nil || cleaned != 1 {
+		t.Fatalf("DeleteExpired() = %d, %v; want 1, nil", cleaned, err)
+	}
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+	if len(store.outbox) != 0 {
+		t.Fatalf("published outbox events retained: %d", len(store.outbox))
+	}
+}
+
 func TestAdoptLegacySessionsOnlyAdoptsFullyUnownedRows(t *testing.T) {
 	now := time.Now()
 	store := NewMemoryStore()

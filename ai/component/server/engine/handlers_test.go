@@ -68,6 +68,22 @@ func (*invalidChannelsAgent) Interact(context.Context, *schema.UserInput, string
 	return &agent.Channels{}
 }
 
+type createQuotaStore struct {
+	conversationstore.BackendStore
+}
+
+func (s *createQuotaStore) Create(context.Context, security.AccessContext, *conversationstore.Session) error {
+	return conversationstore.ErrResourceExhausted
+}
+
+type lostSessionInteractionStore struct {
+	conversationstore.BackendStore
+}
+
+func (s *lostSessionInteractionStore) PrepareInteraction(context.Context, security.AccessContext, string, string, string, time.Duration) (*conversationstore.PreparedInteraction, error) {
+	return nil, conversationstore.ErrSessionNotFound
+}
+
 type touchFailStore struct {
 	conversationstore.BackendStore
 	err error
@@ -509,5 +525,49 @@ func TestStreamChatDrainsChannelsOnPanic(t *testing.T) {
 	case <-blocked.producerDone:
 	case <-time.After(2 * time.Second):
 		t.Fatal("panic recovery left the detached producer blocked on its channels")
+	}
+}
+
+func TestCreateSessionMapsQuotaExhaustion(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	base := memorystore.NewMemoryStore(2)
+	store := &createQuotaStore{BackendStore: base}
+	manager := session.NewManager(store, store)
+	t.Cleanup(func() { _ = manager.Close() })
+	handler := NewAgentHandler(&captureAgent{}, manager)
+	router := gin.New()
+	router.POST("/sessions", handler.CreateSession)
+	request := httptest.NewRequest(http.MethodPost, "/sessions", nil)
+	request = request.WithContext(testutils.ContextWithTestAccess(request.Context()))
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusTooManyRequests || !strings.Contains(response.Body.String(), "RESOURCE_EXHAUSTED") {
+		t.Fatalf("CreateSession() = %d %s, want 429 RESOURCE_EXHAUSTED", response.Code, response.Body.String())
+	}
+}
+
+func TestStreamChatMapsSessionLostDuringInteractionPreparation(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	base := memorystore.NewMemoryStore(2)
+	interactions := &lostSessionInteractionStore{BackendStore: base}
+	manager := session.NewManager(base, base)
+	t.Cleanup(func() { _ = manager.Close() })
+	access := testutils.TestAccess()
+	created, err := manager.CreateSession(context.Background(), access)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := NewAgentHandler(&captureAgent{}, manager, interactions)
+	router := gin.New()
+	router.POST("/chat", handler.StreamChat)
+	body := []byte(`{"message":"hello","sessionID":"` + created.ID + `"}`)
+	request := httptest.NewRequest(http.MethodPost, "/chat", bytes.NewReader(body))
+	request = request.WithContext(testutils.ContextWithTestAccess(request.Context()))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Idempotency-Key", "lost-session")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusBadRequest || !strings.Contains(response.Body.String(), "RESOURCE_NOT_ACCESSIBLE") {
+		t.Fatalf("StreamChat() = %d %s, want 400 RESOURCE_NOT_ACCESSIBLE", response.Code, response.Body.String())
 	}
 }

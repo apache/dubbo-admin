@@ -471,6 +471,92 @@ func TestGormStore_LocalCleanupDoesNotMarkOutboxPublished(t *testing.T) {
 	}
 }
 
+func TestGormStore_MigrateBackfillPreservesActivityAndCountsBytes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "migrate-backfill.db")
+	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB.SetMaxOpenConns(1)
+	if err := db.AutoMigrate(
+		&gormstore.SessionModel{}, &gormstore.TurnModel{}, &gormstore.MessageModel{},
+		&gormstore.InteractionModel{}, &gormstore.TenantUsageModel{},
+	); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().Truncate(time.Millisecond)
+	lastActivity := now.Add(-time.Hour)
+	session := gormstore.SessionModel{ID: "backfill-session", TenantID: "tenant", OwnerID: "owner", Version: 1, CreatedAt: lastActivity, UpdatedAt: lastActivity, Status: conversationstore.SessionStatusActive}
+	result := "你好世界"
+	if err := db.Create(&session).Error; err != nil {
+		t.Fatal(err)
+	}
+	interaction := gormstore.InteractionModel{
+		ID: "backfill-interaction", TenantID: "tenant", OwnerID: "owner", SessionID: session.ID,
+		IdempotencyKey: "key", RequestHash: "hash", Status: conversationstore.InteractionStatusCompleted,
+		Attempt: 1, Result: result, LeaseExpiresAt: now, CreatedAt: lastActivity, UpdatedAt: lastActivity,
+	}
+	if err := db.Create(&interaction).Error; err != nil {
+		t.Fatal(err)
+	}
+	store, err := gormstore.NewGormStore(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	if err := store.Migrate(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	var row gormstore.SessionModel
+	if err := store.DB().First(&row, "id = ?", session.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if !row.UpdatedAt.Equal(lastActivity) {
+		t.Fatalf("Migrate() rewrote UpdatedAt = %v, want %v", row.UpdatedAt, lastActivity)
+	}
+	wantBytes := int64(len([]byte(result)))
+	if row.StoredBytes != wantBytes {
+		t.Fatalf("StoredBytes = %d, want %d UTF-8 bytes", row.StoredBytes, wantBytes)
+	}
+	var usage gormstore.TenantUsageModel
+	if err := store.DB().First(&usage, "tenant_id = ?", "tenant").Error; err != nil {
+		t.Fatal(err)
+	}
+	if usage.StoredBytes != wantBytes || usage.SessionCount != 1 {
+		t.Fatalf("tenant usage = %+v, want stored_bytes %d and session_count 1", usage, wantBytes)
+	}
+}
+
+func TestGormStore_MigrateUsageBackfillRunsOnce(t *testing.T) {
+	store := newSQLiteStore(t, filepath.Join(t.TempDir(), "migrate-ledger.db"))
+	ctx := context.Background()
+	access := testutils.TestAccess()
+	session := testutils.TestSession("ledger-session", time.Now())
+	if err := store.Create(ctx, access, session); err != nil {
+		t.Fatal(err)
+	}
+	// Simulate counters that another replica keeps updating. A repeated
+	// Migrate must not reset them.
+	if err := store.DB().Model(&gormstore.TenantUsageModel{}).Where("tenant_id = ?", access.Subject.TenantID).UpdateColumn("stored_bytes", 987654).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Migrate(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var usage gormstore.TenantUsageModel
+	if err := store.DB().First(&usage, "tenant_id = ?", access.Subject.TenantID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if usage.StoredBytes != 987654 {
+		t.Fatalf("stored_bytes after repeated Migrate = %d, want 987654", usage.StoredBytes)
+	}
+}
+
 func TestGormStore_RestartDropsLegacyActiveTurn(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "conversation.db")
 	ctx := context.Background()
