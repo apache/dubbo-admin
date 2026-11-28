@@ -1,0 +1,435 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package engine
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"math/big"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"dubbo-admin-ai/security"
+	memorystore "dubbo-admin-ai/store/memory"
+
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
+)
+
+func TestJWTVerifierMiddlewareProtectsOtherRouteGroups(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwksServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(jwksForTest(map[string]*rsa.PublicKey{"key": &key.PublicKey}))
+	}))
+	defer jwksServer.Close()
+	verifier := NewJWTVerifier(JWTAuthConfig{JWKSURL: jwksServer.URL, Issuer: "admin", Audience: "ai"}, jwksServer.Client())
+	router := gin.New()
+	protected := router.Group("/api/v2/ai", verifier.Middleware())
+	protected.GET("/sessions", func(c *gin.Context) { c.Status(http.StatusNoContent) })
+
+	resp := assertAIStatus(t, router, http.MethodGet, "/api/v2/ai/sessions", "", http.StatusUnauthorized)
+	if got := resp.Header().Get("WWW-Authenticate"); got != "Bearer" {
+		t.Fatalf("WWW-Authenticate = %q, want Bearer", got)
+	}
+	assertAIStatus(t, router, http.MethodGet, "/api/v2/ai/sessions", "Bearer invalid", http.StatusUnauthorized)
+	token := signAITestToken(t, key, "key", "admin", "ai", "user", time.Now().Add(time.Minute), time.Now())
+	assertAIStatus(t, router, http.MethodGet, "/api/v2/ai/sessions", "Bearer "+token, http.StatusNoContent)
+}
+
+func TestJWTVerifierMiddlewareAndKeyRotation(t *testing.T) {
+	key1, _ := rsa.GenerateKey(rand.Reader, 2048)
+	key2, _ := rsa.GenerateKey(rand.Reader, 2048)
+	keys := map[string]*rsa.PublicKey{"key-1": &key1.PublicKey}
+	var mu sync.Mutex
+	requests := 0
+	jwksServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		mu.Lock()
+		requests++
+		body := jwksForTest(keys)
+		mu.Unlock()
+		_ = json.NewEncoder(w).Encode(body)
+	}))
+	defer jwksServer.Close()
+
+	verifier := NewJWTVerifier(JWTAuthConfig{JWKSURL: jwksServer.URL, Issuer: "dubbo-admin", Audience: "dubbo-admin-ai"}, jwksServer.Client())
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(corsMiddleware(nil), verifier.Middleware())
+	router.GET("/health", func(c *gin.Context) { c.Status(http.StatusNoContent) })
+	router.GET("/api/v1/ai/test", func(c *gin.Context) {
+		access, err := security.AccessContextFromContext(c.Request.Context())
+		if err != nil || access.Subject.UserID == "" {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		c.Status(http.StatusNoContent)
+	})
+
+	valid := signAITestToken(t, key1, "key-1", "dubbo-admin", "dubbo-admin-ai", "user:1", time.Now().Add(time.Minute), time.Now())
+	assertAIStatus(t, router, http.MethodGet, "/api/v1/ai/test", "Bearer "+valid, http.StatusNoContent)
+	resp := assertAIStatus(t, router, http.MethodGet, "/api/v1/ai/test", "", http.StatusUnauthorized)
+	if resp.Header().Get("WWW-Authenticate") != "Bearer" {
+		t.Fatalf("WWW-Authenticate = %q", resp.Header().Get("WWW-Authenticate"))
+	}
+	assertAIStatus(t, router, http.MethodGet, "/health", "", http.StatusNoContent)
+	assertAIStatus(t, router, http.MethodOptions, "/api/v1/ai/test", "", http.StatusNoContent)
+
+	mu.Lock()
+	keys["key-2"] = &key2.PublicKey
+	mu.Unlock()
+	rotated := signAITestToken(t, key2, "key-2", "dubbo-admin", "dubbo-admin-ai", "user:2", time.Now().Add(time.Minute), time.Now())
+	assertAIStatus(t, router, http.MethodGet, "/api/v1/ai/test", "Bearer "+rotated, http.StatusUnauthorized)
+	expireJWKSWindow(verifier)
+	assertAIStatus(t, router, http.MethodGet, "/api/v1/ai/test", "Bearer "+rotated, http.StatusNoContent)
+	mu.Lock()
+	defer mu.Unlock()
+	if requests != 2 {
+		t.Fatalf("JWKS requests = %d, want initial load and unknown-kid refresh", requests)
+	}
+}
+
+// The optional JWT gate must compose with ownership enforcement on real routes.
+func TestSessionRoutesWithJWTGate(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwksServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(jwksForTest(map[string]*rsa.PublicKey{"key": &key.PublicKey}))
+	}))
+	defer jwksServer.Close()
+	verifier := NewJWTVerifier(JWTAuthConfig{JWKSURL: jwksServer.URL, Issuer: "admin", Audience: "ai"}, jwksServer.Client())
+	token := "Bearer " + signAITestToken(t, key, "key", "admin", "ai", "jwt-user", time.Now().Add(time.Minute), time.Now())
+	store := memorystore.NewMemoryStore()
+	routes, err := NewRouterWithCORS(nil, store, store, JWTRequestAuthenticator{}, []string{"http://trusted.example"}, verifier.Middleware())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = routes.Close() })
+	router := routes.GetEngine()
+	digest := sha256.Sum256([]byte("login-A"))
+	cookieToken := signAITestToken(t, key, "key", "admin", "ai", "jwt-user", time.Now().Add(time.Minute), time.Now(), hex.EncodeToString(digest[:]))
+	for _, tc := range []struct {
+		name, session, site, marker string
+		status                      int
+	}{
+		{"active login", "login-A", "same-origin", "1", 200},
+		{"logged out", "", "same-origin", "1", 401},
+		{"account switched", "login-B", "same-origin", "1", 401},
+		{"foreign origin", "login-A", "cross-site", "1", 403},
+		{"missing request header", "login-A", "same-origin", "", 403},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/ai/sessions", nil)
+			req.AddCookie(&http.Cookie{Name: "dubbo_ai", Value: cookieToken})
+			if tc.session != "" {
+				req.AddCookie(&http.Cookie{Name: "session", Value: tc.session})
+			}
+			req.Header.Set("Sec-Fetch-Site", tc.site)
+			req.Header.Set("X-AI-Cookie", tc.marker)
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, req)
+			if rec.Code != tc.status {
+				t.Fatalf("status %d, want %d", rec.Code, tc.status)
+			}
+		})
+	}
+	router.GET("/health", func(c *gin.Context) { c.Status(http.StatusNoContent) })
+	for _, route := range []struct{ method, path string }{
+		{http.MethodPost, "/api/v1/ai/sessions"},
+		{http.MethodGet, "/api/v1/ai/sessions"},
+		{http.MethodGet, "/api/v1/ai/sessions/missing"},
+		{http.MethodDelete, "/api/v1/ai/sessions/missing"},
+		{http.MethodPost, "/api/v1/ai/chat/stream"},
+	} {
+		for _, authorization := range []string{"", "Bearer invalid"} {
+			response := assertAIStatus(t, router, route.method, route.path, authorization, http.StatusUnauthorized)
+			var body Response
+			if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+				t.Fatal(err)
+			}
+			if body.Code != "AUTHENTICATION_REQUIRED" || body.Message != "Authentication required" || body.RequestID == "" || body.Timestamp == 0 {
+				t.Fatalf("unexpected authentication error: %+v", body)
+			}
+			wantChallenge := "Bearer"
+			if authorization != "" {
+				wantChallenge = `Bearer error="invalid_token"`
+			}
+			if response.Header().Get("WWW-Authenticate") != wantChallenge {
+				t.Fatal("missing Bearer challenge")
+			}
+		}
+	}
+	created := assertAIStatus(t, router, http.MethodPost, "/api/v1/ai/sessions", token, http.StatusOK)
+	var body struct {
+		Data struct {
+			SessionID string `json:"session_id"`
+			TenantID  string `json:"tenant_id"`
+			OwnerID   string `json:"owner_id"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(created.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Data.TenantID != "admin" || body.Data.OwnerID != "jwt-user" {
+		t.Fatalf("ownership changed: %+v", body.Data)
+	}
+	path := "/api/v1/ai/sessions/" + body.Data.SessionID
+	assertAIStatus(t, router, http.MethodGet, path, token, http.StatusOK)
+	other := "Bearer " + signAITestToken(t, key, "key", "admin", "ai", "other-user", time.Now().Add(time.Minute), time.Now())
+	list := assertAIStatus(t, router, http.MethodGet, "/api/v1/ai/sessions", other, http.StatusOK)
+	if strings.Contains(list.Body.String(), body.Data.SessionID) {
+		t.Fatal("foreign session in list")
+	}
+	assertAIStatus(t, router, http.MethodGet, path, other, http.StatusNotFound)
+	assertAIStatus(t, router, http.MethodDelete, path, other, http.StatusNotFound)
+	assertAIStatus(t, router, http.MethodGet, path, token, http.StatusOK)
+	assertAIStatus(t, router, http.MethodGet, "/health", "", http.StatusNoContent)
+	for _, method := range []string{http.MethodOptions, http.MethodGet} {
+		req := httptest.NewRequest(method, "/api/v1/ai/sessions", nil)
+		req.Header.Set("Origin", "http://trusted.example")
+		req.Header.Set("Access-Control-Request-Headers", "authorization")
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, req)
+		want := http.StatusUnauthorized
+		if method == http.MethodOptions {
+			want = http.StatusNoContent
+		}
+		if response.Code != want || response.Header().Get("Access-Control-Allow-Origin") != "http://trusted.example" {
+			t.Fatalf("CORS response: %d %v", response.Code, response.Header())
+		}
+		if method == http.MethodGet && !strings.Contains(strings.ToLower(response.Header().Get("Access-Control-Expose-Headers")), "www-authenticate") {
+			t.Fatal("browser cannot read Bearer challenge to refresh the token")
+		}
+	}
+}
+
+func expireJWKSWindow(v *JWTVerifier) {
+	v.mu.Lock()
+	v.nextRefreshAt = time.Time{}
+	v.mu.Unlock()
+}
+
+func TestJWKSRefreshWindowAndFailure(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if requests.Add(1) > 1 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(jwksForTest(map[string]*rsa.PublicKey{"known": &key.PublicKey}))
+	}))
+	defer server.Close()
+	v := NewJWTVerifier(JWTAuthConfig{JWKSURL: server.URL}, server.Client())
+	for _, wantRequests := range []int32{1, 2} {
+		if wantRequests == 2 {
+			expireJWKSWindow(v)
+		}
+		var wg sync.WaitGroup
+		for i := 0; i < 50; i++ {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				token := jwt.New(jwt.SigningMethodRS256)
+				token.Header["kid"] = fmt.Sprintf("unknown-%d", i)
+				if _, err := v.keyForToken(context.Background(), token); err == nil {
+					t.Error("unknown kid accepted")
+				}
+			}(i)
+		}
+		wg.Wait()
+		if got := requests.Load(); got != wantRequests {
+			t.Fatalf("requests = %d, want %d", got, wantRequests)
+		}
+	}
+	token := jwt.New(jwt.SigningMethodRS256)
+	token.Header["kid"] = "known"
+	if _, err := v.keyForToken(context.Background(), token); err != nil {
+		t.Fatalf("cached key rejected during refresh failure grace period: %v", err)
+	}
+}
+
+func TestJWTVerifierRejectsInvalidClaims(t *testing.T) {
+	key, _ := rsa.GenerateKey(rand.Reader, 2048)
+	jwksServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(jwksForTest(map[string]*rsa.PublicKey{"key-1": &key.PublicKey}))
+	}))
+	defer jwksServer.Close()
+	verifier := NewJWTVerifier(JWTAuthConfig{JWKSURL: jwksServer.URL, Issuer: "dubbo-admin", Audience: "dubbo-admin-ai"}, jwksServer.Client())
+	router := gin.New()
+	router.Use(verifier.Middleware())
+	router.GET("/api/v1/ai/test", func(c *gin.Context) { c.Status(http.StatusNoContent) })
+	now := time.Now()
+	tests := []struct{ name, token string }{
+		{name: "malformed", token: "not-a-token"},
+		{name: "expired", token: signAITestToken(t, key, "key-1", "dubbo-admin", "dubbo-admin-ai", "user", now.Add(-time.Minute), now.Add(-time.Hour))},
+		{name: "wrong issuer", token: signAITestToken(t, key, "key-1", "wrong", "dubbo-admin-ai", "user", now.Add(time.Minute), now)},
+		{name: "wrong audience", token: signAITestToken(t, key, "key-1", "dubbo-admin", "wrong", "user", now.Add(time.Minute), now)},
+		{name: "future issued at", token: signAITestToken(t, key, "key-1", "dubbo-admin", "dubbo-admin-ai", "user", now.Add(time.Minute), now.Add(time.Minute))},
+		{name: "empty subject", token: signAITestToken(t, key, "key-1", "dubbo-admin", "dubbo-admin-ai", "", now.Add(time.Minute), now)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assertAIStatus(t, router, http.MethodGet, "/api/v1/ai/test", "Bearer "+tt.token, http.StatusUnauthorized)
+		})
+	}
+}
+
+func TestJWKSExpiryRevokesRemovedKey(t *testing.T) {
+	old, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stage atomic.Int32
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		keys := map[string]*rsa.PublicKey{"new": &newKey.PublicKey}
+		if stage.Load() == 0 {
+			keys["old"] = &old.PublicKey
+		}
+		if stage.Load() == 2 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(jwksForTest(keys))
+	}))
+	defer server.Close()
+	now := time.Now()
+	v := &JWTVerifier{config: JWTAuthConfig{Issuer: "admin", Audience: "ai"}, client: NewJWKSClient(server.URL, server.Client()), now: func() time.Time { return now }}
+	if err := v.refresh(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	r := gin.New()
+	r.Use(v.Middleware())
+	r.GET("/api/v1/ai/test", func(c *gin.Context) { c.Status(http.StatusNoContent) })
+	oldToken := signAITestToken(t, old, "old", "admin", "ai", "user", time.Now().Add(time.Hour), time.Now())
+	newToken := signAITestToken(t, newKey, "new", "admin", "ai", "user", time.Now().Add(time.Hour), time.Now())
+	for _, token := range []string{oldToken, newToken} {
+		assertAIStatus(t, r, http.MethodGet, "/api/v1/ai/test", "Bearer "+token, http.StatusNoContent)
+	}
+	stage.Store(1)
+	now = now.Add(jwksRefreshInterval)
+	assertAIStatus(t, r, http.MethodGet, "/api/v1/ai/test", "Bearer "+oldToken, http.StatusUnauthorized)
+	assertAIStatus(t, r, http.MethodGet, "/api/v1/ai/test", "Bearer "+newToken, http.StatusNoContent)
+	stage.Store(2)
+	now = now.Add(jwksRefreshInterval)
+	for i := 0; i < 5; i++ {
+		assertAIStatus(t, r, http.MethodGet, "/api/v1/ai/test", "Bearer "+newToken, http.StatusNoContent)
+		assertAIStatus(t, r, http.MethodGet, "/api/v1/ai/test", "Bearer "+oldToken, http.StatusServiceUnavailable)
+	}
+	if calls.Load() != 3 {
+		t.Fatalf("JWKS calls = %d", calls.Load())
+	}
+	stage.Store(1)
+	now = now.Add(jwksRefreshInterval)
+	assertAIStatus(t, r, http.MethodGet, "/api/v1/ai/test", "Bearer "+newToken, http.StatusNoContent)
+}
+
+func TestJWKSRejectsAmbiguousAndInvalidKeys(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, kind := range []string{"duplicate", "modulus", "exponent", "empty"} {
+		t.Run(kind, func(t *testing.T) {
+			doc := jwksForTest(map[string]*rsa.PublicKey{"key": &key.PublicKey})
+			items := doc["keys"].([]map[string]any)
+			switch kind {
+			case "duplicate":
+				doc["keys"] = append(items, items[0])
+			case "modulus":
+				items[0]["n"] = "AQ"
+			case "exponent":
+				items[0]["e"] = "Ag"
+			case "empty":
+				doc["keys"] = []any{}
+			}
+			s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _ = json.NewEncoder(w).Encode(doc) }))
+			defer s.Close()
+			v := NewJWTVerifier(JWTAuthConfig{JWKSURL: s.URL}, s.Client())
+			if err := v.refresh(context.Background()); err == nil {
+				t.Fatal("invalid JWKS accepted")
+			}
+		})
+	}
+}
+
+func assertAIStatus(t *testing.T, router http.Handler, method, path, authorization string, want int) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(method, path, nil)
+	if authorization != "" {
+		req.Header.Set("Authorization", authorization)
+	}
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, req)
+	if recorder.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", recorder.Code, want, recorder.Body.String())
+	}
+	return recorder
+}
+
+func signAITestToken(t *testing.T, key *rsa.PrivateKey, kid, issuer, audience, subject string, expires, issuedAt time.Time, binding ...string) string {
+	t.Helper()
+	claims := Claims{RegisteredClaims: jwt.RegisteredClaims{
+		Issuer: issuer, Subject: subject, Audience: jwt.ClaimStrings{audience}, ExpiresAt: jwt.NewNumericDate(expires), IssuedAt: jwt.NewNumericDate(issuedAt),
+	}}
+	if len(binding) > 0 {
+		claims.SessionHash = binding[0]
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	token.Header["kid"] = kid
+	signed, err := token.SignedString(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return signed
+}
+
+func jwksForTest(keys map[string]*rsa.PublicKey) map[string]any {
+	items := make([]map[string]any, 0, len(keys))
+	for kid, key := range keys {
+		items = append(items, map[string]any{
+			"kty": "RSA", "use": "sig", "alg": "RS256", "kid": kid,
+			"n": base64.RawURLEncoding.EncodeToString(key.N.Bytes()), "e": base64.RawURLEncoding.EncodeToString(big.NewInt(int64(key.E)).Bytes()),
+		})
+	}
+	return map[string]any{"keys": items}
+}

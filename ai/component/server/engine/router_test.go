@@ -59,13 +59,16 @@ func TestCORSMiddlewareAllowsTracePropagationHeaders(t *testing.T) {
 		t.Fatalf("preflight status = %d, want %d", response.Code, http.StatusNoContent)
 	}
 	allowed := strings.ToLower(response.Header().Get("Access-Control-Allow-Headers"))
-	for _, header := range []string{"traceparent", "tracestate", "baggage"} {
+	for _, header := range []string{"traceparent", "tracestate", "baggage", "idempotency-key"} {
 		if !strings.Contains(allowed, header) {
 			t.Fatalf("Access-Control-Allow-Headers = %q, missing %q", allowed, header)
 		}
 	}
-	if exposed := response.Header().Get("Access-Control-Expose-Headers"); exposed != "X-Trace-ID, X-Interaction-ID" {
-		t.Fatalf("Access-Control-Expose-Headers = %q, want trace and interaction IDs", exposed)
+	exposed := response.Header().Get("Access-Control-Expose-Headers")
+	for _, header := range []string{"X-Trace-ID", "X-Interaction-ID", "WWW-Authenticate"} {
+		if !strings.Contains(exposed, header) {
+			t.Fatalf("Access-Control-Expose-Headers = %q, missing %q", exposed, header)
+		}
 	}
 }
 

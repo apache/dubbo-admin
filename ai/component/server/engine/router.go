@@ -37,15 +37,15 @@ type Router struct {
 	authenticator security.Authenticator
 }
 
-func NewRouter(agent agent.Agent, store conversationstore.Store, maintenance conversationstore.MaintenanceStore, authenticator security.Authenticator) (*Router, error) {
-	return NewRouterWithCORS(agent, store, maintenance, authenticator, nil)
+func NewRouter(agent agent.Agent, store conversationstore.Store, maintenance conversationstore.MaintenanceStore, authenticator security.Authenticator, middleware ...gin.HandlerFunc) (*Router, error) {
+	return NewRouterWithCORS(agent, store, maintenance, authenticator, nil, middleware...)
 }
 
-func NewRouterWithCORS(agent agent.Agent, store conversationstore.Store, maintenance conversationstore.MaintenanceStore, authenticator security.Authenticator, corsOrigins []string) (*Router, error) {
-	return NewRouterWithLifecycle(agent, store, maintenance, authenticator, corsOrigins, conversationstore.DefaultLifecyclePolicy())
+func NewRouterWithCORS(agent agent.Agent, store conversationstore.Store, maintenance conversationstore.MaintenanceStore, authenticator security.Authenticator, corsOrigins []string, middleware ...gin.HandlerFunc) (*Router, error) {
+	return NewRouterWithLifecycle(agent, store, maintenance, authenticator, corsOrigins, conversationstore.DefaultLifecyclePolicy(), middleware...)
 }
 
-func NewRouterWithLifecycle(agent agent.Agent, store conversationstore.Store, maintenance conversationstore.MaintenanceStore, authenticator security.Authenticator, corsOrigins []string, lifecycle conversationstore.LifecyclePolicy) (*Router, error) {
+func NewRouterWithLifecycle(agent agent.Agent, store conversationstore.Store, maintenance conversationstore.MaintenanceStore, authenticator security.Authenticator, corsOrigins []string, lifecycle conversationstore.LifecyclePolicy, middleware ...gin.HandlerFunc) (*Router, error) {
 	if authenticator == nil {
 		return nil, fmt.Errorf("authenticator is required")
 	}
@@ -68,16 +68,17 @@ func NewRouterWithLifecycle(agent agent.Agent, store conversationstore.Store, ma
 		authenticator: authenticator,
 	}
 
-	router.setupRoutes(corsOrigins)
+	router.setupRoutes(corsOrigins, middleware...)
 	return router, nil
 }
 
-func (r *Router) setupRoutes(corsOrigins []string) {
+func (r *Router) setupRoutes(corsOrigins []string, middleware ...gin.HandlerFunc) {
 	// Add CORS middleware
 	r.engine.Use(corsMiddleware(corsOrigins))
 
 	// API v1 group
 	v1 := r.engine.Group("/api/v1/ai")
+	v1.Use(middleware...)
 	v1.Use(authenticationMiddleware(r.authenticator))
 	{
 		// Chat endpoints
@@ -131,7 +132,7 @@ func corsMiddleware(allowedOrigins []string) gin.HandlerFunc {
 		if c.Writer.Header().Get("Access-Control-Allow-Origin") != "" {
 			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, Idempotency-Key, traceparent, tracestate, baggage")
-			c.Header("Access-Control-Expose-Headers", "X-Trace-ID, X-Interaction-ID")
+			c.Header("Access-Control-Expose-Headers", "X-Trace-ID, X-Interaction-ID, WWW-Authenticate")
 		}
 
 		if c.Request.Method == "OPTIONS" {

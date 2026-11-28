@@ -18,9 +18,12 @@
 package handler
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"net/http"
 	"slices"
+	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -35,11 +38,13 @@ import (
 type AuthHandler struct {
 	config  *configauth.Config
 	service *consoleauth.Service
+	issuer  *consoleauth.TokenIssuer
 }
 
 type providersResponse struct {
-	Methods   []string                     `json:"methods"`
-	Providers []consoleauth.PublicProvider `json:"providers"`
+	Methods            []string                     `json:"methods"`
+	AccessTokenEnabled bool                         `json:"accessTokenEnabled"`
+	Providers          []consoleauth.PublicProvider `json:"providers"`
 }
 
 func NewAuthHandler(ctx consolectx.Context) (*AuthHandler, error) {
@@ -48,11 +53,15 @@ func NewAuthHandler(ctx consolectx.Context) (*AuthHandler, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newAuthHandler(config, service), nil
+	issuer, err := consoleauth.NewTokenIssuer(config.AccessToken)
+	if err != nil {
+		return nil, err
+	}
+	return newAuthHandler(config, service, issuer), nil
 }
 
-func newAuthHandler(config *configauth.Config, service *consoleauth.Service) *AuthHandler {
-	return &AuthHandler{config: config, service: service}
+func newAuthHandler(config *configauth.Config, service *consoleauth.Service, issuer *consoleauth.TokenIssuer) *AuthHandler {
+	return &AuthHandler{config: config, service: service, issuer: issuer}
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
@@ -78,6 +87,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, model.NewSuccessResp(true))
 }
 
+func (h *AuthHandler) setAICookie(c *gin.Context, value string, age int) {
+	http.SetCookie(c.Writer, &http.Cookie{Name: "dubbo_ai", Value: value, Path: "/api/v1/ai", MaxAge: age, HttpOnly: true, SameSite: http.SameSiteStrictMode, Secure: h.config.SessionCookieSecure})
+}
+
 func (h *AuthHandler) Logout(c *gin.Context) {
 	session := sessions.Default(c)
 	session.Clear()
@@ -88,13 +101,50 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		writeSessionError(c, err)
 		return
 	}
+	h.setAICookie(c, "", -1)
 	c.JSON(http.StatusOK, model.NewSuccessResp(true))
 }
 
 func (h *AuthHandler) Providers(c *gin.Context) {
 	c.JSON(http.StatusOK, model.NewSuccessResp(providersResponse{
-		Methods: append([]string{}, h.config.Methods...), Providers: h.service.PublicProviders(),
+		Methods: append([]string{}, h.config.Methods...), AccessTokenEnabled: h.issuer.Enabled(), Providers: h.service.PublicProviders(),
 	}))
+}
+
+func (h *AuthHandler) Token(c *gin.Context) {
+	principal, ok := consoleauth.PrincipalFromContext(c)
+	if !ok {
+		writeUnauthorized(c)
+		return
+	}
+	session, err := c.Request.Cookie("session")
+	if err != nil {
+		writeUnauthorized(c)
+		return
+	}
+	// Bind delivery to the login cookie so a delayed response from an earlier
+	// login cannot authenticate requests after logout or account switching.
+	digest := sha256.Sum256([]byte(session.Value))
+	sessionHash := hex.EncodeToString(digest[:])
+	response, err := h.issuer.IssueForSession(principal, time.Now(), sessionHash)
+	if errors.Is(err, consoleauth.ErrAccessTokenDisabled) {
+		c.JSON(http.StatusNotFound, model.NewBizErrorResp(bizerror.New(bizerror.NotFoundError, err.Error())))
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.NewBizErrorResp(bizerror.New(bizerror.InternalError, err.Error())))
+		return
+	}
+	h.setAICookie(c, response.AccessToken, response.ExpiresIn)
+	c.JSON(http.StatusOK, model.NewSuccessResp(true))
+}
+
+func (h *AuthHandler) JWKS(c *gin.Context) {
+	if !h.issuer.Enabled() {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	c.JSON(http.StatusOK, h.issuer.JWKS())
 }
 
 func (h *AuthHandler) ProviderLogin(c *gin.Context) {
