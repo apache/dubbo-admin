@@ -19,6 +19,8 @@ package handler
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -53,7 +55,7 @@ func (p *handlerProvider) Authenticate(_ context.Context, _, _, _ string) (conso
 func TestAuthHandlerPasswordLoginAndUserInfo(t *testing.T) {
 	cfg := &configauth.Config{Methods: []string{configauth.MethodPassword}, User: "admin", Password: "secret", ExpirationTime: 3600}
 	service, _ := consoleauth.NewServiceFromProviders()
-	handler := newAuthHandler(cfg, service)
+	handler := newAuthHandler(cfg, service, nil)
 	router := authTestRouter(handler)
 
 	loginReq := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader("user=admin&password=secret"))
@@ -82,7 +84,7 @@ func TestAuthHandlerProviderListDoesNotLeakConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := newAuthHandler(cfg, service)
+	handler := newAuthHandler(cfg, service, nil)
 	router := authTestRouter(handler)
 	resp := doAuthRequest(router, http.MethodGet, "/api/v1/auth/providers", nil)
 	if resp.Code != http.StatusOK || !strings.Contains(resp.Body.String(), `"id":"github"`) {
@@ -105,11 +107,89 @@ func TestAuthHandlerPasswordOnlyProviderListUsesEmptyArray(t *testing.T) {
 	}
 	handler := newAuthHandler(
 		&configauth.Config{Methods: []string{configauth.MethodPassword}},
-		service,
+		service, nil,
 	)
 	resp := doAuthRequest(authTestRouter(handler), http.MethodGet, "/api/v1/auth/providers", nil)
 	if resp.Code != http.StatusOK || !strings.Contains(resp.Body.String(), `"providers":[]`) {
 		t.Fatalf("status = %d, body = %s", resp.Code, resp.Body.String())
+	}
+}
+
+func TestAuthHandlerAccessTokenAndJWKS(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := &configauth.Config{
+		Methods: []string{configauth.MethodPassword}, User: "admin", Password: "secret", ExpirationTime: 3600,
+		AccessToken: &configauth.AccessTokenConfig{
+			Enabled: true, Issuer: "dubbo-admin", ActiveKeyID: "admin-key-1", TTL: 1800,
+			Audiences: []string{"dubbo-admin-ai"}, Keys: []configauth.AccessTokenKey{{KeyID: "admin-key-1", PrivateKey: key}},
+		},
+	}
+	issuer, err := consoleauth.NewTokenIssuer(cfg.AccessToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service, _ := consoleauth.NewServiceFromProviders()
+	router := authTestRouter(newAuthHandler(cfg, service, issuer))
+
+	providers := doAuthRequest(router, http.MethodGet, "/api/v1/auth/providers", nil)
+	if providers.Code != http.StatusOK || !strings.Contains(providers.Body.String(), `"accessTokenEnabled":true`) {
+		t.Fatalf("providers status = %d, body = %s", providers.Code, providers.Body.String())
+	}
+
+	jwks := doAuthRequest(router, http.MethodGet, "/api/v1/auth/jwks", nil)
+	if jwks.Code != http.StatusOK || !strings.Contains(jwks.Body.String(), `"kid":"admin-key-1"`) || strings.Contains(jwks.Body.String(), `"d":`) {
+		t.Fatalf("JWKS status = %d, body = %s", jwks.Code, jwks.Body.String())
+	}
+
+	withoutSession := doAuthRequest(router, http.MethodPost, "/api/v1/auth/token", nil)
+	if withoutSession.Code != http.StatusUnauthorized {
+		t.Fatalf("token without session status = %d, body = %s", withoutSession.Code, withoutSession.Body.String())
+	}
+
+	loginReq := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader("user=admin&password=secret"))
+	loginReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	loginResp := httptest.NewRecorder()
+	router.ServeHTTP(loginResp, loginReq)
+	token := doAuthRequest(router, http.MethodPost, "/api/v1/auth/token", loginResp.Result().Cookies()[0])
+	if token.Code != http.StatusForbidden || strings.Contains(token.Body.String(), "accessToken") {
+		t.Fatal("session endpoint exposed credentials without cookie request header")
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/token", nil)
+	req.AddCookie(loginResp.Result().Cookies()[0])
+	req.Header.Set("X-AI-Cookie", "1")
+	req.Header.Set("Sec-Fetch-Site", "cross-site")
+	blocked := httptest.NewRecorder()
+	router.ServeHTTP(blocked, req)
+	if blocked.Code != http.StatusForbidden || len(blocked.Result().Cookies()) != 0 {
+		t.Fatal("expected cross-site issuance to be rejected without setting a cookie")
+	}
+	req.Header.Set("Sec-Fetch-Site", "same-origin")
+	cookieResp := httptest.NewRecorder()
+	router.ServeHTTP(cookieResp, req)
+	cookies := cookieResp.Result().Cookies()
+	if cookieResp.Code != 200 || len(cookies) != 1 || !cookies[0].HttpOnly || cookies[0].Path != "/api/v1/ai" || cookies[0].SameSite != http.SameSiteStrictMode || strings.Contains(cookieResp.Body.String(), cookies[0].Value) {
+		t.Fatal("expected scoped HttpOnly cookie and token-free response")
+	}
+	if got := token.Header().Get("Cache-Control"); got != "no-store" {
+		t.Errorf("token Cache-Control = %q, want no-store", got)
+	}
+	if got := token.Header().Get("Pragma"); got != "no-cache" {
+		t.Errorf("token Pragma = %q, want no-cache", got)
+	}
+}
+
+func TestAuthHandlerDisabledAccessToken(t *testing.T) {
+	service, _ := consoleauth.NewServiceFromProviders()
+	router := authTestRouter(newAuthHandler(&configauth.Config{Methods: []string{configauth.MethodPassword}}, service, nil))
+	providers := doAuthRequest(router, http.MethodGet, "/api/v1/auth/providers", nil)
+	if providers.Code != http.StatusOK || !strings.Contains(providers.Body.String(), `"accessTokenEnabled":false`) {
+		t.Fatalf("providers status = %d, body = %s", providers.Code, providers.Body.String())
+	}
+	if jwks := doAuthRequest(router, http.MethodGet, "/api/v1/auth/jwks", nil); jwks.Code != http.StatusNotFound {
+		t.Fatalf("JWKS status = %d, body = %s", jwks.Code, jwks.Body.String())
 	}
 }
 
@@ -118,7 +198,7 @@ func TestAuthHandlerProviderOnlyMethodListUsesEmptyArray(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := newAuthHandler(&configauth.Config{Methods: []string{}}, service)
+	handler := newAuthHandler(&configauth.Config{Methods: []string{}}, service, nil)
 	resp := doAuthRequest(authTestRouter(handler), http.MethodGet, "/api/v1/auth/providers", nil)
 	if resp.Code != http.StatusOK || !strings.Contains(resp.Body.String(), `"methods":[]`) {
 		t.Fatalf("status = %d, body = %s", resp.Code, resp.Body.String())
@@ -129,7 +209,7 @@ func TestAuthHandlerOAuthCallbackConsumesTransaction(t *testing.T) {
 	provider := &handlerProvider{}
 	service, _ := consoleauth.NewServiceFromProviders(provider)
 	cfg := &configauth.Config{Providers: map[string]configauth.ProviderConfig{"github": {}}}
-	handler := newAuthHandler(cfg, service)
+	handler := newAuthHandler(cfg, service, nil)
 	router := authTestRouter(handler)
 
 	login := doAuthRequest(router, http.MethodGet, "/api/v1/auth/providers/github/login", nil)
@@ -176,6 +256,8 @@ func authTestRouter(authHandler *AuthHandler) *gin.Engine {
 	auth.GET("/providers/:provider/login", authHandler.ProviderLogin)
 	auth.GET("/providers/:provider/callback", authHandler.ProviderCallback)
 	auth.GET("/userinfo", authHandler.UserInfo)
+	auth.GET("/jwks", authHandler.JWKS)
+	auth.POST("/token", consoleauth.RequireLogin(), consoleauth.RequireAICookieRequest(), authHandler.Token)
 	return r
 }
 

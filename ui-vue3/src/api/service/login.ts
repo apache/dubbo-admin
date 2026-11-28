@@ -26,6 +26,7 @@ export interface AuthProvider {
 export interface AuthConfiguration {
   methods: string[]
   providers: AuthProvider[]
+  accessTokenEnabled?: boolean
 }
 
 export interface Principal {
@@ -58,3 +59,6 @@ export const getAuthProviders = (): Promise<{ data: AuthConfiguration }> =>
 
 export const getUserInfo = (): Promise<{ data: Principal }> =>
   request({ url: '/auth/userinfo', method: 'get' })
+
+export const issueAccessToken = (): Promise<{ data: boolean }> =>
+  request({ url: '/auth/token', method: 'post', headers: { 'X-AI-Cookie': '1' } })

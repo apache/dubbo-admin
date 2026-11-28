@@ -11,6 +11,7 @@ require (
 	github.com/cohere-ai/cohere-go/v2 v2.15.3
 	github.com/firebase/genkit/go v1.2.0
 	github.com/gin-gonic/gin v1.11.0
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/gomarkdown/markdown v0.0.0-20250810172220-2e2c11897d1a
 	github.com/joho/godotenv v1.5.1
 	github.com/milvus-io/milvus/client/v2 v2.6.2
@@ -59,7 +60,6 @@ require (
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/godbus/dbus/v5 v5.0.4 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/goph/emperror v0.17.2 // indirect
