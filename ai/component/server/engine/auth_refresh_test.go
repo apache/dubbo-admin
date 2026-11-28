@@ -70,7 +70,7 @@ func TestJWKSRefreshCancellationIsIsolated(t *testing.T) {
 			var calls atomic.Int32
 			var upstreamCancelled atomic.Bool
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if calls.Add(1) == 2 {
+				if calls.Add(1) == 1 {
 					close(started)
 					select {
 					case <-release:
@@ -85,10 +85,7 @@ func TestJWKSRefreshCancellationIsIsolated(t *testing.T) {
 			var releaseOnce sync.Once
 			unblock := func() { releaseOnce.Do(func() { close(release) }) }
 			defer unblock()
-			v, err := NewJWTVerifier(JWTAuthConfig{JWKSURL: server.URL, Issuer: "admin", Audience: "ai"}, server.Client())
-			if err != nil {
-				t.Fatal(err)
-			}
+			v := NewJWTVerifier(JWTAuthConfig{JWKSURL: server.URL, Issuer: "admin", Audience: "ai"}, server.Client())
 			router := gin.New()
 			router.Use(v.Middleware())
 			router.GET("/api/v1/ai/test", func(c *gin.Context) { c.Status(http.StatusNoContent) })
@@ -134,8 +131,8 @@ func TestJWKSRefreshCancellationIsIsolated(t *testing.T) {
 			for i := 0; i < 3; i++ {
 				assertAIStatus(t, router, http.MethodGet, "/api/v1/ai/test", "Bearer "+token, http.StatusNoContent)
 			}
-			if calls.Load() != 2 {
-				t.Fatalf("JWKS calls = %d, want startup plus one shared refresh", calls.Load())
+			if calls.Load() != 1 {
+				t.Fatalf("JWKS calls = %d, want one shared cold fetch", calls.Load())
 			}
 		})
 	}
@@ -246,5 +243,40 @@ func TestJWKSRefreshSetsIndependentDeadline(t *testing.T) {
 	token.Header["kid"] = "unknown"
 	if _, err := v.keyForToken(context.Background(), token); err == nil {
 		t.Fatal("accepted token without a successfully loaded JWKS")
+	}
+}
+
+func TestJWKSColdStartRecovery(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ready atomic.Bool
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		if !ready.Load() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(jwksForTest(map[string]*rsa.PublicKey{"key": &key.PublicKey}))
+	}))
+	defer server.Close()
+	v := NewJWTVerifier(JWTAuthConfig{JWKSURL: server.URL, Issuer: "admin", Audience: "ai"}, server.Client())
+	if calls.Load() != 0 {
+		t.Fatal("constructor fetched JWKS")
+	}
+	now := time.Now()
+	v.now = func() time.Time { return now }
+	router := gin.New()
+	router.GET("/protected", v.Middleware(), func(c *gin.Context) { c.Status(http.StatusNoContent) })
+	bearer := "Bearer " + signAITestToken(t, key, "key", "admin", "ai", "user", now.Add(time.Hour), now)
+	assertAIStatus(t, router, http.MethodGet, "/protected", bearer, http.StatusServiceUnavailable)
+	ready.Store(true)
+	assertAIStatus(t, router, http.MethodGet, "/protected", bearer, http.StatusServiceUnavailable)
+	now = now.Add(jwksRetryInterval)
+	assertAIStatus(t, router, http.MethodGet, "/protected", bearer, http.StatusNoContent)
+	if calls.Load() != 2 {
+		t.Fatalf("JWKS calls = %d, want 2", calls.Load())
 	}
 }

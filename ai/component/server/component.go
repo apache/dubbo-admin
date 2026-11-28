@@ -147,13 +147,9 @@ func normalizeHost(host string) string {
 func (s *ServerComponent) Init(rt *runtime.Runtime) error {
 	s.rt = rt
 	if s.auth.Enabled {
-		verifier, err := engine.NewJWTVerifier(engine.JWTAuthConfig{
+		s.jwtVerifier = engine.NewJWTVerifier(engine.JWTAuthConfig{
 			JWKSURL: s.auth.JWKSURL, Issuer: s.auth.Issuer, Audience: s.auth.Audience,
 		}, nil)
-		if err != nil {
-			return fmt.Errorf("initialize AI JWT authentication: %w", err)
-		}
-		s.jwtVerifier = verifier
 	}
 	rt.GetLogger().Info("Server component initialized",
 		"port", s.port,

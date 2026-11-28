@@ -51,10 +51,7 @@ func TestJWTVerifierMiddlewareProtectsOtherRouteGroups(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(jwksForTest(map[string]*rsa.PublicKey{"key": &key.PublicKey}))
 	}))
 	defer jwksServer.Close()
-	verifier, err := NewJWTVerifier(JWTAuthConfig{JWKSURL: jwksServer.URL, Issuer: "admin", Audience: "ai"}, jwksServer.Client())
-	if err != nil {
-		t.Fatal(err)
-	}
+	verifier := NewJWTVerifier(JWTAuthConfig{JWKSURL: jwksServer.URL, Issuer: "admin", Audience: "ai"}, jwksServer.Client())
 	router := gin.New()
 	protected := router.Group("/api/v2/ai", verifier.Middleware())
 	protected.GET("/sessions", func(c *gin.Context) { c.Status(http.StatusNoContent) })
@@ -83,10 +80,7 @@ func TestJWTVerifierMiddlewareAndKeyRotation(t *testing.T) {
 	}))
 	defer jwksServer.Close()
 
-	verifier, err := NewJWTVerifier(JWTAuthConfig{JWKSURL: jwksServer.URL, Issuer: "dubbo-admin", Audience: "dubbo-admin-ai"}, jwksServer.Client())
-	if err != nil {
-		t.Fatal(err)
-	}
+	verifier := NewJWTVerifier(JWTAuthConfig{JWKSURL: jwksServer.URL, Issuer: "dubbo-admin", Audience: "dubbo-admin-ai"}, jwksServer.Client())
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.Use(corsMiddleware(nil), verifier.Middleware())
@@ -133,10 +127,7 @@ func TestSessionRoutesWithJWTGate(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(jwksForTest(map[string]*rsa.PublicKey{"key": &key.PublicKey}))
 	}))
 	defer jwksServer.Close()
-	verifier, err := NewJWTVerifier(JWTAuthConfig{JWKSURL: jwksServer.URL, Issuer: "admin", Audience: "ai"}, jwksServer.Client())
-	if err != nil {
-		t.Fatal(err)
-	}
+	verifier := NewJWTVerifier(JWTAuthConfig{JWKSURL: jwksServer.URL, Issuer: "admin", Audience: "ai"}, jwksServer.Client())
 	token := "Bearer " + signAITestToken(t, key, "key", "admin", "ai", "jwt-user", time.Now().Add(time.Minute), time.Now())
 	store := memorystore.NewMemoryStore()
 	routes, err := NewRouterWithCORS(nil, store, store, JWTRequestAuthenticator{}, []string{"http://trusted.example"}, verifier.Middleware())
@@ -262,10 +253,7 @@ func TestJWKSRefreshWindowAndFailure(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(jwksForTest(map[string]*rsa.PublicKey{"known": &key.PublicKey}))
 	}))
 	defer server.Close()
-	v, err := NewJWTVerifier(JWTAuthConfig{JWKSURL: server.URL}, server.Client())
-	if err != nil {
-		t.Fatal(err)
-	}
+	v := NewJWTVerifier(JWTAuthConfig{JWKSURL: server.URL}, server.Client())
 	for _, wantRequests := range []int32{1, 2} {
 		if wantRequests == 2 {
 			expireJWKSWindow(v)
@@ -300,10 +288,7 @@ func TestJWTVerifierRejectsInvalidClaims(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(jwksForTest(map[string]*rsa.PublicKey{"key-1": &key.PublicKey}))
 	}))
 	defer jwksServer.Close()
-	verifier, err := NewJWTVerifier(JWTAuthConfig{JWKSURL: jwksServer.URL, Issuer: "dubbo-admin", Audience: "dubbo-admin-ai"}, jwksServer.Client())
-	if err != nil {
-		t.Fatal(err)
-	}
+	verifier := NewJWTVerifier(JWTAuthConfig{JWKSURL: jwksServer.URL, Issuer: "dubbo-admin", Audience: "dubbo-admin-ai"}, jwksServer.Client())
 	router := gin.New()
 	router.Use(verifier.Middleware())
 	router.GET("/api/v1/ai/test", func(c *gin.Context) { c.Status(http.StatusNoContent) })
@@ -399,7 +384,8 @@ func TestJWKSRejectsAmbiguousAndInvalidKeys(t *testing.T) {
 			}
 			s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _ = json.NewEncoder(w).Encode(doc) }))
 			defer s.Close()
-			if _, err := NewJWTVerifier(JWTAuthConfig{JWKSURL: s.URL}, s.Client()); err == nil {
+			v := NewJWTVerifier(JWTAuthConfig{JWKSURL: s.URL}, s.Client())
+			if err := v.refresh(context.Background()); err == nil {
 				t.Fatal("invalid JWKS accepted")
 			}
 		})

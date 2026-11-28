@@ -83,12 +83,8 @@ type JWTVerifier struct {
 	refreshing     *jwksRefresh
 }
 
-func NewJWTVerifier(config JWTAuthConfig, client *http.Client) (*JWTVerifier, error) {
-	verifier := &JWTVerifier{config: config, client: NewJWKSClient(config.JWKSURL, client), keys: map[string]*rsa.PublicKey{}}
-	if err := verifier.refresh(context.Background()); err != nil {
-		return nil, fmt.Errorf("load remote JWKS: %w", err)
-	}
-	return verifier, nil
+func NewJWTVerifier(config JWTAuthConfig, client *http.Client) *JWTVerifier {
+	return &JWTVerifier{config: config, client: NewJWKSClient(config.JWKSURL, client)}
 }
 
 func (v *JWTVerifier) Middleware() gin.HandlerFunc {
