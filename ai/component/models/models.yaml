@@ -6,6 +6,38 @@ spec:
     dashscope:
       api_key: "${DASHSCOPE_API_KEY}"
       base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+      # Endpoint quirks. Applied to every model below unless a model overrides
+      # an individual field. See component/models/compat.go for the semantics of
+      # each key and the evidence behind its default.
+      #
+      # Only the keys that reach the request belong here. The capabilities that
+      # are not wired up yet — the developer role, the strict tool definitions,
+      # the forced tool choice, the leading whitespace — are refused at
+      # startup rather than accepted and ignored; docs/ai-provider-compat.md
+      # records what they would do and what was measured about this endpoint.
+      compat:
+        # Qwen spells the thinking switch as a top-level enable_thinking.
+        thinking_format: "qwen"
+        # "max_tokens" is understood by a much wider set of endpoints than
+        # "max_completion_tokens".
+        max_tokens_field: "max_tokens"
+        # This endpoint reasons by default: measured 2026-10-04, a request
+        # that never mentions thinking still burned 1648 reasoning tokens, and
+        # the answer shares the same max_tokens pool (3000). An uncapped
+        # reasoning-heavy turn can therefore emit neither an answer nor a tool
+        # call, which just spins the next iteration of the agent loop.
+        #
+        # To bound it, set both keys — the field name says which key carries
+        # the cap, the value says how many tokens it may take:
+        #
+        #   thinking_budget_field: "thinking_budget"   # Qwen/DashScope/SGLang
+        #   thinking_budget: 1024
+        #
+        # Leave it unset to let the endpoint decide. The cap has to be a real
+        # number to be worth sending: this endpoint reads -1 as its own
+        # default, which bounds nothing.
+        # thinking_budget_field: "thinking_budget"
+        # thinking_budget: 1024
       models:
         - name: "qwen-max"
           key: "qwen-max"
@@ -50,6 +82,9 @@ spec:
     siliconflow:
       api_key: "${SILICONFLOW_API_KEY}"
       base_url: "https://api.siliconflow.cn/v1"
+      # Left unconfigured on purpose: the conservative defaults (max_tokens,
+      # system role, no strict, no store) suit an OpenAI-compatible gateway, and
+      # guessing from the base URL would be wrong behind a proxy.
       models:
         - name: "gpt-3.5-turbo"
           key: "gpt-3.5-turbo"

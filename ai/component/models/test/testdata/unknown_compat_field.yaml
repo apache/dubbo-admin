@@ -1,0 +1,22 @@
+# Invalid on purpose: "thinking_formats" is a typo for "thinking_format".
+# The loader must reject it rather than ignore it, because a silently dropped
+# compat key means the request goes out with the wrong field names and the
+# endpoint rejects it mid-conversation.
+type: models
+spec:
+  default_model: "test/model"
+  default_embedding: "test/embedding"
+  providers:
+    test:
+      base_url: "https://example.invalid/v1"
+      compat:
+        thinking_formats: "qwen"
+      models:
+        - name: "model"
+          key: "model"
+          type: "chat"
+      embedders:
+        - name: "embedding"
+          key: "embedding"
+          type: "text"
+          dimensions: 1024

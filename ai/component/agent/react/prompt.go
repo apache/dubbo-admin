@@ -23,9 +23,12 @@ import (
 	"path"
 	"strings"
 
+	"dubbo-admin-ai/component/models"
+
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/openai/openai-go"
+	"github.com/openai/openai-go/packages/param"
 )
 
 const actPolicy = `# Act Phase
@@ -72,8 +75,8 @@ func (ra *ReActAgent) buildPrompts(g *genkit.Genkit, spec *AgentSpec, model stri
 
 	actSystemPrompt := assembleSystemPrompt(string(sharedPolicy), actPolicy)
 	answerSystemPrompt := assembleSystemPrompt(string(sharedPolicy), finalAnswerPolicy)
-	act = buildPrompt(g, "react_act", actSystemPrompt, spec, model, toolRefs)
-	answer = buildPrompt(g, "react_answer", answerSystemPrompt, spec, model, nil)
+	act = buildPrompt(g, "react_act", actSystemPrompt, spec, model, toolRefs, ra.compat)
+	answer = buildPrompt(g, "react_answer", answerSystemPrompt, spec, model, nil, ra.compat)
 	return act, answer, nil
 }
 
@@ -83,16 +86,27 @@ func assembleSystemPrompt(sharedPolicy, phasePolicy string) string {
 
 // buildPrompt assembles a genkit prompt from the shared model settings, binding
 // the given tool set when one is provided.
-func buildPrompt(registry *genkit.Genkit, tag, systemPrompt string, spec *AgentSpec, model string, tools []ai.ToolRef) ai.Prompt {
+//
+// The resolved compat decides how the request is spelled on the wire: which
+// length field carries max_tokens, and whether a thinking switch is sent at
+// all. Sampling parameters are dropped when reasoning is on, because several
+// endpoints reject temperature alongside reasoning_effort and the request
+// would fail outright.
+func buildPrompt(registry *genkit.Genkit, tag, systemPrompt string, spec *AgentSpec, model string, tools []ai.ToolRef, compat models.ResolvedCompat) ai.Prompt {
 	cfg := &openai.ChatCompletionNewParams{
 		Temperature: openai.Float(spec.Temperature),
 	}
 	if spec.TopP > 0 {
 		cfg.TopP = openai.Float(spec.TopP)
 	}
-	if spec.MaxTokens > 0 {
-		cfg.MaxTokens = openai.Int(int64(spec.MaxTokens))
+
+	reasoning := spec.ReasoningEffort != ""
+	if reasoning {
+		cfg.Temperature = param.Opt[float64]{}
+		cfg.TopP = param.Opt[float64]{}
 	}
+
+	compat.ApplyRequest(cfg, spec.MaxTokens, spec.ReasoningEffort)
 
 	opts := []ai.PromptOption{
 		ai.WithSystem("%s", systemPrompt),
