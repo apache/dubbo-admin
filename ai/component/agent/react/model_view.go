@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"dubbo-admin-ai/security"
 
@@ -39,18 +40,34 @@ func modelInputView(messages []*ai.Message) ([]*ai.Message, error) {
 		return nil, fmt.Errorf("failed to decode model input copy: %w", err)
 	}
 	sanitizer := security.DefaultSanitizer()
-	for _, message := range view {
+	for messageIndex, message := range view {
 		if message == nil {
 			continue
 		}
+		var source *ai.Message
+		if messageIndex < len(messages) {
+			source = messages[messageIndex]
+		}
 		message.Metadata = sanitizeMap(sanitizer, message.Metadata)
-		for _, part := range message.Content {
+		for partIndex, part := range message.Content {
 			if part == nil {
 				continue
 			}
-			// Media parts hold opaque binary content (for example a base64
-			// payload); text redaction would corrupt them.
-			if part.Kind != ai.PartMedia {
+			// The JSON round-trip drops Part.ContentType, so restore it from
+			// the canonical part. Messages reloaded from the conversation store
+			// have already lost the type, so also recognize the tool-output
+			// envelope written by toolEngine.ToolOutput.
+			if source != nil && partIndex < len(source.Content) && source.Content[partIndex] != nil {
+				part.ContentType = source.Content[partIndex].ContentType
+			}
+			switch {
+			case isJSONTextPart(part), isToolOutputJSON(part):
+				// Declared or envelope-identified JSON fails closed when it is
+				// too large, unparseable, or nested beyond the parser bound.
+				part.Text = sanitizer.SanitizeJSONPart(part.Text).Value
+			case part.Kind != ai.PartMedia:
+				// Media parts hold opaque binary content (for example a base64
+				// payload); text redaction would corrupt them.
 				part.Text = sanitizer.SanitizeText(part.Text).Value
 			}
 			part.Metadata = sanitizeMap(sanitizer, part.Metadata)
@@ -72,6 +89,60 @@ func modelInputView(messages []*ai.Message) ([]*ai.Message, error) {
 		}
 	}
 	return view, nil
+}
+
+func isJSONTextPart(part *ai.Part) bool {
+	return part != nil && part.Kind == ai.PartText && strings.HasPrefix(part.ContentType, "application/json")
+}
+
+// toolOutputEnvelopeProbeBytes bounds how much of a tool output is inspected
+// when deciding whether it is the toolEngine.ToolOutput envelope. Only the
+// first two member names and the tool name value are read.
+const toolOutputEnvelopeProbeBytes = 64 << 10
+
+// isToolOutputJSON recognizes the toolEngine.ToolOutput envelope
+// ({"tool_name":...,"result":...|"summary":...}). Messages loaded from the
+// conversation store have lost Part.ContentType because genkit's text-part
+// encoding omits it, so the JSON shape is the remaining signal. The check
+// parses only the first members instead of searching for substrings, so
+// ordinary prose such as `{notes: "tool_name" and "result"}` is not
+// misclassified and redacted whole.
+func isToolOutputJSON(part *ai.Part) bool {
+	if part == nil || part.Kind != ai.PartText {
+		return false
+	}
+	text := strings.TrimSpace(part.Text)
+	if len(text) == 0 || text[0] != '{' {
+		return false
+	}
+	if len(text) > toolOutputEnvelopeProbeBytes {
+		text = text[:toolOutputEnvelopeProbeBytes]
+	}
+	decoder := json.NewDecoder(strings.NewReader(text))
+	opening, err := decoder.Token()
+	if err != nil || opening != json.Delim('{') {
+		return false
+	}
+	first, err := decoder.Token()
+	if err != nil {
+		return false
+	}
+	if name, ok := first.(string); !ok || name != "tool_name" {
+		return false
+	}
+	toolName, err := decoder.Token()
+	if err != nil {
+		return false
+	}
+	if _, ok := toolName.(string); !ok {
+		return false
+	}
+	second, err := decoder.Token()
+	if err != nil {
+		return false
+	}
+	name, ok := second.(string)
+	return ok && (name == "result" || name == "summary")
 }
 
 func sanitizeMap(sanitizer *security.Sanitizer, value map[string]any) map[string]any {

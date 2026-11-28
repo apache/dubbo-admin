@@ -20,12 +20,16 @@ package rag
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 
 	"dubbo-admin-ai/component/rag/indexers"
+	"dubbo-admin-ai/component/rag/rerankers"
 	"dubbo-admin-ai/security"
 
 	"github.com/cloudwego/eino/components/indexer"
+	"github.com/cloudwego/eino/components/retriever"
 	"github.com/cloudwego/eino/schema"
 )
 
@@ -97,5 +101,96 @@ func TestIndexUsesPreparedIndexerWithoutRescanning(t *testing.T) {
 	}
 	if backend.storePreparedCalls != 0 {
 		t.Fatal("sensitive document reached StorePrepared")
+	}
+}
+
+type recordingRetriever struct {
+	query string
+	docs  []*schema.Document
+}
+
+func (r *recordingRetriever) Retrieve(_ context.Context, query string, _ ...retriever.Option) ([]*schema.Document, error) {
+	r.query = query
+	return r.docs, nil
+}
+
+type recordingReranker struct {
+	query string
+	docs  []*schema.Document
+}
+
+func (r *recordingReranker) Rerank(_ context.Context, query string, docs any, _ ...rerankers.Option) ([]*rerankers.Result, error) {
+	r.query = query
+	typed, _ := docs.([]*schema.Document)
+	r.docs = typed
+	results := make([]*rerankers.Result, len(typed))
+	for i, doc := range typed {
+		results[i] = &rerankers.Result{Content: doc.Content, RelevanceScore: 1, Index: i}
+	}
+	return results, nil
+}
+
+func TestProviderCallsReceiveSanitizedEphemeralInputs(t *testing.T) {
+	const secret = "provider-boundary-secret"
+	source := []*schema.Document{{
+		ID:       "doc",
+		Content:  "password=" + secret,
+		MetaData: map[string]any{"api_key": secret, "source": "docs/guide.md"},
+	}}
+	retrieverRec := &recordingRetriever{docs: source}
+	rerankerRec := &recordingReranker{}
+	engine, err := NewRAG(&Components{Retriever: retrieverRec, Reranker: rerankerRec})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := engine.RetrieveV2(context.Background(), &RetrieveRequest{Query: "password=" + secret, TopK: 1}); err != nil {
+		t.Fatal(err)
+	}
+	assertProviderInputsSanitized(t, secret, retrieverRec.query, rerankerRec.query, rerankerRec.docs)
+	if source[0].Content != "password="+secret || source[0].MetaData["api_key"] != secret {
+		t.Fatalf("canonical retriever document was mutated: %#v", source[0])
+	}
+}
+
+func TestLegacyRetrieveSanitizesProviderInputs(t *testing.T) {
+	const secret = "legacy-provider-secret"
+	source := []*schema.Document{{
+		ID:       "doc",
+		Content:  "password=" + secret,
+		MetaData: map[string]any{"api_key": secret},
+	}}
+	retrieverRec := &recordingRetriever{docs: source}
+	rerankerRec := &recordingReranker{}
+	engine, err := NewRAG(&Components{Retriever: retrieverRec, Reranker: rerankerRec})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := engine.Retrieve(context.Background(), "", []string{"password=" + secret}); err != nil {
+		t.Fatal(err)
+	}
+	assertProviderInputsSanitized(t, secret, retrieverRec.query, rerankerRec.query, rerankerRec.docs)
+	if source[0].Content != "password="+secret || source[0].MetaData["api_key"] != secret {
+		t.Fatalf("canonical retriever document was mutated: %#v", source[0])
+	}
+}
+
+func assertProviderInputsSanitized(t *testing.T, secret, retrieverQuery, rerankerQuery string, rerankerDocs []*schema.Document) {
+	t.Helper()
+	if strings.Contains(retrieverQuery, secret) {
+		t.Fatalf("retriever received raw query: %q", retrieverQuery)
+	}
+	if strings.Contains(rerankerQuery, secret) {
+		t.Fatalf("reranker received raw query: %q", rerankerQuery)
+	}
+	if len(rerankerDocs) != 1 {
+		t.Fatalf("reranker input documents = %d, want 1", len(rerankerDocs))
+	}
+	if strings.Contains(rerankerDocs[0].Content, secret) {
+		t.Fatalf("reranker received raw content: %q", rerankerDocs[0].Content)
+	}
+	if strings.Contains(fmt.Sprint(rerankerDocs[0].MetaData), secret) {
+		t.Fatalf("reranker received raw metadata: %#v", rerankerDocs[0].MetaData)
 	}
 }

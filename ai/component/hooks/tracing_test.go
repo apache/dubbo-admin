@@ -175,6 +175,24 @@ func TestStateAttributesClassifyToolAndStageEvents(t *testing.T) {
 	assertNoSpanAttribute(t, stageAttrs, "gen_ai.request.model")
 }
 
+func TestStateAttributesSanitizeToolCallIDAndModelNames(t *testing.T) {
+	const secret = "tracing-secret-value"
+
+	toolAttrs := stateAttributes(State{
+		Event: EventToolCallStart, ToolName: "lookup", ToolCallID: "token=" + secret,
+	})
+	assertSpanAttribute(t, toolAttrs, "gen_ai.tool.call.id", "token=[REDACTED]")
+
+	modelAttrs := stateAttributes(State{
+		Event: EventModelCallStart, Model: "provider/sk-" + secret,
+	})
+	for _, attr := range modelAttrs {
+		if attr.Key == "gen_ai.request.model" && strings.Contains(attr.Value.AsString(), secret) {
+			t.Fatalf("model attribute leaked a secret: %q", attr.Value.AsString())
+		}
+	}
+}
+
 func TestStateAttributesExposeFallbackAndErrorType(t *testing.T) {
 	for _, event := range []Event{EventStageEnd, EventModelCallEnd} {
 		t.Run(string(event), func(t *testing.T) {

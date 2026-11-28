@@ -73,7 +73,9 @@ func (p *DerivedDataPolicy) Prepare(content string, metadata map[string]any) (ma
 		}
 		// Preserve scalar types expected by index backends. The structured pass
 		// above is inspection only; the allowlist limits what can be persisted.
-		clean[key] = value
+		// Allowed slices are cloned so later mutation of the caller's metadata
+		// cannot change already-validated prepared documents.
+		clean[key] = cloneMetadataValue(value)
 	}
 	return clean, nil, nil
 }
@@ -92,13 +94,42 @@ func allowedMetadataValue(value any) bool {
 		return true
 	case []any:
 		for _, item := range typed {
-			if !allowedMetadataValue(item) {
+			if !isScalarMetadataValue(item) {
 				return false
 			}
 		}
 		return true
 	default:
 		return false
+	}
+}
+
+// isScalarMetadataValue reports whether value is a scalar permitted in a flat
+// metadata list. It intentionally does not recurse: lists of lists are outside
+// the backend contract and could hide structure from the field inspection.
+func isScalarMetadataValue(value any) bool {
+	switch value.(type) {
+	case nil, string, bool,
+		int, int8, int16, int32, int64,
+		uint, uint8, uint16, uint32, uint64,
+		float32, float64:
+		return true
+	default:
+		return false
+	}
+}
+
+// cloneMetadataValue copies the slice forms of a validated metadata value so
+// the returned map does not share backing storage with the caller.
+func cloneMetadataValue(value any) any {
+	switch typed := value.(type) {
+	case []string:
+		return append([]string(nil), typed...)
+	case []any:
+		// allowedMetadataValue guarantees scalar elements, which are immutable.
+		return append([]any(nil), typed...)
+	default:
+		return value
 	}
 }
 

@@ -98,10 +98,16 @@ func (h *RedactingHandler) sanitizeAttr(attr slog.Attr) slog.Attr {
 			return slog.String(attr.Key, h.sanitizer.SanitizeText(typed.Error()).Value)
 		case *url.URL:
 			clean := h.sanitizer.SanitizeURL(typed)
-			return slog.String(attr.Key, clean.Value.String())
+			if clean.Value == nil {
+				return slog.Any(attr.Key, nil)
+			}
+			// Defense in depth: typed URL sanitation covers userinfo, host,
+			// path, fragment, and query, and the text pass catches anything a
+			// provider-specific URL form still hides.
+			return slog.String(attr.Key, h.sanitizer.SanitizeText(clean.Value.String()).Value)
 		case url.URL:
 			clean := h.sanitizer.SanitizeURL(&typed)
-			return slog.String(attr.Key, clean.Value.String())
+			return slog.String(attr.Key, h.sanitizer.SanitizeText(clean.Value.String()).Value)
 		case http.Header:
 			clean := h.sanitizer.SanitizeHeaders(typed)
 			return slog.Any(attr.Key, clean.Value)

@@ -27,6 +27,7 @@ import (
 	"dubbo-admin-ai/component/rag/mergers"
 	"dubbo-admin-ai/component/rag/query"
 	"dubbo-admin-ai/component/rag/rerankers"
+	"dubbo-admin-ai/security"
 
 	"github.com/cloudwego/eino/components/document"
 	"github.com/cloudwego/eino/components/indexer"
@@ -364,7 +365,7 @@ func (r *RAG) retrieveFromPaths(ctx context.Context, queries []string, req *Retr
 		}
 
 		// Retrieve for each query (use first query for simplicity)
-		docs, err := path.Retriever.Retrieve(ctx, queries[0], retriever.WithTopK(pathTopK))
+		docs, err := path.Retriever.Retrieve(ctx, sanitizedModelInput(queries[0]), retriever.WithTopK(pathTopK))
 		if err != nil {
 			if r.logger != nil {
 				r.logger.WarnContext(ctx, "RAG.retrieveFromPaths: path retrieval failed",
@@ -442,7 +443,7 @@ func (r *RAG) retrieveSingle(ctx context.Context, query string, req *RetrieveReq
 			"top_k", topK,
 		)
 	}
-	docs, err := r.Retriever.Retrieve(ctx, query, retriever.WithTopK(topK))
+	docs, err := r.Retriever.Retrieve(ctx, sanitizedModelInput(query), retriever.WithTopK(topK))
 	if err != nil {
 		if r.logger != nil {
 			r.logger.ErrorContext(ctx, "RAG.retrieveSingle: ERROR",
@@ -489,7 +490,7 @@ func (r *RAG) rerank(ctx context.Context, query string, docs []*schema.Document,
 			"top_k", topK,
 		)
 	}
-	reranked, err := r.Reranker.Rerank(ctx, query, docs, rerankers.WithTopN(topK))
+	reranked, err := r.Reranker.Rerank(ctx, sanitizedModelInput(query), sanitizedDocuments(docs), rerankers.WithTopN(topK))
 	if err != nil {
 		if r.logger != nil {
 			r.logger.ErrorContext(ctx, "RAG.rerank: ERROR",
@@ -579,7 +580,7 @@ func (r *RAG) Retrieve(ctx context.Context, namespace string, queries []string, 
 		}
 
 		// Retrieve
-		docs, err := r.Retriever.Retrieve(ctx, processedQuery, retrieveOpts...)
+		docs, err := r.Retriever.Retrieve(ctx, sanitizedModelInput(processedQuery), retrieveOpts...)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve query: %w", err)
 		}
@@ -620,7 +621,7 @@ func (r *RAG) applyReranker(ctx context.Context, query string, results []*Retrie
 		})
 	}
 
-	reranked, err := r.Reranker.Rerank(ctx, query, docs, opts...)
+	reranked, err := r.Reranker.Rerank(ctx, sanitizedModelInput(query), sanitizedDocuments(docs), opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -718,4 +719,40 @@ func buildRetrievalMeta(docs []*schema.Document) map[string]any {
 	meta["source_counts"] = sources
 
 	return meta
+}
+
+// sanitizedModelInput returns the ephemeral provider view of a query. The RAG
+// orchestration layer applies it before every retriever and reranker call so
+// custom provider implementations receive the same boundary as the built-in
+// ones, which also sanitize defensively.
+func sanitizedModelInput(value string) string {
+	return security.DefaultSanitizer().ModelInput(value)
+}
+
+// sanitizedDocuments returns ephemeral copies of provider inputs. The canonical
+// documents are never modified.
+func sanitizedDocuments(docs []*schema.Document) []*schema.Document {
+	clean := make([]*schema.Document, len(docs))
+	for i, doc := range docs {
+		if doc == nil {
+			continue
+		}
+		clone := *doc
+		clone.Content = security.DefaultSanitizer().ModelInput(doc.Content)
+		clone.MetaData = sanitizedMetadata(doc.MetaData)
+		clean[i] = &clone
+	}
+	return clean
+}
+
+func sanitizedMetadata(metadata map[string]any) map[string]any {
+	if metadata == nil {
+		return nil
+	}
+	result := security.DefaultSanitizer().SanitizeStructured(metadata)
+	clean, ok := result.Value.(map[string]any)
+	if !ok {
+		return nil
+	}
+	return clean
 }

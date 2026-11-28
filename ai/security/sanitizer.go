@@ -20,6 +20,7 @@ package security
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -31,11 +32,14 @@ import (
 )
 
 const (
-	SanitizerRuleVersion = "2026-11-28.v3"
+	SanitizerRuleVersion = "2026-11-28.v4"
 	redactedValue        = "[REDACTED]"
-	redactedPrefix       = "[REDACTED"
 	maxStructuredBytes   = 1 << 20
 	maxStructuredDepth   = 32
+	// maxJSONParseDepth bounds parser recursion. It is higher than
+	// maxStructuredDepth so ordinary JSON is still parsed and redacted at the
+	// structured depth, while pathological nesting cannot exhaust the stack.
+	maxJSONParseDepth = 256
 )
 
 const (
@@ -70,15 +74,26 @@ const (
 	// The unquoted branch must start with a non-whitespace character: without
 	// this, a value such as "password: 'secret" would match only the space and
 	// leave the secret visible. Once started, spaces are part of the value.
-	unquotedValueExpr = `[^\s\r\n,;&"'\]\}，。！？、；][^\r\n,;&"'\]\}，。！？、；]*`
+	// The unquoted branch also excludes the opening brackets of a JSON object
+	// or array. Otherwise "password":[a,b] would consume only the '[' and leave
+	// the array elements visible. Balanced JSON is handled structurally before
+	// the text rules run.
+	unquotedValueExpr = `[^\s\r\n,;&"'\]\}\[\{，。！？、；][^\r\n,;&"'\]\}\[\{，。！？、；]*`
 	// credentialValueExpr consumes a quoted scalar (escape-aware), an
-	// unterminated quote to end of line, or an unquoted scalar. The unquoted
-	// branch stops at record separators and sentence punctuation so prose
-	// after a credential is preserved.
-	credentialValueExpr = doubleQuotedValueExpr + `|` + singleQuotedValueExpr + `|` + unterminatedQuotedValueExpr + `|` + unquotedValueExpr
+	// unterminated quote to end of line, an unquoted scalar, or an already
+	// redacted marker. The marker alternative is matched here (instead of the
+	// unquoted branch, which excludes '[') so an incomplete marker followed by
+	// more content is still redacted rather than silently accepted. The
+	// unquoted branch stops at record separators and sentence punctuation so
+	// prose after a credential is preserved.
+	credentialValueExpr = doubleQuotedValueExpr + `|` + singleQuotedValueExpr + `|` + unterminatedQuotedValueExpr + `|` + `\[REDACTED[^\]\r\n]*\]?` + `|` + unquotedValueExpr
 )
 
 var (
+	// errJSONDepth marks a document that exceeded maxJSONParseDepth. Callers
+	// that know the input was truncated by the structural bound treat it as
+	// fail-closed rather than as ordinary non-JSON text.
+	errJSONDepth      = errors.New("JSON nesting too deep")
 	privateKeyPattern = regexp.MustCompile(`(?is)-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----.*?-----END [A-Z0-9 ]*PRIVATE KEY-----`)
 	// Authorization headers are redacted as a whole value. The value runs to
 	// the end of the line: RFC 6265 credentials may be quoted and followed by
@@ -165,6 +180,29 @@ func (s *Sanitizer) ModelInput(value string) string {
 	return s.SanitizeText(value).Value
 }
 
+// SanitizeJSONPart sanitizes text that is declared as JSON. Documents that are
+// too large, unparseable, or nested beyond the parser bound are redacted whole:
+// falling back to the text rules would leave array elements and nested escaped
+// documents uninspected.
+func (s *Sanitizer) SanitizeJSONPart(value string) SanitizedText {
+	if len(value) > maxStructuredBytes {
+		return redactedSanitizedText()
+	}
+	clean, findings, ok := s.sanitizeJSONText(value, "$", 0, true)
+	if !ok {
+		return redactedSanitizedText()
+	}
+	return SanitizedText{Value: clean, RuleVersion: SanitizerRuleVersion, Findings: findings}
+}
+
+func redactedSanitizedText() SanitizedText {
+	return SanitizedText{
+		Value:       redactedValue,
+		RuleVersion: SanitizerRuleVersion,
+		Findings:    []Finding{{RuleID: RuleSensitiveField, Path: "$", Count: 1}},
+	}
+}
+
 func (s *Sanitizer) SanitizeHeaders(headers http.Header) SanitizedHeaders {
 	clean := make(http.Header, len(headers))
 	var findings []Finding
@@ -173,7 +211,9 @@ func (s *Sanitizer) SanitizeHeaders(headers http.Header) SanitizedHeaders {
 		path := "header.field"
 		if isSensitiveKey(key) {
 			clean[cleanKey] = []string{redactedValue}
-			findings = appendFinding(findings, RuleSensitiveField, path, len(values))
+			if !allRedactedValues(values) {
+				findings = appendFinding(findings, RuleSensitiveField, path, len(values))
+			}
 			continue
 		}
 		for _, value := range values {
@@ -192,17 +232,49 @@ func (s *Sanitizer) SanitizeURL(input *url.URL) SanitizedURL {
 	copy := *input
 	var findings []Finding
 	if copy.User != nil {
-		if _, set := copy.User.Password(); set {
-			copy.User = url.UserPassword(copy.User.Username(), redactedValue)
-			findings = appendFinding(findings, RuleSensitiveField, "url.user.password", 1)
+		username := copy.User.Username()
+		password, hasPassword := copy.User.Password()
+		cleanUsername, usernameFindings := s.sanitizeText(username, "url.user.username", true, true)
+		findings = mergeFindings(findings, usernameFindings)
+		if hasPassword {
+			copy.User = url.UserPassword(cleanUsername, redactedValue)
+			if !isRedactedCredentialValue(password) {
+				findings = appendFinding(findings, RuleSensitiveField, "url.user.password", 1)
+			}
+		} else {
+			copy.User = url.User(cleanUsername)
 		}
+	}
+	// Every URL component can carry a token: a username, a host subdomain, a
+	// path segment, a fragment, or an opaque value. Sanitize each before the
+	// string is logged or forwarded to a provider.
+	if cleanHost, hostFindings := s.sanitizeText(copy.Host, "url.host", true, true); cleanHost != copy.Host {
+		copy.Host = cleanHost
+		findings = mergeFindings(findings, hostFindings)
+	}
+	if cleanPath, pathFindings := s.sanitizeText(copy.Path, "url.path", true, true); cleanPath != copy.Path {
+		copy.Path = cleanPath
+		// RawPath is only valid when it encodes Path; let String re-encode.
+		copy.RawPath = ""
+		findings = mergeFindings(findings, pathFindings)
+	}
+	if cleanFragment, fragmentFindings := s.sanitizeText(copy.Fragment, "url.fragment", true, true); cleanFragment != copy.Fragment {
+		copy.Fragment = cleanFragment
+		copy.RawFragment = ""
+		findings = mergeFindings(findings, fragmentFindings)
+	}
+	if cleanOpaque, opaqueFindings := s.sanitizeText(copy.Opaque, "url.opaque", true, true); cleanOpaque != copy.Opaque {
+		copy.Opaque = cleanOpaque
+		findings = mergeFindings(findings, opaqueFindings)
 	}
 	query := copy.Query()
 	for key, values := range query {
 		path := "url.query.field"
 		if isSensitiveKey(key) {
 			query[key] = []string{redactedValue}
-			findings = appendFinding(findings, RuleSensitiveField, path, len(values))
+			if !allRedactedValues(values) {
+				findings = appendFinding(findings, RuleSensitiveField, path, len(values))
+			}
 			continue
 		}
 		for i, value := range values {
@@ -255,6 +327,11 @@ func (s *Sanitizer) sanitizeValue(value any, path string, depth int) (any, []Fin
 		for _, key := range keys {
 			childPath := path + ".field"
 			if isSensitiveKeyDecoded(key) {
+				if str, isString := typed[key].(string); isString && isRedactedCredentialValue(str) {
+					// Already redacted; keep the marker without a new finding.
+					clean[key] = str
+					continue
+				}
 				if _, isString := typed[key].(string); !isString && isWeakPassKey(key) {
 					// Test-result style fields such as {"pass": true} are not
 					// credentials. Still recurse in case the value hides one.
@@ -303,6 +380,13 @@ func (s *Sanitizer) sanitizeText(value, path string, inspectEncoded, parseJSON b
 		if cleaned, findings, ok := s.sanitizeJSONText(value, path, 0, inspectEncoded); ok {
 			return cleaned, findings
 		}
+		// Mixed text (an error line, NDJSON, or a shell-quoted JSON argument)
+		// cannot be parsed as one document. Sanitize the balanced JSON fragments
+		// structurally first, then apply the text rules to the rest.
+		if cleaned, findings, ok := s.sanitizeEmbeddedJSON(value, path, inspectEncoded); ok {
+			textCleaned, textFindings := s.sanitizeTextRules(cleaned, path, inspectEncoded)
+			return textCleaned, mergeFindings(findings, textFindings)
+		}
 	}
 	return s.sanitizeTextRules(value, path, inspectEncoded)
 }
@@ -344,7 +428,9 @@ func (s *Sanitizer) sanitizeTextRules(value, path string, inspectEncoded bool) (
 	if inspectEncoded {
 		clean, findings = s.redactEncodedCandidates(clean, path, findings)
 		if decoded := decodePercentSequences(clean); decoded != clean {
-			_, decodedFindings := s.sanitizeTextRules(decoded, path, false)
+			// Decoded JSON may use escaped keys such as "password", so
+			// inspect it structurally before falling back to the text rules.
+			_, decodedFindings := s.sanitizeText(decoded, path, false, true)
 			if len(decodedFindings) > 0 {
 				return redactedValue, appendFinding(findings, RuleEncodedSecret, path, 1)
 			}
@@ -361,7 +447,9 @@ func (s *Sanitizer) sanitizeJSONText(value, path string, depth int, inspectEncod
 	if len(trimmed) == 0 || len(trimmed) > maxStructuredBytes {
 		return "", nil, false
 	}
-	if trimmed[0] != '{' && trimmed[0] != '[' {
+	// A top-level JSON string can itself contain an encoded JSON document,
+	// for example `"{\"password\":\"...\"}"` or a shell-quoted curl body.
+	if trimmed[0] != '{' && trimmed[0] != '[' && trimmed[0] != '"' {
 		return "", nil, false
 	}
 	decoder := json.NewDecoder(strings.NewReader(trimmed))
@@ -384,6 +472,104 @@ func (s *Sanitizer) sanitizeJSONText(value, path string, depth int, inspectEncod
 	return builder.String(), findings, true
 }
 
+// maxJSONFragmentAttempts bounds how many embedded JSON candidates are parsed
+// for one text value, so a pathological input cannot make sanitization
+// quadratic.
+const maxJSONFragmentAttempts = 256
+
+// sanitizeEmbeddedJSON finds balanced JSON values inside mixed text and
+// sanitizes each structurally. It handles prefixed errors ("Error: {...}"),
+// NDJSON, and JSON documents quoted as shell arguments. The returned bool is
+// false when no JSON fragment was found, letting the caller fall back to the
+// text rules.
+func (s *Sanitizer) sanitizeEmbeddedJSON(value, path string, inspectEncoded bool) (string, []Finding, bool) {
+	var builder strings.Builder
+	builder.Grow(len(value))
+	var findings []Finding
+	last := 0
+	found := false
+	for i, attempts := 0, 0; i < len(value); {
+		if !startsJSONFragment(value, i) {
+			i++
+			continue
+		}
+		if attempts >= maxJSONFragmentAttempts {
+			// A JSON candidate remains but the parse budget is exhausted.
+			// Falling back to the text rules would leave arrays and objects
+			// uninspected, so fail closed for the whole value.
+			return redactedValue, appendFinding(findings, RuleSensitiveField, path, 1), true
+		}
+		attempts++
+		window := value[i:]
+		truncated := false
+		if len(window) > maxStructuredBytes {
+			window = window[:maxStructuredBytes]
+			truncated = true
+		}
+		cleaned, consumed, fragmentFindings, err := s.sanitizeJSONFragment(window, path, inspectEncoded)
+		if err != nil {
+			if truncated && (errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, errJSONDepth)) {
+				// The candidate may be a valid JSON document that is larger
+				// than the structural bound (or nested beyond it), so no
+				// complete value can be inspected. Fail closed instead of
+				// leaving arrays or objects to the text rules.
+				return redactedValue, appendFinding(findings, RuleSensitiveField, path, 1), true
+			}
+			i++
+			continue
+		}
+		builder.WriteString(value[last:i])
+		builder.WriteString(cleaned)
+		findings = mergeFindings(findings, fragmentFindings)
+		last = i + consumed
+		i = last
+		found = true
+	}
+	if !found {
+		return "", nil, false
+	}
+	builder.WriteString(value[last:])
+	return builder.String(), findings, true
+}
+
+func startsJSONFragment(value string, i int) bool {
+	switch value[i] {
+	case '{', '[':
+		return true
+	case '"':
+		// A JSON document encoded as a JSON/shell string: "{\"...\"}".
+		return i+1 < len(value) && (value[i+1] == '{' || value[i+1] == '[')
+	default:
+		return false
+	}
+}
+
+// sanitizeJSONFragment parses one JSON value at the start of value and returns
+// the cleaned fragment plus the number of bytes it consumed.
+func (s *Sanitizer) sanitizeJSONFragment(value, path string, inspectEncoded bool) (string, int, []Finding, error) {
+	if len(value) > maxStructuredBytes {
+		return "", 0, nil, fmt.Errorf("JSON fragment exceeds %d bytes", maxStructuredBytes)
+	}
+	decoder := json.NewDecoder(strings.NewReader(value))
+	decoder.UseNumber()
+	node, err := parseJSONNode(decoder)
+	if err != nil {
+		return "", 0, nil, err
+	}
+	consumed := int(decoder.InputOffset())
+	if consumed <= 0 || consumed > len(value) {
+		return "", 0, nil, fmt.Errorf("invalid JSON fragment length %d", consumed)
+	}
+	clean, findings := s.sanitizeJSONNode(node, path, 0, inspectEncoded)
+	if reflect.DeepEqual(node, clean) {
+		return value[:consumed], consumed, findings, nil
+	}
+	var builder strings.Builder
+	builder.Grow(consumed)
+	clean.encode(&builder)
+	return builder.String(), consumed, findings, nil
+}
+
 func (s *Sanitizer) sanitizeJSONNode(node *jsonNode, path string, depth int, inspectEncoded bool) (*jsonNode, []Finding) {
 	if depth >= maxStructuredDepth {
 		return redactedJSONNode(), []Finding{{RuleID: RuleSensitiveField, Path: path, Count: 1}}
@@ -395,6 +581,11 @@ func (s *Sanitizer) sanitizeJSONNode(node *jsonNode, path string, depth int, ins
 		for _, member := range node.obj {
 			childPath := path + ".field"
 			if isSensitiveKeyDecoded(member.key) {
+				if member.value.kind == jsonStringKind && isRedactedCredentialValue(member.value.str) {
+					// Already redacted; keep the marker without a new finding.
+					clean.obj = append(clean.obj, member)
+					continue
+				}
 				if member.value.kind != jsonStringKind && isWeakPassKey(member.key) {
 					// Test-result style fields such as {"pass": true} are not
 					// credentials. Still recurse in case the value hides one.
@@ -469,6 +660,13 @@ func redactedJSONNode() *jsonNode {
 }
 
 func parseJSONNode(decoder *json.Decoder) (*jsonNode, error) {
+	return parseJSONNodeDepth(decoder, 0)
+}
+
+func parseJSONNodeDepth(decoder *json.Decoder, depth int) (*jsonNode, error) {
+	if depth > maxJSONParseDepth {
+		return nil, fmt.Errorf("%w: exceeds %d levels", errJSONDepth, maxJSONParseDepth)
+	}
 	token, err := decoder.Token()
 	if err != nil {
 		return nil, err
@@ -487,7 +685,7 @@ func parseJSONNode(decoder *json.Decoder) (*jsonNode, error) {
 				if !ok {
 					return nil, fmt.Errorf("JSON object key is not a string")
 				}
-				child, err := parseJSONNode(decoder)
+				child, err := parseJSONNodeDepth(decoder, depth+1)
 				if err != nil {
 					return nil, err
 				}
@@ -500,7 +698,7 @@ func parseJSONNode(decoder *json.Decoder) (*jsonNode, error) {
 		case '[':
 			node := &jsonNode{kind: jsonArrayKind}
 			for decoder.More() {
-				child, err := parseJSONNode(decoder)
+				child, err := parseJSONNodeDepth(decoder, depth+1)
 				if err != nil {
 					return nil, err
 				}
@@ -603,6 +801,8 @@ func (s *Sanitizer) redactEncodedCandidates(value, path string, findings []Findi
 		}
 		runLength := runEnd - start
 		candidate := value[start:i]
+		redactFrom := start
+		redactTo := i
 		redact := false
 		if runLength > maxCandidate {
 			// Runs without any alphanumeric character are separators or art
@@ -615,16 +815,17 @@ func (s *Sanitizer) redactEncodedCandidates(value, path string, findings []Findi
 				}
 			}
 		} else if runLength >= minCandidate {
-			if decoded, ok := decodeCandidate(candidate); ok {
-				_, matches := s.sanitizeTextRules(decoded, path, false)
-				redact = len(matches) > 0
+			if secretStart, secretEnd, ok := s.encodedSecretRange(candidate, path); ok {
+				redactFrom = start + secretStart
+				redactTo = start + secretEnd
+				redact = true
 			}
 		}
 		if redact {
-			builder.WriteString(value[last:start])
+			builder.WriteString(value[last:redactFrom])
 			builder.WriteString(redactedValue)
 			findings = appendFinding(findings, RuleEncodedSecret, path, 1)
-			last = i
+			last = redactTo
 			changed = true
 		}
 	}
@@ -643,6 +844,54 @@ func isASCIIAlnum(b byte) bool {
 	return b >= 'A' && b <= 'Z' || b >= 'a' && b <= 'z' || b >= '0' && b <= '9'
 }
 
+// encodedSecretRange returns the slice of an encoded candidate that contains a
+// secret. Slash boundaries are tried from right to left so a URL or file path
+// prefix is preserved. At each boundary the suffix after the '/' is tried
+// before the suffix that includes it, because the slash may itself be part of
+// the base64 alphabet (for example an encoded payload whose first byte is
+// 0xff). The whole candidate is the final fallback for an encoded secret that
+// contains '/' internally.
+func (s *Sanitizer) encodedSecretRange(candidate, path string) (int, int, bool) {
+	starts := make([]int, 0, 8)
+	for i := len(candidate) - 1; i >= 0; i-- {
+		if candidate[i] != '/' {
+			continue
+		}
+		if i+1 < len(candidate) {
+			starts = append(starts, i+1)
+		}
+		starts = append(starts, i)
+	}
+	starts = append(starts, 0)
+
+	seen := make(map[int]struct{}, len(starts))
+	for _, start := range starts {
+		if _, ok := seen[start]; ok {
+			continue
+		}
+		seen[start] = struct{}{}
+		segment := strings.TrimRight(candidate[start:], "/")
+		if segment == "" {
+			continue
+		}
+		if s.encodedSegmentHasSecret(segment, path) {
+			return start, start + len(segment), true
+		}
+	}
+	return 0, 0, false
+}
+
+func (s *Sanitizer) encodedSegmentHasSecret(segment, path string) bool {
+	decoded, ok := decodeCandidate(segment)
+	if !ok {
+		return false
+	}
+	// Decoded JSON keys can be escaped ("password"), so inspect the
+	// decoded fragment both structurally and as text.
+	_, findings := s.sanitizeText(decoded, path, false, true)
+	return len(findings) > 0
+}
+
 // oversizedCandidateContainsSecret decodes an oversized candidate and checks
 // the decoded text. Candidates that cannot be decoded are treated as secrets
 // (fail closed); decoded binary payloads such as embedded images usually
@@ -652,7 +901,13 @@ func oversizedCandidateContainsSecret(candidate string) bool {
 	if !ok {
 		return true
 	}
-	_, findings := defaultSanitizer.sanitizeTextRules(decoded, "$", false)
+	trimmed := strings.TrimSpace(decoded)
+	if len(trimmed) > maxStructuredBytes && (trimmed[0] == '{' || trimmed[0] == '[') {
+		// A JSON document too large to inspect structurally must not reach
+		// the text-rule fallback, which cannot traverse arrays or objects.
+		return true
+	}
+	_, findings := defaultSanitizer.sanitizeText(decoded, "$", false, true)
 	return len(findings) > 0
 }
 
@@ -720,9 +975,13 @@ func redactCredentialValue(pattern *regexp.Regexp) func(string) string {
 // prefix is included because some value branches stop before a trailing ']'
 // (for example ["password=[REDACTED]"]). A prefix followed by other content is
 // not a marker, so it is redacted again instead of leaking the remainder.
+// isRedactedCredentialValue accepts only a complete marker. The unquoted value
+// branch can stop before the closing ']' (for example inside a JSON array);
+// redactAssignments handles that truncated form locally so the shared helper
+// used by JSON, headers, URLs, and structured values stays strict.
 func isRedactedCredentialValue(value string) bool {
-	switch value {
-	case redactedValue, redactedPrefix, doubleQuotedValue(redactedValue), singleQuotedValue(redactedValue):
+	switch strings.TrimSpace(value) {
+	case redactedValue, doubleQuotedValue(redactedValue), singleQuotedValue(redactedValue):
 		return true
 	default:
 		return false
@@ -735,6 +994,20 @@ func doubleQuotedValue(value string) string {
 
 func singleQuotedValue(value string) string {
 	return `'` + value + `'`
+}
+
+// allRedactedValues reports whether every value is already the redaction
+// marker, so re-sanitizing a redacted document does not record a finding.
+func allRedactedValues(values []string) bool {
+	if len(values) == 0 {
+		return false
+	}
+	for _, value := range values {
+		if !isRedactedCredentialValue(value) {
+			return false
+		}
+	}
+	return true
 }
 
 // redactAssignments redacts key/value assignments while preserving text that
@@ -759,19 +1032,18 @@ func (s *Sanitizer) redactAssignments(value, path string, pattern *regexp.Regexp
 		valueStart := pos + locations[5]
 		valueEnd := pos + locations[1]
 		rawValue := value[valueStart:valueEnd]
-		if strings.HasPrefix(rawValue, redactedPrefix) {
-			// Already redacted. Keep scanning after the marker so a later
+		if isRedactedCredentialValue(rawValue) {
+			// Already redacted. Keep scanning after the value so a later
 			// assignment on the same line is not skipped.
-			consumed := len(redactedPrefix)
-			if closing := strings.IndexByte(rawValue, ']'); closing >= 0 {
-				consumed = closing + 1
-			}
-			builder.WriteString(value[start : valueStart+consumed])
-			pos = valueStart + consumed
+			builder.WriteString(value[start:valueEnd])
+			pos = valueEnd
 			continue
 		}
 		consumed := len(rawValue)
-		if isEqualsSeparator(separator) {
+		// Inside a quoted value, whitespace and embedded "key=" pairs belong
+		// to the credential (for example a signed token or a DSN). Only an
+		// unquoted value uses the logfmt boundary.
+		if isEqualsSeparator(separator) && !isQuotedValue(rawValue) {
 			consumed = assignmentValueBoundary(rawValue)
 		}
 		if consumed <= 0 {
@@ -790,6 +1062,13 @@ func (s *Sanitizer) redactAssignments(value, path string, pattern *regexp.Regexp
 
 func isEqualsSeparator(separator string) bool {
 	return strings.Contains(separator, "=") || strings.Contains(strings.ToLower(separator), "%3d")
+}
+
+// isQuotedValue reports whether the value branch captured a quoted scalar. The
+// regex only produces this form for a terminated pair or an unterminated quote
+// that runs to the end of the line, so both are replaced as a whole.
+func isQuotedValue(value string) bool {
+	return strings.HasPrefix(value, `"`) || strings.HasPrefix(value, `'`)
 }
 
 // assignmentValueBoundary returns how much of an unquoted '=' value belongs to
@@ -860,12 +1139,18 @@ func redactURLUserInfo(match string) string {
 }
 
 func replaceMatches(value string, pattern *regexp.Regexp, ruleID, path string, findings []Finding, replace func(string) string) (string, []Finding) {
-	matches := pattern.FindAllStringIndex(value, -1)
-	if len(matches) == 0 {
+	changed := 0
+	cleaned := pattern.ReplaceAllStringFunc(value, func(match string) string {
+		replacement := replace(match)
+		if replacement != match {
+			changed++
+		}
+		return replacement
+	})
+	if changed == 0 {
 		return value, findings
 	}
-	findings = appendFinding(findings, ruleID, path, len(matches))
-	return pattern.ReplaceAllStringFunc(value, replace), findings
+	return cleaned, appendFinding(findings, ruleID, path, changed)
 }
 
 func decodeCandidate(value string) (string, bool) {

@@ -112,7 +112,7 @@ func spanName(state State) string {
 	case EventStageStart:
 		return "agent.stage " + safeSpanString(state.Stage)
 	case EventModelCallStart:
-		return "chat " + modelName(state.Model)
+		return "chat " + safeSpanString(modelName(state.Model))
 	case EventToolCallStart:
 		return "execute_tool " + safeSpanString(state.ToolName)
 	default:
@@ -150,10 +150,10 @@ func stateAttributes(state State) []attribute.KeyValue {
 	case EventModelCallStart, EventModelCallEnd:
 		attrs = append(attrs, attribute.String("gen_ai.operation.name", "chat"))
 		if state.Model != "" {
-			attrs = append(attrs, attribute.String("gen_ai.request.model", modelName(state.Model)))
+			attrs = append(attrs, attribute.String("gen_ai.request.model", safeSpanString(modelName(state.Model))))
 		}
 		if provider := providerName(state.Model); provider != "" {
-			attrs = append(attrs, attribute.String("gen_ai.provider.name", provider))
+			attrs = append(attrs, attribute.String("gen_ai.provider.name", safeSpanString(provider)))
 		}
 	case EventToolCallStart, EventToolCallEnd:
 		attrs = append(attrs, attribute.String("gen_ai.operation.name", "execute_tool"))
@@ -163,7 +163,7 @@ func stateAttributes(state State) []attribute.KeyValue {
 			attrs = append(attrs, attribute.String("gen_ai.tool.name", safeSpanString(state.ToolName)))
 		}
 		if state.ToolCallID != "" {
-			attrs = append(attrs, attribute.String("gen_ai.tool.call.id", state.ToolCallID))
+			attrs = append(attrs, attribute.String("gen_ai.tool.call.id", safeSpanString(state.ToolCallID)))
 		}
 	}
 	if state.Degraded {

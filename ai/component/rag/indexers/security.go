@@ -36,11 +36,40 @@ type PreparedDocuments struct {
 	docs []*schema.Document
 }
 
-// Documents returns a copy of the validated document slice for callers that
+// Documents returns a deep copy of the validated documents for callers that
 // need the underlying []*schema.Document (for example a generic indexer that
-// only implements Store).
+// only implements Store). Copying the documents and their metadata prevents a
+// caller from mutating prepared content after validation and then reaching
+// StorePrepared with unvalidated data.
 func (p PreparedDocuments) Documents() []*schema.Document {
-	return append([]*schema.Document(nil), p.docs...)
+	docs := make([]*schema.Document, 0, len(p.docs))
+	for _, doc := range p.docs {
+		if doc == nil {
+			continue
+		}
+		clone := *doc
+		clone.MetaData = cloneDocumentMetadata(doc.MetaData)
+		docs = append(docs, &clone)
+	}
+	return docs
+}
+
+func cloneDocumentMetadata(metadata map[string]any) map[string]any {
+	if metadata == nil {
+		return nil
+	}
+	clone := make(map[string]any, len(metadata))
+	for key, value := range metadata {
+		switch typed := value.(type) {
+		case []string:
+			clone[key] = append([]string(nil), typed...)
+		case []any:
+			clone[key] = append([]any(nil), typed...)
+		default:
+			clone[key] = value
+		}
+	}
+	return clone
 }
 
 // PreparedIndexer is implemented by indexers that separate document validation
