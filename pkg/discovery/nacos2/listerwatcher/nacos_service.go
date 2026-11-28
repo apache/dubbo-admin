@@ -18,11 +18,15 @@
 package listerwatcher
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/duke-git/lancet/v2/slice"
 	"github.com/go-co-op/gocron"
+	nacosconfigclient "github.com/nacos-group/nacos-sdk-go/v2/clients/config_client"
 	nacosnamingclient "github.com/nacos-group/nacos-sdk-go/v2/clients/naming_client"
 	nacosmodel "github.com/nacos-group/nacos-sdk-go/v2/model"
 	nacosvo "github.com/nacos-group/nacos-sdk-go/v2/vo"
@@ -33,6 +37,7 @@ import (
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
@@ -42,18 +47,24 @@ import (
 type NacosServiceListerWatcher struct {
 	cfg          *discoverycfg.Config
 	namingClient nacosnamingclient.INamingClient
+	configClient nacosconfigclient.IConfigClient
 	// watchingServices is used to record the services that are currently being watched
 	// key -> nacos service name, value -> true if it is watched in current list turn
-	watchingServices map[string]bool
-	scheduler        *gocron.Scheduler
-	resultChan       chan watch.Event
-	stopWatch        bool
+	watchingServices   map[string]bool
+	scheduler          *gocron.Scheduler
+	resultChan         chan watch.Event
+	stopWatch          bool
+	watchHealth        func(error)
+	healthMu           sync.Mutex
+	pollError          error
+	subscriptionErrors map[string]error
 }
 
-func NewNacosServiceListerWatcher(cfg *discoverycfg.Config, namingClient nacosnamingclient.INamingClient) *NacosServiceListerWatcher {
+func NewNacosServiceListerWatcher(cfg *discoverycfg.Config, namingClient nacosnamingclient.INamingClient, configClient nacosconfigclient.IConfigClient) *NacosServiceListerWatcher {
 	return &NacosServiceListerWatcher{
 		cfg:              cfg,
 		namingClient:     namingClient,
+		configClient:     configClient,
 		resultChan:       make(chan watch.Event),
 		watchingServices: make(map[string]bool),
 		scheduler:        gocron.NewScheduler(time.UTC),
@@ -74,9 +85,13 @@ func (lw *NacosServiceListerWatcher) List(_ metav1.ListOptions) (k8sruntime.Obje
 		})
 		if err != nil {
 			logger.Errorf("get instances of service %s failed in nacos %s, cause: %v", serviceName, lw.nacosAddress(), err)
-			continue
+			return nil, err
 		}
-		resList = append(resList, lw.toNacosServiceResource(serviceName, service.Hosts))
+		resource := lw.toNacosServiceResource(serviceName, service.Hosts)
+		if err := lw.resolveRevisions(resource); err != nil {
+			return nil, err
+		}
+		resList = append(resList, resource)
 	}
 	nacosServiceList.Items = resList
 	return nacosServiceList, nil
@@ -93,8 +108,10 @@ func (lw *NacosServiceListerWatcher) Watch(_ metav1.ListOptions) (watch.Interfac
 		err := lw.fetchAndProcessService()
 		if err != nil {
 			logger.Errorf("fetch all service failed in nacos %s, cause: %v", lw.nacosAddress(), err)
+			lw.reportHealth(err)
 			return
 		}
+		lw.reportHealth(nil)
 		costs := time.Now().UnixMilli() - startTime.UnixMilli()
 		logger.Debugf("finish fetching and processing all services in nacos %s, costs %dms", lw.nacosAddress(), costs)
 	})
@@ -134,9 +151,11 @@ func (lw *NacosServiceListerWatcher) fetchAndProcessService() error {
 		if err != nil {
 			return err
 		}
-		slice.ForEach(serviceNames, func(index int, item string) {
-			lw.processNacosService(item)
-		})
+		for _, item := range serviceNames {
+			if err := lw.processNacosService(item); err != nil {
+				return err
+			}
+		}
 		if len(serviceNames) < int(pageSize) {
 			break
 		}
@@ -151,25 +170,37 @@ func (lw *NacosServiceListerWatcher) fetchAndProcessService() error {
 		err := lw.unsubscribeService(serviceName)
 		if err != nil {
 			logger.Errorf("unsubscribe service %s failed in nacos %s, cause: %v", serviceName, lw.nacosAddress(), err)
-			continue
+			return err
 		}
 		// delete service from watchingServices, only one go routine, thread safe
 		delete(lw.watchingServices, serviceName)
+		lw.reportServiceHealth(serviceName, nil)
 	}
 	return nil
 }
 
-func (lw *NacosServiceListerWatcher) processNacosService(serviceName string) {
+func (lw *NacosServiceListerWatcher) processNacosService(serviceName string) error {
 	if _, exists := lw.watchingServices[serviceName]; exists {
 		lw.watchingServices[serviceName] = true
-		return
+		service, err := lw.namingClient.GetService(nacosvo.GetServiceParam{ServiceName: serviceName})
+		if err != nil {
+			return err
+		}
+		resource := lw.toNacosServiceResource(serviceName, service.Hosts)
+		if err := lw.resolveRevisions(resource); err != nil {
+			return err
+		}
+		lw.resultChan <- watch.Event{Type: watch.Modified, Object: resource}
+		lw.reportServiceHealth(serviceName, nil)
+		return nil
 	}
 	err := lw.subscribeService(serviceName)
 	if err != nil {
 		logger.Errorf("subscribe service %s failed in nacos %s, cause: %v", serviceName, lw.nacosAddress(), err)
-		return
+		return err
 	}
 	lw.watchingServices[serviceName] = true
+	return nil
 }
 
 func (lw *NacosServiceListerWatcher) listPage(pageNo, pageSize uint32) ([]string, error) {
@@ -195,15 +226,23 @@ func (lw *NacosServiceListerWatcher) subscribeService(serviceName string) error 
 		SubscribeCallback: func(instances []nacosmodel.Instance, err error) {
 			if err != nil {
 				logger.Errorf("subscribe service %s failed in nacos %s, cause: %v", serviceName, lw.nacosAddress(), err)
+				lw.reportServiceHealth(serviceName, err)
+				return
+			}
+			resource := lw.toNacosServiceResource(serviceName, instances)
+			if err := lw.resolveRevisions(resource); err != nil {
+				lw.reportServiceHealth(serviceName, err)
 				return
 			}
 			lw.resultChan <- watch.Event{
 				Type:   watch.Modified,
-				Object: lw.toNacosServiceResource(serviceName, instances),
+				Object: resource,
 			}
+			lw.reportServiceHealth(serviceName, nil)
 		},
 	})
 	if err != nil {
+		lw.reportHealth(err)
 		return bizerror.Wrap(err, bizerror.NacosError,
 			fmt.Sprintf("subscribe service %s failed in nacos %s", serviceName, lw.mesh()))
 	}
@@ -239,6 +278,9 @@ func (lw *NacosServiceListerWatcher) toNacosServiceResource(serviceName string, 
 			Ip:       item.Ip,
 			Port:     int64(item.Port),
 			Metadata: item.Metadata,
+			Healthy:  item.Healthy,
+			Enabled:  item.Enable,
+			Weight:   item.Weight,
 		}
 	})
 	resource.Spec = &meshproto.NacosService{
@@ -246,6 +288,52 @@ func (lw *NacosServiceListerWatcher) toNacosServiceResource(serviceName string, 
 		Instances:  nacosInstances,
 	}
 	return resource
+}
+
+func (lw *NacosServiceListerWatcher) resolveRevisions(resource *meshresource.NacosServiceResource) error {
+	if strings.HasPrefix(resource.Name, "providers:") || strings.HasPrefix(resource.Name, "consumers:") {
+		return nil
+	}
+	applications := make(map[string]map[string]struct{})
+	for _, instance := range resource.Spec.Instances {
+		if instance == nil {
+			continue
+		}
+		app := instance.Metadata[constants.Application]
+		if app == "" {
+			var params map[string]string
+			if err := json.Unmarshal([]byte(instance.Metadata[constants.URLParamsKey]), &params); err == nil {
+				app = params[constants.Application]
+			}
+		}
+		if app == "" {
+			app = resource.Name
+		}
+		revision := instance.Metadata[constants.MetadataRevisionKey]
+		if app != "" && revision != "" {
+			if applications[app] == nil {
+				applications[app] = make(map[string]struct{})
+			}
+			applications[app][revision] = struct{}{}
+		}
+	}
+	for app, appRevisions := range applications {
+		for revision := range appRevisions {
+			content, err := lw.configClient.GetConfig(nacosvo.ConfigParam{DataId: app, Group: revision})
+			if err != nil {
+				return fmt.Errorf("fetch metadata for %s revision %s: %w", app, revision, err)
+			}
+			if content == "" {
+				continue
+			}
+			metadata, err := meshresource.ParseRPCInstanceMetadata(resource.Mesh, app, revision, content)
+			if err != nil {
+				return err
+			}
+			resource.Spec.Revisions = append(resource.Spec.Revisions, metadata.Spec)
+		}
+	}
+	return nil
 }
 
 func (lw *NacosServiceListerWatcher) ResourceKind() coremodel.ResourceKind {
@@ -271,4 +359,42 @@ func (lw *NacosServiceListerWatcher) nacosAddress() string {
 
 func (lw *NacosServiceListerWatcher) mesh() string {
 	return lw.cfg.ID
+}
+
+func (lw *NacosServiceListerWatcher) SetWatchHealthHandler(handler func(error)) {
+	lw.watchHealth = handler
+}
+
+func (lw *NacosServiceListerWatcher) reportHealth(err error) {
+	lw.healthMu.Lock()
+	defer lw.healthMu.Unlock()
+	lw.pollError = err
+	lw.emitHealth()
+}
+
+func (lw *NacosServiceListerWatcher) reportServiceHealth(service string, err error) {
+	lw.healthMu.Lock()
+	defer lw.healthMu.Unlock()
+	if lw.subscriptionErrors == nil {
+		lw.subscriptionErrors = make(map[string]error)
+	}
+	if err == nil {
+		delete(lw.subscriptionErrors, service)
+	} else {
+		lw.subscriptionErrors[service] = err
+	}
+	lw.emitHealth()
+}
+
+func (lw *NacosServiceListerWatcher) emitHealth() {
+	err := lw.pollError
+	if err == nil {
+		for _, subscriptionError := range lw.subscriptionErrors {
+			err = subscriptionError
+			break
+		}
+	}
+	if lw.watchHealth != nil {
+		lw.watchHealth(err)
+	}
 }
