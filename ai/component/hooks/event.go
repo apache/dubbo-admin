@@ -56,6 +56,42 @@ const (
 	FallbackReasonParseError    = "parse_error"
 )
 
+// contentKind classifies a captured payload.
+//
+// The hooks package applies the reasoning policy to a captured payload. That
+// policy understands the generative AI message format only, so a payload of an
+// unknown kind is left untouched: a tool argument that happens to use the
+// field names of a message is business data, and the trace has to report it
+// faithfully.
+type contentKind int
+
+const (
+	// contentKindOpaque is a payload whose meaning the hooks package does not
+	// know: the arguments of a tool call, the result of a tool call, or any
+	// other business data.
+	contentKindOpaque contentKind = iota
+	// contentKindGenAIMessages is a generative AI messages document: the
+	// serialized form of the messages the semantic conventions describe as
+	// gen_ai.input.messages and gen_ai.output.messages.
+	contentKindGenAIMessages
+)
+
+// contentKindForEvent reports what the captured content of an event holds.
+//
+// The events that carry a message document are the ones the semantic
+// conventions map to gen_ai.input.messages and gen_ai.output.messages. The
+// tool events carry the arguments and the result of a tool call, which are
+// business data: the reasoning policy does not understand them, and rewriting
+// them would make the trace report a call that never happened.
+func contentKindForEvent(event Event) contentKind {
+	switch event {
+	case EventInteractionEnd, EventModelCallStart, EventModelCallEnd:
+		return contentKindGenAIMessages
+	default:
+		return contentKindOpaque
+	}
+}
+
 var allEvents = []Event{
 	EventInteractionStart,
 	EventInteractionError,
@@ -120,6 +156,9 @@ type State struct {
 	EndedAt        time.Time
 	inputContent   *lazyContentSnapshot
 	outputContent  *lazyContentSnapshot
+	// reasoningPolicy filters the reasoning parts of the captured content.
+	// The Manager sets it from the registration that captured the content.
+	reasoningPolicy string
 }
 
 type lazyContentSnapshot struct {
@@ -160,18 +199,47 @@ func (s State) WithOutputContent(provider func() any) State {
 	return s
 }
 
-func (s State) snapshotInputContent() string {
-	if s.Input != "" {
-		return s.Input
+// rawInputContent returns the captured input without applying any policy.
+func (s State) rawInputContent() string {
+	content := s.Input
+	if content == "" {
+		content = s.inputContent.snapshot()
 	}
-	return s.inputContent.snapshot()
+	return content
+}
+
+// rawOutputContent returns the captured output without applying any policy.
+func (s State) rawOutputContent() string {
+	content := s.Output
+	if content == "" {
+		content = s.outputContent.snapshot()
+	}
+	return content
+}
+
+func (s State) snapshotInputContent() string {
+	return s.applyReasoningPolicy(s.rawInputContent(), s.reasoningPolicy)
 }
 
 func (s State) snapshotOutputContent() string {
-	if s.Output != "" {
-		return s.Output
+	return s.applyReasoningPolicy(s.rawOutputContent(), s.reasoningPolicy)
+}
+
+// applyReasoningPolicy removes or truncates the reasoning parts of the
+// captured content according to the given policy.
+//
+// The policy only understands the generative AI message format, so it is
+// applied to a message document and to nothing else. A tool argument that
+// happens to carry the field names of a message is business data: rewriting it
+// would make the trace report a call that never happened.
+func (s State) applyReasoningPolicy(content string, policy string) string {
+	if policy == "" || content == "" {
+		return content
 	}
-	return s.outputContent.snapshot()
+	if contentKindForEvent(s.Event) != contentKindGenAIMessages {
+		return content
+	}
+	return ApplyReasoningPolicy(content, policy)
 }
 
 // ErrorMessage snapshots an error without exposing a mutable implementation

@@ -66,3 +66,73 @@ func TestGenAIOutputIncludesFinishReason(t *testing.T) {
 		t.Fatalf("output = %v, want finish_reason stop", decoded)
 	}
 }
+
+func TestGenAIInputIncludesReasoningPart(t *testing.T) {
+	messages := []*ai.Message{
+		ai.NewModelMessage(
+			ai.NewReasoningPart("thinking about the answer", []byte("signature")),
+			ai.NewTextPart("the answer"),
+		),
+	}
+	content, err := json.Marshal(genAIInputMessages(messages))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded []map[string]any
+	if err := json.Unmarshal(content, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	parts := decoded[0]["parts"].([]any)
+	reasoning := parts[0].(map[string]any)
+	if reasoning["type"] != "reasoning" || reasoning["content"] != "thinking about the answer" {
+		t.Fatalf("reasoning part = %v", reasoning)
+	}
+	if len(reasoning) != 2 {
+		t.Fatalf("reasoning part = %v, want only a type and a content field", reasoning)
+	}
+	text := parts[1].(map[string]any)
+	if text["type"] != "text" || text["content"] != "the answer" {
+		t.Fatalf("text part = %v", text)
+	}
+}
+
+func TestGenAIOutputIncludesReasoningPart(t *testing.T) {
+	response := &ai.ModelResponse{
+		Message:      ai.NewModelMessage(ai.NewReasoningPart("thinking", nil)),
+		FinishReason: ai.FinishReasonStop,
+	}
+	content, err := json.Marshal(genAIOutputMessages(response))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded []map[string]any
+	if err := json.Unmarshal(content, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	parts := decoded[0]["parts"].([]any)
+	reasoning := parts[0].(map[string]any)
+	if reasoning["type"] != "reasoning" || reasoning["content"] != "thinking" {
+		t.Fatalf("reasoning part = %v", reasoning)
+	}
+}
+
+func TestGenAIInputSkipsEmptyReasoningPart(t *testing.T) {
+	messages := []*ai.Message{
+		ai.NewModelMessage(
+			ai.NewReasoningPart("", nil),
+			ai.NewTextPart("the answer"),
+		),
+	}
+	content, err := json.Marshal(genAIInputMessages(messages))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded []map[string]any
+	if err := json.Unmarshal(content, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	parts := decoded[0]["parts"].([]any)
+	if len(parts) != 1 || parts[0].(map[string]any)["type"] != "text" {
+		t.Fatalf("parts = %v, want only the text part", parts)
+	}
+}

@@ -41,6 +41,11 @@ type interactionTrace struct {
 	FallbackUsed   bool
 	FallbackReason string
 	Degraded       bool
+	// Conversation is the message window the last model call saw, and Answer
+	// is the final answer streamed to the user. Both are only attached to the
+	// agent span when a content-capturing hook asks for them.
+	Conversation []*ai.Message
+	Answer       string
 }
 
 func emitStageEnd(s *interactionTrace, ctx context.Context, startedAt time.Time, err error) {

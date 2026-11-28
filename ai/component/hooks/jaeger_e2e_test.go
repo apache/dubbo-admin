@@ -141,7 +141,7 @@ spec:
 	if queryURL == "" {
 		queryURL = "http://localhost:16686"
 	}
-	want := []string{"invoke_agent", "agent.stage reasonAct", "chat qwen-max", "execute_tool lookup_service", "gen_ai.provider.name", "gen_ai.tool.call.id"}
+	want := []string{"invoke_agent " + AgentName, "agent.stage reasonAct", "chat qwen-max", "execute_tool lookup_service", "gen_ai.provider.name", "gen_ai.tool.call.id"}
 	deadline := time.Now().Add(5 * time.Second)
 	for {
 		body, queryErr := fetchJaegerTrace(ctx, queryURL, traceID)
@@ -191,7 +191,7 @@ func verifyJaegerSpanTree(t *testing.T, body string) {
 	for _, span := range result.Data[0].Spans {
 		ids[span.OperationName] = span.SpanID
 	}
-	parents := map[string]string{"agent.stage reasonAct": "invoke_agent", "chat qwen-max": "agent.stage reasonAct", "execute_tool lookup_service": "agent.stage reasonAct"}
+	parents := map[string]string{"agent.stage reasonAct": "invoke_agent " + AgentName, "chat qwen-max": "agent.stage reasonAct", "execute_tool lookup_service": "agent.stage reasonAct"}
 	for _, span := range result.Data[0].Spans {
 		parent, child := parents[span.OperationName]
 		if child && (len(span.References) != 1 || span.References[0].RefType != "CHILD_OF" || span.References[0].SpanID != ids[parent]) {
