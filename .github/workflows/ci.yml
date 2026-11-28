@@ -85,6 +85,9 @@ jobs:
         run: |
           yarn install --frozen-lockfile
           yarn build
+      - name: Run Frontend Unit Tests
+        working-directory: ui-vue3
+        run: yarn test
       - name: Copy Dist Directory
         run: cp -r ui-vue3/dist/ app/dubbo-ui/
       - name: Setup Go ${{ matrix.go_version }}
