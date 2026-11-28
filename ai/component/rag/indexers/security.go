@@ -18,27 +18,51 @@
 package indexers
 
 import (
+	"context"
 	"fmt"
 
 	"dubbo-admin-ai/security"
 
+	"github.com/cloudwego/eino/components/indexer"
 	"github.com/cloudwego/eino/schema"
 )
 
 var derivedDataPolicy = security.NewKnowledgeIndexPolicy()
 
+// PreparedDocuments holds documents that passed PrepareDocuments. The field is
+// unexported and PrepareDocuments is the only constructor, so a caller cannot
+// build an unvalidated value and reach StorePrepared by accident.
+type PreparedDocuments struct {
+	docs []*schema.Document
+}
+
+// Documents returns a copy of the validated document slice for callers that
+// need the underlying []*schema.Document (for example a generic indexer that
+// only implements Store).
+func (p PreparedDocuments) Documents() []*schema.Document {
+	return append([]*schema.Document(nil), p.docs...)
+}
+
+// PreparedIndexer is implemented by indexers that separate document validation
+// from the backend write. RAG.Index calls StorePrepared directly after it has
+// validated the documents at the public boundary, so each document is scanned
+// exactly once. Store remains the safe entry point for direct callers.
+type PreparedIndexer interface {
+	StorePrepared(ctx context.Context, docs PreparedDocuments, opts ...indexer.Option) ([]string, error)
+}
+
 // PrepareDocuments validates canonical documents before they reach an index
-// backend. RAG.Index calls it at the public boundary; concrete indexers call it
-// again only when they are used directly, so the same helper serves both.
-func PrepareDocuments(docs []*schema.Document) ([]*schema.Document, error) {
+// backend and wraps the validated copies so StorePrepared cannot be called
+// with unchecked input.
+func PrepareDocuments(docs []*schema.Document) (PreparedDocuments, error) {
 	prepared := make([]*schema.Document, 0, len(docs))
 	for index, doc := range docs {
 		if doc == nil {
-			return nil, fmt.Errorf("index document is nil")
+			return PreparedDocuments{}, fmt.Errorf("index document is nil")
 		}
 		idFindings, idErr := derivedDataPolicy.ValidateIdentifier(doc.ID)
 		if idErr != nil {
-			return nil, fmt.Errorf("index document at position %d rejected by rule %s: %w", index, ruleID(idFindings), idErr)
+			return PreparedDocuments{}, fmt.Errorf("index document at position %d rejected by rule %s: %w", index, ruleID(idFindings), idErr)
 		}
 		metadata, findings, err := derivedDataPolicy.Prepare(doc.Content, doc.MetaData)
 		if err != nil {
@@ -46,11 +70,11 @@ func PrepareDocuments(docs []*schema.Document) ([]*schema.Document, error) {
 			if len(findings) > 0 {
 				ruleID = findings[0].RuleID
 			}
-			return nil, fmt.Errorf("index document at position %d rejected by rule %s: %w", index, ruleID, err)
+			return PreparedDocuments{}, fmt.Errorf("index document at position %d rejected by rule %s: %w", index, ruleID, err)
 		}
 		prepared = append(prepared, &schema.Document{ID: doc.ID, Content: doc.Content, MetaData: metadata})
 	}
-	return prepared, nil
+	return PreparedDocuments{docs: prepared}, nil
 }
 
 func ruleID(findings []security.Finding) string {

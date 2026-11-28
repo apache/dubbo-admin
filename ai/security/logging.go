@@ -21,6 +21,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"net/url"
 )
 
 // RedactingHandler applies the baseline Sanitizer to every AI log attribute.
@@ -29,6 +31,10 @@ import (
 type RedactingHandler struct {
 	next      slog.Handler
 	sanitizer *Sanitizer
+	// redactAll is set when the logger is scoped to a sensitive group name
+	// (for example logger.WithGroup("password")). Every descendant attribute
+	// is then redacted regardless of its own key.
+	redactAll bool
 }
 
 func NewRedactingHandler(next slog.Handler) slog.Handler {
@@ -56,16 +62,22 @@ func (h *RedactingHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	for i := range attrs {
 		clean[i] = h.sanitizeAttr(attrs[i])
 	}
-	return &RedactingHandler{next: h.next.WithAttrs(clean), sanitizer: h.sanitizer}
+	return &RedactingHandler{next: h.next.WithAttrs(clean), sanitizer: h.sanitizer, redactAll: h.redactAll}
 }
 
 func (h *RedactingHandler) WithGroup(name string) slog.Handler {
-	return &RedactingHandler{next: h.next.WithGroup(name), sanitizer: h.sanitizer}
+	groupName := name
+	redactAll := h.redactAll
+	if isSensitiveKey(name) {
+		groupName = redactedValue
+		redactAll = true
+	}
+	return &RedactingHandler{next: h.next.WithGroup(groupName), sanitizer: h.sanitizer, redactAll: redactAll}
 }
 
 func (h *RedactingHandler) sanitizeAttr(attr slog.Attr) slog.Attr {
 	attr.Value = attr.Value.Resolve()
-	if isSensitiveKey(attr.Key) {
+	if h.redactAll || isSensitiveKey(attr.Key) {
 		return slog.String(attr.Key, redactedValue)
 	}
 	if attr.Value.Kind() == slog.KindGroup {
@@ -81,8 +93,18 @@ func (h *RedactingHandler) sanitizeAttr(attr slog.Attr) slog.Attr {
 		return slog.String(attr.Key, h.sanitizer.SanitizeText(attr.Value.String()).Value)
 	case slog.KindAny:
 		value := attr.Value.Any()
-		if err, ok := value.(error); ok {
-			return slog.String(attr.Key, h.sanitizer.SanitizeText(err.Error()).Value)
+		switch typed := value.(type) {
+		case error:
+			return slog.String(attr.Key, h.sanitizer.SanitizeText(typed.Error()).Value)
+		case *url.URL:
+			clean := h.sanitizer.SanitizeURL(typed)
+			return slog.String(attr.Key, clean.Value.String())
+		case url.URL:
+			clean := h.sanitizer.SanitizeURL(&typed)
+			return slog.String(attr.Key, clean.Value.String())
+		case http.Header:
+			clean := h.sanitizer.SanitizeHeaders(typed)
+			return slog.Any(attr.Key, clean.Value)
 		}
 		clean := h.sanitizer.SanitizeStructured(value)
 		return slog.Any(attr.Key, clean.Value)

@@ -56,7 +56,12 @@ func (idx *PineconeIndexer) Store(ctx context.Context, docs []*schema.Document, 
 	if err != nil {
 		return nil, err
 	}
-	docs = prepared
+	return idx.StorePrepared(ctx, prepared, opts...)
+}
+
+// StorePrepared writes documents that already passed PrepareDocuments.
+func (idx *PineconeIndexer) StorePrepared(ctx context.Context, prepared PreparedDocuments, opts ...indexer.Option) ([]string, error) {
+	docs := prepared.docs
 	// Handle options
 	implOpts := indexer.GetImplSpecificOptions(&CommonIndexerOptions{}, opts...)
 	namespace := implOpts.Namespace

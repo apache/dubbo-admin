@@ -234,14 +234,19 @@ func NewMilvusIndexer(g *genkit.Genkit, config *MilvusConfig) (*MilvusIndexer, e
 }
 
 func (idx *MilvusIndexer) Store(ctx context.Context, docs []*schema.Document, opts ...indexer.Option) ([]string, error) {
-	if idx.client == nil {
-		return nil, fmt.Errorf("milvus client is not initialized")
-	}
 	prepared, err := PrepareDocuments(docs)
 	if err != nil {
 		return nil, err
 	}
-	docs = prepared
+	return idx.StorePrepared(ctx, prepared, opts...)
+}
+
+// StorePrepared writes documents that already passed PrepareDocuments.
+func (idx *MilvusIndexer) StorePrepared(ctx context.Context, prepared PreparedDocuments, opts ...indexer.Option) ([]string, error) {
+	docs := prepared.docs
+	if idx.client == nil {
+		return nil, fmt.Errorf("milvus client is not initialized")
+	}
 
 	_ = indexer.GetImplSpecificOptions(&CommonIndexerOptions{}, opts...)
 

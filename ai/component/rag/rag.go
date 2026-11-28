@@ -157,6 +157,10 @@ func (r *RAG) Index(ctx context.Context, namespace string, docs []*schema.Docume
 		}
 		return nil, err
 	}
+	all := opts
+	if namespace != "" {
+		all = append([]indexer.Option{WithIndexerNamespace(namespace)}, opts...)
+	}
 	prepared, err := indexers.PrepareDocuments(docs)
 	if err != nil {
 		if r.logger != nil {
@@ -165,11 +169,12 @@ func (r *RAG) Index(ctx context.Context, namespace string, docs []*schema.Docume
 		return nil, err
 	}
 	var ids []string
-	if namespace == "" {
-		ids, err = r.Indexer.Store(ctx, prepared, opts...)
+	if preparedIndexer, ok := r.Indexer.(indexers.PreparedIndexer); ok {
+		// The concrete indexer separates validation from the backend write,
+		// so the documents are not scanned a second time.
+		ids, err = preparedIndexer.StorePrepared(ctx, prepared, all...)
 	} else {
-		all := append([]indexer.Option{WithIndexerNamespace(namespace)}, opts...)
-		ids, err = r.Indexer.Store(ctx, prepared, all...)
+		ids, err = r.Indexer.Store(ctx, prepared.Documents(), all...)
 	}
 	if err != nil {
 		if r.logger != nil {

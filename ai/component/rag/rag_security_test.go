@@ -22,6 +22,7 @@ import (
 	"errors"
 	"testing"
 
+	"dubbo-admin-ai/component/rag/indexers"
 	"dubbo-admin-ai/security"
 
 	"github.com/cloudwego/eino/components/indexer"
@@ -55,5 +56,46 @@ func TestIndexRejectsCookieAndSingleQuotedYAMLCredentialsBeforeBackend(t *testin
 		if backend.called {
 			t.Fatalf("index backend was reached for %q", content)
 		}
+	}
+}
+
+// preparedRecordingIndexer implements both entry points. RAG.Index must use
+// StorePrepared for concrete indexers so documents are validated only once.
+type preparedRecordingIndexer struct {
+	storeCalls         int
+	storePreparedCalls int
+}
+
+func (r *preparedRecordingIndexer) Store(context.Context, []*schema.Document, ...indexer.Option) ([]string, error) {
+	r.storeCalls++
+	return nil, errors.New("Store must not be used for a PreparedIndexer")
+}
+
+func (r *preparedRecordingIndexer) StorePrepared(context.Context, indexers.PreparedDocuments, ...indexer.Option) ([]string, error) {
+	r.storePreparedCalls++
+	return []string{"stored"}, nil
+}
+
+func TestIndexUsesPreparedIndexerWithoutRescanning(t *testing.T) {
+	backend := &preparedRecordingIndexer{}
+	engine, err := NewRAG(&Components{Indexer: backend})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ids, err := engine.Index(context.Background(), "", []*schema.Document{{ID: "doc", Content: "safe document"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ids) != 1 || backend.storePreparedCalls != 1 || backend.storeCalls != 0 {
+		t.Fatalf("Index() used the wrong entry point: ids=%v store=%d prepared=%d", ids, backend.storeCalls, backend.storePreparedCalls)
+	}
+
+	backend.storePreparedCalls = 0
+	if _, err := engine.Index(context.Background(), "", []*schema.Document{{ID: "doc", Content: "password=rag-secret"}}); !errors.Is(err, security.ErrSensitiveDerivedData) {
+		t.Fatalf("Index() error = %v, want ErrSensitiveDerivedData", err)
+	}
+	if backend.storePreparedCalls != 0 {
+		t.Fatal("sensitive document reached StorePrepared")
 	}
 }

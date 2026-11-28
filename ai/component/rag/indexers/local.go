@@ -68,7 +68,12 @@ func (idx *LocalIndexer) Store(ctx context.Context, docs []*schema.Document, opt
 	if err != nil {
 		return nil, err
 	}
-	docs = prepared
+	return idx.StorePrepared(ctx, prepared, opts...)
+}
+
+// StorePrepared writes documents that already passed PrepareDocuments.
+func (idx *LocalIndexer) StorePrepared(ctx context.Context, prepared PreparedDocuments, opts ...indexer.Option) ([]string, error) {
+	docs := prepared.docs
 	implOpts := indexer.GetImplSpecificOptions(&CommonIndexerOptions{}, opts...)
 	_ = implOpts.Namespace
 	effectiveTarget := idx.target

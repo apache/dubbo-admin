@@ -387,6 +387,9 @@ func TestRedactingHandlerSanitizesMessagesAttributesAndErrors(t *testing.T) {
 	logger.Info("JSON payload", "body", `{"password":"`+testSecret+`"}`)
 	logger.Warn("cookie header", "header", "Cookie: theme=dark; JSESSIONID="+testSecret)
 	logger.Info("YAML config", "body", `'password': '`+testSecret+`'`)
+	logger.Warn("quoted cookie", "header", `Cookie: "theme=dark"; JSESSIONID=`+testSecret)
+	logger.Info("YAML escaped quote", "body", `'password': 'ab''`+testSecret+`'`)
+	logger.Info("encoded JSON key", "body", `{"%70assword":"`+testSecret+`"}`)
 	if strings.Contains(output.String(), testSecret) {
 		t.Fatalf("log output leaked secret: %s", output.String())
 	}
@@ -399,10 +402,275 @@ func FuzzSanitizeTextNeverReturnsMatchedSecret(f *testing.F) {
 		if secret == "" || len(secret) > 4096 || strings.ContainsAny(secret, "\r\n;& ,") {
 			t.Skip()
 		}
-		input := key + "=" + secret
+		// The sanitizer keeps the key and separator and replaces the value
+		// with the marker. If the secret is a substring of either, a plain
+		// Contains check would report a false leak.
+		prefix := key + "="
+		if strings.Contains(prefix, secret) || strings.Contains(redactedValue, secret) {
+			t.Skip()
+		}
+		input := prefix + secret
 		result := DefaultSanitizer().SanitizeText(input)
 		if isSensitiveKey(key) && strings.Contains(result.Value, secret) {
 			t.Fatalf("sanitized value contains matched secret")
 		}
 	})
+}
+
+func TestSanitizeTextRedactsNestedEscapedJSON(t *testing.T) {
+	const secret = "mcp-secret-123"
+	const privateKey = "mcp-priv-key"
+	inputs := []string{
+		`{"tool_name":"mcp_get_config","result":[{"type":"text","text":"{\"password\":\"` + secret + `\",\"privateKey\":\"` + privateKey + `\",\"enabled\":true}"}]}`,
+		`{"data":"{\"\\u0070assword\":\"` + secret + `\"}"}`,
+	}
+	for _, input := range inputs {
+		result := DefaultSanitizer().SanitizeText(input)
+		if len(result.Findings) == 0 || strings.Contains(result.Value, secret) || strings.Contains(result.Value, privateKey) {
+			t.Fatalf("nested JSON secret leaked: value=%q findings=%#v", result.Value, result.Findings)
+		}
+		if !json.Valid([]byte(result.Value)) {
+			t.Fatalf("nested JSON sanitization produced invalid JSON: %q", result.Value)
+		}
+	}
+
+	if _, findings, err := NewKnowledgeIndexPolicy().Prepare(inputs[0], nil); !errors.Is(err, ErrSensitiveDerivedData) || len(findings) == 0 {
+		t.Fatalf("nested JSON was accepted by index policy: err=%v findings=%#v", err, findings)
+	}
+}
+
+func TestSanitizeStructuredRedactsNestedJSONStrings(t *testing.T) {
+	const secret = "structured-nested-secret"
+	input := map[string]any{"data": `{"\u0070assword":"` + secret + `"}`}
+	result := DefaultSanitizer().SanitizeStructured(input)
+	encoded, err := json.Marshal(result.Value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), secret) || len(result.Findings) == 0 {
+		t.Fatalf("structured nested JSON leaked: value=%s findings=%#v", encoded, result.Findings)
+	}
+}
+
+func TestSanitizeTextRedactsSensitiveKeySubtrees(t *testing.T) {
+	inputs := []string{
+		`{"password":["first-secret","second-secret"]}`,
+		`{"kubeconfig":{"clusters":[{"server":"https://10.0.0.1"}],"users":[{"token_val":"raw-cluster-secret"}]}}`,
+		`{"token":true}`,
+		`{"password":12345}`,
+	}
+	for _, input := range inputs {
+		result := DefaultSanitizer().SanitizeText(input)
+		if len(result.Findings) == 0 {
+			t.Fatalf("sensitive key was not reported: %q", input)
+		}
+		if !json.Valid([]byte(result.Value)) {
+			t.Fatalf("sensitive key redaction produced invalid JSON: input=%q value=%q", input, result.Value)
+		}
+	}
+	for _, leaked := range []string{"first-secret", "second-secret", "raw-cluster-secret", "12345"} {
+		for _, input := range inputs {
+			result := DefaultSanitizer().SanitizeText(input)
+			if strings.Contains(result.Value, leaked) {
+				t.Fatalf("sensitive subtree value %q leaked from %q: %q", leaked, input, result.Value)
+			}
+		}
+	}
+}
+
+func TestSanitizeTextAvoidsProseFalsePositives(t *testing.T) {
+	for _, input := range []string{"Pass: all tests passed", "Kubeconfig: path to cluster config"} {
+		result := DefaultSanitizer().SanitizeText(input)
+		if len(result.Findings) != 0 || result.Value != input {
+			t.Fatalf("ordinary prose was redacted: input=%q value=%q findings=%#v", input, result.Value, result.Findings)
+		}
+	}
+
+	input := "password=my-secret，帮我看看为什么连接超时？"
+	result := DefaultSanitizer().SanitizeText(input)
+	if !strings.Contains(result.Value, "帮我看看") || strings.Contains(result.Value, "my-secret") {
+		t.Fatalf("sentence after credential was not preserved: %q", result.Value)
+	}
+}
+
+func TestSanitizeTextRedactsPrefixedWeakKeys(t *testing.T) {
+	for _, input := range []string{"MYSQL_PWD=" + testSecret, "DB_PASS=" + testSecret, `'pwd': ` + testSecret, `"pass": ` + testSecret} {
+		result := DefaultSanitizer().SanitizeText(input)
+		if len(result.Findings) == 0 || strings.Contains(result.Value, testSecret) {
+			t.Fatalf("prefixed or quoted weak key leaked: input=%q value=%q findings=%#v", input, result.Value, result.Findings)
+		}
+	}
+	if !isSensitiveKey("cluster_kubeconfig") {
+		t.Fatal(`isSensitiveKey("cluster_kubeconfig") = false`)
+	}
+}
+
+func TestSanitizeTextPreservesLogfmtContext(t *testing.T) {
+	input := "password=" + testSecret + " host=10.0.0.1 reason=timeout"
+	result := DefaultSanitizer().SanitizeText(input)
+	if strings.Contains(result.Value, testSecret) {
+		t.Fatalf("logfmt credential leaked: %q", result.Value)
+	}
+	if !strings.Contains(result.Value, "host=10.0.0.1") || !strings.Contains(result.Value, "reason=timeout") {
+		t.Fatalf("logfmt context was swallowed: %q", result.Value)
+	}
+
+	// A later sensitive assignment on the same line must still be redacted.
+	input = "password=" + testSecret + " token=" + testSecret + " user=alice"
+	result = DefaultSanitizer().SanitizeText(input)
+	if strings.Contains(result.Value, testSecret) {
+		t.Fatalf("later logfmt credential leaked: %q", result.Value)
+	}
+	if !strings.Contains(result.Value, "user=alice") {
+		t.Fatalf("logfmt context was swallowed: %q", result.Value)
+	}
+}
+
+func TestSanitizeTextRescansAfterRedactionMarker(t *testing.T) {
+	input := "password=[REDACTED token=" + testSecret
+	result := DefaultSanitizer().SanitizeText(input)
+	if strings.Contains(result.Value, testSecret) {
+		t.Fatalf("assignment after a redaction marker was skipped: %q", result.Value)
+	}
+}
+
+func TestSanitizeTextEncodedCandidateBoundaries(t *testing.T) {
+	// 0xfb 0xff forces the base64 encoding to start with '+' and '/', which a
+	// word-boundary regex would skip.
+	raw := append([]byte{0xfb, 0xff}, []byte("password="+testSecret)...)
+	encoded := base64.StdEncoding.EncodeToString(raw)
+	if encoded[0] != '+' {
+		t.Fatalf("fixture does not start with '+': %q", encoded[:4])
+	}
+	result := DefaultSanitizer().SanitizeText(encoded)
+	if len(result.Findings) == 0 || strings.Contains(result.Value, encoded) {
+		t.Fatalf("leading '+' base64 candidate was not redacted: value=%q findings=%#v", result.Value, result.Findings)
+	}
+
+	table := strings.Repeat("+---+", 300)
+	kept := DefaultSanitizer().SanitizeText(table)
+	if len(kept.Findings) != 0 || kept.Value != table {
+		t.Fatalf("ASCII table rule was treated as a secret: findings=%#v", kept.Findings)
+	}
+}
+
+func TestSanitizeTextToleratesStrayPercentEscapes(t *testing.T) {
+	input := "CPU 80%, https://example.test/?pas%73word=" + testSecret
+	result := DefaultSanitizer().SanitizeText(input)
+	if len(result.Findings) == 0 || strings.Contains(result.Value, testSecret) {
+		t.Fatalf("encoded query credential leaked after stray '%%': value=%q findings=%#v", result.Value, result.Findings)
+	}
+}
+
+func TestSanitizeStructuredRedactsSensitiveMapKeys(t *testing.T) {
+	const key = "sk-abcdefghijklmnopqrstuvwxyz123456"
+	result := DefaultSanitizer().SanitizeStructured(map[string]any{key: "ok"})
+	encoded, err := json.Marshal(result.Value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Findings) == 0 || strings.Contains(string(encoded), key) {
+		t.Fatalf("sensitive map key leaked: value=%s findings=%#v", encoded, result.Findings)
+	}
+}
+
+func TestRedactingHandlerRedactsSensitiveGroupsAndURLAuditAttrs(t *testing.T) {
+	var output bytes.Buffer
+	handler := NewRedactingHandler(slog.NewTextHandler(&output, nil))
+	logger := slog.New(handler)
+
+	parsed, err := url.Parse("https://user:" + testSecret + "@example.test/path?token=" + testSecret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	logger.Info("url", "profile", parsed, "headers", http.Header{"X-Token": {testSecret}})
+	slog.New(handler).WithGroup("password").Info("grouped", "user", "alice", "note", testSecret)
+
+	if strings.Contains(output.String(), testSecret) {
+		t.Fatalf("log output leaked secret: %s", output.String())
+	}
+	if strings.Contains(output.String(), "alice") {
+		t.Fatalf("attribute under a sensitive group was not redacted: %s", output.String())
+	}
+}
+
+func TestSanitizeTextRedactsQuotedCookieAndAuthorizationValues(t *testing.T) {
+	for _, input := range []string{
+		`Cookie: "theme=dark"; JSESSIONID=` + testSecret,
+		`Set-Cookie: "a=b"; JSESSIONID=` + testSecret,
+		`Cookie="theme=dark"; JSESSIONID=` + testSecret,
+		`Authorization: "x"; JSESSIONID=` + testSecret,
+	} {
+		result := DefaultSanitizer().SanitizeText(input)
+		if len(result.Findings) == 0 || strings.Contains(result.Value, testSecret) {
+			t.Fatalf("quoted header credential leaked: input=%q value=%q findings=%#v", input, result.Value, result.Findings)
+		}
+	}
+}
+
+func TestSanitizeTextRedactsYAMLEscapedSingleQuotes(t *testing.T) {
+	for _, input := range []string{
+		`'password': 'ab''` + testSecret + `'`,
+		`'pass': 'ab''` + testSecret + `'`,
+	} {
+		result := DefaultSanitizer().SanitizeText(input)
+		if len(result.Findings) == 0 || strings.Contains(result.Value, testSecret) {
+			t.Fatalf("YAML escaped quote credential leaked: input=%q value=%q findings=%#v", input, result.Value, result.Findings)
+		}
+	}
+}
+
+func TestSanitizeTextRedactsPercentEncodedJSONKeys(t *testing.T) {
+	input := `{"%70assword":"` + testSecret + `"}`
+	result := DefaultSanitizer().SanitizeText(input)
+	if len(result.Findings) == 0 || strings.Contains(result.Value, testSecret) {
+		t.Fatalf("percent-encoded JSON key leaked: value=%q findings=%#v", result.Value, result.Findings)
+	}
+	if _, findings, err := NewKnowledgeIndexPolicy().Prepare(input, nil); !errors.Is(err, ErrSensitiveDerivedData) || len(findings) == 0 {
+		t.Fatalf("percent-encoded JSON key was accepted by index policy: err=%v findings=%#v", err, findings)
+	}
+}
+
+func TestSanitizeStructuredKeepsNonStringPassValues(t *testing.T) {
+	result := DefaultSanitizer().SanitizeStructured(map[string]any{"pass": true, "pwd": 3})
+	encoded, err := json.Marshal(result.Value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), redactedValue) || len(result.Findings) != 0 {
+		t.Fatalf("non-string pass/pwd field was redacted: value=%s findings=%#v", encoded, result.Findings)
+	}
+	result = DefaultSanitizer().SanitizeStructured(map[string]any{"pass": testSecret})
+	encoded, _ = json.Marshal(result.Value)
+	if strings.Contains(string(encoded), testSecret) || len(result.Findings) == 0 {
+		t.Fatalf("string pass field was not redacted: value=%s findings=%#v", encoded, result.Findings)
+	}
+}
+
+func TestSanitizeTextRedactsUnterminatedQuotedValues(t *testing.T) {
+	inputs := []string{
+		`pass="` + testSecret,
+		`password: '` + testSecret,
+		`password="prefix\"` + testSecret,
+		`pass="00`,
+	}
+	for _, input := range inputs {
+		t.Run(input, func(t *testing.T) {
+			result := DefaultSanitizer().SanitizeText(input)
+			if len(result.Findings) == 0 {
+				t.Fatalf("unterminated quoted value was not reported: %q", input)
+			}
+			if strings.Contains(result.Value, testSecret) || (input == `pass="00` && strings.Contains(result.Value, "00")) {
+				t.Fatalf("unterminated quoted value leaked: input=%q value=%q findings=%#v", input, result.Value, result.Findings)
+			}
+		})
+	}
+}
+
+func TestSanitizeTextUnterminatedFallbackKeepsTerminatedQuotes(t *testing.T) {
+	input := `password: '` + testSecret + `'`
+	result := DefaultSanitizer().SanitizeText(input)
+	if result.Value != `password: '[REDACTED]'` {
+		t.Fatalf("terminated quoted value was handled by the fallback: %q", result.Value)
+	}
 }
