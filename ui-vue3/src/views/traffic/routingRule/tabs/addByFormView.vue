@@ -154,6 +154,7 @@ import { isNil } from 'lodash'
 import { HTTP_STATUS } from '@/base/http/constants'
 import useRoutingRule from '../composables/useRoutingRule'
 import RoutingRuleList from '../components/RoutingRuleList.vue'
+import { conditionRuleName } from '../conditionRuleName'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -292,8 +293,7 @@ const addRoutingRule = async () => {
     group
   } = baseInfo
 
-  let ruleName =
-    ruleGranularity === 'service' ? `${objectOfAction}:${version}:${group}` : `${objectOfAction}` // application
+  const ruleName = conditionRuleName(ruleGranularity, objectOfAction, version, group)
 
   const data = {
     configVersion: 'v3.0',
