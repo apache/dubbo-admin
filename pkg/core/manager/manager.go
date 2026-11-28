@@ -56,6 +56,23 @@ type ResourceManager interface {
 	WriteOnlyResourceManager
 }
 
+// ConditionalResourceManager exposes optimistic-concurrency mutations for
+// resources whose store opts into compare-and-swap semantics. It is kept
+// separate from ResourceManager so existing read/write-only test doubles and
+// callers do not need to implement MCP-specific operations.
+type ConditionalResourceManager interface {
+	CompareAndSwap(r model.Resource, expectedVersion string) error
+	CompareAndDelete(r model.Resource, expectedVersion string) error
+}
+
+type CascadingResourceManager interface {
+	CompareAndDeleteWithDependents(r model.Resource, expectedVersion string, dependentKind model.ResourceKind, conditions []index.IndexCondition) error
+}
+
+type DependentResourceManager interface {
+	AddWithParent(parent model.Resource, child model.Resource) error
+}
+
 var _ ResourceManager = &resourcesManager{}
 
 type resourcesManager struct {
@@ -127,14 +144,21 @@ func (rm *resourcesManager) PageListByIndexes(
 }
 
 func (rm *resourcesManager) Add(r model.Resource) error {
-	if !governor.RuleResourceKinds.Contain(r.ResourceKind()) {
+	if governor.RuleResourceKinds.Contain(r.ResourceKind()) {
+		rs, err := rm.governorRouter.ResourceRoute(r)
+		if err != nil {
+			return err
+		}
+		return rs.CreateRule(r)
+	}
+	if !store.IsVersionedResourceKind(r.ResourceKind()) {
 		return bizerror.New(bizerror.InvalidArgument, "invalid resource kind")
 	}
-	rs, err := rm.governorRouter.ResourceRoute(r)
+	rs, err := rm.storeRouter.ResourceRoute(r)
 	if err != nil {
 		return err
 	}
-	return rs.CreateRule(r)
+	return rs.Add(r)
 }
 
 func (rm *resourcesManager) Update(r model.Resource) error {
@@ -175,4 +199,69 @@ func (rm *resourcesManager) DeleteByKey(rk model.ResourceKind, mesh string, key 
 		return fmt.Errorf("%s %s does not exist", rk, key)
 	}
 	return gov.DeleteRule(r)
+}
+
+func (rm *resourcesManager) CompareAndSwap(r model.Resource, expectedVersion string) error {
+	if !store.IsVersionedResourceKind(r.ResourceKind()) {
+		return bizerror.New(bizerror.InvalidArgument, "resource does not support conditional mutations")
+	}
+	rs, err := rm.storeRouter.ResourceRoute(r)
+	if err != nil {
+		return err
+	}
+	conditional, ok := rs.(store.ConditionalResourceStore)
+	if !ok {
+		return fmt.Errorf("resource store for %s does not support conditional mutations", r.ResourceKind())
+	}
+	return conditional.CompareAndSwap(r, expectedVersion)
+}
+
+func (rm *resourcesManager) CompareAndDelete(r model.Resource, expectedVersion string) error {
+	if !store.IsVersionedResourceKind(r.ResourceKind()) {
+		return bizerror.New(bizerror.InvalidArgument, "resource does not support conditional mutations")
+	}
+	rs, err := rm.storeRouter.ResourceRoute(r)
+	if err != nil {
+		return err
+	}
+	conditional, ok := rs.(store.ConditionalResourceStore)
+	if !ok {
+		return fmt.Errorf("resource store for %s does not support conditional mutations", r.ResourceKind())
+	}
+	return conditional.CompareAndDelete(r, expectedVersion)
+}
+
+func (rm *resourcesManager) CompareAndDeleteWithDependents(r model.Resource, expectedVersion string, dependentKind model.ResourceKind, conditions []index.IndexCondition) error {
+	if !store.IsVersionedResourceKind(r.ResourceKind()) || !store.IsVersionedResourceKind(dependentKind) {
+		return bizerror.New(bizerror.InvalidArgument, "resources do not support cascading conditional mutations")
+	}
+	parent, err := rm.storeRouter.ResourceRoute(r)
+	if err != nil {
+		return err
+	}
+	dependents, err := rm.storeRouter.ResourceKindRoute(dependentKind)
+	if err != nil {
+		return err
+	}
+	cascading, ok := parent.(store.CascadingResourceStore)
+	if !ok {
+		return fmt.Errorf("resource store for %s does not support cascading mutations", r.ResourceKind())
+	}
+	return cascading.CompareAndDeleteWithDependents(r, expectedVersion, dependents, conditions)
+}
+
+func (rm *resourcesManager) AddWithParent(parent model.Resource, child model.Resource) error {
+	parentStore, err := rm.storeRouter.ResourceRoute(parent)
+	if err != nil {
+		return err
+	}
+	childStore, err := rm.storeRouter.ResourceRoute(child)
+	if err != nil {
+		return err
+	}
+	dependent, ok := childStore.(store.DependentResourceStore)
+	if !ok {
+		return fmt.Errorf("resource store for %s does not support dependent creation", child.ResourceKind())
+	}
+	return dependent.AddWithParent(parent, parentStore, child)
 }

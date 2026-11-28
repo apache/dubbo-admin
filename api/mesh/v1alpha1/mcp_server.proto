@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package dubbo.mesh.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
+
+import "api/mesh/options.proto";
+import "google/protobuf/struct.proto";
+
+message MCPServer {
+  option (dubbo.mesh.resource).name = "MCPServer";
+  option (dubbo.mesh.resource).plural_name = "MCPServers";
+  option (dubbo.mesh.resource).package = "mesh";
+  option (dubbo.mesh.resource).is_experimental = true;
+
+  MCPServerSnapshot draft = 1;
+  MCPPublishedSnapshot published = 2;
+}
+
+message MCPServerSnapshot {
+  string display_name = 1;
+  string description = 2;
+  repeated string required_oauth_scopes = 3;
+  repeated MCPToolBinding tools = 4;
+}
+
+message MCPPublishedSnapshot {
+  int64 revision = 1;
+  string published_at = 2;
+  MCPServerSnapshot snapshot = 3;
+}
+
+message MCPToolBinding {
+  string tool_name = 1;
+  string description = 2;
+  MCPOperation operation = 3;
+  repeated MCPParameterBinding parameters = 4;
+  google.protobuf.Struct input_schema = 5;
+  string input_fingerprint = 6;
+  string output_fingerprint = 7;
+  repeated MCPTypeDefinition related_types = 8;
+  string return_type = 9;
+  optional bool read_only_hint = 10;
+  optional bool destructive_hint = 11;
+  optional bool idempotent_hint = 12;
+  bool timeout_enabled = 13;
+  int64 timeout_millis = 14;
+  // Stable backend-generated identifier. The tool name remains user-editable.
+  string tool_id = 15;
+}
+
+message MCPOperation {
+  string service_name = 1;
+  string group = 2;
+  string version = 3;
+  string method_name = 4;
+  repeated string parameter_types = 5;
+  string protocol = 6;
+}
+
+message MCPParameterBinding {
+  int32 position = 1;
+  string alias = 2;
+  string description = 3;
+}
+
+message MCPTypeDefinition {
+  string type = 1;
+  repeated string items = 2;
+  repeated string enums = 3;
+  map<string, string> properties = 4;
+}
+
+message MCPCredential {
+  option (dubbo.mesh.resource).name = "MCPCredential";
+  option (dubbo.mesh.resource).plural_name = "MCPCredentials";
+  option (dubbo.mesh.resource).package = "mesh";
+  option (dubbo.mesh.resource).is_experimental = true;
+
+  string server_id = 1;
+  string display_name = 2;
+  string secret_hash = 3;
+  string status = 4;
+  string expires_at = 5;
+  string created_at = 6;
+}

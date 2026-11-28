@@ -42,6 +42,8 @@ type Informer interface {
 	// Run starts and runs the shared informer, returning after it stops.
 	// The informer will be stopped when stopCh is closed.
 	Run(stopCh <-chan struct{})
+	HasSynced() bool
+	SetWatchErrorHandler(handler cache.WatchErrorHandler) error
 	// IsStopped reports whether the informer has already been stopped.
 	// Adding event handlers to already stopped informers is not possible.
 	// An informer already stopped will never be started again.
@@ -166,6 +168,9 @@ func (s *informer) SetObjectType(objectType runtime.Object) error {
 
 func (s *informer) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
+	if closer, ok := s.listerWatcher.(interface{ Close() }); ok {
+		defer closer.Close()
+	}
 	defer func() {
 		s.startedLock.Lock()
 		defer s.startedLock.Unlock()
@@ -211,6 +216,15 @@ func (s *informer) HasStarted() bool {
 	s.startedLock.Lock()
 	defer s.startedLock.Unlock()
 	return s.started
+}
+
+func (s *informer) HasSynced() bool {
+	s.startedLock.Lock()
+	controller := s.controller
+	s.startedLock.Unlock()
+	// DeltaFIFO holds its lock through Process, so this also waits for the
+	// current synchronous normalization without reversing its lock order.
+	return controller != nil && controller.HasSynced()
 }
 
 // ShouldResync if the informer's resyncPeriod is non-zero, resync will be periodically triggered.
