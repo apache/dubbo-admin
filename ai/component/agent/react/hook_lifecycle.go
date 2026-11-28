@@ -22,6 +22,7 @@ import (
 	"dubbo-admin-ai/component/hooks"
 	toolEngine "dubbo-admin-ai/component/tools/engine"
 	"dubbo-admin-ai/runtime"
+	"dubbo-admin-ai/security"
 	"errors"
 	"fmt"
 	"github.com/firebase/genkit/go/ai"
@@ -104,7 +105,8 @@ func executeModelCall(
 	ctx = emitHook(s.hookManager, ctx, startState)
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			err = fmt.Errorf("model call panicked: %v", recovered)
+			runtime.GetLogger().Error("model call panicked", "panic_type", fmt.Sprintf("%T", recovered))
+			err = errors.New("model call panicked")
 			emitModelCallEnd(ctx, s, startedAt, resp, err)
 			panic(recovered)
 		}
@@ -185,7 +187,8 @@ func (ra *ReActAgent) executeToolCall(ctx context.Context, s *interactionTrace, 
 	ctx = emitHook(s.hookManager, ctx, startState)
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			callErr = fmt.Errorf("tool call panicked: %v", recovered)
+			runtime.GetLogger().Error("tool call panicked", "tool", security.DefaultSanitizer().SanitizeText(req.Name).Value, "panic_type", fmt.Sprintf("%T", recovered))
+			callErr = errors.New("tool call panicked")
 			emitToolCallEnd(ctx, s, req, startedAt, output, callErr)
 			panic(recovered)
 		}
@@ -197,10 +200,10 @@ func (ra *ReActAgent) executeToolCall(ctx context.Context, s *interactionTrace, 
 		// Degrade instead of aborting: record the failure as a tool output so the
 		// next iteration can still compose an answer from the remaining context.
 		runtime.GetLogger().Warn("tool call failed, continuing with degraded context",
-			"tool", req.Name, "error", callErr)
+			"tool", security.DefaultSanitizer().SanitizeText(req.Name).Value, "error_type", hooks.ErrorType(callErr))
 		output = toolEngine.ToolOutput{
 			ToolName: req.Name,
-			Summary:  fmt.Sprintf("tool %q failed: %v", req.Name, callErr),
+			Summary:  fmt.Sprintf("tool %q failed (%s)", req.Name, hooks.ErrorType(callErr)),
 		}
 	}
 	return output, callErr

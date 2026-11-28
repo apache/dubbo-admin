@@ -22,10 +22,12 @@ import (
 	"fmt"
 	"log/slog"
 
+	"dubbo-admin-ai/component/rag/indexers"
 	"dubbo-admin-ai/component/rag/loaders"
 	"dubbo-admin-ai/component/rag/mergers"
 	"dubbo-admin-ai/component/rag/query"
 	"dubbo-admin-ai/component/rag/rerankers"
+	"dubbo-admin-ai/security"
 
 	"github.com/cloudwego/eino/components/document"
 	"github.com/cloudwego/eino/components/indexer"
@@ -65,10 +67,10 @@ type RAG struct {
 
 // RetrievalPath represents a single retrieval path with its configuration.
 type RetrievalPath struct {
-	Label    string              // Path identifier (e.g., "dense", "sparse")
+	Label     string              // Path identifier (e.g., "dense", "sparse")
 	Retriever retriever.Retriever // The retriever for this path
-	TopK     int                 // TopK for this path (0 = use default)
-	Weight   float64             // Weight for weighted fusion (default: 1.0)
+	TopK      int                 // TopK for this path (0 = use default)
+	Weight    float64             // Weight for weighted fusion (default: 1.0)
 }
 
 // NewRAG creates a new RAG instance with the given components.
@@ -125,7 +127,7 @@ func (r *RAG) Split(ctx context.Context, docs []*schema.Document) ([]*schema.Doc
 	if err != nil {
 		if r.logger != nil {
 			r.logger.ErrorContext(ctx, "RAG.Split: ERROR",
-				"error", err,
+				"error_type", fmt.Sprintf("%T", err),
 			)
 		}
 		return nil, err
@@ -151,23 +153,34 @@ func (r *RAG) Index(ctx context.Context, namespace string, docs []*schema.Docume
 		err := fmt.Errorf("indexer is nil")
 		if r.logger != nil {
 			r.logger.ErrorContext(ctx, "RAG.Index: ERROR",
-				"error", err,
+				"error_type", fmt.Sprintf("%T", err),
 			)
 		}
 		return nil, err
 	}
+	all := opts
+	if namespace != "" {
+		all = append([]indexer.Option{WithIndexerNamespace(namespace)}, opts...)
+	}
+	prepared, err := indexers.PrepareDocuments(docs)
+	if err != nil {
+		if r.logger != nil {
+			r.logger.WarnContext(ctx, "RAG.Index: rejected sensitive document", "error_type", fmt.Sprintf("%T", err))
+		}
+		return nil, err
+	}
 	var ids []string
-	var err error
-	if namespace == "" {
-		ids, err = r.Indexer.Store(ctx, docs, opts...)
+	if preparedIndexer, ok := r.Indexer.(indexers.PreparedIndexer); ok {
+		// The concrete indexer separates validation from the backend write,
+		// so the documents are not scanned a second time.
+		ids, err = preparedIndexer.StorePrepared(ctx, prepared, all...)
 	} else {
-		all := append([]indexer.Option{WithIndexerNamespace(namespace)}, opts...)
-		ids, err = r.Indexer.Store(ctx, docs, all...)
+		ids, err = r.Indexer.Store(ctx, prepared.Documents(), all...)
 	}
 	if err != nil {
 		if r.logger != nil {
 			r.logger.ErrorContext(ctx, "RAG.Index: ERROR",
-				"error", err,
+				"error_type", fmt.Sprintf("%T", err),
 			)
 		}
 		return nil, err
@@ -196,7 +209,6 @@ func (r *RAG) RetrieveV2(ctx context.Context, req *RetrieveRequest) (*RetrieveRe
 
 	if r.logger != nil {
 		r.logger.InfoContext(ctx, "RAG.RetrieveV2: START",
-			"query", req.Query,
 			"top_k", req.TopK,
 			"reranker_enabled", r.Reranker != nil,
 		)
@@ -207,8 +219,7 @@ func (r *RAG) RetrieveV2(ctx context.Context, req *RetrieveRequest) (*RetrieveRe
 	if err != nil {
 		if r.logger != nil {
 			r.logger.ErrorContext(ctx, "RAG.RetrieveV2: query processing ERROR",
-				"error", err,
-				"query", req.Query,
+				"error_type", fmt.Sprintf("%T", err),
 			)
 		}
 		return nil, fmt.Errorf("query processing failed: %w", err)
@@ -219,8 +230,7 @@ func (r *RAG) RetrieveV2(ctx context.Context, req *RetrieveRequest) (*RetrieveRe
 	if err != nil {
 		if r.logger != nil {
 			r.logger.ErrorContext(ctx, "RAG.RetrieveV2: retrieval ERROR",
-				"error", err,
-				"query", req.Query,
+				"error_type", fmt.Sprintf("%T", err),
 			)
 		}
 		return nil, fmt.Errorf("retrieval failed: %w", err)
@@ -232,7 +242,7 @@ func (r *RAG) RetrieveV2(ctx context.Context, req *RetrieveRequest) (*RetrieveRe
 		if err != nil {
 			if r.logger != nil {
 				r.logger.WarnContext(ctx, "RAG.RetrieveV2: rerank failed, returning unranked results",
-					"error", err,
+					"error_type", fmt.Sprintf("%T", err),
 					"results_count", len(rawResults),
 				)
 			}
@@ -247,7 +257,6 @@ func (r *RAG) RetrieveV2(ctx context.Context, req *RetrieveRequest) (*RetrieveRe
 
 	if r.logger != nil {
 		r.logger.InfoContext(ctx, "RAG.RetrieveV2: END",
-			"query", req.Query,
 			"results_count", len(rawResults),
 			"top_k", req.TopK,
 		)
@@ -265,7 +274,6 @@ func (r *RAG) processQuery(ctx context.Context, req *RetrieveRequest) (*query.Re
 	queryStr := req.Query
 	if r.logger != nil {
 		r.logger.InfoContext(ctx, "RAG.processQuery: START",
-			"original_query", queryStr,
 			"top_k", req.TopK,
 		)
 	}
@@ -277,7 +285,7 @@ func (r *RAG) processQuery(ctx context.Context, req *RetrieveRequest) (*query.Re
 		if err != nil {
 			if r.logger != nil {
 				r.logger.ErrorContext(ctx, "RAG.processQuery: ERROR",
-					"error", err,
+					"error_type", fmt.Sprintf("%T", err),
 				)
 			}
 			return nil, err
@@ -288,8 +296,6 @@ func (r *RAG) processQuery(ctx context.Context, req *RetrieveRequest) (*query.Re
 	}
 	if r.logger != nil {
 		r.logger.InfoContext(ctx, "RAG.processQuery: END",
-			"original_query", queryStr,
-			"processed_query", result.Query,
 			"queries_count", len(result.Queries),
 			"intent", result.Intent,
 			"modified", result.Modified,
@@ -334,7 +340,7 @@ func (r *RAG) retrieveFromPaths(ctx context.Context, queries []string, req *Retr
 	}
 	if r.logger != nil {
 		r.logger.InfoContext(ctx, "RAG.retrieveFromPaths: START",
-			"queries", queries,
+			"queries_count", len(queries),
 			"top_k", topK,
 			"paths_count", len(r.RetrievalPaths),
 		)
@@ -359,12 +365,12 @@ func (r *RAG) retrieveFromPaths(ctx context.Context, queries []string, req *Retr
 		}
 
 		// Retrieve for each query (use first query for simplicity)
-		docs, err := path.Retriever.Retrieve(ctx, queries[0], retriever.WithTopK(pathTopK))
+		docs, err := path.Retriever.Retrieve(ctx, sanitizedModelInput(queries[0]), retriever.WithTopK(pathTopK))
 		if err != nil {
 			if r.logger != nil {
 				r.logger.WarnContext(ctx, "RAG.retrieveFromPaths: path retrieval failed",
 					"path_label", path.Label,
-					"error", err,
+					"error_type", fmt.Sprintf("%T", err),
 				)
 			}
 			// Log and continue with other paths
@@ -393,7 +399,7 @@ func (r *RAG) retrieveFromPaths(ctx context.Context, queries []string, req *Retr
 		if err != nil {
 			if r.logger != nil {
 				r.logger.ErrorContext(ctx, "RAG.retrieveFromPaths: merge ERROR",
-					"error", err,
+					"error_type", fmt.Sprintf("%T", err),
 				)
 			}
 			return nil, err
@@ -417,7 +423,7 @@ func (r *RAG) retrieveFromPaths(ctx context.Context, queries []string, req *Retr
 
 	if r.logger != nil {
 		r.logger.InfoContext(ctx, "RAG.retrieveFromPaths: END",
-			"queries", queries,
+			"queries_count", len(queries),
 			"top_k", topK,
 			"final_results", len(merged),
 		)
@@ -434,23 +440,20 @@ func (r *RAG) retrieveSingle(ctx context.Context, query string, req *RetrieveReq
 	}
 	if r.logger != nil {
 		r.logger.InfoContext(ctx, "RAG.retrieveSingle: START",
-			"query", query,
 			"top_k", topK,
 		)
 	}
-	docs, err := r.Retriever.Retrieve(ctx, query, retriever.WithTopK(topK))
+	docs, err := r.Retriever.Retrieve(ctx, sanitizedModelInput(query), retriever.WithTopK(topK))
 	if err != nil {
 		if r.logger != nil {
 			r.logger.ErrorContext(ctx, "RAG.retrieveSingle: ERROR",
-				"error", err,
-				"query", query,
+				"error_type", fmt.Sprintf("%T", err),
 			)
 		}
 		return nil, err
 	}
 	if r.logger != nil {
 		r.logger.InfoContext(ctx, "RAG.retrieveSingle: END",
-			"query", query,
 			"top_k", topK,
 			"results_count", len(docs),
 		)
@@ -483,17 +486,15 @@ func (r *RAG) concatenateResults(paths []*mergers.MultiPathResult) []*schema.Doc
 func (r *RAG) rerank(ctx context.Context, query string, docs []*schema.Document, topK int) ([]*schema.Document, error) {
 	if r.logger != nil {
 		r.logger.InfoContext(ctx, "RAG.rerank: START",
-			"query", query,
 			"input_docs", len(docs),
 			"top_k", topK,
 		)
 	}
-	reranked, err := r.Reranker.Rerank(ctx, query, docs, rerankers.WithTopN(topK))
+	reranked, err := r.Reranker.Rerank(ctx, sanitizedModelInput(query), sanitizedDocuments(docs), rerankers.WithTopN(topK))
 	if err != nil {
 		if r.logger != nil {
 			r.logger.ErrorContext(ctx, "RAG.rerank: ERROR",
-				"error", err,
-				"query", query,
+				"error_type", fmt.Sprintf("%T", err),
 			)
 		}
 		return nil, err
@@ -506,8 +507,8 @@ func (r *RAG) rerank(ctx context.Context, query string, docs []*schema.Document,
 		if r.Index >= 0 && r.Index < len(docs) {
 			original := docs[r.Index]
 			doc := &schema.Document{
-				ID:      original.ID,
-				Content: r.Content,
+				ID:       original.ID,
+				Content:  r.Content,
 				MetaData: make(map[string]any),
 			}
 			// Copy original metadata
@@ -531,7 +532,6 @@ func (r *RAG) rerank(ctx context.Context, query string, docs []*schema.Document,
 			}
 		}
 		r.logger.InfoContext(ctx, "RAG.rerank: END",
-			"query", query,
 			"input_docs", len(docs),
 			"output_docs", len(result),
 			"top_k", topK,
@@ -580,9 +580,9 @@ func (r *RAG) Retrieve(ctx context.Context, namespace string, queries []string, 
 		}
 
 		// Retrieve
-		docs, err := r.Retriever.Retrieve(ctx, processedQuery, retrieveOpts...)
+		docs, err := r.Retriever.Retrieve(ctx, sanitizedModelInput(processedQuery), retrieveOpts...)
 		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve for query %q: %w", originalQuery, err)
+			return nil, fmt.Errorf("failed to retrieve query: %w", err)
 		}
 
 		// Convert to results
@@ -621,7 +621,7 @@ func (r *RAG) applyReranker(ctx context.Context, query string, results []*Retrie
 		})
 	}
 
-	reranked, err := r.Reranker.Rerank(ctx, query, docs, opts...)
+	reranked, err := r.Reranker.Rerank(ctx, sanitizedModelInput(query), sanitizedDocuments(docs), opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -719,4 +719,40 @@ func buildRetrievalMeta(docs []*schema.Document) map[string]any {
 	meta["source_counts"] = sources
 
 	return meta
+}
+
+// sanitizedModelInput returns the ephemeral provider view of a query. The RAG
+// orchestration layer applies it before every retriever and reranker call so
+// custom provider implementations receive the same boundary as the built-in
+// ones, which also sanitize defensively.
+func sanitizedModelInput(value string) string {
+	return security.DefaultSanitizer().ModelInput(value)
+}
+
+// sanitizedDocuments returns ephemeral copies of provider inputs. The canonical
+// documents are never modified.
+func sanitizedDocuments(docs []*schema.Document) []*schema.Document {
+	clean := make([]*schema.Document, len(docs))
+	for i, doc := range docs {
+		if doc == nil {
+			continue
+		}
+		clone := *doc
+		clone.Content = security.DefaultSanitizer().ModelInput(doc.Content)
+		clone.MetaData = sanitizedMetadata(doc.MetaData)
+		clean[i] = &clone
+	}
+	return clean
+}
+
+func sanitizedMetadata(metadata map[string]any) map[string]any {
+	if metadata == nil {
+		return nil
+	}
+	result := security.DefaultSanitizer().SanitizeStructured(metadata)
+	clean, ok := result.Value.(map[string]any)
+	if !ok {
+		return nil
+	}
+	return clean
 }

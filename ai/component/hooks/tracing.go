@@ -19,18 +19,31 @@ package hooks
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
+
+	"dubbo-admin-ai/security"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
-const truncatedContentLimit = 4096
+// Span names and attributes must stay metadata-only and bounded even when a
+// model supplies the value (for example a tool name).
+const maxSpanStringLen = 128
+
+func safeSpanString(value string) string {
+	if value == "" {
+		return ""
+	}
+	value = security.DefaultSanitizer().SanitizeText(value).Value
+	if runes := []rune(value); len(runes) > maxSpanStringLen {
+		return string(runes[:maxSpanStringLen]) + "..."
+	}
+	return value
+}
 
 func TraceIDFromContext(ctx context.Context) string {
 	spanContext := trace.SpanContextFromContext(ctx)
@@ -43,14 +56,14 @@ func TraceIDFromContext(ctx context.Context) string {
 // NewTracingRegistration returns a complete context-deriving tracing
 // registration. Its lifecycle events are intentionally not configurable so a
 // partial registration cannot leak a span or end an unrelated parent span.
-func NewTracingRegistration(tracer trace.Tracer, captureContent string) Registration {
+func NewTracingRegistration(tracer trace.Tracer, _ string) Registration {
 	return Registration{
 		Events:         AllEvents(),
 		Tools:          []string{AllTools},
-		CaptureContent: captureContent != CaptureNone,
+		CaptureContent: false,
 		DerivesContext: true,
 		lazyContent:    true,
-		Hook:           newTracingHook(tracer, captureContent),
+		Hook:           newTracingHook(tracer, CaptureNone),
 	}
 }
 
@@ -58,25 +71,18 @@ func newTracingHook(tracer trace.Tracer, captureContent string) Hook {
 	return func(ctx context.Context, state State) context.Context {
 		if eventStartsSpan(state.Event) {
 			attrs := stateAttributes(state)
-			var span trace.Span
-			ctx, span = tracer.Start(ctx, spanName(state),
+			ctx, _ = tracer.Start(ctx, spanName(state),
 				trace.WithSpanKind(spanKind(state.Event)),
 				trace.WithAttributes(attrs...),
 			)
-			if span.IsRecording() {
-				span.SetAttributes(contentAttributes(state, captureContent, true)...)
-			}
 			return ctx
 		}
 
 		span := trace.SpanFromContext(ctx)
 		span.SetAttributes(stateAttributes(state)...)
-		if span.IsRecording() {
-			span.SetAttributes(contentAttributes(state, captureContent, false)...)
-		}
 		if state.Error != "" {
-			span.RecordError(errors.New(state.Error))
-			span.SetStatus(codes.Error, state.Error)
+			span.RecordError(errors.New("operation failed"))
+			span.SetStatus(codes.Error, "operation failed")
 		}
 		switch state.Event {
 		case EventInteractionEnd, EventIterationEnd, EventStageEnd, EventModelCallEnd, EventToolCallEnd:
@@ -104,11 +110,11 @@ func spanName(state State) string {
 	case EventIterationStart:
 		return fmt.Sprintf("agent.iteration %d", state.Iteration)
 	case EventStageStart:
-		return "agent.stage " + state.Stage
+		return "agent.stage " + safeSpanString(state.Stage)
 	case EventModelCallStart:
-		return "chat " + modelName(state.Model)
+		return "chat " + safeSpanString(modelName(state.Model))
 	case EventToolCallStart:
-		return "execute_tool " + state.ToolName
+		return "execute_tool " + safeSpanString(state.ToolName)
 	default:
 		return string(state.Event)
 	}
@@ -136,7 +142,7 @@ func stateAttributes(state State) []attribute.KeyValue {
 		attrs = append(attrs, attribute.Int("agent.iteration", state.Iteration))
 	}
 	if state.Stage != "" {
-		attrs = append(attrs, attribute.String("agent.stage", state.Stage))
+		attrs = append(attrs, attribute.String("agent.stage", safeSpanString(state.Stage)))
 	}
 	switch state.Event {
 	case EventInteractionStart, EventInteractionEnd:
@@ -144,20 +150,20 @@ func stateAttributes(state State) []attribute.KeyValue {
 	case EventModelCallStart, EventModelCallEnd:
 		attrs = append(attrs, attribute.String("gen_ai.operation.name", "chat"))
 		if state.Model != "" {
-			attrs = append(attrs, attribute.String("gen_ai.request.model", modelName(state.Model)))
+			attrs = append(attrs, attribute.String("gen_ai.request.model", safeSpanString(modelName(state.Model))))
 		}
 		if provider := providerName(state.Model); provider != "" {
-			attrs = append(attrs, attribute.String("gen_ai.provider.name", provider))
+			attrs = append(attrs, attribute.String("gen_ai.provider.name", safeSpanString(provider)))
 		}
 	case EventToolCallStart, EventToolCallEnd:
 		attrs = append(attrs, attribute.String("gen_ai.operation.name", "execute_tool"))
 	}
 	if state.Event.toolCall() {
 		if state.ToolName != "" {
-			attrs = append(attrs, attribute.String("gen_ai.tool.name", state.ToolName))
+			attrs = append(attrs, attribute.String("gen_ai.tool.name", safeSpanString(state.ToolName)))
 		}
 		if state.ToolCallID != "" {
-			attrs = append(attrs, attribute.String("gen_ai.tool.call.id", state.ToolCallID))
+			attrs = append(attrs, attribute.String("gen_ai.tool.call.id", safeSpanString(state.ToolCallID)))
 		}
 	}
 	if state.Degraded {
@@ -167,7 +173,7 @@ func stateAttributes(state State) []attribute.KeyValue {
 		attrs = append(attrs, attribute.Bool("agent.fallback.used", true))
 	}
 	if state.FallbackReason != "" {
-		attrs = append(attrs, attribute.String("agent.fallback.reason", state.FallbackReason))
+		attrs = append(attrs, attribute.String("agent.fallback.reason", safeSpanString(state.FallbackReason)))
 	}
 	if state.ErrorType != "" {
 		attrs = append(attrs, attribute.String("error.type", state.ErrorType))
@@ -182,79 +188,6 @@ func stateAttributes(state State) []attribute.KeyValue {
 		attrs = append(attrs, attribute.Int("agent.usage.total_tokens", state.TotalTokens))
 	}
 	return attrs
-}
-
-func contentAttributes(state State, policy string, input bool) []attribute.KeyValue {
-	if policy == CaptureNone {
-		return nil
-	}
-	value, key := semanticContent(state, input)
-	if value == "" {
-		return nil
-	}
-
-	text := value
-	if policy == CaptureTruncated && len(text) > truncatedContentLimit {
-		text = truncateSemanticJSON(text, key)
-	}
-	return []attribute.KeyValue{attribute.String(key, text)}
-}
-
-func truncateSemanticJSON(text, key string) string {
-	var value any
-	if err := json.Unmarshal([]byte(text), &value); err != nil {
-		return strconv.Quote(strings.ToValidUTF8(text[:truncatedContentLimit], "") + "…")
-	}
-	value = truncateJSONStrings(value, 512)
-	encoded, err := json.Marshal(value)
-	if err == nil && len(encoded) <= truncatedContentLimit {
-		return string(encoded)
-	}
-	if key == "gen_ai.input.messages" || key == "gen_ai.output.messages" {
-		return "[]"
-	}
-	return "{}"
-}
-
-func truncateJSONStrings(value any, limit int) any {
-	switch typed := value.(type) {
-	case string:
-		if len(typed) <= limit {
-			return typed
-		}
-		return strings.ToValidUTF8(typed[:limit], "") + "…"
-	case []any:
-		for i := range typed {
-			typed[i] = truncateJSONStrings(typed[i], limit)
-		}
-	case map[string]any:
-		for key := range typed {
-			typed[key] = truncateJSONStrings(typed[key], limit)
-		}
-	}
-	return value
-}
-
-func semanticContent(state State, input bool) (string, string) {
-	switch state.Event {
-	case EventModelCallStart:
-		if input {
-			return state.snapshotInputContent(), "gen_ai.input.messages"
-		}
-	case EventModelCallEnd:
-		if !input {
-			return state.snapshotOutputContent(), "gen_ai.output.messages"
-		}
-	case EventToolCallStart:
-		if input {
-			return state.snapshotInputContent(), "gen_ai.tool.call.arguments"
-		}
-	case EventToolCallEnd:
-		if !input && state.Error == "" && !state.Degraded {
-			return state.snapshotOutputContent(), "gen_ai.tool.call.result"
-		}
-	}
-	return "", ""
 }
 
 func providerName(model string) string {

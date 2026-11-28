@@ -97,12 +97,10 @@ func (s TracingSpec) validate() error {
 	default:
 		return fmt.Errorf("tracing protocol must be %q or %q", ProtocolGRPC, ProtocolHTTP)
 	}
-	switch s.CaptureContent {
-	case CaptureNone, CaptureTruncated, CaptureFull:
-		return nil
-	default:
-		return fmt.Errorf("tracing capture_content must be one of %q, %q, or %q", CaptureNone, CaptureTruncated, CaptureFull)
+	if s.CaptureContent != CaptureNone {
+		return fmt.Errorf("tracing capture_content must be %q; content diagnostics require a separate controlled channel", CaptureNone)
 	}
+	return nil
 }
 
 func (c *Component) Init(rt *runtime.Runtime) error {
@@ -233,7 +231,10 @@ func newLoggingHook(logger *slog.Logger, level slog.Level) Hook {
 			attrs = append(attrs, "fallback_reason", state.FallbackReason)
 		}
 		if state.Error != "" {
-			attrs = append(attrs, "error", state.Error)
+			attrs = append(attrs, "error_present", true)
+		}
+		if state.ErrorType != "" {
+			attrs = append(attrs, "error_type", state.ErrorType)
 		}
 		logger.Log(ctx, level, "Agent hook event", attrs...)
 		return ctx

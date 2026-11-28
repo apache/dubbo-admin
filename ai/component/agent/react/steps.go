@@ -20,6 +20,7 @@ package react
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -109,7 +110,8 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 	})
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			err = fmt.Errorf("iteration %d panicked: %v", s.Iteration, recovered)
+			runtime.GetLogger().Error("iteration panicked", "iteration", s.Iteration, "panic_type", fmt.Sprintf("%T", recovered))
+			err = errors.New("iteration panicked")
 			emitIterationEnd(s, iterationCtx, iterationStartedAt, err)
 			panic(recovered)
 		}
@@ -130,7 +132,8 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 	})
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			err = fmt.Errorf("stage %s panicked: %v", s.Stage, recovered)
+			runtime.GetLogger().Error("stage panicked", "stage", s.Stage, "panic_type", fmt.Sprintf("%T", recovered))
+			err = errors.New("stage panicked")
 			emitStageEnd(s, ctx, stageStartedAt, err)
 			panic(recovered)
 		}
@@ -146,16 +149,20 @@ func (ra *ReActAgent) runIteration(ctx context.Context, chans *agent.Channels, h
 	} else {
 		messages = history.WindowMemory(s.Session)
 	}
+	modelMessages, err := modelInputView(messages)
+	if err != nil {
+		return false, err
+	}
 	// Model and tool deadlines are independent; cancellation still propagates.
 	resp, err := func() (*ai.ModelResponse, error) {
 		lctx, cancel := withTimeout(ctx, ra.callTimeout)
 		defer cancel()
-		return executeModelCall(lctx, s, prompt, messages, func(resp *ai.ModelResponse, err error) {
+		return executeModelCall(lctx, s, prompt, modelMessages, func(resp *ai.ModelResponse, err error) {
 			if err == nil && forceAnswer && resp.Text() == "" {
 				s.FallbackUsed = true
 				s.FallbackReason = hooks.FallbackReasonEmptyResponse
 			}
-		}, ai.WithMessages(messages...))
+		}, ai.WithMessages(modelMessages...))
 	}()
 	if err != nil {
 		return false, fmt.Errorf("failed to execute react prompt: %w", err)

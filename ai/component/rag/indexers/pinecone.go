@@ -52,6 +52,16 @@ func NewPineconeIndexer(g *genkit.Genkit, embedderModel string, targetIndex stri
 }
 
 func (idx *PineconeIndexer) Store(ctx context.Context, docs []*schema.Document, opts ...indexer.Option) ([]string, error) {
+	prepared, err := PrepareDocuments(docs)
+	if err != nil {
+		return nil, err
+	}
+	return idx.StorePrepared(ctx, prepared, opts...)
+}
+
+// StorePrepared writes documents that already passed PrepareDocuments.
+func (idx *PineconeIndexer) StorePrepared(ctx context.Context, prepared PreparedDocuments, opts ...indexer.Option) ([]string, error) {
+	docs := prepared.docs
 	// Handle options
 	implOpts := indexer.GetImplSpecificOptions(&CommonIndexerOptions{}, opts...)
 	namespace := implOpts.Namespace
